@@ -253,13 +253,75 @@ button { font-family: inherit; cursor: pointer; }
    le petit bandeau centré classique, inchangé. */
 
 .hero.hero-accueil {
+  position: relative;
+  overflow: hidden;
   text-align: left;
   padding: 88px 24px 92px;
   background:
     linear-gradient(155deg, var(--bg-elevated) 0%, var(--bg) 60%, var(--bg-elevated) 100%);
 }
 
+/* ---------- fond animé du hero : taches de lumière vert/or qui dérivent doucement ---------- */
+/* Purement décoratif (aria-hidden), très discret pour ne jamais gêner la lecture du texte. */
+
+.hero-fond-anime {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hero-fond-anime .tache {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.5;
+  will-change: transform;
+}
+
+.hero-fond-anime .tache-1 {
+  width: 420px; height: 420px;
+  top: -120px; left: 8%;
+  background: radial-gradient(circle, rgba(14, 110, 51, 0.35), transparent 70%);
+  animation: derive-tache-1 26s ease-in-out infinite;
+}
+
+.hero-fond-anime .tache-2 {
+  width: 480px; height: 480px;
+  top: 10%; right: -140px;
+  background: radial-gradient(circle, rgba(224, 180, 0, 0.32), transparent 70%);
+  animation: derive-tache-2 32s ease-in-out infinite;
+}
+
+.hero-fond-anime .tache-3 {
+  width: 320px; height: 320px;
+  bottom: -140px; left: 38%;
+  background: radial-gradient(circle, rgba(28, 156, 80, 0.28), transparent 70%);
+  animation: derive-tache-3 22s ease-in-out infinite;
+}
+
+@keyframes derive-tache-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, 40px) scale(1.12); }
+}
+@keyframes derive-tache-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-70px, 30px) scale(1.08); }
+}
+@keyframes derive-tache-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(50px, -35px) scale(1.15); }
+}
+
+/* Sur écran peu profond ou pour qui préfère moins d'animations : taches immobiles */
+@media (prefers-reduced-motion: reduce) {
+  .hero-fond-anime .tache { animation: none; }
+}
+
 .hero-accueil-grille {
+  position: relative;
+  z-index: 1;
   max-width: var(--max-width);
   margin: 0 auto;
   display: grid;
