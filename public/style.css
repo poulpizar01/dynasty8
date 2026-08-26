@@ -546,8 +546,8 @@ section.section.serre { padding: 56px 24px; }
 .vitrine-exception-image { position: relative; min-height: 340px; perspective: 1600px; }
 .vitrine-exception-image img {
   width: 100%; height: 100%; object-fit: cover; display: block;
-  transform-origin: left center;
-  backface-visibility: hidden;
+  transform-origin: center center;
+  animation: vitrine-rotation-infinie 10s linear infinite;
 }
 .vitrine-exception-image::before {
   content: "";
@@ -557,16 +557,13 @@ section.section.serre { padding: 56px 24px; }
   background: linear-gradient(90deg, #0a0a08, transparent 22%);
 }
 
-/* Effet de "retournement" façon page qui se déplie, joué une fois quand le bandeau entre dans l'écran. */
-.vitrine-exception-image.pret-a-tourner img { transition: none; transform: rotateY(-92deg); opacity: 0; }
-.vitrine-exception-image.tourne img {
-  transition: transform 0.9s cubic-bezier(0.16, 0.84, 0.44, 1), opacity 0.5s ease 0.05s;
-  transform: rotateY(0deg);
-  opacity: 1;
+/* Effet de "retournement" façon carte qui tourne en continu, en boucle infinie. */
+@keyframes vitrine-rotation-infinie {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .vitrine-exception-image.pret-a-tourner img,
-  .vitrine-exception-image.tourne img { transition: none; transform: none; opacity: 1; }
+  .vitrine-exception-image img { animation: none; }
 }
 
 @media (max-width: 820px) {
