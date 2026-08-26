@@ -275,29 +275,29 @@ button { font-family: inherit; cursor: pointer; }
 .hero-fond-anime .tache {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.5;
+  filter: blur(40px);
+  opacity: 0.9;
   will-change: transform;
 }
 
 .hero-fond-anime .tache-1 {
-  width: 420px; height: 420px;
-  top: -120px; left: 8%;
-  background: radial-gradient(circle, rgba(14, 110, 51, 0.35), transparent 70%);
+  width: 460px; height: 460px;
+  top: -100px; left: 4%;
+  background: radial-gradient(circle, rgba(14, 110, 51, 0.65), transparent 70%);
   animation: derive-tache-1 6s ease-in-out infinite;
 }
 
 .hero-fond-anime .tache-2 {
-  width: 480px; height: 480px;
-  top: 10%; right: -140px;
-  background: radial-gradient(circle, rgba(224, 180, 0, 0.32), transparent 70%);
+  width: 520px; height: 520px;
+  top: 0%; right: -80px;
+  background: radial-gradient(circle, rgba(224, 180, 0, 0.6), transparent 70%);
   animation: derive-tache-2 7s ease-in-out infinite;
 }
 
 .hero-fond-anime .tache-3 {
-  width: 320px; height: 320px;
-  bottom: -140px; left: 38%;
-  background: radial-gradient(circle, rgba(28, 156, 80, 0.28), transparent 70%);
+  width: 360px; height: 360px;
+  bottom: -100px; left: 34%;
+  background: radial-gradient(circle, rgba(28, 156, 80, 0.55), transparent 70%);
   animation: derive-tache-3 5s ease-in-out infinite;
 }
 
