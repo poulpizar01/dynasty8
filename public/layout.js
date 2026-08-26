@@ -39,6 +39,11 @@ function injecterEntete(cleActive) {
   const bouton = document.getElementById("bouton-menu");
   const nav = document.getElementById("nav-mobile");
   if (bouton && nav) bouton.addEventListener("click", () => nav.classList.toggle("ouvert"));
+
+  // En-tête transparente qui devient opaque (fond flouté) dès qu'on scrolle un peu.
+  const bascule = () => monte.classList.toggle("entete-scrolled", window.scrollY > 24);
+  bascule();
+  window.addEventListener("scroll", bascule, { passive: true });
 }
 
 function injecterPied() {
