@@ -8,9 +8,8 @@ const LIEN_DISCORD = "https://discord.gg/votre-invitation";
 
 const LIENS_NAV = [
   { href: "/", texte: "Accueil", cle: "accueil" },
-  { href: "/interieurs.html", texte: "Intérieurs", cle: "interieurs" },
+  { href: "/habitation.html", texte: "Habitation", cle: "habitation" },
   { href: "/garages.html", texte: "Garages", cle: "garages" },
-  { href: "/coherences.html", texte: "Cohérences", cle: "coherences" },
   { href: "/exclusifs.html", texte: "Exclusifs", cle: "exclusifs" },
   { href: "/services.html", texte: "Services", cle: "services" },
   { href: "/equipe.html", texte: "Équipe", cle: "equipe" },
@@ -55,14 +54,13 @@ function injecterPied() {
       <div class="pied-grille">
         <div>
           <a href="/" class="logo" style="margin-bottom:14px;">${logoImg("logo-pied")}</a>
-          <p>Agence immobilière officielle de Los Santos. Intérieurs, garages et propriétés d'exception pour tous les résidents du serveur.</p>
+          <p>Agence immobilière officielle de Los Santos. Habitations, garages et propriétés d'exception pour tous les résidents du serveur.</p>
         </div>
         <div>
           <h4>Catégories</h4>
           <ul>
-            <li><a href="/interieurs.html">Intérieurs</a></li>
+            <li><a href="/habitation.html">Habitation</a></li>
             <li><a href="/garages.html">Garages</a></li>
-            <li><a href="/coherences.html">Cohérences</a></li>
             <li><a href="/exclusifs.html">Produits exclusifs</a></li>
           </ul>
         </div>
@@ -129,8 +127,14 @@ async function appelAPI(chemin, options) {
 }
 
 const ETIQUETTES_CATEGORIE = {
-  interieur: "Intérieur",
+  habitation: "Habitation",
   garage: "Garage",
-  coherence: "Cohérence",
-  exclusif: "Exclusif",
 };
+
+// Les 17 sous-catégories possibles pour un bien "habitation" (utilisées par le
+// formulaire d'admin et par les filtres de la page /habitation.html).
+const SOUS_CATEGORIES_HABITATION = [
+  "Eclipse Tower", "Tinsel Tower", "Villa", "Del Perro Heights", "Richards Majestic",
+  "Weazel Plaza", "San Andreas", "Alta Street", "Maison", "Entrepôt", "Flat",
+  "Bureau", "Headquarter", "Caravane", "Appartement", "Duplex", "Autre",
+];

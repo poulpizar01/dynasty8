@@ -88,7 +88,7 @@
       <div style="overflow-x:auto;">
         <table class="table-admin">
           <thead>
-            <tr><th>Titre</th><th>Catégorie</th><th>Zone</th><th>Prix</th><th>Statut</th><th></th></tr>
+            <tr><th>Titre</th><th>Catégorie</th><th>Sous-catégorie</th><th>Prix</th><th>Statut</th><th></th></tr>
           </thead>
           <tbody id="corps-table-biens"></tbody>
         </table>
@@ -128,38 +128,28 @@
     <form id="formulaire-bien">
       <input type="hidden" id="bien-id">
       <div class="champ">
-        <label for="bien-titre">Titre de l'annonce</label>
-        <input type="text" id="bien-titre" required maxlength="120" placeholder="Ex: Loft moderne — Vinewood">
+        <label for="bien-titre">Nom du bien <span class="champ-obligatoire">*</span></label>
+        <input type="text" id="bien-titre" required maxlength="120" placeholder="Ex: Loft moderne — Eclipse Tower">
+        <p class="champ-erreur cache" id="erreur-bien-titre">Le nom du bien est obligatoire.</p>
       </div>
       <div class="champ-deux">
         <div class="champ">
-          <label for="bien-categorie">Catégorie</label>
+          <label for="bien-categorie">Catégorie <span class="champ-obligatoire">*</span></label>
           <select id="bien-categorie">
-            <option value="interieur">Intérieur</option>
+            <option value="habitation">Habitation</option>
             <option value="garage">Garage</option>
-            <option value="coherence">Cohérence</option>
-            <option value="exclusif">Exclusif</option>
           </select>
         </div>
         <div class="champ">
-          <label for="bien-sous-categorie">Sous-catégorie (optionnel)</label>
-          <input type="text" id="bien-sous-categorie" maxlength="40" placeholder="meuble / non-meuble">
+          <label for="bien-sous-categorie">Sous-catégorie</label>
+          <select id="bien-sous-categorie"></select>
         </div>
       </div>
       <div class="champ-deux">
         <div class="champ">
-          <label for="bien-zone">Zone</label>
-          <input type="text" id="bien-zone" maxlength="60" placeholder="Ex: Roxwood, Vinewood, Cayo...">
-        </div>
-        <div class="champ">
-          <label for="bien-places">Places / chambres (optionnel)</label>
-          <input type="number" id="bien-places" min="0" step="1">
-        </div>
-      </div>
-      <div class="champ-deux">
-        <div class="champ">
-          <label for="bien-prix">Prix ($)</label>
+          <label for="bien-prix">Prix ($) <span class="champ-obligatoire">*</span></label>
           <input type="number" id="bien-prix" min="0" step="1" required>
+          <p class="champ-erreur cache" id="erreur-bien-prix">Indiquez un prix valide (0 ou plus).</p>
         </div>
         <div class="champ">
           <label for="bien-transaction">Transaction</label>
@@ -170,14 +160,24 @@
         </div>
       </div>
       <div class="champ">
+        <label for="bien-places">Places / chambres (optionnel)</label>
+        <input type="number" id="bien-places" min="0" step="1" style="max-width:180px;">
+      </div>
+      <div class="champ">
         <label for="bien-description">Description</label>
         <textarea id="bien-description" maxlength="4000" placeholder="Décrivez le bien : superficie, atouts, équipements..."></textarea>
       </div>
       <div class="champ">
-        <label for="bien-images">Photos (une URL par ligne)</label>
-        <textarea id="bien-images" placeholder="https://...
-https://..."></textarea>
-        <p class="champ-aide">Astuce débutant : postez vos captures d'écran dans un salon Discord privé, faites clic-droit → « Copier le lien » sur l'image, puis collez ce lien ici (une adresse par ligne). La première ligne sera la photo principale.</p>
+        <label>Photos <span class="champ-compteur" id="bien-images-compteur">0 / 5</span></label>
+        <div class="bien-images-outils">
+          <input type="url" id="bien-image-url" placeholder="Coller un lien d'image (https://...)">
+          <button type="button" class="btn btn-fantome btn-petit" id="bouton-ajouter-url">Ajouter le lien</button>
+          <button type="button" class="btn btn-fantome btn-petit" id="bouton-parcourir">📁 Parcourir mes fichiers</button>
+          <input type="file" id="bien-image-fichier" accept="image/*" multiple class="cache">
+        </div>
+        <p class="champ-erreur cache" id="erreur-bien-images"></p>
+        <div class="bien-images-grille" id="bien-images-grille"></div>
+        <p class="champ-aide">Glissez la photo principale en premier. Formats acceptés : JPG, PNG, WEBP — 5 photos maximum par bien.</p>
       </div>
       <div class="champ-deux">
         <div class="champ champ-checkbox">
@@ -189,8 +189,9 @@ https://..."></textarea>
           <label for="bien-disponible" style="margin:0;">Annonce visible sur le site</label>
         </div>
       </div>
-      <div style="display:flex;gap:12px;margin-top:22px;">
-        <button type="submit" class="btn btn-or" style="flex:1;">Enregistrer</button>
+      <div style="display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-or" style="flex:1;">Enregistrer le bien</button>
+        <button type="button" class="btn btn-fantome" id="bouton-annuler-bien">Annuler</button>
         <button type="button" class="btn btn-danger cache" id="bouton-supprimer-bien">Supprimer</button>
       </div>
     </form>

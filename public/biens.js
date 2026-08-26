@@ -3,12 +3,7 @@
 // ============================================================================
 
 function iconeCategorie(categorie) {
-  const icones = {
-    interieur: "🏠",
-    garage: "🚗",
-    coherence: "📍",
-    exclusif: "💎",
-  };
+  const icones = { habitation: "🏠", garage: "🚗" };
   return icones[categorie] || "🏠";
 }
 
@@ -25,7 +20,7 @@ function carteBienHTML(bien) {
         ${visuel}
       </div>
       <div class="corps">
-        <span class="zone-tag">${echapper(bien.zone || ETIQUETTES_CATEGORIE[bien.categorie] || "")}</span>
+        <span class="zone-tag">${echapper(bien.sous_categorie || ETIQUETTES_CATEGORIE[bien.categorie] || "")}</span>
         <h3>${echapper(bien.titre)}</h3>
         <p class="description">${echapper((bien.description || "").slice(0, 90))}${(bien.description || "").length > 90 ? "…" : ""}</p>
         <div class="pied">
@@ -59,7 +54,7 @@ async function chargerBiens({ categorie, zone, coupDeCoeur, cible, videMessage }
   }
 }
 
-function initialiserFiltres(idFiltres, idGrille, categorieFixe) {
+function initialiserFiltres(idFiltres, idGrille, categorieFixe, valeurInitiale) {
   const zoneFiltres = document.getElementById(idFiltres);
   if (!zoneFiltres) {
     chargerBiens({ categorie: categorieFixe, cible: idGrille });
@@ -80,7 +75,8 @@ function initialiserFiltres(idFiltres, idGrille, categorieFixe) {
     }
   }
   boutons.forEach((b) => b.addEventListener("click", () => appliquer(b.dataset.sousCategorie)));
-  appliquer("tous");
+  const depart = boutons.some((b) => b.dataset.sousCategorie === valeurInitiale) ? valeurInitiale : "tous";
+  appliquer(depart);
 }
 
 // ---- page de fiche détaillée (bien.html) ----
@@ -110,7 +106,7 @@ async function chargerFicheBien() {
           .join("")}</div>` : ""}
       </div>
       <div class="fiche-fiche">
-        <span class="zone-tag">${echapper(bien.zone || ETIQUETTES_CATEGORIE[bien.categorie] || "")} ${bien.coup_de_coeur ? "· Coup de cœur" : ""}</span>
+        <span class="zone-tag">${echapper(bien.sous_categorie || ETIQUETTES_CATEGORIE[bien.categorie] || "")} ${bien.coup_de_coeur ? "· Coup de cœur" : ""}</span>
         <h1>${echapper(bien.titre)}</h1>
         <div class="fiche-prix">${formaterPrix(bien.prix)}${bien.transaction_type === "location" ? " / semaine" : ""}</div>
         <div class="fiche-carac">

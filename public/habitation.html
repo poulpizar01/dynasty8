@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Habitation — Dynasty 8</title>
+<meta name="description" content="Tous les biens Habitation de Dynasty 8 : Eclipse Tower, Del Perro Heights, Villa, Maison, Appartement et bien d'autres.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/png" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/favicon-180.png">
+</head>
+<body>
+
+<header class="entete" id="site-entete"></header>
+
+<section class="hero" style="padding:70px 24px 50px;">
+  <div class="hero-etiquette">🏠 Habitation</div>
+  <h1>Tous les logements de Los Santos</h1>
+  <p class="lead">Des tours du centre-ville aux villas isolées, choisissez une adresse pour découvrir les biens disponibles.</p>
+</section>
+
+<section class="section serre">
+  <div class="conteneur">
+    <div class="filtres" id="filtres-habitation">
+      <button class="filtre" data-sous-categorie="tous">Tous</button>
+      <button class="filtre" data-sous-categorie="Eclipse Tower">Eclipse Tower</button>
+      <button class="filtre" data-sous-categorie="Tinsel Tower">Tinsel Tower</button>
+      <button class="filtre" data-sous-categorie="Villa">Villa</button>
+      <button class="filtre" data-sous-categorie="Del Perro Heights">Del Perro Heights</button>
+      <button class="filtre" data-sous-categorie="Richards Majestic">Richards Majestic</button>
+      <button class="filtre" data-sous-categorie="Weazel Plaza">Weazel Plaza</button>
+      <button class="filtre" data-sous-categorie="San Andreas">San Andreas</button>
+      <button class="filtre" data-sous-categorie="Alta Street">Alta Street</button>
+      <button class="filtre" data-sous-categorie="Maison">Maison</button>
+      <button class="filtre" data-sous-categorie="Entrepôt">Entrepôt</button>
+      <button class="filtre" data-sous-categorie="Flat">Flat</button>
+      <button class="filtre" data-sous-categorie="Bureau">Bureau</button>
+      <button class="filtre" data-sous-categorie="Headquarter">Headquarter</button>
+      <button class="filtre" data-sous-categorie="Caravane">Caravane</button>
+      <button class="filtre" data-sous-categorie="Appartement">Appartement</button>
+      <button class="filtre" data-sous-categorie="Duplex">Duplex</button>
+      <button class="filtre" data-sous-categorie="Autre">Autre</button>
+    </div>
+    <div class="grille-biens" id="grille-biens"></div>
+  </div>
+</section>
+
+<footer class="pied-page" id="site-pied"></footer>
+
+<script src="/layout.js"></script>
+<script src="/biens.js"></script>
+<script>
+  initialiserLayout("habitation");
+  const sousCategorieDepart = new URLSearchParams(window.location.search).get("sous_categorie") || "tous";
+  initialiserFiltres("filtres-habitation", "grille-biens", "habitation", sousCategorieDepart);
+</script>
+</body>
+</html>

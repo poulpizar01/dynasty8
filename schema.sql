@@ -20,10 +20,10 @@ CREATE TABLE IF NOT EXISTS tentatives (
 
 CREATE TABLE IF NOT EXISTS biens (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  categorie TEXT NOT NULL,          -- 'interieur' | 'garage' | 'coherence' | 'exclusif'
-  sous_categorie TEXT,              -- ex: 'meuble' / 'non-meuble' (interieur)
+  categorie TEXT NOT NULL,          -- 'habitation' | 'garage'
+  sous_categorie TEXT,              -- pour 'habitation' uniquement, ex: 'Eclipse Tower', 'Villa'...
   titre TEXT NOT NULL,
-  zone TEXT,                        -- ex: Habitation, Garage, Cayo, Roxwood, Vinewood...
+  zone TEXT,                        -- conservé pour compatibilité, plus utilisé par le formulaire
   prix INTEGER NOT NULL DEFAULT 0,
   transaction_type TEXT NOT NULL DEFAULT 'vente', -- 'vente' | 'location'
   places INTEGER,                   -- nb de chambres / véhicules selon la catégorie

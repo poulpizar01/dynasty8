@@ -5,6 +5,8 @@
 let SESSION = null; // { pseudo, grade, direction }
 let CACHE_BIENS = [];
 let CACHE_MEMBRES = [];
+let IMAGES_BIEN = []; // photos du bien en cours d'édition (URLs et/ou images importées)
+let ETAT_INITIAL_BIEN = ""; // instantané du formulaire à l'ouverture, pour détecter les changements non enregistrés
 
 function afficherMessage(idZone, texte, type) {
   const zone = document.getElementById(idZone);
@@ -122,7 +124,7 @@ async function chargerTableBiens() {
       <tr>
         <td>${echapper(b.titre)}${b.coup_de_coeur ? ' <span class="puce puce-or">Coup de cœur</span>' : ""}</td>
         <td>${ETIQUETTES_CATEGORIE[b.categorie] || b.categorie}</td>
-        <td>${echapper(b.zone || "—")}</td>
+        <td>${echapper(b.sous_categorie || "—")}</td>
         <td>${formaterPrix(b.prix)}${b.transaction_type === "location" ? " /sem." : ""}</td>
         <td>${b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>'}</td>
         <td><div class="actions-ligne"><button class="btn btn-fantome btn-petit" data-editer="${b.id}">Modifier</button></div></td>
@@ -135,61 +137,249 @@ async function chargerTableBiens() {
   }
 }
 
+// ---- catégorie / sous-catégorie (cascade) ---------------------------------
+
+function remplirSousCategories(categorie, valeurSelectionnee) {
+  const select = document.getElementById("bien-sous-categorie");
+  if (categorie === "habitation") {
+    select.disabled = false;
+    select.innerHTML = SOUS_CATEGORIES_HABITATION.map(
+      (s) => `<option value="${echapper(s)}">${echapper(s)}</option>`
+    ).join("");
+    select.value = SOUS_CATEGORIES_HABITATION.includes(valeurSelectionnee) ? valeurSelectionnee : SOUS_CATEGORIES_HABITATION[0];
+  } else {
+    select.disabled = true;
+    select.innerHTML = '<option value="">Aucune (catégorie Garage)</option>';
+  }
+}
+
+document.getElementById("bien-categorie").addEventListener("change", (ev) => {
+  remplirSousCategories(ev.target.value, "");
+});
+
+// ---- photos : ajout par URL ou depuis l'ordinateur, prévisualisation ------
+
+function redimensionnerImage(fichier) {
+  return new Promise((resolve, reject) => {
+    if (!fichier.type.startsWith("image/")) return reject(new Error(`« ${fichier.name} » n'est pas une image.`));
+    if (fichier.size > 15 * 1024 * 1024) return reject(new Error(`« ${fichier.name} » dépasse 15 Mo.`));
+    const lecteur = new FileReader();
+    lecteur.onerror = () => reject(new Error(`Impossible de lire « ${fichier.name} ».`));
+    lecteur.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error(`Fichier image invalide : « ${fichier.name} ».`));
+      image.onload = () => {
+        const LARGEUR_MAX = 1280;
+        let { width, height } = image;
+        if (width > LARGEUR_MAX) {
+          height = Math.round(height * (LARGEUR_MAX / width));
+          width = LARGEUR_MAX;
+        }
+        const toile = document.createElement("canvas");
+        toile.width = width;
+        toile.height = height;
+        toile.getContext("2d").drawImage(image, 0, 0, width, height);
+        resolve(toile.toDataURL("image/jpeg", 0.72));
+      };
+      image.src = lecteur.result;
+    };
+    lecteur.readAsDataURL(fichier);
+  });
+}
+
+function afficherErreurImages(texte) {
+  const erreur = document.getElementById("erreur-bien-images");
+  if (!texte) { erreur.classList.add("cache"); return; }
+  erreur.textContent = texte;
+  erreur.classList.remove("cache");
+}
+
+function redessinerImagesBien() {
+  const grille = document.getElementById("bien-images-grille");
+  grille.innerHTML = IMAGES_BIEN.map((src, i) => `
+    <div class="bien-images-vignette">
+      <img src="${src}" alt="Photo ${i + 1} du bien">
+      ${i === 0 ? '<span class="bien-images-principale">Principale</span>' : ""}
+      <button type="button" class="bien-images-retirer" data-retirer="${i}" aria-label="Retirer cette photo">✕</button>
+    </div>`).join("");
+  grille.querySelectorAll("[data-retirer]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      IMAGES_BIEN.splice(Number(btn.dataset.retirer), 1);
+      redessinerImagesBien();
+    });
+  });
+  document.getElementById("bien-images-compteur").textContent = IMAGES_BIEN.length + " / 5";
+  const complet = IMAGES_BIEN.length >= 5;
+  document.getElementById("bien-image-url").disabled = complet;
+  document.getElementById("bouton-ajouter-url").disabled = complet;
+  document.getElementById("bouton-parcourir").disabled = complet;
+  afficherErreurImages(complet ? "Limite de 5 photos atteinte. Retirez une photo pour en ajouter une autre." : "");
+}
+
+function ajouterImageBien(valeur) {
+  if (IMAGES_BIEN.length >= 5) return;
+  IMAGES_BIEN.push(valeur);
+  redessinerImagesBien();
+}
+
+document.getElementById("bouton-ajouter-url").addEventListener("click", () => {
+  const champ = document.getElementById("bien-image-url");
+  const valeur = champ.value.trim();
+  if (!valeur) return;
+  try {
+    new URL(valeur);
+  } catch (e) {
+    afficherErreurImages("Ce lien ne ressemble pas à une adresse valide.");
+    return;
+  }
+  ajouterImageBien(valeur);
+  champ.value = "";
+});
+
+document.getElementById("bien-image-url").addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter") {
+    ev.preventDefault();
+    document.getElementById("bouton-ajouter-url").click();
+  }
+});
+
+document.getElementById("bouton-parcourir").addEventListener("click", () => {
+  document.getElementById("bien-image-fichier").click();
+});
+
+document.getElementById("bien-image-fichier").addEventListener("change", async (ev) => {
+  const fichiers = Array.from(ev.target.files || []);
+  ev.target.value = ""; // permet de resélectionner le même fichier plus tard si besoin
+  const place = 5 - IMAGES_BIEN.length;
+  for (const fichier of fichiers.slice(0, place)) {
+    try {
+      ajouterImageBien(await redimensionnerImage(fichier));
+    } catch (e) {
+      afficherErreurImages(e.message);
+    }
+  }
+  if (fichiers.length > place && place > 0) {
+    afficherErreurImages(`Seules les ${place} premières photos ont été ajoutées (limite de 5).`);
+  }
+});
+
+// ---- ouverture / fermeture de la modale, avec protection contre la perte de données ----
+
+function etatFormulaireBien() {
+  return JSON.stringify({
+    titre: document.getElementById("bien-titre").value,
+    categorie: document.getElementById("bien-categorie").value,
+    sousCategorie: document.getElementById("bien-sous-categorie").value,
+    prix: document.getElementById("bien-prix").value,
+    transaction: document.getElementById("bien-transaction").value,
+    places: document.getElementById("bien-places").value,
+    description: document.getElementById("bien-description").value,
+    images: IMAGES_BIEN,
+    coupDeCoeur: document.getElementById("bien-coup-de-coeur").checked,
+    disponible: document.getElementById("bien-disponible").checked,
+  });
+}
+
 function ouvrirModaleBien(id) {
   const bien = id ? CACHE_BIENS.find((b) => b.id === id) : null;
   document.getElementById("titre-modale-bien").textContent = bien ? "Modifier l'annonce" : "Nouvelle annonce";
   document.getElementById("bien-id").value = bien ? bien.id : "";
   document.getElementById("bien-titre").value = bien ? bien.titre : "";
-  document.getElementById("bien-categorie").value = bien ? bien.categorie : "interieur";
-  document.getElementById("bien-sous-categorie").value = bien ? bien.sous_categorie || "" : "";
-  document.getElementById("bien-zone").value = bien ? bien.zone || "" : "";
+  const categorie = bien ? bien.categorie : "habitation";
+  document.getElementById("bien-categorie").value = categorie;
+  remplirSousCategories(categorie, bien ? bien.sous_categorie || "" : "");
   document.getElementById("bien-places").value = bien && bien.places != null ? bien.places : "";
   document.getElementById("bien-prix").value = bien ? bien.prix : "";
   document.getElementById("bien-transaction").value = bien ? bien.transaction_type : "vente";
   document.getElementById("bien-description").value = bien ? bien.description || "" : "";
-  document.getElementById("bien-images").value = bien && bien.images ? bien.images.join("\n") : "";
+  document.getElementById("bien-image-url").value = "";
   document.getElementById("bien-coup-de-coeur").checked = !!(bien && bien.coup_de_coeur);
   document.getElementById("bien-disponible").checked = bien ? !!bien.disponible : true;
   document.getElementById("bouton-supprimer-bien").classList.toggle("cache", !bien);
+  document.querySelectorAll("#formulaire-bien .champ-erreur").forEach((p) => p.classList.add("cache"));
   afficherMessage("zone-message-modale-bien", "", null);
+  IMAGES_BIEN = bien && bien.images ? bien.images.slice(0, 5) : [];
+  redessinerImagesBien();
   document.getElementById("modale-bien").classList.remove("cache");
+  ETAT_INITIAL_BIEN = etatFormulaireBien();
 }
 
 function fermerModaleBien() {
   document.getElementById("modale-bien").classList.add("cache");
 }
 
+function demanderFermetureModaleBien() {
+  if (etatFormulaireBien() !== ETAT_INITIAL_BIEN && !confirm("Fermer sans enregistrer ? Les modifications saisies seront perdues.")) {
+    return;
+  }
+  fermerModaleBien();
+}
+
 document.getElementById("bouton-nouveau-bien").addEventListener("click", () => ouvrirModaleBien(null));
-document.getElementById("fermer-modale-bien").addEventListener("click", fermerModaleBien);
-document.getElementById("modale-bien").addEventListener("click", (ev) => { if (ev.target.id === "modale-bien") fermerModaleBien(); });
+document.getElementById("fermer-modale-bien").addEventListener("click", demanderFermetureModaleBien);
+document.getElementById("bouton-annuler-bien").addEventListener("click", demanderFermetureModaleBien);
+document.getElementById("modale-bien").addEventListener("click", (ev) => { if (ev.target.id === "modale-bien") demanderFermetureModaleBien(); });
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && !document.getElementById("modale-bien").classList.contains("cache")) {
+    demanderFermetureModaleBien();
+  }
+});
 
 document.getElementById("formulaire-bien").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   afficherMessage("zone-message-modale-bien", "", null);
+  document.querySelectorAll("#formulaire-bien .champ-erreur").forEach((p) => p.classList.add("cache"));
+
+  const titre = document.getElementById("bien-titre").value.trim();
+  const prixBrut = document.getElementById("bien-prix").value;
+  const prix = Number(prixBrut);
+  let valide = true;
+  if (!titre) {
+    document.getElementById("erreur-bien-titre").classList.remove("cache");
+    valide = false;
+  }
+  if (prixBrut === "" || !Number.isFinite(prix) || prix < 0) {
+    document.getElementById("erreur-bien-prix").classList.remove("cache");
+    valide = false;
+  }
+  if (!valide) {
+    afficherMessage("zone-message-modale-bien", "Corrigez les champs indiqués en rouge avant d'enregistrer.", "erreur");
+    return;
+  }
+
   const id = document.getElementById("bien-id").value;
+  const categorie = document.getElementById("bien-categorie").value;
   const payload = {
-    titre: document.getElementById("bien-titre").value.trim(),
-    categorie: document.getElementById("bien-categorie").value,
-    sous_categorie: document.getElementById("bien-sous-categorie").value.trim(),
-    zone: document.getElementById("bien-zone").value.trim(),
+    titre,
+    categorie,
+    sous_categorie: categorie === "habitation" ? document.getElementById("bien-sous-categorie").value : "",
     places: document.getElementById("bien-places").value === "" ? null : Number(document.getElementById("bien-places").value),
-    prix: Number(document.getElementById("bien-prix").value) || 0,
+    prix,
     transaction_type: document.getElementById("bien-transaction").value,
     description: document.getElementById("bien-description").value.trim(),
-    images: document.getElementById("bien-images").value.split("\n").map((s) => s.trim()).filter(Boolean),
+    images: IMAGES_BIEN.slice(),
     coup_de_coeur: document.getElementById("bien-coup-de-coeur").checked,
     disponible: document.getElementById("bien-disponible").checked,
   };
+  const boutonEnregistrer = document.querySelector('#formulaire-bien button[type="submit"]');
+  const texteInitial = boutonEnregistrer.textContent;
+  boutonEnregistrer.disabled = true;
+  boutonEnregistrer.textContent = "Enregistrement…";
   try {
     if (id) {
       await appelAPI("/api/biens?id=" + id, { method: "PUT", body: JSON.stringify(payload) });
     } else {
       await appelAPI("/api/biens", { method: "POST", body: JSON.stringify(payload) });
     }
-    fermerModaleBien();
-    chargerTableBiens();
+    ETAT_INITIAL_BIEN = etatFormulaireBien();
+    afficherMessage("zone-message-modale-bien", id ? "Bien mis à jour ✓" : "Bien ajouté avec succès ✓", "succes");
+    await chargerTableBiens();
+    setTimeout(fermerModaleBien, 800);
   } catch (e) {
     afficherMessage("zone-message-modale-bien", e.message, "erreur");
+  } finally {
+    boutonEnregistrer.disabled = false;
+    boutonEnregistrer.textContent = texteInitial;
   }
 });
 

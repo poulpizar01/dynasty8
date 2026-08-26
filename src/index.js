@@ -18,7 +18,16 @@ const DUREE = 60 * 60 * 12; // 12 heures, en secondes
 const MAX_ESSAIS = 10;
 const FENETRE = 10 * 60; // 10 minutes
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sans caractères ambigus (0/O, 1/I...)
-const CATEGORIES = ["interieur", "garage", "coherence", "exclusif"];
+const CATEGORIES = ["habitation", "garage"];
+
+// Sous-catégories autorisées pour la catégorie "habitation" (la catégorie "garage"
+// reste simple et n'en a pas). La liste vient directement du fonctionnement du
+// serveur RP : chaque nom correspond à un immeuble/type de logement précis.
+const SOUS_CATEGORIES_HABITATION = [
+  "Eclipse Tower", "Tinsel Tower", "Villa", "Del Perro Heights", "Richards Majestic",
+  "Weazel Plaza", "San Andreas", "Alta Street", "Maison", "Entrepôt", "Flat",
+  "Bureau", "Headquarter", "Caravane", "Appartement", "Duplex", "Autre",
+];
 
 const enc = new TextEncoder();
 const maintenant = () => Math.floor(Date.now() / 1000);
@@ -263,17 +272,43 @@ async function moi(request, env) {
 // Lecture publique (aucune connexion requise) : tout le monde peut voir les
 // annonces disponibles. Écriture réservée aux membres connectés.
 
+// Vérifie les données envoyées par le formulaire avant tout enregistrement.
+// Renvoie un message d'erreur clair (en français, affichable tel quel dans la
+// modale) si quelque chose ne va pas, ou null si tout est correct.
+function validerBien(b) {
+  if (!b) return "Formulaire invalide.";
+  if (!txt(b.titre, 120).trim()) return "Le nom du bien est obligatoire.";
+  if (b.categorie && !CATEGORIES.includes(b.categorie)) return "Catégorie invalide.";
+  if (b.categorie === "habitation" && b.sous_categorie && !SOUS_CATEGORIES_HABITATION.includes(b.sous_categorie)) {
+    return "Sous-catégorie invalide pour un bien Habitation.";
+  }
+  const prix = Number(b.prix);
+  if (b.prix === "" || b.prix == null || !Number.isFinite(prix) || prix < 0) {
+    return "Le prix doit être un nombre positif.";
+  }
+  const images = Array.isArray(b.images) ? b.images : [];
+  if (images.length > 5) return "5 photos maximum par bien.";
+  if (images.some((u) => typeof u !== "string" || u.length > 2_000_000)) {
+    return "Une des photos est invalide ou trop volumineuse.";
+  }
+  return null;
+}
+
 function normaliserBien(b) {
   let images = [];
   try {
     const arr = Array.isArray(b.images) ? b.images : JSON.parse(b.images || "[]");
-    images = arr.filter((u) => typeof u === "string" && u.trim()).slice(0, 12).map((u) => u.trim());
+    images = arr.filter((u) => typeof u === "string" && u.trim()).slice(0, 5).map((u) => u.trim());
   } catch (e) {
     images = [];
   }
+  const categorie = CATEGORIES.includes(b.categorie) ? b.categorie : "habitation";
   return {
-    categorie: CATEGORIES.includes(b.categorie) ? b.categorie : "interieur",
-    sous_categorie: txt(b.sous_categorie, 40),
+    categorie,
+    // La sous-catégorie n'a de sens que pour "habitation" ; on l'ignore pour "garage".
+    sous_categorie: categorie === "habitation" && SOUS_CATEGORIES_HABITATION.includes(b.sous_categorie)
+      ? b.sous_categorie
+      : "",
     titre: txt(b.titre, 120).trim(),
     zone: txt(b.zone, 60),
     prix: Math.max(0, Number(b.prix) || 0),
@@ -330,7 +365,8 @@ async function biens(request, url, env) {
 
   if (m === "POST") {
     const b = await request.json().catch(() => null);
-    if (!b || !txt(b.titre, 120).trim()) return json({ erreur: "Le titre est obligatoire." }, 400);
+    const erreur = validerBien(b);
+    if (erreur) return json({ erreur }, 400);
     const n = normaliserBien(b);
     const r = await env.DB.prepare(
       `INSERT INTO biens (categorie, sous_categorie, titre, zone, prix, transaction_type, places,
@@ -348,7 +384,8 @@ async function biens(request, url, env) {
     const existe = await env.DB.prepare("SELECT id FROM biens WHERE id = ?1").bind(id).first();
     if (!existe) return json({ erreur: "Introuvable." }, 404);
     const b = await request.json().catch(() => null);
-    if (!b || !txt(b.titre, 120).trim()) return json({ erreur: "Le titre est obligatoire." }, 400);
+    const erreur = validerBien(b);
+    if (erreur) return json({ erreur }, 400);
     const n = normaliserBien(b);
     await env.DB.prepare(
       `UPDATE biens SET categorie=?2, sous_categorie=?3, titre=?4, zone=?5, prix=?6,

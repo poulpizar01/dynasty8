@@ -832,6 +832,78 @@ section.section.serre { padding: 56px 24px; }
 .message-erreur { background: rgba(194,59,48,0.1); color: var(--danger-strong); border: 1px solid rgba(194,59,48,0.3); }
 .message-succes { background: rgba(14,110,51,0.1); color: var(--success); border: 1px solid rgba(14,110,51,0.3); }
 
+/* ---------- formulaire "nouveau bien" : champs obligatoires, erreurs, compteur ---------- */
+
+.champ-obligatoire { color: var(--danger-strong); }
+.champ-erreur { font-size: 0.78rem; color: var(--danger-strong); margin-top: 5px; }
+.champ-compteur { float: right; font-weight: 400; color: var(--text-faint); text-transform: none; letter-spacing: 0; }
+
+/* ---------- formulaire "nouveau bien" : ajout de photos (URL + fichiers) ---------- */
+
+.bien-images-outils {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.bien-images-outils input[type="url"] {
+  flex: 1 1 220px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+.bien-images-outils input[type="url"]:focus { outline: none; border-color: var(--accent); }
+.bien-images-outils .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+.bien-images-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.bien-images-vignette {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+.bien-images-vignette img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bien-images-principale {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  background: rgba(23,25,15,0.75);
+  color: #fbfaf6;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+.bien-images-retirer {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(23,25,15,0.75);
+  color: #fbfaf6;
+  font-size: 0.72rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.bien-images-retirer:hover { background: var(--danger-strong); }
+
 .code-affiche {
   font-family: "Courier New", monospace; font-size: 1.15rem; letter-spacing: 1px;
   background: var(--bg-elevated); border: 1px dashed var(--accent); color: var(--accent-strong);
