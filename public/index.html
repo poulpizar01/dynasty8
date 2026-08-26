@@ -17,11 +17,12 @@
 <header class="entete" id="site-entete"></header>
 
 <section class="hero hero-accueil">
-  <div class="hero-fond-anime" aria-hidden="true">
-    <span class="tache tache-1"></span>
-    <span class="tache tache-2"></span>
-    <span class="tache tache-3"></span>
+  <div class="hero-ville" aria-hidden="true" id="hero-ville">
+    <svg viewBox="0 0 900 220" preserveAspectRatio="none">
+      <polygon fill="#0a5527" points="0,220 0,160 50,160 50,120 90,120 90,160 150,160 150,90 230,90 300,90 300,140 340,140 340,60 380,60 420,10 460,60 500,60 500,140 560,140 560,80 610,80 610,150 670,150 670,40 710,40 710,20 730,20 730,150 800,150 800,100 850,100 850,160 900,160 900,220" />
+    </svg>
   </div>
+  <div class="hero-particules" aria-hidden="true" id="hero-particules"></div>
   <div class="hero-accueil-grille">
     <div class="hero-texte">
       <div class="hero-etiquette">★ L'excellence immobilière à Los Santos</div>
@@ -145,6 +146,41 @@
     document.getElementById("video-presentation").src = "https://www.youtube-nocookie.com/embed/" + idVideo;
   } else {
     document.querySelector(".cadre-video").innerHTML = '<div class="etat-vide" style="width:100%;">Emplacement réservé pour votre vidéo de présentation YouTube.</div>';
+  }
+
+  // Fond animé du hero : fenêtres qui scintillent au hasard sur la silhouette de ville.
+  const zoneVille = document.getElementById("hero-ville");
+  if (zoneVille) {
+    for (let i = 0; i < 34; i++) {
+      const f = document.createElement("div");
+      f.className = "hero-fenetre";
+      f.style.width = (2 + Math.random() * 2) + "px";
+      f.style.height = (2 + Math.random() * 2) + "px";
+      f.style.left = (4 + Math.random() * 92) + "%";
+      f.style.bottom = (8 + Math.random() * 55) + "%";
+      f.style.animationDuration = (2 + Math.random() * 4) + "s";
+      f.style.animationDelay = (Math.random() * -6) + "s";
+      zoneVille.appendChild(f);
+    }
+  }
+
+  // Fond animé du hero : tempête de particules dorées qui montent lentement.
+  const zoneParticules = document.getElementById("hero-particules");
+  if (zoneParticules) {
+    for (let i = 0; i < 46; i++) {
+      const p = document.createElement("div");
+      p.className = "hero-particule";
+      const taille = 2 + Math.random() * 7;
+      p.style.width = taille + "px";
+      p.style.height = taille + "px";
+      p.style.left = Math.random() * 100 + "%";
+      p.style.bottom = (-10 - Math.random() * 20) + "%";
+      p.style.setProperty("--dx", (Math.random() * 120 - 60).toFixed(0) + "px");
+      const duree = 4 + Math.random() * 5;
+      p.style.animationDuration = duree + "s";
+      p.style.animationDelay = (Math.random() * -duree) + "s";
+      zoneParticules.appendChild(p);
+    }
   }
 
   document.getElementById("lien-discord-cta").href = LIEN_DISCORD;
