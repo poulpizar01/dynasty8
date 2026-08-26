@@ -246,6 +246,61 @@ button { font-family: inherit; cursor: pointer; }
 .hero-stats strong { display: block; font-family: "Poppins", sans-serif; font-size: 1.8rem; color: var(--green-dark); }
 .hero-stats span { font-size: 0.82rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 1px; }
 
+/* ---------- hero d'accueil : variante "vitrine produit" (page d'accueil uniquement) ---------- */
+/* Cette classe s'ajoute à .hero seulement sur index.html : les autres pages gardent
+   le petit bandeau centré classique, inchangé. */
+
+.hero.hero-accueil {
+  text-align: left;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 52px;
+  align-items: center;
+  padding: 88px 24px 92px;
+  background:
+    linear-gradient(155deg, var(--bg-elevated) 0%, #efe9d8 60%, var(--bg-elevated) 100%);
+}
+
+.hero-accueil .hero-etiquette,
+.hero-accueil h1,
+.hero-accueil p.lead {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.hero-accueil h1 { max-width: 560px; }
+.hero-accueil p.lead { max-width: 460px; }
+.hero-accueil .hero-actions { justify-content: flex-start; }
+.hero-accueil .hero-stats { justify-content: flex-start; margin-top: 44px; }
+.hero-accueil .hero-stats div { text-align: left; }
+
+@media (max-width: 900px) {
+  .hero.hero-accueil { grid-template-columns: 1fr; padding: 64px 24px 48px; }
+  .hero-accueil .hero-vitrine { order: -1; margin: 0 auto 8px; max-width: 360px; }
+}
+
+.hero-vitrine { width: 100%; max-width: 380px; }
+.hero-vitrine .carte-bien {
+  transform: rotate(2.5deg);
+  box-shadow: 0 30px 60px -22px rgba(20, 20, 10, 0.35);
+  transition: transform 0.2s, border-color 0.2s;
+}
+.hero-vitrine .carte-bien:hover { transform: rotate(0deg) translateY(-4px); }
+
+.hero-vitrine-vide {
+  width: 100%;
+  padding: 48px 26px;
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.hero-vitrine-vide p { margin: 0; font-size: 0.9rem; color: var(--text-faint); }
+
 /* ---------- sections génériques ---------- */
 
 section.section { padding: 84px 24px; }
