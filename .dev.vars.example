@@ -1,0 +1,5 @@
+# Modele du fichier .dev.vars (celui-ci EST envoye sur GitHub, il ne contient aucun secret).
+# Pour tester le site en local : copie ce fichier en ".dev.vars" et mets une vraie valeur.
+# Genere une valeur aleatoire avec, par exemple : openssl rand -hex 32
+
+SESSION_SECRET=remplace-moi-par-une-longue-chaine-aleatoire
