@@ -326,16 +326,20 @@ async function biens(request, url, env) {
   const m = request.method;
 
   if (m === "GET") {
+    const sSeule = await session(request, env);
+    const inclureIndisponiblesSeul = !!sSeule; // seuls les membres connectés voient les biens masqués
+
     if (id) {
       const d = await env.DB.prepare("SELECT * FROM biens WHERE id = ?1").bind(id).first();
-      if (!d) return json({ erreur: "Introuvable." }, 404);
+      // Un bien décoché "visible sur le site" ne doit pas être consultable via son lien direct
+      // par quelqu'un qui n'est pas connecté à l'espace agents.
+      if (!d || (!d.disponible && !inclureIndisponiblesSeul)) return json({ erreur: "Introuvable." }, 404);
       return json(bienPourAffichage(d));
     }
     const categorie = url.searchParams.get("categorie");
     const zone = url.searchParams.get("zone");
     const coupDeCoeur = url.searchParams.get("coup_de_coeur");
-    const s = await session(request, env);
-    const inclureIndisponibles = !!s; // seuls les membres connectés voient les biens masqués
+    const inclureIndisponibles = inclureIndisponiblesSeul;
 
     let sql = "SELECT * FROM biens WHERE 1=1";
     const binds = [];

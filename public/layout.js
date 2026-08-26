@@ -4,7 +4,7 @@
 // ============================================================================
 
 // Adresse d'invitation Discord du serveur — à remplacer par la vraie une fois disponible.
-const LIEN_DISCORD = "https://discord.gg/votre-invitation";
+const LIEN_DISCORD = "https://discord.com/invite/zCsPrrR3uw";
 
 const LIENS_NAV = [
   { href: "/", texte: "Accueil", cle: "accueil" },
