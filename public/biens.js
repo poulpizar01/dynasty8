@@ -36,7 +36,7 @@ function carteBienHTML(bien) {
     </a>`;
 }
 
-async function chargerBiens({ categorie, zone, coupDeCoeur, transactionType, prixMax, cible, videMessage } = {}) {
+async function chargerBiens({ categorie, zone, coupDeCoeur, cible, videMessage } = {}) {
   const conteneur = document.getElementById(cible || "grille-biens");
   if (!conteneur) return [];
   conteneur.innerHTML = '<p class="champ-aide">Chargement des annonces…</p>';
@@ -45,8 +45,6 @@ async function chargerBiens({ categorie, zone, coupDeCoeur, transactionType, pri
     if (categorie) params.set("categorie", categorie);
     if (zone) params.set("zone", zone);
     if (coupDeCoeur) params.set("coup_de_coeur", "1");
-    if (transactionType) params.set("transaction_type", transactionType);
-    if (prixMax) params.set("prix_max", prixMax);
     const data = await appelAPI("/api/biens?" + params.toString());
     const liste = data.biens || [];
     if (!liste.length) {
