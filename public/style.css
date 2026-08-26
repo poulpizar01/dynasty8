@@ -252,13 +252,18 @@ button { font-family: inherit; cursor: pointer; }
 
 .hero.hero-accueil {
   text-align: left;
+  padding: 88px 24px 92px;
+  background:
+    linear-gradient(155deg, var(--bg-elevated) 0%, #efe9d8 60%, var(--bg-elevated) 100%);
+}
+
+.hero-accueil-grille {
+  max-width: var(--max-width);
+  margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr 400px;
   gap: 52px;
   align-items: center;
-  padding: 88px 24px 92px;
-  background:
-    linear-gradient(155deg, var(--bg-elevated) 0%, #efe9d8 60%, var(--bg-elevated) 100%);
 }
 
 .hero-accueil .hero-etiquette,
@@ -275,7 +280,8 @@ button { font-family: inherit; cursor: pointer; }
 .hero-accueil .hero-stats div { text-align: left; }
 
 @media (max-width: 900px) {
-  .hero.hero-accueil { grid-template-columns: 1fr; padding: 64px 24px 48px; }
+  .hero-accueil-grille { grid-template-columns: 1fr; }
+  .hero.hero-accueil { padding: 64px 24px 48px; }
   .hero-accueil .hero-vitrine { order: -1; margin: 0 auto 8px; max-width: 360px; }
 }
 
