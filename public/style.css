@@ -275,51 +275,51 @@ button { font-family: inherit; cursor: pointer; }
 .hero-fond-anime .tache {
   position: absolute;
   border-radius: 50%;
-  filter: blur(40px);
-  opacity: 0.9;
+  filter: blur(18px);
+  opacity: 1;
   will-change: transform;
 }
 
 .hero-fond-anime .tache-1 {
   width: 460px; height: 460px;
   top: -100px; left: 4%;
-  background: radial-gradient(circle, rgba(14, 110, 51, 0.65), transparent 70%);
+  background: radial-gradient(circle, rgba(14, 110, 51, 0.9) 0%, rgba(14, 110, 51, 0.5) 55%, transparent 88%);
   animation: derive-tache-1 6s ease-in-out infinite;
 }
 
 .hero-fond-anime .tache-2 {
   width: 520px; height: 520px;
   top: 0%; right: -80px;
-  background: radial-gradient(circle, rgba(224, 180, 0, 0.6), transparent 70%);
+  background: radial-gradient(circle, rgba(224, 180, 0, 0.85) 0%, rgba(224, 180, 0, 0.45) 55%, transparent 88%);
   animation: derive-tache-2 7s ease-in-out infinite;
 }
 
 .hero-fond-anime .tache-3 {
   width: 360px; height: 360px;
   bottom: -100px; left: 34%;
-  background: radial-gradient(circle, rgba(28, 156, 80, 0.55), transparent 70%);
+  background: radial-gradient(circle, rgba(28, 156, 80, 0.85) 0%, rgba(28, 156, 80, 0.45) 55%, transparent 88%);
   animation: derive-tache-3 5s ease-in-out infinite;
 }
 
-/* trajets à plusieurs points (plutôt qu'un simple aller-retour) pour que le mouvement,
-   maintenant rapide, ait l'air de "se balader" plutôt que de juste clignoter */
+/* trajets à plusieurs points, avec de grandes distances, pour que le mouvement
+   soit impossible à manquer plutôt qu'un léger tremblement */
 @keyframes derive-tache-1 {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(110px, 70px) scale(1.15); }
-  50% { transform: translate(50px, 130px) scale(0.95); }
-  75% { transform: translate(-80px, 40px) scale(1.1); }
+  25% { transform: translate(230px, 140px) scale(1.25); }
+  50% { transform: translate(100px, 260px) scale(0.85); }
+  75% { transform: translate(-160px, 80px) scale(1.15); }
 }
 @keyframes derive-tache-2 {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(-130px, 60px) scale(1.08); }
-  50% { transform: translate(-70px, -90px) scale(0.92); }
-  75% { transform: translate(60px, -40px) scale(1.12); }
+  25% { transform: translate(-260px, 120px) scale(1.15); }
+  50% { transform: translate(-140px, -180px) scale(0.82); }
+  75% { transform: translate(120px, -80px) scale(1.2); }
 }
 @keyframes derive-tache-3 {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(90px, -70px) scale(1.18); }
-  50% { transform: translate(140px, 20px) scale(0.9); }
-  75% { transform: translate(30px, 60px) scale(1.05); }
+  25% { transform: translate(180px, -140px) scale(1.3); }
+  50% { transform: translate(260px, 40px) scale(0.8); }
+  75% { transform: translate(60px, 120px) scale(1.1); }
 }
 
 /* Sur écran peu profond ou pour qui préfère moins d'animations : taches immobiles */
