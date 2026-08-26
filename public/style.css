@@ -5,16 +5,18 @@
    ========================================================================== */
 
 :root {
-  /* Palette dérivée du logo Dynasty 8 (vert toit + soleil doré) */
-  --bg: #fcfbf7;
-  --bg-elevated: #f4f2ea;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f7f6f0;
-  --border: #e5e2d6;
-  --border-light: #d6d2c1;
+  /* Palette dérivée du logo Dynasty 8 (vert toit + soleil doré)
+     Fond plus chaud et moins clair que la première version, pour moins fatiguer les yeux
+     (l'ancien fond quasi blanc #fcfbf7 / cartes #ffffff renvoyait trop de lumière). */
+  --bg: #f2ecdd;
+  --bg-elevated: #e9dfc7;
+  --bg-card: #faf6eb;
+  --bg-card-hover: #f2ead6;
+  --border: #ddd2b2;
+  --border-light: #cabb92;
   --text: #17190f;
-  --text-muted: #55584c;
-  --text-faint: #85886f;
+  --text-muted: #5a5844;
+  --text-faint: #89855f;
   --green: #0e6e33;
   --green-dark: #0a5527;
   --green-light: #1c9c50;
@@ -76,7 +78,7 @@ button { font-family: inherit; cursor: pointer; }
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(252, 251, 247, 0.88);
+  background: rgba(242, 236, 221, 0.88);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
 }
@@ -254,7 +256,7 @@ button { font-family: inherit; cursor: pointer; }
   text-align: left;
   padding: 88px 24px 92px;
   background:
-    linear-gradient(155deg, var(--bg-elevated) 0%, #efe9d8 60%, var(--bg-elevated) 100%);
+    linear-gradient(155deg, var(--bg-elevated) 0%, var(--bg) 60%, var(--bg-elevated) 100%);
 }
 
 .hero-accueil-grille {
@@ -409,7 +411,7 @@ section.section.serre { padding: 56px 24px; }
 
 .carte-bien .visuel {
   aspect-ratio: 4 / 3;
-  background: linear-gradient(135deg, #eeece1, #e1ddcc);
+  background: linear-gradient(135deg, #e5dbba, #d3c295);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -466,7 +468,7 @@ section.section.serre { padding: 56px 24px; }
 
 .fiche-visuel-principal {
   aspect-ratio: 16/10; border-radius: var(--radius); overflow: hidden;
-  background: linear-gradient(135deg, #eeece1, #e1ddcc);
+  background: linear-gradient(135deg, #e5dbba, #d3c295);
   display: flex; align-items: center; justify-content: center; color: var(--text-faint);
   border: 1px solid var(--border);
 }
