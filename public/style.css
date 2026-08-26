@@ -284,34 +284,42 @@ button { font-family: inherit; cursor: pointer; }
   width: 420px; height: 420px;
   top: -120px; left: 8%;
   background: radial-gradient(circle, rgba(14, 110, 51, 0.35), transparent 70%);
-  animation: derive-tache-1 26s ease-in-out infinite;
+  animation: derive-tache-1 6s ease-in-out infinite;
 }
 
 .hero-fond-anime .tache-2 {
   width: 480px; height: 480px;
   top: 10%; right: -140px;
   background: radial-gradient(circle, rgba(224, 180, 0, 0.32), transparent 70%);
-  animation: derive-tache-2 32s ease-in-out infinite;
+  animation: derive-tache-2 7s ease-in-out infinite;
 }
 
 .hero-fond-anime .tache-3 {
   width: 320px; height: 320px;
   bottom: -140px; left: 38%;
   background: radial-gradient(circle, rgba(28, 156, 80, 0.28), transparent 70%);
-  animation: derive-tache-3 22s ease-in-out infinite;
+  animation: derive-tache-3 5s ease-in-out infinite;
 }
 
+/* trajets à plusieurs points (plutôt qu'un simple aller-retour) pour que le mouvement,
+   maintenant rapide, ait l'air de "se balader" plutôt que de juste clignoter */
 @keyframes derive-tache-1 {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(60px, 40px) scale(1.12); }
+  25% { transform: translate(110px, 70px) scale(1.15); }
+  50% { transform: translate(50px, 130px) scale(0.95); }
+  75% { transform: translate(-80px, 40px) scale(1.1); }
 }
 @keyframes derive-tache-2 {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-70px, 30px) scale(1.08); }
+  25% { transform: translate(-130px, 60px) scale(1.08); }
+  50% { transform: translate(-70px, -90px) scale(0.92); }
+  75% { transform: translate(60px, -40px) scale(1.12); }
 }
 @keyframes derive-tache-3 {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(50px, -35px) scale(1.15); }
+  25% { transform: translate(90px, -70px) scale(1.18); }
+  50% { transform: translate(140px, 20px) scale(0.9); }
+  75% { transform: translate(30px, 60px) scale(1.05); }
 }
 
 /* Sur écran peu profond ou pour qui préfère moins d'animations : taches immobiles */
