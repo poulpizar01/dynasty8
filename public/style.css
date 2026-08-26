@@ -693,7 +693,7 @@ section.section.serre { padding: 56px 24px; }
   display: flex; gap: 20px; overflow-x: auto; padding-bottom: 12px;
   scroll-snap-type: x mandatory;
 }
-.carrousel-scroll .carte-bien { min-width: 300px; scroll-snap-align: start; }
+.carrousel-scroll .carte-bien { flex: 0 0 300px; width: 300px; scroll-snap-align: start; }
 .carrousel-scroll::-webkit-scrollbar { height: 6px; }
 .carrousel-scroll::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
 

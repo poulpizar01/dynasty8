@@ -33,7 +33,7 @@
         <a href="#coups-de-coeur" class="btn btn-fantome btn-large">Nos coups de cœur</a>
       </div>
       <div class="hero-stats">
-        <div><strong id="stat-biens">—</strong><span>Biens au catalogue</span></div>
+        <div><strong id="stat-biens">—</strong><span id="stat-biens-libelle">Biens au catalogue</span></div>
         <div><strong>17</strong><span>Adresses référencées</span></div>
         <div><strong>24/7</strong><span>Service agents</span></div>
       </div>
@@ -157,6 +157,7 @@
   appelAPI("/api/biens").then((d) => {
     const liste = d.biens || [];
     document.getElementById("stat-biens").textContent = liste.length;
+    document.getElementById("stat-biens-libelle").textContent = liste.length > 1 ? "Biens au catalogue" : "Bien au catalogue";
 
     // Adresses les plus représentées = comptage réel du nombre de biens Habitation par sous-catégorie.
     const comptes = {};

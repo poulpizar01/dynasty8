@@ -129,7 +129,7 @@
       <input type="hidden" id="bien-id">
       <div class="champ">
         <label for="bien-titre">Nom du bien <span class="champ-obligatoire">*</span></label>
-        <input type="text" id="bien-titre" required maxlength="120" placeholder="Ex: Loft moderne — Eclipse Tower">
+        <input type="text" id="bien-titre" maxlength="120" placeholder="Ex: Loft moderne — Eclipse Tower">
         <p class="champ-erreur cache" id="erreur-bien-titre">Le nom du bien est obligatoire.</p>
       </div>
       <div class="champ-deux">
@@ -148,7 +148,7 @@
       <div class="champ-deux">
         <div class="champ">
           <label for="bien-prix">Prix ($) <span class="champ-obligatoire">*</span></label>
-          <input type="number" id="bien-prix" min="0" step="1" required>
+          <input type="number" id="bien-prix" min="0" step="1">
           <p class="champ-erreur cache" id="erreur-bien-prix">Indiquez un prix valide (0 ou plus).</p>
         </div>
         <div class="champ">
