@@ -226,6 +226,28 @@
   document.getElementById("lien-discord-cta").href = LIEN_DISCORD;
   document.getElementById("lien-discord-cta").target = "_blank";
   document.getElementById("lien-discord-cta").rel = "noopener";
+
+  // Effet "page qui se retourne" sur la photo du bandeau Standing, joué une fois à l'entrée dans l'écran.
+  (function () {
+    const zoneImage = document.querySelector(".vitrine-exception-image");
+    const reduitMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!zoneImage || reduitMotion || !("IntersectionObserver" in window)) return;
+    zoneImage.classList.add("pret-a-tourner");
+    const observateur = new IntersectionObserver(
+      (entrees) => {
+        entrees.forEach((entree) => {
+          if (!entree.isIntersecting) return;
+          requestAnimationFrame(() => {
+            zoneImage.classList.remove("pret-a-tourner");
+            zoneImage.classList.add("tourne");
+          });
+          observateur.unobserve(entree.target);
+        });
+      },
+      { threshold: 0.35 }
+    );
+    observateur.observe(zoneImage);
+  })();
 </script>
 </body>
 </html>
