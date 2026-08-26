@@ -237,6 +237,20 @@
   </div>
 </div>
 
+<!-- Modale de confirmation (remplace les popups « confirm() » du navigateur) -->
+<div class="modale-fond cache" id="modale-confirmation">
+  <div class="modale" style="max-width:420px;">
+    <div class="modale-entete">
+      <h3 id="titre-modale-confirmation">Confirmer</h3>
+    </div>
+    <p id="texte-modale-confirmation" style="margin-bottom:26px;"></p>
+    <div style="display:flex;gap:12px;">
+      <button type="button" class="btn btn-fantome" style="flex:1;" id="bouton-confirmation-annuler">Annuler</button>
+      <button type="button" class="btn btn-danger" style="flex:1;" id="bouton-confirmation-valider">Confirmer</button>
+    </div>
+  </div>
+</div>
+
 <script src="/layout.js"></script>
 <script src="/admin.js"></script>
 </body>

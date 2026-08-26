@@ -16,6 +16,42 @@ function afficherMessage(idZone, texte, type) {
 }
 
 // ---------------------------------------------------------------------------
+// Confirmation intégrée au site (remplace les popups « confirm() » du
+// navigateur, qui affichent l'adresse du site et ne peuvent pas être stylées).
+// Utilisation : const ok = await confirmerAction("Message...", "Titre");
+// ---------------------------------------------------------------------------
+
+function confirmerAction(message, titre) {
+  return new Promise((resolve) => {
+    const modale = document.getElementById("modale-confirmation");
+    const boutonValider = document.getElementById("bouton-confirmation-valider");
+    const boutonAnnuler = document.getElementById("bouton-confirmation-annuler");
+    document.getElementById("titre-modale-confirmation").textContent = titre || "Confirmer";
+    document.getElementById("texte-modale-confirmation").textContent = message;
+
+    function nettoyer(resultat) {
+      modale.classList.add("cache");
+      boutonValider.removeEventListener("click", surValider);
+      boutonAnnuler.removeEventListener("click", surAnnuler);
+      modale.removeEventListener("click", surClicFond);
+      document.removeEventListener("keydown", surEchap);
+      resolve(resultat);
+    }
+    function surValider() { nettoyer(true); }
+    function surAnnuler() { nettoyer(false); }
+    function surClicFond(ev) { if (ev.target === modale) nettoyer(false); }
+    function surEchap(ev) { if (ev.key === "Escape") nettoyer(false); }
+
+    boutonValider.addEventListener("click", surValider);
+    boutonAnnuler.addEventListener("click", surAnnuler);
+    modale.addEventListener("click", surClicFond);
+    document.addEventListener("keydown", surEchap);
+    modale.classList.remove("cache");
+    boutonAnnuler.focus();
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Démarrage de la page
 // ---------------------------------------------------------------------------
 
@@ -308,9 +344,10 @@ function fermerModaleBien() {
   document.getElementById("modale-bien").classList.add("cache");
 }
 
-function demanderFermetureModaleBien() {
-  if (etatFormulaireBien() !== ETAT_INITIAL_BIEN && !confirm("Fermer sans enregistrer ? Les modifications saisies seront perdues.")) {
-    return;
+async function demanderFermetureModaleBien() {
+  if (etatFormulaireBien() !== ETAT_INITIAL_BIEN) {
+    const ok = await confirmerAction("Les modifications saisies seront perdues si vous fermez maintenant.", "Fermer sans enregistrer ?");
+    if (!ok) return;
   }
   fermerModaleBien();
 }
@@ -386,7 +423,8 @@ document.getElementById("formulaire-bien").addEventListener("submit", async (ev)
 document.getElementById("bouton-supprimer-bien").addEventListener("click", async () => {
   const id = document.getElementById("bien-id").value;
   if (!id) return;
-  if (!confirm("Supprimer définitivement cette annonce ?")) return;
+  const ok = await confirmerAction("Cette action est définitive et ne peut pas être annulée.", "Supprimer cette annonce ?");
+  if (!ok) return;
   try {
     await appelAPI("/api/biens?id=" + id, { method: "DELETE" });
     fermerModaleBien();
@@ -476,7 +514,8 @@ document.getElementById("bouton-fermer-code-membre").addEventListener("click", f
 document.getElementById("bouton-regenerer-code").addEventListener("click", async () => {
   const id = document.getElementById("membre-id").value;
   if (!id) return;
-  if (!confirm("Générer un nouveau code pour cet agent ? L'ancien code cessera de fonctionner immédiatement.")) return;
+  const ok = await confirmerAction("L'ancien code cessera de fonctionner immédiatement.", "Générer un nouveau code pour cet agent ?");
+  if (!ok) return;
   try {
     const r = await appelAPI("/api/membres?id=" + id, { method: "PATCH", body: JSON.stringify({ action: "regenerer" }) });
     document.getElementById("formulaire-membre").classList.add("cache");
@@ -490,7 +529,8 @@ document.getElementById("bouton-regenerer-code").addEventListener("click", async
 document.getElementById("bouton-supprimer-membre").addEventListener("click", async () => {
   const id = document.getElementById("membre-id").value;
   if (!id) return;
-  if (!confirm("Supprimer définitivement l'accès de cet agent ?")) return;
+  const ok = await confirmerAction("Cette action est définitive et ne peut pas être annulée.", "Supprimer l'accès de cet agent ?");
+  if (!ok) return;
   try {
     await appelAPI("/api/membres?id=" + id, { method: "DELETE" });
     fermerModaleMembre();
