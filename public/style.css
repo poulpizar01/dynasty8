@@ -307,6 +307,44 @@ button { font-family: inherit; cursor: pointer; }
 }
 .hero-vitrine-vide p { margin: 0; font-size: 0.9rem; color: var(--text-faint); }
 
+/* petite animation d'entrée du hero d'accueil : le texte apparaît en cascade,
+   la carte "vitrine" arrive avec un léger effet de bascule.
+   Désactivée automatiquement si la personne a demandé "réduire les animations"
+   dans son système (accessibilité). */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-accueil .hero-etiquette,
+  .hero-accueil h1,
+  .hero-accueil p.lead,
+  .hero-accueil .hero-actions,
+  .hero-accueil .hero-stats {
+    animation: hero-apparition 0.7s cubic-bezier(0.16, 0.84, 0.44, 1) both;
+  }
+  .hero-accueil .hero-etiquette { animation-delay: 0.05s; }
+  .hero-accueil h1 { animation-delay: 0.15s; }
+  .hero-accueil p.lead { animation-delay: 0.25s; }
+  .hero-accueil .hero-actions { animation-delay: 0.35s; }
+  .hero-accueil .hero-stats { animation-delay: 0.45s; }
+
+  .hero-vitrine .carte-bien {
+    animation: hero-carte-apparition 0.8s cubic-bezier(0.16, 0.84, 0.44, 1) backwards;
+    animation-delay: 0.3s;
+  }
+  .hero-vitrine-vide {
+    animation: hero-apparition 0.7s cubic-bezier(0.16, 0.84, 0.44, 1) both;
+    animation-delay: 0.3s;
+  }
+}
+
+@keyframes hero-apparition {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hero-carte-apparition {
+  from { opacity: 0; transform: translateY(26px) rotate(9deg) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) rotate(2.5deg) scale(1); }
+}
+
 /* ---------- sections génériques ---------- */
 
 section.section { padding: 84px 24px; }
