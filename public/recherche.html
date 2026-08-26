@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Résultats de recherche — Dynasty 8</title>
+<meta name="description" content="Recherchez un bien Dynasty 8 par zone, budget et type de transaction, tous catalogues confondus.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/png" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/favicon-180.png">
+</head>
+<body>
+
+<header class="entete" id="site-entete"></header>
+
+<section class="hero" style="padding:70px 24px 50px;">
+  <div class="hero-etiquette">🔍 Recherche</div>
+  <h1 id="titre-recherche">Résultats de recherche</h1>
+  <p class="lead" id="sous-titre-recherche">L'ensemble du catalogue Dynasty 8.</p>
+</section>
+
+<section class="section serre">
+  <div class="conteneur">
+    <form class="filtres-recherche" id="filtres-recherche">
+      <div class="filtres" id="onglets-type">
+        <button type="button" class="filtre" data-type="">Tout</button>
+        <button type="button" class="filtre" data-type="vente">Achat</button>
+        <button type="button" class="filtre" data-type="location">Location</button>
+      </div>
+      <div class="filtres-recherche-champs">
+        <div class="champ">
+          <label for="filtre-zone">Zone</label>
+          <select id="filtre-zone">
+            <option value="">Toutes les zones</option>
+            <option value="Habitation">Habitation</option>
+            <option value="Garage">Garage</option>
+            <option value="Cayo">Cayo</option>
+            <option value="Roxwood">Roxwood</option>
+          </select>
+        </div>
+        <div class="champ">
+          <label for="filtre-budget">Budget maximum</label>
+          <select id="filtre-budget">
+            <option value="">Tous budgets</option>
+            <option value="20000">Jusqu'à 20 000 $</option>
+            <option value="50000">Jusqu'à 50 000 $</option>
+            <option value="100000">Jusqu'à 100 000 $</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-or">Rechercher</button>
+      </div>
+    </form>
+    <div class="grille-biens" id="grille-biens"></div>
+  </div>
+</section>
+
+<footer class="pied-page" id="site-pied"></footer>
+
+<script src="/layout.js"></script>
+<script src="/biens.js"></script>
+<script>
+  initialiserLayout("");
+
+  const parametres = new URLSearchParams(window.location.search);
+  let typeActuel = parametres.get("transaction_type") || "";
+  const zoneActuelle = parametres.get("zone") || "";
+  const budgetActuel = parametres.get("prix_max") || "";
+
+  document.getElementById("filtre-zone").value = zoneActuelle;
+  document.getElementById("filtre-budget").value = budgetActuel;
+
+  const boutonsType = Array.from(document.querySelectorAll("#onglets-type .filtre"));
+  function activerOnglet(type) {
+    typeActuel = type;
+    boutonsType.forEach((b) => b.classList.toggle("actif", b.dataset.type === type));
+  }
+  boutonsType.forEach((b) => b.addEventListener("click", () => activerOnglet(b.dataset.type)));
+  activerOnglet(typeActuel);
+
+  function libelleFiltres() {
+    const morceaux = [];
+    if (typeActuel === "vente") morceaux.push("à vendre");
+    if (typeActuel === "location") morceaux.push("à louer");
+    const zone = document.getElementById("filtre-zone").value;
+    const budget = document.getElementById("filtre-budget").value;
+    if (zone) morceaux.push("zone " + zone);
+    if (budget) morceaux.push("jusqu'à " + Number(budget).toLocaleString("fr-FR") + " $");
+    return morceaux.length ? "Biens " + morceaux.join(", ") + "." : "L'ensemble du catalogue Dynasty 8.";
+  }
+
+  function lancerRecherche() {
+    chargerBiens({
+      zone: document.getElementById("filtre-zone").value || undefined,
+      transactionType: typeActuel || undefined,
+      prixMax: document.getElementById("filtre-budget").value || undefined,
+      cible: "grille-biens",
+      videMessage: "Aucun bien ne correspond à ces critères pour le moment. Essayez d'élargir votre recherche.",
+    });
+    document.getElementById("sous-titre-recherche").textContent = libelleFiltres();
+  }
+
+  lancerRecherche();
+
+  document.getElementById("filtres-recherche").addEventListener("submit", (e) => {
+    e.preventDefault();
+    lancerRecherche();
+  });
+</script>
+</body>
+</html>

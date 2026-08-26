@@ -299,6 +299,8 @@ async function biens(request, url, env) {
     const categorie = url.searchParams.get("categorie");
     const zone = url.searchParams.get("zone");
     const coupDeCoeur = url.searchParams.get("coup_de_coeur");
+    const transactionType = url.searchParams.get("transaction_type");
+    const prixMax = url.searchParams.get("prix_max");
     const s = await session(request, env);
     const inclureIndisponibles = !!s; // seuls les membres connectés voient les biens masqués
 
@@ -317,6 +319,17 @@ async function biens(request, url, env) {
     }
     if (coupDeCoeur === "1") {
       sql += " AND coup_de_coeur = 1";
+    }
+    if (transactionType === "location" || transactionType === "vente") {
+      binds.push(transactionType);
+      sql += ` AND transaction_type = ?${binds.length}`;
+    }
+    if (prixMax) {
+      const pm = Number(prixMax);
+      if (Number.isFinite(pm) && pm > 0) {
+        binds.push(pm);
+        sql += ` AND prix <= ?${binds.length}`;
+      }
     }
     sql += " ORDER BY coup_de_coeur DESC, maj DESC";
     const stmt = env.DB.prepare(sql);

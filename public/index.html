@@ -17,20 +17,45 @@
 <header class="entete" id="site-entete"></header>
 
 <section class="hero hero-accueil">
-  <div class="hero-ville" aria-hidden="true" id="hero-ville">
-    <svg viewBox="0 0 900 220" preserveAspectRatio="none">
-      <polygon fill="#0a5527" points="0,220 0,160 50,160 50,120 90,120 90,160 150,160 150,90 230,90 300,90 300,140 340,140 340,60 380,60 420,10 460,60 500,60 500,140 560,140 560,80 610,80 610,150 670,150 670,40 710,40 710,20 730,20 730,150 800,150 800,100 850,100 850,160 900,160 900,220" />
-    </svg>
-  </div>
-  <div class="hero-particules" aria-hidden="true" id="hero-particules"></div>
+  <div class="hero-fond" aria-hidden="true"></div>
+  <div class="hero-lueur" aria-hidden="true"></div>
   <div class="hero-accueil-grille">
     <div class="hero-texte">
       <div class="hero-etiquette">★ L'excellence immobilière à Los Santos</div>
       <h1>Trouvez le bien qui porte votre nom.</h1>
       <p class="lead">Dynasty 8 accompagne les résidents de Los Santos dans l'achat, la location et la gestion de leurs intérieurs, garages et propriétés d'exception depuis leur arrivée en ville.</p>
       <div class="hero-actions">
-        <a href="/exclusifs.html" class="btn btn-or btn-large">Voir les biens exclusifs</a>
+        <a href="/exclusifs.html" class="btn btn-or btn-large">Voir les biens exclusifs <span aria-hidden="true">→</span></a>
         <a href="#coups-de-coeur" class="btn btn-fantome btn-large">Nos coups de cœur</a>
+      </div>
+      <div class="hero-recherche" id="hero-recherche">
+        <div class="hero-recherche-onglets" role="tablist" aria-label="Type de transaction">
+          <button type="button" class="actif" data-type="vente">Acheter</button>
+          <button type="button" data-type="location">Louer</button>
+        </div>
+        <form class="hero-recherche-champs" id="form-recherche-hero">
+          <label class="hero-recherche-champ">
+            <span>Zone</span>
+            <select id="recherche-zone">
+              <option value="">Toutes les zones</option>
+              <option value="Habitation">Habitation</option>
+              <option value="Garage">Garage</option>
+              <option value="Cayo">Cayo</option>
+              <option value="Roxwood">Roxwood</option>
+            </select>
+          </label>
+          <div class="hero-recherche-separateur" aria-hidden="true"></div>
+          <label class="hero-recherche-champ">
+            <span>Budget</span>
+            <select id="recherche-budget">
+              <option value="">Tous budgets</option>
+              <option value="20000">Jusqu'à 20 000 $</option>
+              <option value="50000">Jusqu'à 50 000 $</option>
+              <option value="100000">Jusqu'à 100 000 $</option>
+            </select>
+          </label>
+          <button type="submit" class="hero-recherche-bouton" aria-label="Rechercher un bien">🔍</button>
+        </form>
       </div>
       <div class="hero-stats">
         <div><strong id="stat-biens">—</strong><span>Biens au catalogue</span></div>
@@ -148,39 +173,28 @@
     document.querySelector(".cadre-video").innerHTML = '<div class="etat-vide" style="width:100%;">Emplacement réservé pour votre vidéo de présentation YouTube.</div>';
   }
 
-  // Fond animé du hero : fenêtres qui scintillent au hasard sur la silhouette de ville.
-  const zoneVille = document.getElementById("hero-ville");
-  if (zoneVille) {
-    for (let i = 0; i < 34; i++) {
-      const f = document.createElement("div");
-      f.className = "hero-fenetre";
-      f.style.width = (2 + Math.random() * 2) + "px";
-      f.style.height = (2 + Math.random() * 2) + "px";
-      f.style.left = (4 + Math.random() * 92) + "%";
-      f.style.bottom = (8 + Math.random() * 55) + "%";
-      f.style.animationDuration = (2 + Math.random() * 4) + "s";
-      f.style.animationDelay = (Math.random() * -6) + "s";
-      zoneVille.appendChild(f);
-    }
-  }
-
-  // Fond animé du hero : tempête de particules dorées qui montent lentement.
-  const zoneParticules = document.getElementById("hero-particules");
-  if (zoneParticules) {
-    for (let i = 0; i < 46; i++) {
-      const p = document.createElement("div");
-      p.className = "hero-particule";
-      const taille = 2 + Math.random() * 7;
-      p.style.width = taille + "px";
-      p.style.height = taille + "px";
-      p.style.left = Math.random() * 100 + "%";
-      p.style.bottom = (-10 - Math.random() * 20) + "%";
-      p.style.setProperty("--dx", (Math.random() * 120 - 60).toFixed(0) + "px");
-      const duree = 4 + Math.random() * 5;
-      p.style.animationDuration = duree + "s";
-      p.style.animationDelay = (Math.random() * -duree) + "s";
-      zoneParticules.appendChild(p);
-    }
+  // Widget de recherche rapide du hero : onglets Acheter/Louer puis redirection vers la page de résultats.
+  const ongletsRecherche = document.querySelectorAll("#hero-recherche .hero-recherche-onglets button");
+  let typeRecherche = "vente";
+  ongletsRecherche.forEach((bouton) => {
+    bouton.addEventListener("click", () => {
+      ongletsRecherche.forEach((b) => b.classList.remove("actif"));
+      bouton.classList.add("actif");
+      typeRecherche = bouton.dataset.type;
+    });
+  });
+  const formRecherche = document.getElementById("form-recherche-hero");
+  if (formRecherche) {
+    formRecherche.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const zone = document.getElementById("recherche-zone").value;
+      const budget = document.getElementById("recherche-budget").value;
+      const params = new URLSearchParams();
+      params.set("transaction_type", typeRecherche);
+      if (zone) params.set("zone", zone);
+      if (budget) params.set("prix_max", budget);
+      window.location.href = "/recherche.html?" + params.toString();
+    });
   }
 
   document.getElementById("lien-discord-cta").href = LIEN_DISCORD;
