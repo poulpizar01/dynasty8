@@ -78,31 +78,10 @@
   <div class="conteneur">
     <div class="section-entete">
       <span class="etiquette">Découvrir</span>
-      <h2>Les adresses les plus demandées</h2>
-      <p>Chaque immeuble de la ville a sa propre identité. Cliquez sur une adresse pour découvrir les biens disponibles.</p>
+      <h2>Les adresses les plus représentées</h2>
+      <p>Calculé automatiquement à partir du nombre de biens en catalogue pour chaque adresse. Cliquez pour découvrir les biens disponibles.</p>
     </div>
-    <div class="grille-zones" id="grille-zones-accueil">
-      <a class="carte-zone" href="/habitation.html?sous_categorie=Eclipse%20Tower">
-        <h3>Eclipse Tower</h3>
-        <p>Le gratte-ciel emblématique du centre-ville, entre standing et vue imprenable.</p>
-        <span class="compte">Découvrir →</span>
-      </a>
-      <a class="carte-zone" href="/habitation.html?sous_categorie=Villa">
-        <h3>Villa</h3>
-        <p>Propriétés isolées avec jardin, piscine et intimité garantie.</p>
-        <span class="compte">Découvrir →</span>
-      </a>
-      <a class="carte-zone" href="/habitation.html?sous_categorie=Del%20Perro%20Heights">
-        <h3>Del Perro Heights</h3>
-        <p>Résidence prisée en bord de mer, entre calme et vie de quartier.</p>
-        <span class="compte">Découvrir →</span>
-      </a>
-      <a class="carte-zone" href="/habitation.html?sous_categorie=Richards%20Majestic">
-        <h3>Richards Majestic</h3>
-        <p>Lofts et appartements au cœur du quartier des studios de cinéma.</p>
-        <span class="compte">Découvrir →</span>
-      </a>
-    </div>
+    <div class="grille-zones" id="grille-zones-accueil"></div>
   </div>
 </section>
 
@@ -152,8 +131,52 @@
       }
     });
 
+  // Petites descriptions utilisées pour la section "adresses" ci-dessous, une par sous-catégorie Habitation.
+  const DESCRIPTIONS_ADRESSES = {
+    "Eclipse Tower": "Le gratte-ciel emblématique du centre-ville, entre standing et vue imprenable.",
+    "Tinsel Tower": "Une tour résidentielle prisée, au cœur d'un quartier animé.",
+    "Villa": "Propriétés isolées avec jardin, piscine et intimité garantie.",
+    "Del Perro Heights": "Résidence prisée en bord de mer, entre calme et vie de quartier.",
+    "Richards Majestic": "Lofts et appartements au cœur du quartier des studios de cinéma.",
+    "Weazel Plaza": "Adresse d'affaires au pied des locaux de la chaîne Weazel News.",
+    "San Andreas": "Logements répartis aux quatre coins de l'État de San Andreas.",
+    "Alta Street": "Appartements en plein centre-ville, à deux pas de tout.",
+    "Maison": "Maisons individuelles pour ceux qui veulent leur propre terrain.",
+    "Entrepôt": "De grands espaces bruts, à aménager selon vos besoins.",
+    "Flat": "Petites surfaces pratiques, idéales pour un premier logement.",
+    "Bureau": "Espaces professionnels pour installer une activité en ville.",
+    "Headquarter": "Quartiers généraux pensés pour accueillir une organisation.",
+    "Caravane": "Solution simple et économique pour se loger rapidement.",
+    "Appartement": "Logements en résidence, du studio au grand appartement.",
+    "Duplex": "Logements sur deux niveaux, entre espace et intimité.",
+    "Autre": "Des biens qui sortent des catégories habituelles.",
+  };
+  // Ordre utilisé quand le catalogue ne contient pas encore assez de biens pour calculer un vrai classement.
+  const ORDRE_REPLI_ADRESSES = ["Eclipse Tower", "Villa", "Del Perro Heights", "Richards Majestic"];
+
   appelAPI("/api/biens").then((d) => {
-    document.getElementById("stat-biens").textContent = (d.biens || []).length;
+    const liste = d.biens || [];
+    document.getElementById("stat-biens").textContent = liste.length;
+
+    // Adresses les plus représentées = comptage réel du nombre de biens Habitation par sous-catégorie.
+    const comptes = {};
+    liste.forEach((b) => {
+      if (b.categorie === "habitation" && b.sous_categorie) {
+        comptes[b.sous_categorie] = (comptes[b.sous_categorie] || 0) + 1;
+      }
+    });
+    let adresses = Object.keys(comptes).sort((a, b) => comptes[b] - comptes[a]);
+    // Tant que le catalogue est trop récent pour dégager un vrai classement, on complète avec une sélection fixe.
+    ORDRE_REPLI_ADRESSES.forEach((nom) => {
+      if (adresses.length < 4 && !adresses.includes(nom)) adresses.push(nom);
+    });
+    adresses = adresses.slice(0, 4);
+    document.getElementById("grille-zones-accueil").innerHTML = adresses.map((nom) => `
+      <a class="carte-zone" href="/habitation.html?sous_categorie=${encodeURIComponent(nom)}">
+        <h3>${echapper(nom)}</h3>
+        <p>${echapper(DESCRIPTIONS_ADRESSES[nom] || "Découvrez les biens disponibles à cette adresse.")}</p>
+        <span class="compte">${comptes[nom] ? comptes[nom] + " bien" + (comptes[nom] > 1 ? "s" : "") + " au catalogue" : "Découvrir"} →</span>
+      </a>`).join("");
   }).catch(() => {});
 
   // Remplacez PLACEHOLDER par l'identifiant de votre vidéo YouTube (la partie après "v=" dans son lien).
