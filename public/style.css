@@ -517,6 +517,12 @@ button { font-family: inherit; cursor: pointer; }
   .hero-accueil-grille { grid-template-columns: 1fr; }
   .hero.hero-accueil { padding: 64px 24px 48px; }
   .hero-accueil .hero-vitrine { order: -1; margin: 0 auto 8px; max-width: 360px; }
+  /* Le hero devient très haut une fois le contenu empilé sur mobile : si la photo
+     s'étire sur toute cette hauteur, "cover" la zoome énormément et ne montre
+     plus qu'un morceau de ciel. On la limite donc à une bande en haut de section,
+     avec un cadrage plus centré sur le bâtiment. */
+  .hero-ville { inset: 0 0 auto 0; height: 360px; }
+  .hero-ville img { object-position: center 55%; }
 }
 
 .hero-vitrine { width: 100%; max-width: 380px; }
