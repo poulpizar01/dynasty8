@@ -79,12 +79,16 @@ button { font-family: inherit; cursor: pointer; }
   position: sticky;
   top: 0;
   z-index: 50;
-  /* "hidden" seulement à l'horizontale : ça garde le reflet lumineux (::before)
-     bien contenu dans la largeur de l'en-tête, sans couper les sous-menus
-     déroulants (Les Intérieurs, Cohérences) qui doivent dépasser vers le bas. */
-  overflow-x: hidden;
-  overflow-y: visible;
-  background: rgba(10, 15, 34, 0);
+  /* Pas d'"overflow: hidden" ici : ça couperait les sous-menus déroulants
+     (Les Intérieurs, Cohérences) qui doivent dépasser vers le bas. Le reflet
+     lumineux ci-dessous est donc peint comme un simple background (toujours
+     confiné à sa propre boîte, même sans overflow) plutôt que comme un bloc
+     positionné qui aurait eu besoin d'être coupé par le parent. */
+  background-color: rgba(10, 15, 34, 0);
+  background-image: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.55) 50%, transparent 60%);
+  background-repeat: no-repeat;
+  background-size: 340% 100%;
+  background-position: -180% 0;
   backdrop-filter: blur(0px) saturate(100%);
   -webkit-backdrop-filter: blur(0px) saturate(100%);
   border-bottom: 1px solid transparent;
@@ -93,36 +97,19 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .entete.entete-scrolled {
-  background: rgba(10, 15, 34, 0.88);
+  background-color: rgba(10, 15, 34, 0.88);
   backdrop-filter: blur(10px) saturate(165%);
   -webkit-backdrop-filter: blur(10px) saturate(165%);
   border-bottom: 1px solid var(--border);
   /* Léger liseré lumineux en haut + ombre douce : donne l'effet "verre bombé" glossy. */
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 24px rgba(0, 0, 0, 0.35);
-}
-
-/* Reflet lumineux qui balaie lentement l'en-tête une fois qu'elle est en mode "vitre" (effet glossy). */
-.entete::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -35%;
-  width: 30%;
-  height: 100%;
-  background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0.55) 50%, rgba(255, 255, 255, 0) 58%, transparent);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
-}
-
-.entete.entete-scrolled::before {
-  opacity: 1;
+  /* Reflet lumineux qui balaie lentement l'en-tête une fois qu'elle est en mode "vitre". */
   animation: entete-reflet 7s ease-in-out infinite;
 }
 
 @keyframes entete-reflet {
-  0%, 12% { left: -35%; }
-  60%, 100% { left: 135%; }
+  0%, 12% { background-position: -180% 0; }
+  60%, 100% { background-position: 180% 0; }
 }
 
 .entete-barre {
@@ -222,7 +209,7 @@ button { font-family: inherit; cursor: pointer; }
 
 @media (prefers-reduced-motion: reduce) {
   .entete { transition: none; }
-  .entete::before { animation: none; opacity: 0; }
+  .entete.entete-scrolled { animation: none; }
   .logo img { transition: none; }
   .logo:hover img { transform: none; }
   .nav-principale a::after { transition: none; }
