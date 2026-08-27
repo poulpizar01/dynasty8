@@ -79,7 +79,11 @@ button { font-family: inherit; cursor: pointer; }
   position: sticky;
   top: 0;
   z-index: 50;
-  overflow: hidden;
+  /* "hidden" seulement à l'horizontale : ça garde le reflet lumineux (::before)
+     bien contenu dans la largeur de l'en-tête, sans couper les sous-menus
+     déroulants (Les Intérieurs, Cohérences) qui doivent dépasser vers le bas. */
+  overflow-x: hidden;
+  overflow-y: visible;
   background: rgba(10, 15, 34, 0);
   backdrop-filter: blur(0px) saturate(100%);
   -webkit-backdrop-filter: blur(0px) saturate(100%);
