@@ -162,7 +162,7 @@ async function chargerTableBiens() {
         <td>${ETIQUETTES_CATEGORIE[b.categorie] || b.categorie}</td>
         <td>${echapper(b.sous_categorie || "—")}</td>
         <td>${formaterPrix(b.prix)}${b.transaction_type === "location" ? " /sem." : ""}</td>
-        <td>${b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>'}</td>
+        <td>${b.vendu ? '<span class="puce puce-or">Vendu</span>' : (b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>')}</td>
         <td><div class="actions-ligne"><button class="btn btn-fantome btn-petit" data-editer="${b.id}">Modifier</button></div></td>
       </tr>`).join("");
     corps.querySelectorAll("[data-editer]").forEach((btn) => {
@@ -313,6 +313,7 @@ function etatFormulaireBien() {
     images: IMAGES_BIEN,
     coupDeCoeur: document.getElementById("bien-coup-de-coeur").checked,
     disponible: document.getElementById("bien-disponible").checked,
+    vendu: document.getElementById("bien-vendu").checked,
   });
 }
 
@@ -331,6 +332,7 @@ function ouvrirModaleBien(id) {
   document.getElementById("bien-image-url").value = "";
   document.getElementById("bien-coup-de-coeur").checked = !!(bien && bien.coup_de_coeur);
   document.getElementById("bien-disponible").checked = bien ? !!bien.disponible : true;
+  document.getElementById("bien-vendu").checked = !!(bien && bien.vendu);
   document.getElementById("bouton-supprimer-bien").classList.toggle("cache", !bien);
   document.querySelectorAll("#formulaire-bien .champ-erreur").forEach((p) => p.classList.add("cache"));
   afficherMessage("zone-message-modale-bien", "", null);
@@ -397,6 +399,7 @@ document.getElementById("formulaire-bien").addEventListener("submit", async (ev)
     images: IMAGES_BIEN.slice(),
     coup_de_coeur: document.getElementById("bien-coup-de-coeur").checked,
     disponible: document.getElementById("bien-disponible").checked,
+    vendu: document.getElementById("bien-vendu").checked,
   };
   const boutonEnregistrer = document.querySelector('#formulaire-bien button[type="submit"]');
   const texteInitial = boutonEnregistrer.textContent;

@@ -318,6 +318,7 @@ function normaliserBien(b) {
     images: JSON.stringify(images),
     coup_de_coeur: b.coup_de_coeur ? 1 : 0,
     disponible: b.disponible === false || b.disponible === 0 ? 0 : 1,
+    vendu: b.vendu ? 1 : 0,
   };
 }
 
@@ -339,11 +340,15 @@ async function biens(request, url, env) {
     const categorie = url.searchParams.get("categorie");
     const zone = url.searchParams.get("zone");
     const coupDeCoeur = url.searchParams.get("coup_de_coeur");
+    const vendu = url.searchParams.get("vendu");
     const inclureIndisponibles = inclureIndisponiblesSeul;
 
     let sql = "SELECT * FROM biens WHERE 1=1";
     const binds = [];
-    if (!inclureIndisponibles) {
+    // La vitrine "Nos dernières ventes" (accueil) est un contenu public assumé :
+    // un bien vendu doit y rester visible même s'il a par ailleurs été décoché
+    // "visible sur le site" par l'agent une fois la transaction conclue.
+    if (!inclureIndisponibles && vendu !== "1") {
       sql += " AND disponible = 1";
     }
     if (categorie && CATEGORIES.includes(categorie)) {
@@ -357,7 +362,10 @@ async function biens(request, url, env) {
     if (coupDeCoeur === "1") {
       sql += " AND coup_de_coeur = 1";
     }
-    sql += " ORDER BY coup_de_coeur DESC, maj DESC";
+    if (vendu === "1") {
+      sql += " AND vendu = 1";
+    }
+    sql += vendu === "1" ? " ORDER BY vendu_le DESC" : " ORDER BY coup_de_coeur DESC, maj DESC";
     const stmt = env.DB.prepare(sql);
     const r = await (binds.length ? stmt.bind(...binds) : stmt).all();
     return json({ biens: (r.results || []).map(bienPourAffichage) });
@@ -374,11 +382,12 @@ async function biens(request, url, env) {
     const n = normaliserBien(b);
     const r = await env.DB.prepare(
       `INSERT INTO biens (categorie, sous_categorie, titre, zone, prix, transaction_type, places,
-                          description, images, coup_de_coeur, disponible, auteur, cree_le, maj)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, datetime('now'), datetime('now'))`
+                          description, images, coup_de_coeur, disponible, vendu, vendu_le, auteur, cree_le, maj)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12,
+               CASE WHEN ?12 = 1 THEN datetime('now') ELSE NULL END, ?13, datetime('now'), datetime('now'))`
     ).bind(
       n.categorie, n.sous_categorie, n.titre, n.zone, n.prix, n.transaction_type, n.places,
-      n.description, n.images, n.coup_de_coeur, n.disponible, s.pseudo
+      n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu, s.pseudo
     ).run();
     return json({ id: r.meta.last_row_id });
   }
@@ -394,10 +403,16 @@ async function biens(request, url, env) {
     await env.DB.prepare(
       `UPDATE biens SET categorie=?2, sous_categorie=?3, titre=?4, zone=?5, prix=?6,
               transaction_type=?7, places=?8, description=?9, images=?10, coup_de_coeur=?11,
-              disponible=?12, maj=datetime('now') WHERE id=?1`
+              disponible=?12, vendu=?13,
+              vendu_le = CASE
+                WHEN ?13 = 1 AND vendu = 0 THEN datetime('now')
+                WHEN ?13 = 0 THEN NULL
+                ELSE vendu_le
+              END,
+              maj=datetime('now') WHERE id=?1`
     ).bind(
       id, n.categorie, n.sous_categorie, n.titre, n.zone, n.prix, n.transaction_type,
-      n.places, n.description, n.images, n.coup_de_coeur, n.disponible
+      n.places, n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu
     ).run();
     return json({ ok: true });
   }
@@ -418,7 +433,7 @@ function bienPourAffichage(d) {
   } catch (e) {
     images = [];
   }
-  return { ...d, images, coup_de_coeur: !!d.coup_de_coeur, disponible: !!d.disponible };
+  return { ...d, images, coup_de_coeur: !!d.coup_de_coeur, disponible: !!d.disponible, vendu: !!d.vendu };
 }
 
 // ---- membres (comptes de l'équipe admin) ----------------------------------

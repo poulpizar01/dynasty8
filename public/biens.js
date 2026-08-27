@@ -15,7 +15,7 @@ function carteBienHTML(bien) {
   return `
     <a class="carte-bien" href="/bien.html?id=${bien.id}">
       <div class="visuel">
-        ${bien.coup_de_coeur ? '<span class="badge-coeur">Coup de cœur</span>' : ""}
+        ${bien.vendu ? '<span class="badge-coeur badge-vendu">Vendu</span>' : (bien.coup_de_coeur ? '<span class="badge-coeur">Coup de cœur</span>' : "")}
         <span class="badge-transaction">${bien.transaction_type === "location" ? "Location" : "Vente"}</span>
         ${visuel}
       </div>
@@ -31,7 +31,7 @@ function carteBienHTML(bien) {
     </a>`;
 }
 
-async function chargerBiens({ categorie, zone, coupDeCoeur, cible, videMessage } = {}) {
+async function chargerBiens({ categorie, zone, coupDeCoeur, vendu, cible, videMessage } = {}) {
   const conteneur = document.getElementById(cible || "grille-biens");
   if (!conteneur) return [];
   conteneur.innerHTML = '<p class="champ-aide">Chargement des annonces…</p>';
@@ -40,6 +40,7 @@ async function chargerBiens({ categorie, zone, coupDeCoeur, cible, videMessage }
     if (categorie) params.set("categorie", categorie);
     if (zone) params.set("zone", zone);
     if (coupDeCoeur) params.set("coup_de_coeur", "1");
+    if (vendu) params.set("vendu", "1");
     const data = await appelAPI("/api/biens?" + params.toString());
     const liste = data.biens || [];
     if (!liste.length) {
