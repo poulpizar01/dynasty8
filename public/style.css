@@ -420,22 +420,33 @@ button { font-family: inherit; cursor: pointer; }
 
 .hero-ville {
   position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 52%;
+  inset: 0;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
 }
-.hero-ville svg {
+/* La photo du siège Dynasty 8 sert de fond au hero : légèrement assombrie et
+   dégradée vers la gauche pour que le texte reste parfaitement lisible. */
+.hero-ville img {
   position: absolute;
-  bottom: 0; left: -8%;
-  width: 116%; height: 100%;
-  opacity: 0.28;
-  animation: hero-ville-derive 24s ease-in-out infinite;
+  top: 0; left: -6%;
+  width: 112%; height: 100%;
+  object-fit: cover;
+  object-position: center 38%;
+  opacity: 0.6;
+  animation: hero-ville-derive 26s ease-in-out infinite;
+}
+.hero-ville::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(100deg, var(--bg) 8%, rgba(10, 15, 34, 0.86) 34%, rgba(10, 15, 34, 0.45) 62%, rgba(10, 15, 34, 0.72) 100%),
+    linear-gradient(0deg, var(--bg) 0%, transparent 22%, transparent 78%, var(--bg) 100%);
 }
 @keyframes hero-ville-derive {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(2.6%); }
+  0%, 100% { transform: translateX(0) scale(1.02); }
+  50% { transform: translateX(2%) scale(1.02); }
 }
 
 .hero-fenetre {
@@ -473,7 +484,7 @@ button { font-family: inherit; cursor: pointer; }
 
 @media (prefers-reduced-motion: reduce) {
   .hero.hero-accueil { animation: none; background-position: 30% 50%; }
-  .hero-ville svg { animation: none; }
+  .hero-ville img { animation: none; }
   .hero-fenetre { animation: none; opacity: 0.4; }
   .hero-particule { animation: none; opacity: 0.4; }
 }
