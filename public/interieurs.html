@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Les Intérieurs — Dynasty 8</title>
+<meta name="description" content="Tous les intérieurs Dynasty 8 : logements meublés prêts à vivre ou intérieurs non meublés à aménager à votre image.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dynasty 8">
+<meta property="og:title" content="Les Intérieurs — Dynasty 8">
+<meta property="og:description" content="Tous les intérieurs Dynasty 8 : logements meublés prêts à vivre ou intérieurs non meublés à aménager à votre image.">
+<meta property="og:image" content="https://dynasty8.poulpizar.workers.dev/img/og-image.jpg">
+<meta property="og:url" content="https://dynasty8.poulpizar.workers.dev/interieurs.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Les Intérieurs — Dynasty 8">
+<meta name="twitter:description" content="Tous les intérieurs Dynasty 8 : logements meublés prêts à vivre ou intérieurs non meublés à aménager à votre image.">
+<meta name="twitter:image" content="https://dynasty8.poulpizar.workers.dev/img/og-image.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/png" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/favicon-180.png">
+</head>
+<body>
+
+<header class="entete" id="site-entete"></header>
+
+<section class="hero" style="padding:70px 24px 50px;">
+  <div class="hero-etiquette">🏠 Les Intérieurs</div>
+  <h1>Meublé ou non meublé : choisissez votre point de départ</h1>
+  <p class="lead">Dix-neuf adresses référencées à Los Santos, des tours du centre-ville aux villas isolées. Commencez par le type d'intérieur qui correspond à votre projet.</p>
+</section>
+
+<section class="section serre">
+  <div class="conteneur">
+    <div class="grille-hub">
+      <a class="carte-hub" href="/habitation.html?meuble=1">
+        <div class="icone">🛋️</div>
+        <h3>Intérieurs Meublés</h3>
+        <p>Prêts à vivre dès la remise des clés : mobilier, décoration et équipements déjà en place.</p>
+        <span class="carte-hub-fleche">Voir les biens meublés →</span>
+      </a>
+      <a class="carte-hub" href="/habitation.html?meuble=0">
+        <div class="icone">📦</div>
+        <h3>Intérieurs Non Meublés</h3>
+        <p>Un espace vide à aménager entièrement selon vos goûts, votre budget et votre style de vie.</p>
+        <span class="carte-hub-fleche">Voir les biens non meublés →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="section alterne">
+  <div class="conteneur">
+    <div class="section-entete">
+      <span class="etiquette">Aperçu</span>
+      <h2>Derniers intérieurs meublés ajoutés</h2>
+      <p>Un aperçu du catalogue — consultez la liste complète pour filtrer par adresse.</p>
+    </div>
+    <div class="carrousel-scroll" id="grille-meubles"></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="conteneur">
+    <div class="section-entete">
+      <span class="etiquette">Aperçu</span>
+      <h2>Derniers intérieurs non meublés ajoutés</h2>
+      <p>Un aperçu du catalogue — consultez la liste complète pour filtrer par adresse.</p>
+    </div>
+    <div class="carrousel-scroll" id="grille-non-meubles"></div>
+  </div>
+</section>
+
+<section class="section alterne" style="text-align:center;">
+  <div class="conteneur">
+    <h2>Vous ne trouvez pas votre bonheur ?</h2>
+    <p style="max-width:520px;margin:0 auto 26px;">Un agent Dynasty 8 peut vous aider à trouver l'intérieur qui vous correspond, sur le Discord du serveur.</p>
+    <a href="#" id="lien-discord-cta" class="btn btn-or btn-large">Contacter Dynasty 8</a>
+  </div>
+</section>
+
+<footer class="pied-page" id="site-pied"></footer>
+
+<script src="/layout.js"></script>
+<script src="/biens.js"></script>
+<script>
+  initialiserLayout("interieurs");
+
+  chargerBiens({ categorie: "habitation", meuble: true, cible: "grille-meubles", videMessage: "Aucun intérieur meublé en catalogue pour le moment." });
+  chargerBiens({ categorie: "habitation", meuble: false, cible: "grille-non-meubles", videMessage: "Aucun intérieur non meublé en catalogue pour le moment." });
+
+  const cta = document.getElementById("lien-discord-cta");
+  cta.href = LIEN_DISCORD; cta.target = "_blank"; cta.rel = "noopener";
+</script>
+</body>
+</html>

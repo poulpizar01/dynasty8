@@ -27,9 +27,9 @@
 <header class="entete" id="site-entete"></header>
 
 <section class="hero" style="padding:70px 24px 50px;">
-  <div class="hero-etiquette">🏠 Habitation</div>
-  <h1>Tous les logements de Los Santos</h1>
-  <p class="lead">Des tours du centre-ville aux villas isolées, choisissez une adresse pour découvrir les biens disponibles.</p>
+  <div class="hero-etiquette" id="habitation-etiquette">🏠 Les Intérieurs</div>
+  <h1 id="habitation-titre">Tous les logements de Los Santos</h1>
+  <p class="lead" id="habitation-description">Des tours du centre-ville aux villas isolées, choisissez une adresse pour découvrir les biens disponibles.</p>
 </section>
 
 <section class="section serre">
@@ -50,8 +50,10 @@
       <button class="filtre" data-sous-categorie="Bureau">Bureau</button>
       <button class="filtre" data-sous-categorie="Headquarter">Headquarter</button>
       <button class="filtre" data-sous-categorie="Caravane">Caravane</button>
+      <button class="filtre" data-sous-categorie="Motel">Motel</button>
       <button class="filtre" data-sous-categorie="Appartement">Appartement</button>
       <button class="filtre" data-sous-categorie="Duplex">Duplex</button>
+      <button class="filtre" data-sous-categorie="Bar">Bar</button>
       <button class="filtre" data-sous-categorie="Autre">Autre</button>
     </div>
     <div class="grille-biens" id="grille-biens"></div>
@@ -63,9 +65,30 @@
 <script src="/layout.js"></script>
 <script src="/biens.js"></script>
 <script>
-  initialiserLayout("habitation");
-  const sousCategorieDepart = new URLSearchParams(window.location.search).get("sous_categorie") || "tous";
-  initialiserFiltres("filtres-habitation", "grille-biens", "habitation", sousCategorieDepart);
+  initialiserLayout("interieurs");
+
+  // Le paramètre ?meuble=1 ou ?meuble=0 (venant du sous-menu "Les Intérieurs" ou de
+  // la page /interieurs.html) adapte le texte d'intro et filtre le catalogue, sans
+  // dupliquer cette page en deux fichiers séparés.
+  const parametres = new URLSearchParams(window.location.search);
+  const meubleBrut = parametres.get("meuble");
+  let meuble; // undefined = les deux, true = meublés, false = non meublés
+  if (meubleBrut === "1") {
+    meuble = true;
+    document.getElementById("habitation-etiquette").textContent = "🛋️ Intérieurs Meublés";
+    document.getElementById("habitation-titre").textContent = "Les intérieurs déjà meublés";
+    document.getElementById("habitation-description").textContent = "Emménagez immédiatement : ces biens sont livrés meublés et prêts à vivre, du studio à la villa de standing.";
+    document.title = "Intérieurs Meublés — Dynasty 8";
+  } else if (meubleBrut === "0") {
+    meuble = false;
+    document.getElementById("habitation-etiquette").textContent = "📦 Intérieurs Non Meublés";
+    document.getElementById("habitation-titre").textContent = "Les intérieurs à aménager";
+    document.getElementById("habitation-description").textContent = "Un espace vide, une toile blanche : idéal pour les résidents qui veulent aménager leur intérieur à leur image.";
+    document.title = "Intérieurs Non Meublés — Dynasty 8";
+  }
+
+  const sousCategorieDepart = parametres.get("sous_categorie") || "tous";
+  initialiserFiltres("filtres-habitation", "grille-biens", "habitation", sousCategorieDepart, { meuble });
 </script>
 </body>
 </html>

@@ -145,6 +145,10 @@
           <select id="bien-sous-categorie"></select>
         </div>
       </div>
+      <div class="champ champ-checkbox cache" id="ligne-bien-meuble">
+        <input type="checkbox" id="bien-meuble" checked>
+        <label for="bien-meuble" style="margin:0;">Meublé (sinon : non meublé)</label>
+      </div>
       <div class="champ-deux">
         <div class="champ">
           <label for="bien-prix">Prix ($) <span class="champ-obligatoire">*</span></label>
@@ -159,9 +163,35 @@
           </select>
         </div>
       </div>
-      <div class="champ">
-        <label for="bien-places">Places / chambres (optionnel)</label>
-        <input type="number" id="bien-places" min="0" step="1" style="max-width:180px;">
+      <div class="champ-deux">
+        <div class="champ">
+          <label for="bien-places">Places / chambres (optionnel)</label>
+          <input type="number" id="bien-places" min="0" step="1">
+        </div>
+        <div class="champ">
+          <label for="bien-coffre">Coffre — capacité en kg (optionnel)</label>
+          <input type="number" id="bien-coffre" min="0" step="1">
+        </div>
+      </div>
+      <div class="champ-deux">
+        <div class="champ">
+          <label for="bien-coherence">Cohérence / zone <span class="champ-obligatoire">*</span></label>
+          <select id="bien-coherence">
+            <option value="Habitation">Habitation</option>
+            <option value="Garage">Garage</option>
+            <option value="Cayo Perico">Cayo Perico</option>
+            <option value="Roxwood">Roxwood</option>
+          </select>
+          <p class="champ-aide">Détermine dans quelle fiche de cohérence ce bien apparaît.</p>
+        </div>
+        <div class="champ">
+          <label for="bien-vip">Statut VIP (optionnel, boutique FlashbackFA)</label>
+          <select id="bien-vip">
+            <option value="">Aucun</option>
+            <option value="vip">VIP</option>
+            <option value="vip+">VIP+</option>
+          </select>
+        </div>
       </div>
       <div class="champ">
         <label for="bien-description">Description</label>
@@ -192,6 +222,10 @@
       <div class="champ champ-checkbox">
         <input type="checkbox" id="bien-vendu">
         <label for="bien-vendu" style="margin:0;">Bien vendu — apparaît dans « Nos dernières ventes » sur l'accueil</label>
+      </div>
+      <div class="champ champ-checkbox">
+        <input type="checkbox" id="bien-standing">
+        <label for="bien-standing" style="margin:0;">Bien d'exception — apparaît dans « Exclusifs »</label>
       </div>
       <div style="display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;">
         <button type="submit" class="btn btn-or" style="flex:1;">Enregistrer le bien</button>

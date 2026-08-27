@@ -7,6 +7,14 @@ function iconeCategorie(categorie) {
   return icones[categorie] || "🏠";
 }
 
+function badgesSecondairesHTML(bien) {
+  const badges = [];
+  if (bien.categorie === "habitation" && bien.meuble) badges.push('<span class="badge-info">Meublé</span>');
+  if (bien.vip) badges.push(`<span class="badge-info badge-vip">${bien.vip === "vip+" ? "VIP+" : "VIP"}</span>`);
+  if (bien.standing) badges.push('<span class="badge-info badge-standing">Exception</span>');
+  return badges.length ? `<div class="badges-secondaires">${badges.join("")}</div>` : "";
+}
+
 function carteBienHTML(bien) {
   const image = bien.images && bien.images[0];
   const visuel = image
@@ -17,10 +25,11 @@ function carteBienHTML(bien) {
       <div class="visuel">
         ${bien.vendu ? '<span class="badge-coeur badge-vendu">Vendu</span>' : (bien.coup_de_coeur ? '<span class="badge-coeur">Coup de cœur</span>' : "")}
         <span class="badge-transaction">${bien.transaction_type === "location" ? "Location" : "Vente"}</span>
+        ${badgesSecondairesHTML(bien)}
         ${visuel}
       </div>
       <div class="corps">
-        <span class="zone-tag">${echapper(bien.sous_categorie || ETIQUETTES_CATEGORIE[bien.categorie] || "")}</span>
+        <span class="zone-tag">${echapper(bien.sous_categorie || ETIQUETTES_CATEGORIE[bien.categorie] || "")}${bien.coherence ? " · " + echapper(bien.coherence) : ""}</span>
         <h3>${echapper(bien.titre)}</h3>
         <p class="description">${echapper((bien.description || "").slice(0, 90))}${(bien.description || "").length > 90 ? "…" : ""}</p>
         <div class="pied">
@@ -31,7 +40,7 @@ function carteBienHTML(bien) {
     </a>`;
 }
 
-async function chargerBiens({ categorie, zone, coupDeCoeur, vendu, cible, videMessage } = {}) {
+async function chargerBiens({ categorie, zone, coupDeCoeur, vendu, meuble, coherence, standing, cible, videMessage } = {}) {
   const conteneur = document.getElementById(cible || "grille-biens");
   if (!conteneur) return [];
   conteneur.innerHTML = '<p class="champ-aide">Chargement des annonces…</p>';
@@ -41,6 +50,9 @@ async function chargerBiens({ categorie, zone, coupDeCoeur, vendu, cible, videMe
     if (zone) params.set("zone", zone);
     if (coupDeCoeur) params.set("coup_de_coeur", "1");
     if (vendu) params.set("vendu", "1");
+    if (meuble !== undefined && meuble !== null && meuble !== "") params.set("meuble", meuble ? "1" : "0");
+    if (coherence) params.set("coherence", coherence);
+    if (standing) params.set("standing", "1");
     const data = await appelAPI("/api/biens?" + params.toString());
     const liste = data.biens || [];
     if (!liste.length) {
@@ -55,16 +67,16 @@ async function chargerBiens({ categorie, zone, coupDeCoeur, vendu, cible, videMe
   }
 }
 
-function initialiserFiltres(idFiltres, idGrille, categorieFixe, valeurInitiale) {
+function initialiserFiltres(idFiltres, idGrille, categorieFixe, valeurInitiale, filtresSupplementaires) {
   const zoneFiltres = document.getElementById(idFiltres);
   if (!zoneFiltres) {
-    chargerBiens({ categorie: categorieFixe, cible: idGrille });
+    chargerBiens({ categorie: categorieFixe, cible: idGrille, ...filtresSupplementaires });
     return;
   }
   const boutons = Array.from(zoneFiltres.querySelectorAll("[data-sous-categorie]"));
   async function appliquer(sousCategorie) {
     boutons.forEach((b) => b.classList.toggle("actif", b.dataset.sousCategorie === sousCategorie));
-    const liste = await chargerBiens({ categorie: categorieFixe, cible: idGrille });
+    const liste = await chargerBiens({ categorie: categorieFixe, cible: idGrille, ...filtresSupplementaires });
     if (sousCategorie !== "tous") {
       const conteneur = document.getElementById(idGrille);
       const filtres = liste.filter((b) => b.sous_categorie === sousCategorie);
@@ -107,14 +119,20 @@ async function chargerFicheBien() {
           .join("")}</div>` : ""}
       </div>
       <div class="fiche-fiche">
-        <span class="zone-tag">${echapper(bien.sous_categorie || ETIQUETTES_CATEGORIE[bien.categorie] || "")} ${bien.coup_de_coeur ? "· Coup de cœur" : ""}</span>
+        <span class="zone-tag">${echapper(bien.sous_categorie || ETIQUETTES_CATEGORIE[bien.categorie] || "")}${bien.coup_de_coeur ? " · Coup de cœur" : ""}${bien.standing ? " · Bien d'exception" : ""}</span>
         <h1>${echapper(bien.titre)}</h1>
         <div class="fiche-prix">${formaterPrix(bien.prix)}${bien.transaction_type === "location" ? " / semaine" : ""}</div>
+        ${bien.vendu ? '<p class="champ-aide" style="color:var(--success);font-weight:600;">Ce bien a été vendu.</p>' : (!bien.disponible ? '<p class="champ-aide" style="color:var(--danger);font-weight:600;">Ce bien n’est plus disponible.</p>' : "")}
         <div class="fiche-carac">
           <div><strong>${bien.transaction_type === "location" ? "Location" : "Vente"}</strong>Transaction</div>
-          ${bien.places ? `<div><strong>${bien.places}</strong>Places</div>` : ""}
           <div><strong>${ETIQUETTES_CATEGORIE[bien.categorie] || ""}</strong>Catégorie</div>
+          ${bien.categorie === "habitation" ? `<div><strong>${bien.meuble ? "Meublé" : "Non meublé"}</strong>Ameublement</div>` : ""}
+          ${bien.places ? `<div><strong>${bien.places}</strong>Places</div>` : ""}
+          ${bien.coffre_kg ? `<div><strong>${bien.coffre_kg} kg</strong>Coffre</div>` : ""}
+          ${bien.vip ? `<div><strong>${bien.vip === "vip+" ? "VIP+" : "VIP"}</strong>Statut</div>` : ""}
+          ${bien.coherence ? `<div><strong>${echapper(bien.coherence)}</strong>Cohérence</div>` : ""}
         </div>
+        ${bien.coherence ? `<a class="btn btn-fantome btn-petit" style="margin-bottom:14px;" href="/coherence.html?zone=${encodeURIComponent(bien.coherence)}">Voir la fiche de cohérence « ${echapper(bien.coherence)} » →</a>` : ""}
         <p>${echapper(bien.description || "Aucune description fournie pour cette annonce.").replace(/\n/g, "<br>")}</p>
         <a class="btn btn-or btn-large" style="width:100%;margin-top:10px;" href="${LIEN_DISCORD}" target="_blank" rel="noopener">Contacter un agent sur Discord</a>
         <a class="btn btn-fantome" style="width:100%;margin-top:10px;" href="javascript:history.back()">← Retour aux annonces</a>

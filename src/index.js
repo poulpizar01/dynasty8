@@ -26,8 +26,16 @@ const CATEGORIES = ["habitation", "garage"];
 const SOUS_CATEGORIES_HABITATION = [
   "Eclipse Tower", "Tinsel Tower", "Villa", "Del Perro Heights", "Richards Majestic",
   "Weazel Plaza", "San Andreas", "Alta Street", "Maison", "Entrepôt", "Flat",
-  "Bureau", "Headquarter", "Caravane", "Appartement", "Duplex", "Autre",
+  "Bureau", "Headquarter", "Caravane", "Motel", "Appartement", "Duplex", "Bar", "Autre",
 ];
+
+// Les 4 "cohérences" du serveur : chaque bien est rattaché à l'une d'elles pour
+// indiquer quel guide de règles RP s'applique (voir la page /coherences.html).
+const COHERENCES = ["Habitation", "Garage", "Cayo Perico", "Roxwood"];
+
+// Statuts VIP : purement informatifs (liés à la boutique officielle FlashbackFA,
+// pas gérés par l'agence elle-même) — voir le texte affiché sur les pages publiques.
+const VALEURS_VIP = ["", "vip", "vip+"];
 
 const enc = new TextEncoder();
 const maintenant = () => Math.floor(Date.now() / 1000);
@@ -282,6 +290,12 @@ function validerBien(b) {
   if (b.categorie === "habitation" && b.sous_categorie && !SOUS_CATEGORIES_HABITATION.includes(b.sous_categorie)) {
     return "Sous-catégorie invalide pour un bien Habitation.";
   }
+  if (b.coherence && !COHERENCES.includes(b.coherence)) return "Cohérence invalide.";
+  if (b.vip && !VALEURS_VIP.includes(b.vip)) return "Statut VIP invalide.";
+  if (b.coffre_kg !== "" && b.coffre_kg != null) {
+    const coffre = Number(b.coffre_kg);
+    if (!Number.isFinite(coffre) || coffre < 0) return "La capacité de coffre doit être un nombre positif.";
+  }
   const prix = Number(b.prix);
   if (b.prix === "" || b.prix == null || !Number.isFinite(prix) || prix < 0) {
     return "Le prix doit être un nombre positif.";
@@ -319,6 +333,12 @@ function normaliserBien(b) {
     coup_de_coeur: b.coup_de_coeur ? 1 : 0,
     disponible: b.disponible === false || b.disponible === 0 ? 0 : 1,
     vendu: b.vendu ? 1 : 0,
+    // Un garage n'est jamais "meublé" : le champ n'a de sens que pour l'habitation.
+    meuble: categorie === "habitation" && b.meuble !== false && b.meuble !== 0 ? 1 : 0,
+    coherence: COHERENCES.includes(b.coherence) ? b.coherence : (categorie === "garage" ? "Garage" : "Habitation"),
+    coffre_kg: b.coffre_kg === "" || b.coffre_kg == null ? null : Math.max(0, Number(b.coffre_kg) || 0),
+    vip: VALEURS_VIP.includes(b.vip) ? b.vip : "",
+    standing: b.standing ? 1 : 0,
   };
 }
 
@@ -341,6 +361,9 @@ async function biens(request, url, env) {
     const zone = url.searchParams.get("zone");
     const coupDeCoeur = url.searchParams.get("coup_de_coeur");
     const vendu = url.searchParams.get("vendu");
+    const meuble = url.searchParams.get("meuble");
+    const coherence = url.searchParams.get("coherence");
+    const standing = url.searchParams.get("standing");
     const inclureIndisponibles = inclureIndisponiblesSeul;
 
     let sql = "SELECT * FROM biens WHERE 1=1";
@@ -365,6 +388,17 @@ async function biens(request, url, env) {
     if (vendu === "1") {
       sql += " AND vendu = 1";
     }
+    if (meuble === "1" || meuble === "0") {
+      binds.push(meuble === "1" ? 1 : 0);
+      sql += ` AND meuble = ?${binds.length}`;
+    }
+    if (coherence && COHERENCES.includes(coherence)) {
+      binds.push(coherence);
+      sql += ` AND coherence = ?${binds.length}`;
+    }
+    if (standing === "1") {
+      sql += " AND standing = 1";
+    }
     sql += vendu === "1" ? " ORDER BY vendu_le DESC" : " ORDER BY coup_de_coeur DESC, maj DESC";
     const stmt = env.DB.prepare(sql);
     const r = await (binds.length ? stmt.bind(...binds) : stmt).all();
@@ -382,12 +416,15 @@ async function biens(request, url, env) {
     const n = normaliserBien(b);
     const r = await env.DB.prepare(
       `INSERT INTO biens (categorie, sous_categorie, titre, zone, prix, transaction_type, places,
-                          description, images, coup_de_coeur, disponible, vendu, vendu_le, auteur, cree_le, maj)
+                          description, images, coup_de_coeur, disponible, vendu, vendu_le,
+                          meuble, coherence, coffre_kg, vip, standing, auteur, cree_le, maj)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12,
-               CASE WHEN ?12 = 1 THEN datetime('now') ELSE NULL END, ?13, datetime('now'), datetime('now'))`
+               CASE WHEN ?12 = 1 THEN datetime('now') ELSE NULL END,
+               ?13, ?14, ?15, ?16, ?17, ?18, datetime('now'), datetime('now'))`
     ).bind(
       n.categorie, n.sous_categorie, n.titre, n.zone, n.prix, n.transaction_type, n.places,
-      n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu, s.pseudo
+      n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu,
+      n.meuble, n.coherence, n.coffre_kg, n.vip, n.standing, s.pseudo
     ).run();
     return json({ id: r.meta.last_row_id });
   }
@@ -409,10 +446,12 @@ async function biens(request, url, env) {
                 WHEN ?13 = 0 THEN NULL
                 ELSE vendu_le
               END,
+              meuble=?14, coherence=?15, coffre_kg=?16, vip=?17, standing=?18,
               maj=datetime('now') WHERE id=?1`
     ).bind(
       id, n.categorie, n.sous_categorie, n.titre, n.zone, n.prix, n.transaction_type,
-      n.places, n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu
+      n.places, n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu,
+      n.meuble, n.coherence, n.coffre_kg, n.vip, n.standing
     ).run();
     return json({ ok: true });
   }
@@ -433,7 +472,15 @@ function bienPourAffichage(d) {
   } catch (e) {
     images = [];
   }
-  return { ...d, images, coup_de_coeur: !!d.coup_de_coeur, disponible: !!d.disponible, vendu: !!d.vendu };
+  return {
+    ...d,
+    images,
+    coup_de_coeur: !!d.coup_de_coeur,
+    disponible: !!d.disponible,
+    vendu: !!d.vendu,
+    meuble: !!d.meuble,
+    standing: !!d.standing,
+  };
 }
 
 // ---- membres (comptes de l'équipe admin) ----------------------------------

@@ -158,9 +158,9 @@ async function chargerTableBiens() {
     }
     corps.innerHTML = CACHE_BIENS.map((b) => `
       <tr>
-        <td>${echapper(b.titre)}${b.coup_de_coeur ? ' <span class="puce puce-or">Coup de cœur</span>' : ""}</td>
+        <td>${echapper(b.titre)}${b.coup_de_coeur ? ' <span class="puce puce-or">Coup de cœur</span>' : ""}${b.standing ? ' <span class="puce puce-or">Exception</span>' : ""}</td>
         <td>${ETIQUETTES_CATEGORIE[b.categorie] || b.categorie}</td>
-        <td>${echapper(b.sous_categorie || "—")}</td>
+        <td>${echapper(b.sous_categorie || "—")}${b.coherence ? ` <span class="champ-aide" style="display:inline;">· ${echapper(b.coherence)}</span>` : ""}</td>
         <td>${formaterPrix(b.prix)}${b.transaction_type === "location" ? " /sem." : ""}</td>
         <td>${b.vendu ? '<span class="puce puce-or">Vendu</span>' : (b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>')}</td>
         <td><div class="actions-ligne"><button class="btn btn-fantome btn-petit" data-editer="${b.id}">Modifier</button></div></td>
@@ -177,6 +177,7 @@ async function chargerTableBiens() {
 
 function remplirSousCategories(categorie, valeurSelectionnee) {
   const select = document.getElementById("bien-sous-categorie");
+  document.getElementById("ligne-bien-meuble").classList.toggle("cache", categorie !== "habitation");
   if (categorie === "habitation") {
     select.disabled = false;
     select.innerHTML = SOUS_CATEGORIES_HABITATION.map(
@@ -187,10 +188,19 @@ function remplirSousCategories(categorie, valeurSelectionnee) {
     select.disabled = true;
     select.innerHTML = '<option value="">Aucune (catégorie Garage)</option>';
   }
+  // La cohérence par défaut suit la catégorie choisie (l'agent peut la changer ensuite).
+  const coherence = document.getElementById("bien-coherence");
+  if (coherence && !coherence.dataset.modifieManuellement) {
+    coherence.value = categorie === "garage" ? "Garage" : "Habitation";
+  }
 }
 
 document.getElementById("bien-categorie").addEventListener("change", (ev) => {
   remplirSousCategories(ev.target.value, "");
+});
+
+document.getElementById("bien-coherence").addEventListener("change", (ev) => {
+  ev.target.dataset.modifieManuellement = "1";
 });
 
 // ---- photos : ajout par URL ou depuis l'ordinateur, prévisualisation ------
@@ -306,14 +316,19 @@ function etatFormulaireBien() {
     titre: document.getElementById("bien-titre").value,
     categorie: document.getElementById("bien-categorie").value,
     sousCategorie: document.getElementById("bien-sous-categorie").value,
+    meuble: document.getElementById("bien-meuble").checked,
     prix: document.getElementById("bien-prix").value,
     transaction: document.getElementById("bien-transaction").value,
     places: document.getElementById("bien-places").value,
+    coffre: document.getElementById("bien-coffre").value,
+    coherence: document.getElementById("bien-coherence").value,
+    vip: document.getElementById("bien-vip").value,
     description: document.getElementById("bien-description").value,
     images: IMAGES_BIEN,
     coupDeCoeur: document.getElementById("bien-coup-de-coeur").checked,
     disponible: document.getElementById("bien-disponible").checked,
     vendu: document.getElementById("bien-vendu").checked,
+    standing: document.getElementById("bien-standing").checked,
   });
 }
 
@@ -325,14 +340,21 @@ function ouvrirModaleBien(id) {
   const categorie = bien ? bien.categorie : "habitation";
   document.getElementById("bien-categorie").value = categorie;
   remplirSousCategories(categorie, bien ? bien.sous_categorie || "" : "");
+  document.getElementById("bien-meuble").checked = bien ? !!bien.meuble : true;
   document.getElementById("bien-places").value = bien && bien.places != null ? bien.places : "";
   document.getElementById("bien-prix").value = bien ? bien.prix : "";
   document.getElementById("bien-transaction").value = bien ? bien.transaction_type : "vente";
+  document.getElementById("bien-coffre").value = bien && bien.coffre_kg != null ? bien.coffre_kg : "";
+  const champCoherence = document.getElementById("bien-coherence");
+  champCoherence.value = bien && bien.coherence ? bien.coherence : (categorie === "garage" ? "Garage" : "Habitation");
+  delete champCoherence.dataset.modifieManuellement;
+  document.getElementById("bien-vip").value = bien ? bien.vip || "" : "";
   document.getElementById("bien-description").value = bien ? bien.description || "" : "";
   document.getElementById("bien-image-url").value = "";
   document.getElementById("bien-coup-de-coeur").checked = !!(bien && bien.coup_de_coeur);
   document.getElementById("bien-disponible").checked = bien ? !!bien.disponible : true;
   document.getElementById("bien-vendu").checked = !!(bien && bien.vendu);
+  document.getElementById("bien-standing").checked = !!(bien && bien.standing);
   document.getElementById("bouton-supprimer-bien").classList.toggle("cache", !bien);
   document.querySelectorAll("#formulaire-bien .champ-erreur").forEach((p) => p.classList.add("cache"));
   afficherMessage("zone-message-modale-bien", "", null);
@@ -392,7 +414,11 @@ document.getElementById("formulaire-bien").addEventListener("submit", async (ev)
     titre,
     categorie,
     sous_categorie: categorie === "habitation" ? document.getElementById("bien-sous-categorie").value : "",
+    meuble: categorie === "habitation" ? document.getElementById("bien-meuble").checked : false,
     places: document.getElementById("bien-places").value === "" ? null : Number(document.getElementById("bien-places").value),
+    coffre_kg: document.getElementById("bien-coffre").value === "" ? null : Number(document.getElementById("bien-coffre").value),
+    coherence: document.getElementById("bien-coherence").value,
+    vip: document.getElementById("bien-vip").value,
     prix,
     transaction_type: document.getElementById("bien-transaction").value,
     description: document.getElementById("bien-description").value.trim(),
@@ -400,6 +426,7 @@ document.getElementById("formulaire-bien").addEventListener("submit", async (ev)
     coup_de_coeur: document.getElementById("bien-coup-de-coeur").checked,
     disponible: document.getElementById("bien-disponible").checked,
     vendu: document.getElementById("bien-vendu").checked,
+    standing: document.getElementById("bien-standing").checked,
   };
   const boutonEnregistrer = document.querySelector('#formulaire-bien button[type="submit"]');
   const texteInitial = boutonEnregistrer.textContent;

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cohérence — Dynasty 8</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/png" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/favicon-180.png">
+</head>
+<body>
+
+<header class="entete" id="site-entete"></header>
+
+<section class="hero" style="padding:70px 24px 50px;">
+  <div class="hero-etiquette" id="coherence-etiquette">🗺️ Cohérence</div>
+  <h1 id="coherence-titre">Cohérence</h1>
+  <p class="lead" id="coherence-intro"></p>
+  <div class="hero-actions" style="margin-top:8px;">
+    <a href="https://map.flashbackfa.fr/" target="_blank" rel="noopener" class="btn btn-fantome btn-large">Ouvrir la WebMap ↗</a>
+    <a href="/coherences.html" class="btn btn-fantome btn-large">← Toutes les cohérences</a>
+  </div>
+</section>
+
+<section class="section serre">
+  <div class="conteneur" style="max-width:820px;">
+    <div class="section-entete" style="text-align:left;margin:0 0 24px;">
+      <span class="etiquette">Guide</span>
+      <h2>Ce que cette cohérence justifie</h2>
+    </div>
+    <div id="coherence-points" class="fiche-carac" style="gap:36px;"></div>
+    <p class="champ-aide" style="margin-top:24px;">Ce guide donne les grandes lignes. Pour toute question sur un cas précis, un agent Dynasty 8 peut vous répondre directement sur le Discord du serveur.</p>
+  </div>
+</section>
+
+<section class="section alterne">
+  <div class="conteneur">
+    <div class="section-entete">
+      <span class="etiquette">Catalogue</span>
+      <h2 id="coherence-catalogue-titre">Biens rattachés à cette cohérence</h2>
+      <p>Tous les biens du catalogue Dynasty 8 utilisables dans le cadre de cette cohérence.</p>
+    </div>
+    <div class="grille-biens" id="grille-biens"></div>
+  </div>
+</section>
+
+<section class="section" style="text-align:center;">
+  <div class="conteneur">
+    <h2>Une question sur cette cohérence ?</h2>
+    <p style="max-width:520px;margin:0 auto 26px;">Nos agents sont disponibles sur le Discord officiel du serveur pour vous aider à y voir clair.</p>
+    <a href="#" id="lien-discord-cta" class="btn btn-or btn-large">Contacter Dynasty 8</a>
+  </div>
+</section>
+
+<footer class="pied-page" id="site-pied"></footer>
+
+<script src="/layout.js"></script>
+<script src="/biens.js"></script>
+<script>
+  initialiserLayout("coherences");
+
+  // Contenu de guide par cohérence. Ce texte est indicatif : il donne le principe
+  // général de chaque cohérence pour orienter les résidents, mais l'agence Dynasty 8
+  // reste seule référence pour les règles précises du serveur.
+  const GUIDES_COHERENCE = {
+    "Habitation": {
+      icone: "🏠",
+      intro: "La cohérence Habitation atteste que votre personnage dispose d'un logement légal à Los Santos — la base de toute vie RP stable en ville.",
+      points: [
+        ["Résidence", "Justifie une adresse fixe pour votre personnage : courrier, visites, vie de quartier."],
+        ["Biens personnels", "Conditionne la possession de certains objets ou biens de valeur entreposés chez vous."],
+        ["Accès", "Ouvre l'accès aux scènes RP liées au domicile : réceptions, voisinage, sécurité du logement."],
+      ],
+    },
+    "Garage": {
+      icone: "🚗",
+      intro: "La cohérence Garage atteste que votre personnage dispose d'un espace de stationnement ou de stockage pour ses véhicules.",
+      points: [
+        ["Stationnement", "Justifie où vos véhicules sont garés en dehors de vos trajets."],
+        ["Multi-véhicules", "Nécessaire pour posséder plusieurs véhicules ou des véhicules de collection."],
+        ["Sécurité", "Un garage fermé limite les risques de vol RP par rapport à un stationnement en rue."],
+      ],
+    },
+    "Cayo Perico": {
+      icone: "🏝️",
+      intro: "La cohérence Cayo Perico concerne les biens situés sur l'île de Cayo Perico, une zone de jeu à part avec ses propres conditions de résidence.",
+      points: [
+        ["Zone spécifique", "Cayo Perico fonctionne avec ses propres règles d'accès et de résidence, distinctes de Los Santos."],
+        ["Déplacements", "Vérifiez les moyens de transport disponibles vers l'île avant d'envisager d'y résider."],
+        ["Disponibilité", "Le nombre de biens sur l'île est limité : contactez un agent pour connaître les disponibilités actuelles."],
+      ],
+    },
+    "Roxwood": {
+      icone: "🌲",
+      intro: "La cohérence Roxwood concerne les biens du secteur de Roxwood, un quartier résidentiel en périphérie de Los Santos.",
+      points: [
+        ["Secteur résidentiel", "Roxwood regroupe des biens plus isolés, souvent recherchés pour leur calme."],
+        ["Distance", "Pensez au temps de trajet vers le centre-ville pour vos activités RP quotidiennes."],
+        ["Disponibilité", "Contactez un agent pour connaître les biens actuellement libres dans ce secteur."],
+      ],
+    },
+  };
+
+  const zoneBrute = new URLSearchParams(window.location.search).get("zone") || "Habitation";
+  const zone = Object.keys(GUIDES_COHERENCE).includes(zoneBrute) ? zoneBrute : "Habitation";
+  const guide = GUIDES_COHERENCE[zone];
+
+  document.getElementById("coherence-etiquette").textContent = `${guide.icone} Cohérence ${zone}`;
+  document.getElementById("coherence-titre").textContent = `Cohérence ${zone}`;
+  document.getElementById("coherence-intro").textContent = guide.intro;
+  document.getElementById("coherence-catalogue-titre").textContent = `Biens rattachés à la cohérence ${zone}`;
+  document.title = `Cohérence ${zone} — Dynasty 8`;
+  document.getElementById("coherence-points").innerHTML = guide.points
+    .map(([titre, texte]) => `<div style="flex:1 1 220px;max-width:260px;"><strong>${echapper(titre)}</strong>${echapper(texte)}</div>`)
+    .join("");
+
+  chargerBiens({ coherence: zone, cible: "grille-biens", videMessage: `Aucun bien rattaché à la cohérence ${zone} pour le moment.` });
+
+  const cta = document.getElementById("lien-discord-cta");
+  cta.href = LIEN_DISCORD; cta.target = "_blank"; cta.rel = "noopener";
+</script>
+</body>
+</html>

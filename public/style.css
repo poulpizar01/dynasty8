@@ -224,6 +224,83 @@ button { font-family: inherit; cursor: pointer; }
   .nav-principale a::after { transition: none; }
 }
 
+/* ---------- nav : sous-menus déroulants (Les Intérieurs, Cohérences) ---------- */
+/* Volontairement en CSS pur (:hover / :focus-within), sans JavaScript : plus simple
+   à maintenir et fonctionne au clavier (Tab) comme à la souris. */
+
+.nav-avec-sous-menu {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.nav-lien-principal {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-chevron {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  transition: transform 0.2s ease, color 0.15s;
+}
+
+.nav-avec-sous-menu:hover .nav-chevron,
+.nav-avec-sous-menu:focus-within .nav-chevron {
+  transform: rotate(180deg);
+  color: var(--gold);
+}
+
+.nav-sous-menu {
+  display: none;
+  flex-direction: column;
+  position: absolute;
+  top: calc(100% + 14px);
+  left: -18px;
+  min-width: 230px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 8px;
+  z-index: 40;
+}
+
+.nav-avec-sous-menu:hover .nav-sous-menu,
+.nav-avec-sous-menu:focus-within .nav-sous-menu {
+  display: flex;
+}
+
+.nav-sous-menu a {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  border-bottom: none;
+}
+.nav-sous-menu a::after { display: none; }
+.nav-sous-menu a:hover { background: var(--bg-card-hover); color: var(--text); }
+
+@media (max-width: 880px) {
+  .nav-avec-sous-menu { flex-direction: column; align-items: flex-start; width: 100%; }
+  .nav-lien-principal { width: 100%; justify-content: space-between; }
+  .nav-sous-menu {
+    display: flex;
+    position: static;
+    box-shadow: none;
+    border: none;
+    background: none;
+    padding: 0 0 4px 14px;
+    min-width: 0;
+    width: 100%;
+  }
+  .nav-sous-menu a { padding: 8px 0; width: 100%; border-bottom: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-chevron { transition: none; }
+}
+
 /* ---------- boutons ---------- */
 
 .btn {
@@ -618,6 +695,18 @@ section.section.serre { padding: 56px 24px; }
   color: #fbfaf6; font-size: 0.72rem; text-transform: uppercase;
   padding: 5px 10px; border-radius: 999px; letter-spacing: 0.5px;
 }
+/* Bandeau bas de visuel : petites étiquettes secondaires (meublé, VIP, standing). */
+.carte-bien .badges-secondaires {
+  position: absolute; left: 12px; bottom: 12px;
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.carte-bien .badge-info {
+  background: rgba(10,15,34,0.8); border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text); font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+  padding: 4px 9px; border-radius: 999px; letter-spacing: 0.4px;
+}
+.carte-bien .badge-vip { background: var(--gold); border-color: var(--gold); color: var(--accent-contrast); }
+.carte-bien .badge-standing { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--accent-contrast); }
 
 .carte-bien .corps { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .carte-bien h3 { font-size: 1.08rem; margin-bottom: 0; }
@@ -696,6 +785,28 @@ section.section.serre { padding: 56px 24px; }
   width: 46px; height: 46px; border-radius: 12px; background: rgba(207,159,86,0.14);
   color: var(--gold); display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
 }
+
+/* ---------- cartes "hub" : pages de catégorie (interieurs.html, coherences.html) ---------- */
+/* Grandes cartes cliquables qui font office de sommaire — chacune mène vers une
+   sous-catégorie ou une cohérence précise. */
+
+.grille-hub {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px;
+}
+.carte-hub {
+  display: flex; flex-direction: column; padding: 32px 28px; gap: 12px;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card);
+  transition: border-color 0.2s, transform 0.2s, background 0.2s;
+}
+.carte-hub:hover { border-color: var(--gold); transform: translateY(-3px); background: var(--bg-card-hover); }
+.carte-hub .icone {
+  width: 52px; height: 52px; border-radius: 14px; background: rgba(207,159,86,0.14);
+  color: var(--gold); display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; margin-bottom: 6px;
+}
+.carte-hub h3 { font-size: 1.15rem; margin-bottom: 0; }
+.carte-hub p { color: var(--text-muted); font-size: 0.92rem; flex: 1; margin: 0; }
+.carte-hub .carte-hub-fleche { color: var(--gold); font-size: 0.88rem; font-weight: 600; margin-top: 6px; }
 
 .grille-equipe { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 22px; }
 .carte-membre { text-align: center; }

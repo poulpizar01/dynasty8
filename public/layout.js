@@ -8,12 +8,22 @@ const LIEN_DISCORD = "https://discord.com/invite/zCsPrrR3uw";
 
 const LIENS_NAV = [
   { href: "/", texte: "Accueil", cle: "accueil" },
-  { href: "/habitation.html", texte: "Habitation", cle: "habitation" },
+  { href: "/interieurs.html", texte: "Les Intérieurs", cle: "interieurs", sousMenu: [
+      { href: "/habitation.html?meuble=1", texte: "Intérieurs Meublés" },
+      { href: "/habitation.html?meuble=0", texte: "Intérieurs Non Meublés" },
+    ] },
   { href: "/garages.html", texte: "Garages", cle: "garages" },
+  { href: "/coherences.html", texte: "Cohérences", cle: "coherences", sousMenu: [
+      { href: "/coherence.html?zone=Habitation", texte: "Cohérence Habitation" },
+      { href: "/coherence.html?zone=Garage", texte: "Cohérence Garage" },
+      { href: "/coherence.html?zone=Cayo+Perico", texte: "Cohérence Cayo Perico" },
+      { href: "/coherence.html?zone=Roxwood", texte: "Cohérence Roxwood" },
+    ] },
   { href: "/exclusifs.html", texte: "Exclusifs", cle: "exclusifs" },
   { href: "/services.html", texte: "Services", cle: "services" },
   { href: "/equipe.html", texte: "Équipe", cle: "equipe" },
   { href: "/faq.html", texte: "FAQ", cle: "faq" },
+  { href: LIEN_DISCORD, texte: "Nous contacter", cle: "contact", externe: true },
 ];
 
 function logoImg(cssClass) {
@@ -23,9 +33,18 @@ function logoImg(cssClass) {
 function injecterEntete(cleActive) {
   const monte = document.getElementById("site-entete");
   if (!monte) return;
-  const liens = LIENS_NAV.map(
-    (l) => `<a href="${l.href}" ${l.cle === cleActive ? 'aria-current="page"' : ""}>${l.texte}</a>`
-  ).join("");
+  const liens = LIENS_NAV.map((l) => {
+    if (l.sousMenu) {
+      const sousLiens = l.sousMenu.map((s) => `<a href="${s.href}">${s.texte}</a>`).join("");
+      return `
+        <div class="nav-avec-sous-menu">
+          <a href="${l.href}" class="nav-lien-principal" ${l.cle === cleActive ? 'aria-current="page"' : ""}>${l.texte} <span class="nav-chevron" aria-hidden="true">⌄</span></a>
+          <div class="nav-sous-menu">${sousLiens}</div>
+        </div>`;
+    }
+    const attrsExterne = l.externe ? 'target="_blank" rel="noopener"' : "";
+    return `<a href="${l.href}" ${attrsExterne} ${l.cle === cleActive ? 'aria-current="page"' : ""}>${l.texte}</a>`;
+  }).join("");
   monte.innerHTML = `
     <div class="entete-barre">
       <a href="/" class="logo">${logoImg("logo-entete")}</a>
@@ -59,9 +78,10 @@ function injecterPied() {
         <div>
           <h4>Catégories</h4>
           <ul>
-            <li><a href="/habitation.html">Habitation</a></li>
+            <li><a href="/interieurs.html">Les Intérieurs</a></li>
             <li><a href="/garages.html">Garages</a></li>
-            <li><a href="/exclusifs.html">Produits exclusifs</a></li>
+            <li><a href="/coherences.html">Cohérences</a></li>
+            <li><a href="/exclusifs.html">Exclusifs</a></li>
           </ul>
         </div>
         <div>
@@ -76,6 +96,7 @@ function injecterPied() {
           <h4>Nous contacter</h4>
           <ul>
             <li><a href="${LIEN_DISCORD}" id="lien-discord" target="_blank" rel="noopener">Discord du serveur</a></li>
+            <li><a href="https://map.flashbackfa.fr/" target="_blank" rel="noopener">WebMap</a></li>
             <li><a href="/admin.html">Espace agents</a></li>
           </ul>
         </div>
@@ -136,5 +157,8 @@ const ETIQUETTES_CATEGORIE = {
 const SOUS_CATEGORIES_HABITATION = [
   "Eclipse Tower", "Tinsel Tower", "Villa", "Del Perro Heights", "Richards Majestic",
   "Weazel Plaza", "San Andreas", "Alta Street", "Maison", "Entrepôt", "Flat",
-  "Bureau", "Headquarter", "Caravane", "Appartement", "Duplex", "Autre",
+  "Bureau", "Headquarter", "Caravane", "Motel", "Appartement", "Duplex", "Bar", "Autre",
 ];
+
+// Les 4 "cohérences" (zones RP) auxquelles un bien peut être rattaché.
+const COHERENCES = ["Habitation", "Garage", "Cayo Perico", "Roxwood"];
