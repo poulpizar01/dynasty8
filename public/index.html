@@ -109,20 +109,6 @@
 </section>
 
 <section class="section alterne">
-  <div class="conteneur">
-    <div class="section-entete">
-      <span class="etiquette">Présentation</span>
-      <h2>Dynasty 8 en vidéo</h2>
-      <p>Découvrez notre agence, nos équipes et notre catalogue en images.</p>
-    </div>
-    <div class="cadre-video">
-      <iframe id="video-presentation" src="" title="Présentation Dynasty 8" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
-    </div>
-    <p class="champ-aide" style="text-align:center;margin-top:14px;">Vidéo de démonstration — remplacez le lien dans <code>index.html</code> (recherchez <code>video-presentation</code>) par votre propre vidéo YouTube.</p>
-  </div>
-</section>
-
-<section class="section">
   <div class="conteneur" style="text-align:center;">
     <span class="etiquette">Rejoignez-nous</span>
     <h2 style="margin-top:10px;">Une question ? Un projet immobilier ?</h2>
@@ -202,14 +188,6 @@
         <span class="compte">${comptes[nom] ? comptes[nom] + " bien" + (comptes[nom] > 1 ? "s" : "") + " au catalogue" : "Découvrir"} →</span>
       </a>`).join("");
   }).catch(() => {});
-
-  // Remplacez PLACEHOLDER par l'identifiant de votre vidéo YouTube (la partie après "v=" dans son lien).
-  const idVideo = "PLACEHOLDER";
-  if (idVideo !== "PLACEHOLDER") {
-    document.getElementById("video-presentation").src = "https://www.youtube-nocookie.com/embed/" + idVideo;
-  } else {
-    document.querySelector(".cadre-video").innerHTML = '<div class="etat-vide" style="width:100%;">Emplacement réservé pour votre vidéo de présentation YouTube.</div>';
-  }
 
   // Fond animé du hero : fenêtres qui scintillent au hasard sur la silhouette de ville.
   const zoneVille = document.getElementById("hero-ville");
