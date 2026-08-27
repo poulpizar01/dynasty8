@@ -523,6 +523,15 @@ button { font-family: inherit; cursor: pointer; }
      avec un cadrage plus centré sur le bâtiment. */
   .hero-ville { inset: 0 0 auto 0; height: 360px; }
   .hero-ville img { object-position: center 55%; }
+  /* Le dégradé diagonal du desktop (sombre côté texte, clair côté vitrine) n'a
+     plus de sens une fois le contenu empilé sur une seule colonne : il créait
+     une bande verticale nette et disgracieuse. On le remplace par un simple
+     fondu horizontal doux, sans coupure. */
+  .hero-ville::after {
+    background:
+      linear-gradient(90deg, var(--bg) 0%, transparent 18%, transparent 82%, var(--bg) 100%),
+      linear-gradient(0deg, var(--bg) 0%, transparent 20%, transparent 80%, var(--bg) 100%);
+  }
 }
 
 .hero-vitrine { width: 100%; max-width: 380px; }
