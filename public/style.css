@@ -422,6 +422,10 @@ button { font-family: inherit; cursor: pointer; }
   position: absolute;
   top: 0; left: -6%;
   width: 112%; height: 100%;
+  /* La règle générale "img { max-width: 100%; }" (ligne 66) plafonnait sinon
+     cette image à 100% de large : elle ne couvrait plus tout à fait le bord
+     droit du hero, laissant apparaître une bande du fond derrière. */
+  max-width: none;
   object-fit: cover;
   object-position: center 38%;
   opacity: 0.92;
