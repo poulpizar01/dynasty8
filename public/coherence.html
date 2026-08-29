@@ -27,13 +27,35 @@
 </section>
 
 <section class="section serre">
+  <div class="conteneur" style="max-width:900px;">
+    <div class="section-entete" style="text-align:left;margin:0 0 24px;">
+      <span class="etiquette">Guide officiel</span>
+      <h2 id="coherence-guide-titre">Guide complet</h2>
+      <p style="margin:0;" id="coherence-guide-souslignee">Parcourez le règlement complet, diapositive par diapositive.</p>
+    </div>
+    <div class="guide-astuce">
+      💡&nbsp;<span>Conseil : utilisez les flèches de votre clavier (← →) ou les boutons ci-dessous pour parcourir les diapositives.</span>
+    </div>
+    <div class="guide-diaporama" id="guide-diaporama" tabindex="0">
+      <button type="button" class="guide-diapo-nav guide-diapo-prev" id="guide-prev" aria-label="Diapositive précédente">‹</button>
+      <img id="guide-diapo-img" src="" alt="">
+      <button type="button" class="guide-diapo-nav guide-diapo-next" id="guide-next" aria-label="Diapositive suivante">›</button>
+      <div class="guide-diapo-compteur" id="guide-compteur">1 / 1</div>
+    </div>
+    <div class="guide-diaporama-actions">
+      <a href="#" id="guide-lien-gslide" target="_blank" rel="noopener" class="btn btn-fantome btn-petit">Ouvrir sur Google Slides ↗</a>
+    </div>
+  </div>
+</section>
+
+<section class="section serre alterne">
   <div class="conteneur" style="max-width:980px;">
     <div class="section-entete" style="text-align:left;margin:0 0 32px;">
-      <span class="etiquette">Guide officiel</span>
+      <span class="etiquette">En résumé</span>
       <h2>Ce que cette cohérence justifie</h2>
     </div>
     <div id="coherence-sections"></div>
-    <p class="champ-aide" style="margin-top:24px;">Ce guide reprend le règlement officiel de la cohérence. Pour toute question sur un cas précis, un agent Dynasty 8 peut vous répondre directement sur le Discord du serveur.</p>
+    <p class="champ-aide" style="margin-top:24px;">Ce résumé écrit reprend le règlement officiel ci-dessus. Pour toute question sur un cas précis, un agent Dynasty 8 peut vous répondre directement sur le Discord du serveur.</p>
   </div>
 </section>
 
@@ -71,6 +93,9 @@
   const GUIDES_COHERENCE = {
     "Habitation": {
       icone: "🏠",
+      slug: "habitation",
+      nbSlides: 26,
+      gslideId: "16zKe1r6JM_0afDDEyDDUBjec7ZZPlj25rBh6zG28bD0",
       intro: "La cohérence Habitation atteste que votre personnage dispose d'un logement légal à Los Santos, avec un intérieur cohérent par rapport au bâtiment choisi.",
       sections: [
         {
@@ -185,6 +210,9 @@
     },
     "Garage": {
       icone: "🚗",
+      slug: "garage",
+      nbSlides: 7,
+      gslideId: "1sf3yrdeyxgoltDHLmkUpC1iRajHRA18acsZjG63yoP8",
       intro: "La cohérence Garage relie la taille et le standing d'un bâtiment à sa capacité de stationnement réelle : un petit local ne peut pas justifier un grand parking, et inversement.",
       sections: [
         {
@@ -235,6 +263,9 @@
     },
     "Cayo Perico": {
       icone: "🏝️",
+      slug: "cayo-perico",
+      nbSlides: 5,
+      gslideId: "1MvrINN7FmrbdDrDLQsMWadXXHjYEWXOundWPWRA5pkA",
       intro: "La cohérence Cayo Perico concerne les biens situés sur l'île de Cayo Perico, une zone de jeu à part avec ses propres intérieurs autorisés selon le type de bâtiment.",
       sections: [
         {
@@ -257,6 +288,9 @@
     },
     "Roxwood": {
       icone: "🌲",
+      slug: "roxwood",
+      nbSlides: 11,
+      gslideId: "1-8UcXPy4TNC6VpnSpu9t3e0YghjF9okH__h3riJtV5M",
       intro: "La cohérence Roxwood concerne le secteur résidentiel de Roxwood, avec ses propres zones réservées et ses règles de garages spécifiques aux grandes villas du secteur.",
       sections: [
         {
@@ -301,6 +335,9 @@
     },
     "Portolina": {
       icone: "🛥️",
+      slug: "portolina",
+      nbSlides: 8,
+      gslideId: "1mvY0JOnxCgo10ITIsZcLGEfw_PCTcxgiGhXqL9_gzy0",
       intro: "La cohérence Portolina encadre la résidence sur l'île de Portolina : un visa de citoyen est obligatoire, et l'accès aux biens dépend de votre statut (citoyen, patron, visa de travail).",
       sections: [
         {
@@ -388,6 +425,8 @@
   document.getElementById("coherence-etiquette").textContent = `${guide.icone} Cohérence ${zone}`;
   document.getElementById("coherence-titre").textContent = `Cohérence ${zone}`;
   document.getElementById("coherence-intro").textContent = guide.intro;
+  document.getElementById("coherence-guide-titre").textContent = `Guide complet — ${zone}`;
+  document.getElementById("coherence-guide-souslignee").textContent = `Guide complet pour comprendre les règles de cohérence ${zone === "Habitation" ? "des habitations" : "de " + zone} sur le serveur.`;
   document.getElementById("coherence-catalogue-titre").textContent = `Biens rattachés à la cohérence ${zone}`;
   document.title = `Cohérence ${zone} — Dynasty 8`;
   document.getElementById("coherence-sections").innerHTML = guide.sections.map(rendreSection).join("");
@@ -396,6 +435,54 @@
 
   const cta = document.getElementById("lien-discord-cta");
   cta.href = LIEN_DISCORD; cta.target = "_blank"; cta.rel = "noopener";
+
+  // Diaporama : chaque diapositive du guide officiel a été convertie en image
+  // (Google bloque l'affichage direct de ses présentations "Slides" dans une page
+  // tierce tant qu'elles ne sont pas explicitement publiées sur le web — c'était
+  // d'ailleurs déjà cassé sur l'ancien site). Ce visualiseur maison affiche donc
+  // les diapositives comme des images classiques : ça fonctionne pour tout le monde,
+  // sans dépendre de Google. Le bouton "Ouvrir sur Google Slides" reste disponible
+  // pour consulter la présentation d'origine.
+  let diapoIndex = 0;
+  const imgDiapo = document.getElementById("guide-diapo-img");
+  const compteurDiapo = document.getElementById("guide-compteur");
+
+  function cheminDiapo(i) {
+    return `/img/coherences/${guide.slug}/slide-${String(i + 1).padStart(2, "0")}.jpg`;
+  }
+
+  function majDiapo() {
+    diapoIndex = ((diapoIndex % guide.nbSlides) + guide.nbSlides) % guide.nbSlides;
+    imgDiapo.src = cheminDiapo(diapoIndex);
+    imgDiapo.alt = `Diapositive ${diapoIndex + 1} sur ${guide.nbSlides} — Cohérence ${zone}`;
+    compteurDiapo.textContent = `${diapoIndex + 1} / ${guide.nbSlides}`;
+    // Précharge la diapositive suivante et précédente pour une navigation fluide.
+    new Image().src = cheminDiapo((diapoIndex + 1) % guide.nbSlides);
+    new Image().src = cheminDiapo((diapoIndex - 1 + guide.nbSlides) % guide.nbSlides);
+  }
+
+  document.getElementById("guide-prev").addEventListener("click", () => { diapoIndex--; majDiapo(); });
+  document.getElementById("guide-next").addEventListener("click", () => { diapoIndex++; majDiapo(); });
+
+  document.getElementById("guide-diaporama").addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") { diapoIndex--; majDiapo(); }
+    if (e.key === "ArrowRight") { diapoIndex++; majDiapo(); }
+  });
+
+  // Balayage tactile (mobile) pour passer d'une diapositive à l'autre.
+  let toucheDepartX = null;
+  const zoneDiapo = document.getElementById("guide-diaporama");
+  zoneDiapo.addEventListener("touchstart", (e) => { toucheDepartX = e.changedTouches[0].clientX; }, { passive: true });
+  zoneDiapo.addEventListener("touchend", (e) => {
+    if (toucheDepartX === null) return;
+    const delta = e.changedTouches[0].clientX - toucheDepartX;
+    if (Math.abs(delta) > 40) { diapoIndex += delta < 0 ? 1 : -1; majDiapo(); }
+    toucheDepartX = null;
+  }, { passive: true });
+
+  document.getElementById("guide-lien-gslide").href = `https://docs.google.com/presentation/d/${guide.gslideId}/edit`;
+
+  majDiapo();
 </script>
 </body>
 </html>
