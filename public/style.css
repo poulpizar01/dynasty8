@@ -427,7 +427,7 @@ button { font-family: inherit; cursor: pointer; }
      droit du hero, laissant apparaître une bande du fond derrière. */
   max-width: none;
   object-fit: cover;
-  object-position: center 38%;
+  object-position: center 56%;
   opacity: 0.92;
   animation: hero-ville-derive 26s ease-in-out infinite;
 }
