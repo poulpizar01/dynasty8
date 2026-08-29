@@ -247,14 +247,18 @@ button { font-family: inherit; cursor: pointer; }
   display: none;
   flex-direction: column;
   position: absolute;
-  top: calc(100% + 14px);
+  /* Collé juste sous le lien (pas de "trou" invisible entre les deux) : sinon
+     la souris quitte la zone survolée en descendant vers le sous-menu et
+     celui-ci se referme avant qu'on puisse cliquer dessus. L'espace visuel
+     de 14px est recréé à l'intérieur, avec le padding-top ci-dessous. */
+  top: 100%;
   left: -18px;
   min-width: 230px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
-  padding: 8px;
+  padding: 18px 8px 8px;
   z-index: 40;
 }
 
