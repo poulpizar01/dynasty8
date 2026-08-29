@@ -27,13 +27,13 @@
 </section>
 
 <section class="section serre">
-  <div class="conteneur" style="max-width:820px;">
-    <div class="section-entete" style="text-align:left;margin:0 0 24px;">
-      <span class="etiquette">Guide</span>
+  <div class="conteneur" style="max-width:980px;">
+    <div class="section-entete" style="text-align:left;margin:0 0 32px;">
+      <span class="etiquette">Guide officiel</span>
       <h2>Ce que cette cohérence justifie</h2>
     </div>
-    <div id="coherence-points" class="fiche-carac" style="gap:36px;"></div>
-    <p class="champ-aide" style="margin-top:24px;">Ce guide donne les grandes lignes. Pour toute question sur un cas précis, un agent Dynasty 8 peut vous répondre directement sur le Discord du serveur.</p>
+    <div id="coherence-sections"></div>
+    <p class="champ-aide" style="margin-top:24px;">Ce guide reprend le règlement officiel de la cohérence. Pour toute question sur un cas précis, un agent Dynasty 8 peut vous répondre directement sur le Discord du serveur.</p>
   </div>
 </section>
 
@@ -63,47 +63,323 @@
 <script>
   initialiserLayout("coherences");
 
-  // Contenu de guide par cohérence. Ce texte est indicatif : il donne le principe
-  // général de chaque cohérence pour orienter les résidents, mais l'agence Dynasty 8
-  // reste seule référence pour les règles précises du serveur.
+  // Contenu des guides de cohérence : règlement officiel Dynasty 8, repris des fiches
+  // de référence de l'agence pour chaque zone / type de bien. Trois formats de bloc :
+  //  - "regles"     : liste de règles à puces
+  //  - "biens"      : grille de biens avec tarifs (achat / location / coffre)
+  //  - "interieurs" : grille "type de bâtiment -> intérieurs possibles"
   const GUIDES_COHERENCE = {
     "Habitation": {
       icone: "🏠",
-      intro: "La cohérence Habitation atteste que votre personnage dispose d'un logement légal à Los Santos — la base de toute vie RP stable en ville.",
-      points: [
-        ["Résidence", "Justifie une adresse fixe pour votre personnage : courrier, visites, vie de quartier."],
-        ["Biens personnels", "Conditionne la possession de certains objets ou biens de valeur entreposés chez vous."],
-        ["Accès", "Ouvre l'accès aux scènes RP liées au domicile : réceptions, voisinage, sécurité du logement."],
+      intro: "La cohérence Habitation atteste que votre personnage dispose d'un logement légal à Los Santos, avec un intérieur cohérent par rapport au bâtiment choisi.",
+      sections: [
+        {
+          titre: "Rappels importants",
+          type: "regles",
+          items: [
+            "Tout bien loué doit être reloué avant sa date d'échéance, sous peine de perdre l'habitation et vos coffres si quelqu'un achète la porte.",
+            "Toutes les portes barricadées sont invendables.",
+            "Les maisons de type Maison 2 à 8 doivent impérativement avoir un garage 2 places minimum lié.",
+            "Dans les zones Flat 2 et Flat 3, un porche pouvant accueillir un garage 2 places n'est pas obligatoire à l'achat, mais aucun retour en arrière n'est possible si vous changez d'avis plus tard.",
+            "Toute habitation doit être liée à son garage au moment de l'achat ou de la location : impossible de l'ajouter après coup.",
+            "Toute autre habitation possédant un garage dans sa structure doit obligatoirement lui être liée.",
+            "Une porte de garage ne peut contenir un entrepôt que si le garage est surélevé d'une marche de la taille d'un escalier.",
+            "Toute location ou vente d'un bien en zone d'entreprise doit être faite au nom de l'entreprise.",
+          ],
+        },
+        {
+          titre: "Autorisation — entreprises & familles officielles",
+          type: "regles",
+          items: [
+            "La validation écrite de votre référent attitré est obligatoire.",
+            "Une photo de la porte concernée est exigée.",
+            "Le type d'habitation souhaité ainsi que la raison doivent être précisés.",
+            "Une photo du GPS ou du /getpos est nécessaire.",
+            "En cas de doute, l'agence vérifie que la personne est bien dans le référencement concerné.",
+          ],
+        },
+        {
+          titre: "Motels & caravanes",
+          type: "biens",
+          items: [
+            { nom: "Motel", location: "2 525$", coffre: "150 kg", note: "Bâtiment à multiples portes côte à côte, souvent une cour intérieure. Ne peut pas être relié à un garage en dehors d'un multipoint." },
+            { nom: "Caravane meublée", location: "5 250$", coffre: "150 kg", note: "Disponible uniquement à la location, dans le nord. Un seul intérieur possible même si d'autres portes existent." },
+            { nom: "Caravane non meublée", location: "5 250$", coffre: "150 kg", note: "Garage 2 places possible même sans porte de garage." },
+          ],
+        },
+        {
+          titre: "Lester & Flats",
+          type: "biens",
+          items: [
+            { nom: "Lester", achat: "43 750$", location: "5 250$", coffre: "250 kg", note: "Petite maison de plain-pied, Sandy Shore et quartiers pauvres. Garage 2 places possible même sans porte." },
+            { nom: "Flat 1", achat: "52 500$ HT", location: "7 000$ HT", coffre: "250 kg", note: "Quartiers pauvres et quartiers gangs. Garage 2 places possible même sans porte." },
+            { nom: "Flat 1 non meublé", achat: "61 250$ HT", location: "7 000$ HT", coffre: "350 kg" },
+            { nom: "Flat 2", achat: "35 000$ HT", location: "4 375$ HT", coffre: "200 kg", note: "Zone Vinewood. Garage 2 places possible sous les porches, si une place est libre." },
+            { nom: "Flat 3", achat: "61 250$ HT", location: "7 000$ HT", coffre: "350 kg", note: "Bord de mer, canaux de Vespucci et Roxwood. Garage 2 ou 6 places selon les portes disponibles. Emplacement limité à certaines zones." },
+            { nom: "Flat 3 non meublé", achat: "61 250$ HT", location: "7 000$ HT", coffre: "350 kg" },
+          ],
+        },
+        {
+          titre: "Maisons",
+          type: "biens",
+          items: [
+            { nom: "Maison 1 non meublée", achat: "43 750$ HT", location: "5 250$ HT", coffre: "250 kg", note: "Logement « passe-partout » autour de la place des Cubes, utilisé quand aucun autre bien ne correspond." },
+            { nom: "Maison 2", achat: "61 250$ HT", location: "8 750$ HT", coffre: "350 kg", note: "Mirror Park, Sandy Shore, Île de Paleto, Roxwood. Garage 2 places minimum obligatoire si une porte est disponible ; garage 6 places possible sous porche dans le nord." },
+            { nom: "Maison 2 non meublée", achat: "61 250$ HT", location: "8 750$ HT", coffre: "350 kg" },
+            { nom: "Maisons 3 à 5", achat: "262 500$ HT", location: "13 125$ HT", coffre: "400 kg" },
+            { nom: "Maisons 6 à 8", achat: "210 000$ HT", location: "10 500$ HT", coffre: "350 kg", note: "Alternatives à la Maison 2, avec un aménagement différent." },
+          ],
+        },
+        {
+          titre: "Appartements",
+          type: "biens",
+          items: [
+            { nom: "Appartements non meublés 1 à 4", achat: "385 000$ HT", location: "19 250$ HT", coffre: "500 kg", note: "Immeubles propres en ville. Les versions 3 et 4 peuvent être placées sur des biens type Maison 2." },
+            { nom: "Petit appartement non meublé 3", achat: "200 000$ HT", location: "10 000$ HT", coffre: "300 kg" },
+            { nom: "Petit appartement non meublé 4", achat: "215 000$ HT", location: "10 500$ HT", coffre: "300 kg" },
+            { nom: "Petit appartement non meublé 5", achat: "230 000$ HT", location: "11 000$ HT", coffre: "300 kg" },
+            { nom: "Petits appartements non meublés 6 à 8", achat: "250 000$ HT", location: "13 000$ HT", coffre: "300 kg", note: "Sur des maisons, bâtiments propres et certains Flat 3 modernes à une seule porte." },
+          ],
+        },
+        {
+          titre: "Villas & Ranch",
+          type: "biens",
+          items: [
+            { nom: "Villa 1 à 9 (+ non meublée)", achat: "1 750 000$ HT", location: "175 000$ HT", coffre: "550 kg", note: "Hauteurs de Vinewood et bord de mer vers Paleto. Une porte de garage : 10 ou 25 places. Deux portes : un 25 places (deux portes condamnées) ou deux 10 places. 1 entrepôt possible par villa (500 kg, 1T ou 1T5)." },
+            { nom: "Villa Michael & Franklin", achat: "3 500 000$ HT", location: "175 000$ HT", coffre: "550 kg", note: "Mêmes règles de cohérence que les Villas 1 à 9, seul le prix d'achat change." },
+            { nom: "Ranch", achat: "6 125 000$ HT", location: "175 000$ HT", coffre: "550 kg", note: "Fait partie des villas, mais réservé aux propriétés à l'architecture ancienne (bois, pierre)." },
+          ],
+        },
+        {
+          titre: "Duplex, Headquarters & Bureaux",
+          type: "biens",
+          items: [
+            { nom: "Duplex / Duplex non meublé 1 à 8", achat: "875 000$ HT", location: "87 500$ HT", coffre: "500 kg", note: "Biens VIP, dans des buildings luxueux, principalement autour du Golf." },
+            { nom: "Headquarter 1 à 4", achat: "3 500 000$ HT", location: "175 500$ HT", coffre: "750 kg", note: "Duplex + bureau réunis. Bien haut de gamme, parfait pour un siège d'entreprise." },
+            { nom: "Bureau 1 & 6", achat: "35 000$ HT", location: "3 500$ HT", coffre: "750 kg", note: "Disponibles à l'achat et à la location pour les citoyens." },
+            { nom: "Bureau 2 à 5", achat: "1 400 000$ HT", location: "70 000$ HT", coffre: "750 kg", note: "Réservés aux entreprises, dans des buildings luxueux." },
+            { nom: "Penthouse", achat: "7 000 000$ HT", location: "262 500$ HT", coffre: "800 kg", note: "Uniquement dans les buildings les plus luxueux." },
+          ],
+        },
+        {
+          titre: "Commerces spéciaux (accord staff requis)",
+          type: "biens",
+          items: [
+            { nom: "Bar", achat: "700 000$ HT", location: "35 000$ HT", coffre: "500 kg" },
+            { nom: "Biker", achat: "525 000$ HT", location: "26 250$ HT", coffre: "500 kg" },
+            { nom: "Tequila-la non meublé", achat: "700 000$ HT", location: "35 000$ HT", coffre: "500 kg" },
+          ],
+        },
+        {
+          titre: "Entrepôts, Plantation & Black Box",
+          type: "biens",
+          items: [
+            { nom: "Petit entrepôt (500 kg)", location: "8 750$ HT", note: "Disponible uniquement à la location." },
+            { nom: "Entrepôt moyen (1T)", location: "17 500$ HT", note: "Disponible uniquement à la location." },
+            { nom: "Grand entrepôt (1T5, + version non meublée)", achat: "262 500$ HT", location: "61 250$ HT", note: "Réservé aux membres VIP+." },
+            { nom: "Plantation", achat: "50 000$ HT", coffre: "250 kg", note: "Uniquement à l'achat. Toujours au rez-de-chaussée : l'intérieur comprend un escalier vers un sous-sol, incohérent à l'étage." },
+            { nom: "Black Box", coffre: "500 kg", note: "S'installe sur un entrepôt 1T5, un Multipoint ou un emplacement Duplex. Équivaut à l'espace de deux entrepôts 1T5." },
+          ],
+        },
       ],
     },
     "Garage": {
       icone: "🚗",
-      intro: "La cohérence Garage atteste que votre personnage dispose d'un espace de stationnement ou de stockage pour ses véhicules.",
-      points: [
-        ["Stationnement", "Justifie où vos véhicules sont garés en dehors de vos trajets."],
-        ["Multi-véhicules", "Nécessaire pour posséder plusieurs véhicules ou des véhicules de collection."],
-        ["Sécurité", "Un garage fermé limite les risques de vol RP par rapport à un stationnement en rue."],
+      intro: "La cohérence Garage relie la taille et le standing d'un bâtiment à sa capacité de stationnement réelle : un petit local ne peut pas justifier un grand parking, et inversement.",
+      sections: [
+        {
+          titre: "Principe général",
+          type: "regles",
+          items: [
+            "La taille ou le standing du bâtiment détermine la contenance maximale qu'il peut accueillir.",
+            "Un petit bâtiment ou un entrepôt modeste ne peut pas contenir 20 places de stationnement : ce serait incohérent avec sa taille et son intérieur réel.",
+            "Un gros bâtiment en zone industrielle peut accueillir de nombreux véhicules, mais ne correspond pas à un bâtiment luxueux : on n'y placera ni 20, ni 25 places.",
+            "Un bâtiment haut de gamme avec 20 places implique une structure conséquente.",
+            "Lors de la vente d'un garage, il faut toujours vérifier que la capacité demandée reste cohérente avec le bâtiment.",
+          ],
+        },
+        {
+          titre: "Placer un entrepôt à la place d'un garage",
+          type: "regles",
+          items: [
+            "Le garage n'est pas accessible en voiture.",
+            "La porte de garage se trouve en hauteur (marches trop hautes).",
+            "Un objet ne peut pas être déplacé, RP parlant (par exemple une benne sans roulettes).",
+            "La porte de garage n'est pas assez large.",
+          ],
+        },
+        {
+          titre: "Emplacements où rien ne peut être posé",
+          type: "regles",
+          items: [
+            "La porte est tordue.",
+            "La porte de garage porte une enseigne, dessus ou sur les côtés.",
+            "La porte est barricadée.",
+            "L'agent doit néanmoins toujours poser un garage lorsque c'est possible, pour permettre au client d'y ranger un Benson (hors Porsche).",
+            "Sur un bâtiment avec une porte de garage intégrée (type Flat 2 / Flat 3), le garage doit obligatoirement être lié à l'habitation.",
+          ],
+        },
+        {
+          titre: "Tarifs des garages",
+          type: "biens",
+          items: [
+            { nom: "Garage 2 places", achat: "26 250$", location: "1 750$" },
+            { nom: "Garage 6 places", achat: "78 750$", location: "5 250$" },
+            { nom: "Garage 10 places", achat: "131 250$", location: "8 750$" },
+            { nom: "Garage 10 places VIP", achat: "131 250$", location: "8 750$" },
+            { nom: "Garage 20 places VIP", achat: "262 500$", location: "17 500$", note: "Uniquement dans des buildings luxueux." },
+            { nom: "Garage 25 places VIP", achat: "306 250$", location: "21 875$", note: "Zone luxueuse ou villa uniquement." },
+          ],
+        },
       ],
     },
     "Cayo Perico": {
       icone: "🏝️",
-      intro: "La cohérence Cayo Perico concerne les biens situés sur l'île de Cayo Perico, une zone de jeu à part avec ses propres conditions de résidence.",
-      points: [
-        ["Zone spécifique", "Cayo Perico fonctionne avec ses propres règles d'accès et de résidence, distinctes de Los Santos."],
-        ["Déplacements", "Vérifiez les moyens de transport disponibles vers l'île avant d'envisager d'y résider."],
-        ["Disponibilité", "Le nombre de biens sur l'île est limité : contactez un agent pour connaître les disponibilités actuelles."],
+      intro: "La cohérence Cayo Perico concerne les biens situés sur l'île de Cayo Perico, une zone de jeu à part avec ses propres intérieurs autorisés selon le type de bâtiment.",
+      sections: [
+        {
+          titre: "Intérieurs possibles par type de bâtiment",
+          type: "interieurs",
+          items: [
+            { titre: "Petite cabane", options: ["Motel", "Maison Cayo", "Maison 1 / non meublée"] },
+            { titre: "Petite maison", options: ["Lester", "Maison 2 / non meublée", "Appartement non meublé 3 et 4"] },
+            { titre: "Les grandes maisons", options: ["Maison 2 / non meublée", "Petit appartement non meublé 3 à 8", "Appartement non meublé 3 et 4"] },
+          ],
+        },
+        {
+          titre: "Zone réservée",
+          type: "regles",
+          items: [
+            "La Villa de Cayo : aucune habitation n'est possible, toute demande sera refusée.",
+          ],
+        },
       ],
     },
     "Roxwood": {
       icone: "🌲",
-      intro: "La cohérence Roxwood concerne les biens du secteur de Roxwood, un quartier résidentiel en périphérie de Los Santos.",
-      points: [
-        ["Secteur résidentiel", "Roxwood regroupe des biens plus isolés, souvent recherchés pour leur calme."],
-        ["Distance", "Pensez au temps de trajet vers le centre-ville pour vos activités RP quotidiennes."],
-        ["Disponibilité", "Contactez un agent pour connaître les biens actuellement libres dans ce secteur."],
+      intro: "La cohérence Roxwood concerne le secteur résidentiel de Roxwood, avec ses propres zones réservées et ses règles de garages spécifiques aux grandes villas du secteur.",
+      sections: [
+        {
+          titre: "Emplacements interdits",
+          type: "regles",
+          items: [
+            "Un garage sur une porte ouverte.",
+            "Une habitation sur une façade de magasin.",
+          ],
+        },
+        {
+          titre: "Zones réservées — ventes interdites",
+          type: "regles",
+          items: [
+            "Nouvelle Zone Roxwood et Ancienne Zone Roxwood : les ventes y sont interdites, sauf en Multipoint.",
+            "Plusieurs villas du secteur : la vente en est interdite (seule la location reste possible).",
+            "Toute la zone du circuit de course et de la piste d'aéroport : ventes interdites.",
+            "Nouvelle Forêt de Roxwood : zone réservée.",
+          ],
+        },
+        {
+          titre: "Garages des villas Roxwood",
+          type: "regles",
+          items: [
+            "Villa 1 à 11 et villa non meublée : possibilité de 4 garages 10 places, ou d'un garage 25 places plus deux garages 10 places.",
+            "Les maisons à deux étages de ce type sont considérées comme des villas et suivent la même règle : un garage 25 places, ou deux garages 10 places si deux portes sont présentes.",
+          ],
+        },
+        {
+          titre: "Biens courants du secteur",
+          type: "biens",
+          items: [
+            { nom: "Maison 2 et équivalents non meublés", achat: "61 250$", location: "8 750$", coffre: "350 kg" },
+            { nom: "Maisons 3 à 5 / 6 à 8", achat: "210 000$ – 262 500$", location: "10 500$ – 13 125$", coffre: "350-400 kg" },
+            { nom: "Petits appartements non meublés 3 à 8", achat: "200 000$ – 250 000$", location: "10 000$ – 13 000$", coffre: "300 kg" },
+            { nom: "Appartements non meublés 3 & 4", achat: "385 000$", location: "19 250$", coffre: "500 kg" },
+            { nom: "Motel", location: "2 525$", coffre: "150 kg", note: "Mêmes règles que le Motel de la cohérence Habitation." },
+            { nom: "Flat 3 (+ non meublé)", achat: "61 250$", location: "7 000$", coffre: "350 kg" },
+          ],
+        },
+      ],
+    },
+    "Portolina": {
+      icone: "🛥️",
+      intro: "La cohérence Portolina encadre la résidence sur l'île de Portolina : un visa de citoyen est obligatoire, et l'accès aux biens dépend de votre statut (citoyen, patron, visa de travail).",
+      sections: [
+        {
+          titre: "Règlement de résidence",
+          type: "regles",
+          items: [
+            "Un visa de citoyen est obligatoire pour pouvoir habiter sur l'île.",
+            "Seules les locations sont autorisées pour les citoyens.",
+            "Exception : le Patron, le Co-Patron ainsi que le LS Army peuvent posséder (acheter) une habitation.",
+            "Si l'un d'eux quitte son poste, son habitation est supprimée sans remboursement.",
+            "Avec un visa de travail, il est possible de louer un entrepôt 1T ou 500 kg au niveau du Multipoint.",
+            "Si une personne achète un entrepôt puis ne travaille plus sur l'île, celui-ci est supprimé sans remboursement.",
+            "Chaque habitant n'a droit qu'à une seule habitation par Multipoint, et une seule maison au total.",
+          ],
+        },
+        {
+          titre: "Intérieurs possibles par type de bâtiment",
+          type: "interieurs",
+          items: [
+            { titre: "Petite cabane", options: ["Motel", "Cayo empty house", "House 1 / Low-End unfurnished"] },
+            { titre: "Petite maison", options: ["Lester", "House 2 / Small house unfurnished", "Unfurnished Flat 3 et 4"], note: "Si un porche est présent, un garage 2 ou 6 places peut être placé." },
+            { titre: "Les grandes maisons", options: ["House 2 / Small House Unfurnished", "Small Flat Unfurnished 3 à 8", "Unfurnished Flat 3 et 4"], note: "Un garage 2 ou 6 places peut être ajouté même sans garage ni porche existant." },
+          ],
+        },
+        {
+          titre: "Zones & Multipoints",
+          type: "regles",
+          items: [
+            "Zone interdite à la vente : aucune habitation n'est possible, toute demande sera refusée.",
+            "Multipoint Habitation : achat autorisé pour les citoyens de Portolina uniquement.",
+            "Multipoint Entrepôt : achat de l'entrepôt 1T5 autorisé pour les citoyens de Portolina ; locations des entrepôts 500 kg / 1T ouvertes sur présentation d'un visa de travail.",
+          ],
+        },
       ],
     },
   };
+
+  function rendreSection(s) {
+    if (s.type === "regles") {
+      return `
+        <div class="guide-bloc">
+          <h3>${echapper(s.titre)}</h3>
+          <ul class="guide-liste">${s.items.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul>
+        </div>`;
+    }
+    if (s.type === "biens") {
+      return `
+        <div class="guide-bloc">
+          <h3>${echapper(s.titre)}</h3>
+          <div class="guide-biens-grille">
+            ${s.items.map((b) => `
+              <div class="guide-bien-carte">
+                <strong>${echapper(b.nom)}</strong>
+                <div class="guide-bien-prix">
+                  ${b.achat ? `<span><em>Achat</em> ${echapper(b.achat)}</span>` : ""}
+                  ${b.location ? `<span><em>Location</em> ${echapper(b.location)}</span>` : ""}
+                  ${b.coffre ? `<span><em>Coffre</em> ${echapper(b.coffre)}</span>` : ""}
+                </div>
+                ${b.note ? `<p class="guide-bien-note">${echapper(b.note)}</p>` : ""}
+              </div>`).join("")}
+          </div>
+        </div>`;
+    }
+    if (s.type === "interieurs") {
+      return `
+        <div class="guide-bloc">
+          <h3>${echapper(s.titre)}</h3>
+          <div class="guide-biens-grille">
+            ${s.items.map((it) => `
+              <div class="guide-bien-carte">
+                <strong>${echapper(it.titre)}</strong>
+                <p class="guide-interieur-options">${it.options.map(echapper).join(" · ")}</p>
+                ${it.note ? `<p class="guide-bien-note">${echapper(it.note)}</p>` : ""}
+              </div>`).join("")}
+          </div>
+        </div>`;
+    }
+    return "";
+  }
 
   const zoneBrute = new URLSearchParams(window.location.search).get("zone") || "Habitation";
   const zone = Object.keys(GUIDES_COHERENCE).includes(zoneBrute) ? zoneBrute : "Habitation";
@@ -114,9 +390,7 @@
   document.getElementById("coherence-intro").textContent = guide.intro;
   document.getElementById("coherence-catalogue-titre").textContent = `Biens rattachés à la cohérence ${zone}`;
   document.title = `Cohérence ${zone} — Dynasty 8`;
-  document.getElementById("coherence-points").innerHTML = guide.points
-    .map(([titre, texte]) => `<div style="flex:1 1 220px;max-width:260px;"><strong>${echapper(titre)}</strong>${echapper(texte)}</div>`)
-    .join("");
+  document.getElementById("coherence-sections").innerHTML = guide.sections.map(rendreSection).join("");
 
   chargerBiens({ coherence: zone, cible: "grille-biens", videMessage: `Aucun bien rattaché à la cohérence ${zone} pour le moment.` });
 

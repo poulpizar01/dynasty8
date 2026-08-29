@@ -822,6 +822,36 @@ section.section.serre { padding: 56px 24px; }
 .carte-hub p { color: var(--text-muted); font-size: 0.92rem; flex: 1; margin: 0; }
 .carte-hub .carte-hub-fleche { color: var(--gold); font-size: 0.88rem; font-weight: 600; margin-top: 6px; }
 
+/* ---------- pages de cohérence : blocs de règlement (règles / biens / intérieurs) ---------- */
+
+.guide-bloc { margin-bottom: 34px; }
+.guide-bloc:last-child { margin-bottom: 0; }
+.guide-bloc h3 {
+  font-size: 1.05rem; color: var(--gold-strong); margin-bottom: 14px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.guide-liste { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.guide-liste li {
+  position: relative; padding-left: 22px; color: var(--text-muted); font-size: 0.94rem; line-height: 1.55;
+}
+.guide-liste li::before {
+  content: "▸"; position: absolute; left: 0; top: 0; color: var(--gold);
+}
+.guide-biens-grille {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px;
+}
+.guide-bien-carte {
+  padding: 18px 20px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg-card); transition: border-color 0.2s;
+}
+.guide-bien-carte:hover { border-color: var(--gold); }
+.guide-bien-carte strong { display: block; color: var(--text); font-size: 0.98rem; margin-bottom: 10px; }
+.guide-bien-prix { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 8px; }
+.guide-bien-prix span { font-size: 0.85rem; color: var(--gold-strong); }
+.guide-bien-prix span em { font-style: normal; color: var(--text-faint); margin-right: 4px; }
+.guide-bien-note { font-size: 0.82rem; color: var(--text-faint); margin: 0; line-height: 1.5; }
+.guide-interieur-options { font-size: 0.88rem; color: var(--text-muted); margin: 0 0 8px; }
+
 .grille-equipe { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 22px; }
 .carte-membre { text-align: center; }
 .carte-membre .avatar {
