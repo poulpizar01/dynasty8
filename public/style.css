@@ -734,8 +734,8 @@ section.section.serre { padding: 56px 24px; }
 .carte-bien .prix span { font-size: 0.75rem; font-weight: 500; color: var(--text-faint); font-family: "Inter", sans-serif; }
 .prix-double { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
 .prix-double .prix-ligne {
-  display: flex; align-items: center; gap: 8px;
-  background: rgba(230, 192, 127, 0.14); border: 1px solid rgba(230, 192, 127, 0.4);
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  background: var(--bg); border: 1px solid rgba(230, 192, 127, 0.4);
   border-radius: 8px; padding: 7px 12px;
   font-size: 1.15rem; font-weight: 800; font-family: "Poppins", sans-serif; color: var(--gold-light);
 }
@@ -746,8 +746,8 @@ section.section.serre { padding: 56px 24px; }
 }
 .fiche-prix-double { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
 .fiche-prix-double .fiche-prix-ligne {
-  display: flex; align-items: center; gap: 12px;
-  background: rgba(230, 192, 127, 0.14); border: 1px solid rgba(230, 192, 127, 0.4);
+  display: flex; align-items: center; gap: 12px; white-space: nowrap;
+  background: var(--bg); border: 1px solid rgba(230, 192, 127, 0.4);
   border-radius: 10px; padding: 10px 16px;
   font-family: "Poppins", sans-serif; font-weight: 800; font-size: 1.5rem; color: var(--gold-light);
 }

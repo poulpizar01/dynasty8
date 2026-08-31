@@ -116,10 +116,14 @@ function initialiserLayout(cleActive) {
 // ---- petites fonctions utilitaires partagées ----
 
 function formaterPrix(valeur) {
-  const n = Number(valeur) || 0;
+  const n = Math.round(Number(valeur) || 0);
+  // Espace bien visible tous les 3 chiffres (milliers, millions...) : on ne
+  // laisse pas le navigateur choisir l'espacement (toLocaleString utilise une
+  // espace fine à peine visible en gras) — on l'écrit nous-même.
+  const chiffres = Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   // "HT" (hors taxe) : les prix du catalogue Dynasty 8 sont donnés hors taxe,
   // comme dans le règlement officiel des cohérences.
-  return n.toLocaleString("fr-FR") + " $ HT";
+  return (n < 0 ? "-" : "") + chiffres + " $ HT";
 }
 
 function echapper(texte) {
