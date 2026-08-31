@@ -122,17 +122,6 @@
   </div>
 </section>
 
-<section class="section alterne">
-  <div class="conteneur">
-    <div class="section-entete">
-      <span class="etiquette">Ventes</span>
-      <h2>Nos dernières ventes</h2>
-      <p>Un aperçu des biens récemment vendus par nos agents à Los Santos.</p>
-    </div>
-    <div class="carrousel-scroll" id="grille-ventes"></div>
-  </div>
-</section>
-
 <section class="section">
   <div class="conteneur">
     <div class="section-entete">
@@ -183,8 +172,6 @@
     document.getElementById("stat-biens").textContent = liste.length;
     document.getElementById("stat-biens-libelle").textContent = liste.length > 1 ? "Biens au catalogue" : "Bien au catalogue";
   }).catch(() => {});
-
-  chargerBiens({ vendu: true, cible: "grille-ventes", videMessage: "Aucune vente à afficher pour le moment. Cochez « Bien vendu » sur une annonce depuis l'espace agents pour qu'elle apparaisse ici." });
 
   // Fond animé du hero : fenêtres qui scintillent au hasard sur la silhouette de ville.
   const zoneVille = document.getElementById("hero-ville");
