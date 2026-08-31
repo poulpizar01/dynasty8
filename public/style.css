@@ -5,71 +5,191 @@
    ========================================================================== */
 
 :root {
-  /* Thème "bleu velours & or" — inspiré d'un carton d'invitation de gala : fond bleu nuit
-     profond façon velours, lignes et accents dorés, texte ivoire. Le vert du logo est
-     conservé uniquement pour un usage sémantique ponctuel (statut "disponible"), l'or
-     devient l'accent principal partout ailleurs sur le site. */
-  --bg: #0a0f22;
-  --bg-elevated: #0e1530;
-  --bg-card: #121a3c;
-  --bg-card-hover: #182252;
-  --border: #2b3566;
-  --border-light: #3d4a86;
-  --text: #f4eeda;
-  --text-muted: #b9b7cf;
-  --text-faint: #82829f;
+  /* ==== Thème "Marbre & Or" — refonte visuelle (brief du 31/08/2026) ====
+     Palette et tokens de référence : tout le reste du fichier continue à
+     utiliser les anciens noms de variables (--bg, --gold, --radius, etc.)
+     ci-dessous redéfinis comme de simples alias vers ces tokens — remapper
+     ainsi plutôt que renommer 1200 lignes de CSS évite les oublis. */
+
+  /* ---- Bleus nuit ---- */
+  --d8-navy-950: #060c1a;
+  --d8-navy-900: #0a1428;
+  --d8-navy-800: #0e1b33;
+  --d8-navy-700: #142544;
+  --d8-navy-600: #1b3055;
+
+  /* ---- Ors ---- */
+  --d8-gold-100: #fbf3df;
+  --d8-gold-300: #f2dfa8;
+  --d8-gold-400: #e4c77e;
+  --d8-gold-500: #c9a55c;
+  --d8-gold-600: #a9843f;
+  --d8-gold-700: #7a5c2e;
+
+  /* ---- Accent statut (badge transaction) ---- */
+  --d8-red-500: #b03434;
+  --d8-red-700: #7c1f1f;
+
+  /* ---- Textes ---- */
+  --d8-cream: #f6efe2;
+  --d8-text: #e3ddd2;
+  --d8-muted: #9aa6be;
+
+  /* ---- Dégradés métal ---- */
+  --d8-grad-gold: linear-gradient(135deg, var(--d8-gold-700) 0%, var(--d8-gold-500) 22%, var(--d8-gold-300) 45%, var(--d8-gold-500) 70%, #8a6a34 100%);
+  --d8-grad-gold-soft: linear-gradient(180deg, rgba(242, 223, 168, 0.16), rgba(201, 165, 92, 0.06));
+  --d8-grad-card: linear-gradient(180deg, rgba(20, 37, 68, 0.94) 0%, rgba(10, 20, 40, 0.97) 100%);
+  --d8-grad-red: linear-gradient(180deg, var(--d8-red-500), var(--d8-red-700));
+
+  /* ---- Filet or (jamais un trait plein d'un bout à l'autre) ---- */
+  --d8-rule: linear-gradient(90deg, transparent, rgba(201, 165, 92, 0.55) 15%, rgba(201, 165, 92, 0.55) 85%, transparent);
+
+  /* ---- Rayons : angulaire = luxe, on bannit les gros arrondis ---- */
+  --d8-r-xs: 2px;
+  --d8-r-sm: 4px;
+  --d8-r-md: 6px;
+  --d8-r-pill: 999px;
+
+  /* ---- Ombres ---- */
+  --d8-shadow-card: 0 18px 40px -18px rgba(0, 0, 0, 0.78);
+  --d8-shadow-card-hover: 0 26px 60px -22px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(201, 165, 92, 0.45);
+  --d8-shadow-gold: 0 8px 24px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+
+  /* ---- Typo ---- */
+  --d8-font-display: "Cormorant Garamond", "Playfair Display", Georgia, serif;
+  --d8-font-ui: "Jost", "Inter", "Helvetica Neue", Arial, sans-serif;
+
+  /* ---- Rythme ---- */
+  --d8-gutter: clamp(20px, 4vw, 56px);
+  --d8-section-y: clamp(64px, 9vw, 132px);
+  --d8-maxw: 1240px;
+
+  /* ---- Transitions ---- */
+  --d8-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --d8-t: 280ms var(--d8-ease);
+
+  /* ==== Alias — anciennes variables, reliées aux tokens ci-dessus ==== */
+  --bg: var(--d8-navy-900);
+  --bg-elevated: var(--d8-navy-800);
+  --bg-card: var(--d8-navy-700);
+  --bg-card-hover: var(--d8-navy-600);
+  --border: rgba(201, 165, 92, 0.28);
+  --border-light: rgba(201, 165, 92, 0.45);
+  --text: var(--d8-cream);
+  --text-muted: var(--d8-text);
+  --text-faint: var(--d8-muted);
   --green: #1c9c50;
   --green-dark: #2fbf71;
   --green-light: #4ade80;
-  --gold: #cf9f56;
-  --gold-strong: #e6c07f;
-  --gold-light: #f6e3ba;
-  --accent: #cf9f56;
-  --accent-strong: #e6c07f;
-  --accent-contrast: #0a0f22;
-  /* Or "métallique" (façon Cabinet de Versailles) : dégradé à 5 tons qui simule un
-     reflet de métal poli, utilisé sur les prix, les boutons principaux et les badges
-     VIP — un aplat doré tout seul lit comme du "jaune", ce dégradé lit comme de l'or. */
-  --or-1: #5c4413;
-  --or-2: #a9791d;
-  --or-3: #e8c04a;
-  --or-4: #fff6d8;
-  --or-5: #c9962a;
-  --or-grad: linear-gradient(115deg, var(--or-1) 0%, var(--or-2) 16%, var(--or-3) 34%, var(--or-4) 48%, var(--or-3) 62%, var(--or-2) 80%, var(--or-1) 100%);
-  --or-contrast: #2a1d05;
-  --danger: #e8534a;
-  --danger-strong: #ff8177;
+  --gold: var(--d8-gold-500);
+  --gold-strong: var(--d8-gold-400);
+  --gold-light: var(--d8-gold-300);
+  --accent: var(--d8-gold-500);
+  --accent-strong: var(--d8-gold-400);
+  --accent-contrast: #1a1206;
+  /* Or "métallique" : dégradé à plusieurs tons qui simule un reflet de métal poli, sur
+     les prix, les boutons principaux et les badges VIP. */
+  --or-grad: var(--d8-grad-gold);
+  --or-contrast: #1a1206;
+  --danger: var(--d8-red-500);
+  --danger-strong: #d9605f;
   --success: #3fc774;
-  --radius: 14px;
-  --radius-sm: 8px;
-  --shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-  --max-width: 1180px;
+  --radius: var(--d8-r-md);
+  --radius-sm: var(--d8-r-sm);
+  --shadow: var(--d8-shadow-card);
+  --max-width: var(--d8-maxw);
   font-size: 16px;
 }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 
+/* Anneau de focus clavier visible partout (accessibilité) — jamais de outline:none
+   sans remplacement. Les champs de formulaire ont leur propre anneau (box-shadow,
+   voir plus bas) donc on ne double pas l'effet dessus. */
+:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 3px; }
+.champ input:focus-visible, .champ select:focus-visible, .champ textarea:focus-visible { outline: none; }
+
+/* Filet de sécurité global — en plus des règles ciblées déjà présentes plus bas,
+   on coupe TOUTES les animations/transitions si la personne a demandé de les réduire. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: 1ms !important; }
+}
+
+/* Légère apparition au défilement (voir reveler() dans layout.js). */
+.d8-reveal { opacity: 0; transform: translateY(10px); transition: opacity 460ms var(--d8-ease), transform 460ms var(--d8-ease); }
+.d8-reveal.d8-visible { opacity: 1; transform: translateY(0); }
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  line-height: 1.6;
+  font-family: var(--d8-font-ui);
+  font-weight: 300;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, h4 {
-  font-family: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-weight: 700;
-  line-height: 1.2;
-  margin: 0 0 0.5em;
-  letter-spacing: -0.2px;
+/* ---------- fond marbré (bleu nuit veiné d'or) ---------- */
+/* Couche fixe en CSS pur (pas d'image à charger) : quelques radiaux dorés très
+   discrets + un dégradé de fond, qui suggèrent le marbre sans jamais gêner la
+   lecture. Fixe (position:fixed) pour rester stable pendant le défilement. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(55% 30% at 12% 8%, rgba(201, 165, 92, 0.16), transparent 60%),
+    radial-gradient(40% 26% at 88% 22%, rgba(201, 165, 92, 0.13), transparent 62%),
+    radial-gradient(45% 24% at 22% 70%, rgba(201, 165, 92, 0.1), transparent 60%),
+    radial-gradient(38% 22% at 80% 88%, rgba(201, 165, 92, 0.09), transparent 60%),
+    radial-gradient(70% 50% at 50% 100%, rgba(27, 48, 85, 0.55), transparent 65%),
+    linear-gradient(160deg, var(--d8-navy-800) 0%, var(--d8-navy-900) 45%, var(--d8-navy-950) 100%);
+}
+/* Voile de lisibilité : assombrit le centre (là où s'assoit le texte) sans effacer
+   les veines dorées sur les bords. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 75% at 50% 0%, rgba(6, 12, 26, 0.2) 0%, rgba(6, 12, 26, 0.78) 70%, rgba(6, 12, 26, 0.92) 100%),
+    linear-gradient(180deg, rgba(6, 12, 26, 0.1) 0%, rgba(6, 12, 26, 0.55) 100%);
 }
 
-h1 { font-size: clamp(2rem, 4vw, 3.2rem); }
-h2 { font-size: clamp(1.6rem, 3vw, 2.3rem); }
-h3 { font-size: 1.3rem; }
+/* ---------- cadre de page (double filet or) ---------- */
+/* Élément décoratif fixe, injecté une fois par page (voir layout.js), présent sur
+   toutes les pages publiques. z-index sous l'en-tête (50) et sous les menus
+   déroulants pour ne jamais passer devant un élément cliquable. */
+.d8-frame {
+  position: fixed; inset: 18px; z-index: 45; pointer-events: none;
+  border: 1px solid rgba(201, 165, 92, 0.5);
+}
+.d8-frame::before {
+  content: ""; position: absolute; inset: 8px;
+  border: 1px solid rgba(201, 165, 92, 0.18);
+}
+@media (max-width: 768px) { .d8-frame { inset: 10px; } .d8-frame::before { display: none; } }
+@media (max-width: 480px) { .d8-frame { display: none; } }
+
+/* Titres : serif italique fine — jamais de gras, le luxe est dans la finesse. */
+h1, h2, h3, h4 {
+  font-family: var(--d8-font-display);
+  font-style: italic;
+  font-weight: 300;
+  line-height: 1.12;
+  margin: 0 0 0.5em;
+  letter-spacing: -0.01em;
+  color: var(--d8-cream);
+}
+
+h1 { font-size: clamp(2.5rem, 5.2vw, 4.25rem); line-height: 1.06; }
+h2 { font-size: clamp(1.9rem, 3.4vw, 3rem); }
+h3 { font-size: 1.3rem; font-weight: 500; }
 
 p { margin: 0 0 1em; color: var(--text-muted); }
 a { color: inherit; text-decoration: none; }
@@ -77,10 +197,22 @@ img { max-width: 100%; display: block; }
 ul { padding: 0; margin: 0; list-style: none; }
 button { font-family: inherit; cursor: pointer; }
 
+/* Sur-titre ("eyebrow") : capitale très espacée, signature du thème — remplace les
+   anciennes pastilles arrondies au-dessus des titres de hero. */
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--d8-font-ui); font-weight: 500; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.28em; color: var(--d8-gold-500);
+}
+label, .eyebrow-label {
+  font-family: var(--d8-font-ui); font-weight: 400; font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.2em; color: var(--d8-muted);
+}
+
 .conteneur {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 var(--d8-gutter);
 }
 
 /* ---------- en-tête / navigation ---------- */
@@ -135,32 +267,47 @@ button { font-family: inherit; cursor: pointer; }
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-family: "Poppins", sans-serif;
-  font-size: 1.3rem;
-  font-weight: 700;
+  gap: 14px;
   color: var(--text);
   white-space: nowrap;
 }
-.logo img { height: 34px; width: auto; transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.logo img { height: 34px; width: auto; flex-shrink: 0; transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .logo-entete { height: 34px; }
 .logo-pied { height: 42px; }
-
-.logo img { flex-shrink: 0; }
-.logo .huit { color: var(--accent); }
 .logo:hover img { transform: scale(1.07) rotate(-3deg); }
+
+/* En-tête : monogramme + filet or vertical + mot-repère "Dynasty 8" en serif italique
+   fine (le pied de page garde le logo complet historique, avec le texte intégré). */
+.logo-marque { height: 34px; }
+.logo-filet {
+  display: block; width: 1px; height: 18px; flex-shrink: 0;
+  background: linear-gradient(180deg, transparent, rgba(201, 165, 92, 0.6), transparent);
+}
+.logo-texte {
+  font-family: var(--d8-font-display); font-style: italic; font-weight: 300;
+  font-size: 22px; color: var(--d8-cream);
+}
+@media (max-width: 480px) { .logo-texte { display: none; } .logo-filet { display: none; } }
 
 .nav-principale {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 14px;
   flex-wrap: wrap;
+  row-gap: 8px;
 }
 
+/* 10 entrées (le site en garde 10 + "Espace agents", le brief n'en montrait que 5) :
+   on suit sa propre règle de repli — police et tracking réduits pour que tout
+   tienne sur une seule ligne dès 1280px sans rien masquer. */
 .nav-principale a {
   position: relative;
-  font-size: 0.92rem;
-  color: var(--text-muted);
+  font-family: var(--d8-font-ui);
+  font-size: 11.5px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(242, 223, 168, 0.72);
   padding: 6px 2px;
   border-bottom: 2px solid transparent;
   transition: color 0.15s;
@@ -182,8 +329,9 @@ button { font-family: inherit; cursor: pointer; }
 
 .nav-principale a:hover,
 .nav-principale a[aria-current="page"] {
-  color: var(--text);
+  color: var(--d8-gold-300);
 }
+.nav-principale a:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 3px; }
 
 .nav-principale a:hover::after,
 .nav-principale a[aria-current="page"]::after {
@@ -199,22 +347,34 @@ button { font-family: inherit; cursor: pointer; }
 
 .bouton-menu {
   display: none;
-  background: none;
-  border: 1px solid var(--border-light);
+  background: rgba(201, 165, 92, 0.1);
+  border: 1px solid rgba(201, 165, 92, 0.5);
   border-radius: var(--radius-sm);
-  color: var(--text);
+  color: var(--d8-gold-300);
   padding: 8px 10px;
 }
 
 @media (max-width: 880px) {
   .nav-principale { display: none; width: 100%; order: 3; flex-direction: column; align-items: flex-start; gap: 4px; }
   .nav-principale.ouvert { display: flex; }
-  .nav-principale a { width: 100%; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  /* Menu mobile : liens en grand serif italique empilés (plutôt que la petite
+     capitale espacée du menu desktop, illisible en pile sur un écran étroit). */
+  .nav-principale a {
+    width: 100%; padding: 14px 0; border-bottom: 1px solid var(--border);
+    font-family: var(--d8-font-display); font-style: italic; font-weight: 400;
+    font-size: 1.35rem; text-transform: none; letter-spacing: 0; color: var(--d8-cream);
+  }
   .nav-principale a::after { display: none; }
   .entete-barre { flex-wrap: wrap; }
   .bouton-menu { display: inline-flex; }
-  /* Sur mobile le menu se déplie sous une en-tête opaque en permanence : plus lisible qu'un fond transparent. */
-  .entete { background: rgba(10, 15, 34, 0.96); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+  /* Sur mobile le menu se déplie sous une en-tête opaque (marbre + voile renforcé)
+     en permanence : plus lisible qu'un fond transparent. */
+  .entete {
+    background:
+      radial-gradient(120% 60% at 50% 0%, rgba(201, 165, 92, 0.08), transparent 60%),
+      rgba(6, 12, 26, 0.97);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -282,9 +442,20 @@ button { font-family: inherit; cursor: pointer; }
   border-radius: var(--radius-sm);
   white-space: nowrap;
   border-bottom: none;
+  font-size: 12px;
 }
 .nav-sous-menu a::after { display: none; }
-.nav-sous-menu a:hover { background: var(--bg-card-hover); color: var(--text); }
+.nav-sous-menu a:hover { background: var(--bg-card-hover); color: var(--d8-gold-300); }
+/* Léger filet or entre chaque lien du sous-menu (jamais un trait plein d'un bout à
+   l'autre — cf. --d8-rule), à 25% d'opacité. */
+.nav-sous-menu a:not(:last-child) {
+  position: relative;
+}
+.nav-sous-menu a:not(:last-child)::before {
+  content: "";
+  position: absolute; left: 12px; right: 12px; bottom: 0;
+  height: 1px; background: var(--d8-rule); opacity: 0.25;
+}
 
 @media (max-width: 880px) {
   .nav-avec-sous-menu { flex-direction: column; align-items: flex-start; width: 100%; }
@@ -313,25 +484,32 @@ button { font-family: inherit; cursor: pointer; }
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 22px;
-  border-radius: var(--radius-sm);
-  font-size: 0.92rem;
-  font-weight: 600;
+  height: 40px;
+  padding: 0 20px;
+  border-radius: var(--d8-r-pill);
+  font-family: var(--d8-font-ui);
+  font-size: 11.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
   border: 1px solid transparent;
-  transition: transform 0.15s, background 0.15s, border-color 0.15s;
+  transition: transform var(--d8-t), background var(--d8-t), border-color var(--d8-t), box-shadow var(--d8-t), filter var(--d8-t);
   white-space: nowrap;
 }
 
 .btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 3px; }
+
+.btn-large { height: 52px; padding: 0 34px; font-size: 12.5px; }
+.btn-petit { height: 34px; padding: 0 16px; font-size: 10.5px; }
 
 .btn-or {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, var(--or-3), var(--or-5) 55%, var(--or-2));
+  background: var(--d8-grad-gold);
   color: var(--or-contrast);
-  border-color: rgba(255, 246, 216, 0.4);
-  box-shadow: 0 10px 24px -10px rgba(180, 133, 43, 0.55);
-  transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
+  border: 0;
+  box-shadow: var(--d8-shadow-gold);
 }
 /* Reflet lumineux discret : invisible au repos, ne balaie le bouton qu'au survol
    (contrairement à une barre diagonale fixe façon "bouton glacé" des années 2000,
@@ -348,8 +526,8 @@ button { font-family: inherit; cursor: pointer; }
   pointer-events: none;
 }
 .btn-or:hover {
+  transform: translateY(-1px);
   filter: brightness(1.06);
-  box-shadow: 0 14px 30px -10px rgba(180, 133, 43, 0.65);
 }
 .btn-or:hover::after { left: 140%; }
 @media (prefers-reduced-motion: reduce) {
@@ -357,11 +535,11 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .btn-fantome {
-  background: transparent;
-  border-color: var(--border-light);
-  color: var(--text);
+  background: rgba(201, 165, 92, 0.12);
+  border-color: rgba(201, 165, 92, 0.55);
+  color: var(--d8-gold-300);
 }
-.btn-fantome:hover { border-color: var(--gold); color: var(--gold-strong); }
+.btn-fantome:hover { background: rgba(201, 165, 92, 0.2); border-color: var(--d8-gold-400); }
 
 .btn-danger {
   background: rgba(232, 83, 74, 0.12);
@@ -370,42 +548,38 @@ button { font-family: inherit; cursor: pointer; }
 }
 .btn-danger:hover { background: rgba(232, 83, 74, 0.2); }
 
-.btn-petit { padding: 8px 14px; font-size: 0.82rem; }
-.btn-large { padding: 15px 30px; font-size: 1rem; }
 .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
 /* ---------- hero ---------- */
 
 .hero {
   position: relative;
-  padding: 110px 24px 90px;
+  padding: clamp(88px, 12vw, 160px) 24px var(--d8-section-y);
   text-align: center;
-  background:
-    radial-gradient(ellipse at top, rgba(207, 159, 86, 0.18), transparent 60%),
-    linear-gradient(180deg, var(--bg) 0%, var(--bg-elevated) 100%);
-  border-bottom: 1px solid var(--border);
+  /* Pas de fond ici : le marbre de body::before/::after (§ plus haut) reste visible
+     sur le hero, comme demandé par le brief — aucune "boîte" opaque ne le recouvre. */
 }
 
 .hero-etiquette {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border: 1px solid var(--border-light);
-  border-radius: 999px;
-  color: var(--gold);
-  font-size: 0.78rem;
-  letter-spacing: 1.5px;
+  gap: 10px;
+  font-family: var(--d8-font-ui);
+  font-weight: 500;
+  color: var(--d8-gold-500);
+  font-size: 11px;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
-  margin-bottom: 22px;
+  margin-bottom: 26px;
 }
 
 .hero h1 {
   max-width: 820px; margin-left: auto; margin-right: auto;
-  font-family: "Playfair Display", serif; font-style: italic; font-weight: 700;
+  background: linear-gradient(180deg, #ffffff 0%, var(--d8-cream) 45%, var(--d8-gold-300) 130%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .hero p.lead {
-  max-width: 620px;
+  max-width: 52ch;
   margin: 18px auto 34px;
   font-size: 1.08rem;
 }
@@ -419,19 +593,30 @@ button { font-family: inherit; cursor: pointer; }
 
 .hero-stats {
   display: flex;
-  gap: 48px;
   justify-content: center;
   margin-top: 64px;
   flex-wrap: wrap;
 }
 
-.hero-stats div { text-align: center; }
+.hero-stats div { text-align: center; position: relative; padding: 0 32px; }
+.hero-stats div:first-child { padding-left: 0; }
+.hero-stats div:last-child { padding-right: 0; }
+/* Filet vertical entre chaque statistique, plutôt qu'un simple espace (§6.5). */
+.hero-stats div + div::before {
+  content: "";
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 1px; height: 46px;
+  background: linear-gradient(180deg, transparent, rgba(201, 165, 92, 0.45), transparent);
+}
 .hero-stats strong {
-  display: block; font-family: "Playfair Display", serif; font-weight: 700; font-size: 1.8rem;
+  display: block; font-family: var(--d8-font-display); font-weight: 400; font-style: normal; font-size: 1.8rem;
   background: var(--or-grad); background-size: 220% 100%;
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.hero-stats span { font-size: 0.82rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 1px; }
+.hero-stats span {
+  font-family: var(--d8-font-ui); font-size: 10.5px; color: var(--text-faint);
+  text-transform: uppercase; letter-spacing: 0.2em;
+}
 
 /* ---------- hero d'accueil : variante "vitrine produit" (page d'accueil uniquement) ---------- */
 /* Cette classe s'ajoute à .hero seulement sur index.html : les autres pages gardent
@@ -638,17 +823,22 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ---------- sections génériques ---------- */
 
-section.section { padding: 84px 24px; }
-section.section.serre { padding: 56px 24px; }
+section.section { padding: var(--d8-section-y) 24px; position: relative; z-index: 1; }
+section.section.serre { padding: clamp(48px, 7vw, 84px) 24px; }
 .section-entete { text-align: center; max-width: 640px; margin: 0 auto 48px; }
 .section-entete .etiquette {
-  color: var(--gold);
-  text-transform: uppercase;
-  font-size: 0.78rem;
-  letter-spacing: 2px;
-  font-weight: 600;
+  font-family: var(--d8-font-ui); font-weight: 500; font-size: 11px;
+  color: var(--d8-gold-500); text-transform: uppercase; letter-spacing: 0.28em;
 }
-.alterne { background: var(--bg-elevated); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+/* Le marbre de fond (voir §4) reste visible sur le hero et les sections "aérées".
+   Les sections denses en contenu (listings, tableaux, formulaires) posent un panneau
+   opaque par-dessus, sinon les veines dorées du marbre mangent le texte. */
+.alterne,
+section.section.serre {
+  background: linear-gradient(180deg, rgba(20, 37, 68, 0.88), rgba(6, 12, 26, 0.94));
+  border-top: 1px solid rgba(201, 165, 92, 0.16);
+  border-bottom: 1px solid rgba(201, 165, 92, 0.16);
+}
 
 /* ---------- bandeau "standing" (accueil) : panneau sombre mettant en avant les biens exclusifs ---------- */
 /* Seul ce panneau est sombre — un accent volontaire et contenu, le reste du site
@@ -717,27 +907,40 @@ section.section.serre { padding: 56px 24px; }
 }
 
 .carte-bien {
+  position: relative;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-card);
+  border-radius: var(--d8-r-sm);
+  background: var(--d8-grad-card);
+  box-shadow: var(--d8-shadow-card);
   overflow: hidden;
-  transition: border-color 0.2s, transform 0.2s;
+  transition: border-color var(--d8-t), transform var(--d8-t), box-shadow var(--d8-t);
   display: flex;
   flex-direction: column;
 }
-.carte-bien:hover { border-color: var(--gold); transform: translateY(-3px); }
+.carte-bien:hover { border-color: var(--gold); transform: translateY(-4px); box-shadow: var(--d8-shadow-card-hover); }
+
+/* Équerres d'angle façon écrin à bijoux — discrètes, visibles seulement au survol. */
+.carte-bien::before,
+.carte-bien::after {
+  content: ""; position: absolute; z-index: 3; width: 14px; height: 14px;
+  opacity: 0; transition: opacity var(--d8-t); pointer-events: none;
+}
+.carte-bien::before { top: 8px; left: 8px; border-top: 1px solid rgba(242, 223, 168, 0.55); border-left: 1px solid rgba(242, 223, 168, 0.55); }
+.carte-bien::after { bottom: 8px; right: 8px; border-bottom: 1px solid rgba(242, 223, 168, 0.55); border-right: 1px solid rgba(242, 223, 168, 0.55); }
+.carte-bien:hover::before, .carte-bien:hover::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .carte-bien, .carte-bien::before, .carte-bien::after { transition: none; } }
+
 /* Petit rappel doré permanent (pas seulement au survol) sur les biens VIP/VIP+,
    pour qu'ils se distinguent vraiment dans une grille plutôt que de ne compter
    que sur la petite pastille "VIP" posée sur la photo. */
 .carte-bien:has(.badge-vip) {
   /* Liseré doré à 2 tons (clair + sombre) plutôt qu'une bordure plate : ça lit
-     comme un cadre ciselé/métallique, cohérent avec le reste du thème "Cabinet
-     de Versailles". */
+     comme un cadre ciselé/métallique. */
   border-color: transparent;
-  box-shadow: 0 0 0 1px var(--bg), 0 0 0 2.5px var(--or-4), 0 0 0 3.5px var(--or-2), 0 10px 26px -16px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 1px var(--bg), 0 0 0 2.5px var(--d8-gold-100), 0 0 0 3.5px var(--d8-gold-600), var(--d8-shadow-card);
 }
 .carte-bien:has(.badge-vip):hover {
-  box-shadow: 0 0 0 1px var(--bg), 0 0 0 2.5px var(--or-3), 0 0 0 3.5px var(--or-1), 0 14px 32px -16px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 1px var(--bg), 0 0 0 2.5px var(--d8-gold-300), 0 0 0 3.5px var(--d8-gold-700), var(--d8-shadow-card-hover);
 }
 
 .carte-bien .visuel {
@@ -748,75 +951,106 @@ section.section.serre { padding: 56px 24px; }
   justify-content: center;
   color: var(--text-faint);
   position: relative;
+  overflow: hidden;
 }
-.carte-bien .visuel img { width: 100%; height: 100%; object-fit: cover; }
+.carte-bien .visuel img { width: 100%; height: 100%; object-fit: cover; transition: transform 600ms var(--d8-ease); }
+.carte-bien:hover .visuel img { transform: scale(1.045); }
+@media (prefers-reduced-motion: reduce) { .carte-bien .visuel img { transition: none; } }
+/* Voile bas : la photo garde du contraste sous les badges posés dessus. */
+.carte-bien .visuel::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(10, 20, 40, 0) 45%, rgba(10, 20, 40, 0.72) 100%);
+}
 .carte-bien .badge-coeur {
-  position: absolute; top: 12px; left: 12px;
+  position: absolute; top: 12px; left: 12px; z-index: 2;
   background: var(--accent); color: var(--accent-contrast);
-  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-  padding: 5px 10px; border-radius: 999px; letter-spacing: 0.5px;
+  font-family: var(--d8-font-ui); font-size: 0.64rem; font-weight: 600; text-transform: uppercase;
+  padding: 6px 11px; border-radius: var(--d8-r-xs); letter-spacing: 0.14em;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
-/* "Vendu" reprend le vert reserve au statut/succes (voir --success), pour rester
-   distinct du "coup de coeur" (or) tout en gardant la meme forme de badge. */
-.carte-bien .badge-vendu { background: var(--success); color: #06210f; }
+/* "Vendu" : gris neutre plutôt que vert — on ne veut pas laisser croire que le bien
+   est encore "disponible". Pas de texte barré (moins lisible), juste une opacité réduite. */
+.carte-bien .badge-vendu { background: #4a5468; color: #eef0f6; opacity: 0.92; }
 .carte-bien .badge-transaction {
-  position: absolute; top: 12px; right: 12px;
-  background: rgba(10,15,34,0.75); border: 1px solid rgba(255,255,255,0.15);
-  color: #fbfaf6; font-size: 0.72rem; text-transform: uppercase;
-  padding: 5px 10px; border-radius: 999px; letter-spacing: 0.5px;
+  position: absolute; top: 12px; right: 12px; z-index: 2;
+  background: var(--d8-grad-red); color: #fff3ee;
+  font-family: var(--d8-font-ui); font-size: 0.64rem; font-weight: 500; text-transform: uppercase;
+  padding: 7px 12px; border-radius: var(--d8-r-xs); letter-spacing: 0.14em;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+/* "Location" seule : bleu nuit + liseré or plutôt que rouge (le rouge reste réservé
+   aux annonces qui incluent une vente). */
+.carte-bien .badge-transaction--location {
+  background: var(--d8-navy-600); border: 1px solid rgba(201, 165, 92, 0.45);
+  color: var(--d8-gold-300); box-shadow: none;
 }
 /* Bandeau bas de visuel : petites étiquettes secondaires (meublé, VIP, standing). */
 .carte-bien .badges-secondaires {
-  position: absolute; left: 12px; bottom: 12px;
+  position: absolute; left: 12px; bottom: 12px; z-index: 2;
   display: flex; gap: 6px; flex-wrap: wrap;
 }
 .carte-bien .badge-info {
-  background: rgba(10,15,34,0.8); border: 1px solid rgba(255,255,255,0.15);
-  color: var(--text); font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
-  padding: 4px 9px; border-radius: 999px; letter-spacing: 0.4px;
+  background: rgba(6, 12, 26, 0.82); border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text); font-family: var(--d8-font-ui); font-size: 0.6rem; font-weight: 500; text-transform: uppercase;
+  padding: 5px 10px; border-radius: var(--d8-r-pill); letter-spacing: 0.12em;
 }
 .carte-bien .badge-vip {
-  background: var(--or-grad); background-size: 220% 100%; border-color: var(--or-4); color: var(--or-contrast);
+  background: var(--or-grad); background-size: 220% 100%; border-color: var(--d8-gold-100); color: var(--or-contrast);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -1px 2px rgba(0, 0, 0, 0.3);
 }
 .carte-bien .badge-standing { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--accent-contrast); }
 
 .carte-bien .corps { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.carte-bien h3 { font-family: "Playfair Display", serif; font-weight: 700; font-size: 1.12rem; margin-bottom: 0; }
-.carte-bien .zone-tag { font-size: 0.78rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; }
+.carte-bien h3 { font-family: var(--d8-font-display); font-weight: 500; font-style: italic; font-size: 1.18rem; margin-bottom: 0; }
+.carte-bien .zone-tag { font-family: var(--d8-font-ui); font-size: 0.68rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.18em; }
 .carte-bien .description { font-size: 0.88rem; margin-bottom: 4px; flex: 1; }
 .carte-bien .pied {
   display: flex; align-items: center; justify-content: space-between;
-  margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border);
+  margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(201, 165, 92, 0.2);
 }
-.carte-bien .prix { font-family: "Poppins", sans-serif; font-weight: 700; font-size: 1.3rem; }
-.carte-bien .prix span:not(.prix-valeur) { font-size: 0.75rem; font-weight: 500; color: var(--text-faint); font-family: "Inter", sans-serif; }
-.prix-double { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+.carte-bien .prix { font-family: var(--d8-font-ui); font-weight: 500; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.carte-bien .prix span:not(.prix-valeur) { font-size: 0.72rem; font-weight: 400; color: var(--text-faint); }
+
+/* Bloc prix double (Vente + Location) : grille à 2 colonnes séparées par un filet or,
+   plutôt que deux "chips" empilées — plus sobre, façon fiche technique de maison de vente. */
+.prix-double {
+  display: grid; grid-template-columns: 1fr 1fr;
+  margin-top: 2px; padding-top: 12px; border-top: 1px solid rgba(201, 165, 92, 0.2);
+}
 .prix-double .prix-ligne {
-  display: flex; align-items: center; gap: 8px; white-space: nowrap;
-  background: var(--bg); border: 1px solid rgba(230, 192, 127, 0.4);
-  border-radius: 8px; padding: 7px 12px;
-  font-size: 1.15rem; font-weight: 800; font-family: "Poppins", sans-serif;
+  /* flex-wrap (pas flex-direction:column) : l'étiquette "Vente"/"Location" force le
+     retour à la ligne (flex-basis 100%, ci-dessous) mais le chiffre et son suffixe
+     "/sem." restent groupés sur la même ligne juste en-dessous. */
+  display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 4px; row-gap: 3px;
+  white-space: nowrap; padding-right: 12px;
+  font-size: 1.02rem; font-weight: 500; font-family: var(--d8-font-ui); font-variant-numeric: tabular-nums;
 }
-.prix-double .prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { font-size: 0.68rem; font-weight: 600; color: var(--text-faint); font-family: "Inter", sans-serif; }
+.prix-double .prix-ligne + .prix-ligne { padding-left: 12px; padding-right: 0; border-left: 1px solid rgba(201, 165, 92, 0.18); }
+.prix-double .prix-ligne > .prix-etiquette { flex: 0 0 100%; }
+.prix-double .prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { font-size: 0.64rem; font-weight: 400; color: var(--text-faint); }
 .prix-etiquette {
-  display: inline-block; min-width: 60px; font-size: 0.66rem; font-weight: 800; font-family: "Inter", sans-serif;
-  color: var(--gold); text-transform: uppercase; letter-spacing: 0.6px;
+  display: block; font-size: 0.62rem; font-weight: 500; font-family: var(--d8-font-ui);
+  color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.2em;
 }
-.fiche-prix-double { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.fiche-prix-double {
+  display: grid; grid-template-columns: 1fr 1fr;
+  margin-bottom: 8px; border: 1px solid rgba(201, 165, 92, 0.22); border-radius: var(--d8-r-sm); overflow: hidden;
+}
 .fiche-prix-double .fiche-prix-ligne {
-  display: flex; align-items: center; gap: 12px; white-space: nowrap;
-  background: var(--bg); border: 1px solid rgba(230, 192, 127, 0.4);
-  border-radius: 10px; padding: 10px 16px;
-  font-family: "Poppins", sans-serif; font-weight: 800; font-size: 1.5rem;
+  display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; row-gap: 5px; white-space: nowrap;
+  background: rgba(6, 12, 26, 0.4); padding: 14px 18px;
+  font-family: var(--d8-font-ui); font-weight: 500; font-size: 1.4rem; font-variant-numeric: tabular-nums;
 }
-.fiche-prix-double .fiche-prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { font-size: 0.75rem; font-weight: 500; color: var(--text-faint); font-family: "Inter", sans-serif; }
-.fiche-prix-double .prix-etiquette { min-width: 72px; font-size: 0.78rem; }
+.fiche-prix-double .fiche-prix-ligne > .prix-etiquette { flex: 0 0 100%; }
+.fiche-prix-double .fiche-prix-ligne + .fiche-prix-ligne { border-left: 1px solid rgba(201, 165, 92, 0.2); }
+.fiche-prix-double .fiche-prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { font-size: 0.72rem; font-weight: 400; color: var(--text-faint); }
+.fiche-prix-double .prix-etiquette { font-size: 0.72rem; }
 
 /* Le chiffre du prix (et lui seul) reçoit le dégradé "or métallique" — porté par un
-   <span class="prix-valeur"> dédié plutôt que par le conteneur (chip/flex) directement :
-   le dégradé texte (background-clip:text) doit s'appliquer à un élément dont le SEUL
-   contenu est le texte à colorer, sinon il se comporte mal sur un conteneur flex. */
+   <span class="prix-valeur"> dédié plutôt que par le conteneur directement : le dégradé
+   texte (background-clip:text) doit s'appliquer à un élément dont le SEUL contenu est
+   le texte à colorer, sinon il se comporte mal sur un conteneur flex/grid. */
 .prix-valeur {
   background: var(--or-grad); background-size: 220% 100%;
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -828,7 +1062,7 @@ section.section.serre { padding: 56px 24px; }
   border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-card);
   padding: 18px 20px; margin: 10px 0 14px;
 }
-.encart-contact-titre { font-family: "Poppins", sans-serif; color: var(--gold-strong); font-size: 1rem; margin-bottom: 12px; }
+.encart-contact-titre { font-family: var(--d8-font-ui); font-weight: 500; color: var(--gold-strong); font-size: 0.95rem; margin-bottom: 12px; }
 .encart-contact-etapes { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 .encart-contact-etapes li { color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; }
 .encart-contact-etapes strong { color: var(--text); }
@@ -844,13 +1078,15 @@ section.section.serre { padding: 56px 24px; }
   display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 34px;
 }
 .filtre {
-  padding: 9px 16px; border-radius: 999px; border: 1px solid var(--border-light);
-  background: var(--bg-card); color: var(--text-muted); font-size: 0.85rem;
-  transition: all 0.15s;
+  height: 36px; padding: 0 18px; border-radius: var(--d8-r-pill); border: 1px solid rgba(201, 165, 92, 0.28);
+  background: transparent; color: var(--text-muted);
+  font-family: var(--d8-font-ui); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+  transition: all var(--d8-t);
 }
-.filtre:hover { color: var(--text); }
+.filtre:hover { border-color: rgba(201, 165, 92, 0.5); color: var(--d8-gold-300); }
+.filtre:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 3px; }
 .filtre.actif {
-  background: var(--or-grad); background-size: 220% 100%; border-color: var(--or-4); color: var(--or-contrast); font-weight: 600;
+  background: var(--or-grad); background-size: 220% 100%; border-color: transparent; color: var(--or-contrast); font-weight: 500;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -1px 2px rgba(0, 0, 0, 0.25);
 }
 
@@ -876,12 +1112,13 @@ section.section.serre { padding: 56px 24px; }
 .miniatures img { width: 100%; height: 100%; object-fit: cover; }
 
 .fiche-fiche { position: sticky; top: 100px; }
-.fiche-fiche h1 { font-family: "Playfair Display", serif; font-weight: 700; }
-.fiche-prix { font-family: "Poppins", sans-serif; font-weight: 700; font-size: 2.1rem; margin-bottom: 4px; }
-.fiche-prix > span:not(.prix-valeur) { font-size: 1rem; font-weight: 500; color: var(--text-faint); font-family: "Inter", sans-serif; }
+.fiche-fiche h1 { font-family: var(--d8-font-display); font-weight: 500; font-style: italic; }
+.fiche-fiche p { max-width: 62ch; }
+.fiche-prix { font-family: var(--d8-font-ui); font-weight: 500; font-size: 2.1rem; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.fiche-prix > span:not(.prix-valeur) { font-size: 1rem; font-weight: 400; color: var(--text-faint); font-family: var(--d8-font-ui); }
 .fiche-carac { display: flex; gap: 22px; margin: 20px 0; flex-wrap: wrap; }
 .fiche-carac div { font-size: 0.85rem; color: var(--text-muted); }
-.fiche-carac strong { display: block; color: var(--gold); font-size: 1.1rem; font-family: "Poppins", sans-serif; }
+.fiche-carac strong { display: block; color: var(--d8-gold-300); font-size: 1.15rem; font-family: var(--d8-font-display); font-weight: 400; font-style: normal; }
 
 /* ---------- carte "coup de cœur" mise en avant sur l'accueil ---------- */
 
@@ -1028,31 +1265,53 @@ section.section.serre { padding: 56px 24px; }
 
 /* ---------- pied de page ---------- */
 
-.pied-page { border-top: 1px solid var(--border); padding: 56px 24px 28px; background: var(--bg-elevated); }
-.pied-grille { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 36px; margin-bottom: 40px; }
+/* Le marbre reste visible sous le pied de page (§4.4) : on renforce seulement le
+   voile de lisibilité plutôt que de poser un fond opaque plat. */
+.pied-page { padding: 0 24px 28px; background: rgba(6, 12, 26, 0.9); }
+
+/* Filet or au sommet du pied de page, avec l'emblème du site centré par-dessus,
+   qui "coupe" visuellement le filet (fond de la même couleur que la page derrière
+   l'emblème). */
+.pied-filet { position: relative; height: 1px; background: var(--d8-rule); margin-bottom: 36px; }
+.pied-embleme {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  color: var(--d8-gold-500); background: rgba(6, 12, 26, 0.9); padding: 0 14px;
+}
+
+.pied-grille { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 36px; margin-bottom: 40px; padding-top: 28px; }
 @media (max-width: 760px) { .pied-grille { grid-template-columns: 1fr 1fr; } }
-.pied-page h4 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text); margin-bottom: 16px; font-family: "Inter", sans-serif; font-weight: 700; }
+.pied-page h4 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--d8-gold-500);
+  margin-bottom: 16px; font-family: var(--d8-font-ui); font-weight: 500;
+}
 .pied-page ul li { margin-bottom: 10px; }
-.pied-page a { color: var(--text-muted); font-size: 0.9rem; }
+.pied-page a { color: var(--text-muted); font-size: 0.88rem; }
 .pied-page a:hover { color: var(--gold); }
 .pied-bas {
   display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
   padding-top: 24px; border-top: 1px solid var(--border);
-  font-size: 0.82rem; color: var(--text-faint);
+  font-family: var(--d8-font-ui); font-size: 0.82rem; color: var(--text-faint);
 }
 
 /* ---------- formulaires (admin) ---------- */
 
 .champ { margin-bottom: 18px; }
-.champ label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
-.champ input, .champ select, .champ textarea {
-  width: 100%; padding: 11px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);
-  background: var(--bg-elevated); color: var(--text); font-size: 0.95rem; font-family: inherit;
+.champ label {
+  display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.2em;
+  color: var(--d8-muted); margin-bottom: 8px; font-weight: 500;
 }
-.champ input:focus, .champ select:focus, .champ textarea:focus { outline: none; border-color: var(--accent); }
+.champ input, .champ select, .champ textarea {
+  width: 100%; min-height: 48px; padding: 11px 14px; border-radius: var(--radius-sm);
+  border: 1px solid rgba(201, 165, 92, 0.28); background: rgba(6, 12, 26, 0.55);
+  color: var(--text); font-size: 0.95rem; font-family: inherit;
+  transition: border-color var(--d8-t), box-shadow var(--d8-t);
+}
+.champ input:focus, .champ select:focus, .champ textarea:focus {
+  outline: none; border-color: var(--d8-gold-400); box-shadow: 0 0 0 3px rgba(201, 165, 92, 0.15);
+}
 .champ textarea { resize: vertical; min-height: 90px; }
 .champ-checkbox { display: flex; align-items: center; gap: 10px; }
-.champ-checkbox input { width: auto; }
+.champ-checkbox input { width: auto; min-height: 0; }
 .champ-deux { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .champ-aide { font-size: 0.78rem; color: var(--text-faint); margin-top: 5px; }
 

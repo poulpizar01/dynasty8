@@ -24,6 +24,12 @@ function etiquetteTransaction(bien) {
   return bien.dispo_location ? "Location" : "Vente";
 }
 
+// La pastille "Location" seule change de couleur (bleu nuit + liseré or plutôt que
+// rouge) : le rouge reste réservé aux annonces qui incluent une vente.
+function classeBadgeTransaction(bien) {
+  return bien.dispo_location && !bien.dispo_vente ? " badge-transaction--location" : "";
+}
+
 // Prix compact pour les cartes (carrousels, catalogue).
 function prixCarteHTML(bien) {
   if (bien.dispo_vente && bien.dispo_location) {
@@ -63,13 +69,13 @@ function badgesSecondairesHTML(bien) {
 function carteBienHTML(bien) {
   const image = bien.images && bien.images[0];
   const visuel = image
-    ? `<img src="${echapper(image)}" alt="${echapper(bien.titre)}" loading="lazy">`
+    ? `<img src="${echapper(image)}" alt="${echapper(bien.titre)}" loading="lazy" decoding="async">`
     : `<span style="font-size:2.2rem;">${iconeCategorie(bien.categorie)}</span>`;
   return `
     <a class="carte-bien" href="/bien.html?id=${bien.id}">
       <div class="visuel">
         ${bien.vendu ? '<span class="badge-coeur badge-vendu">Vendu</span>' : (bien.coup_de_coeur ? '<span class="badge-coeur">Coup de cœur</span>' : "")}
-        <span class="badge-transaction">${etiquetteTransaction(bien)}</span>
+        <span class="badge-transaction${classeBadgeTransaction(bien)}">${etiquetteTransaction(bien)}</span>
         ${badgesSecondairesHTML(bien)}
         ${visuel}
       </div>
@@ -105,6 +111,7 @@ async function chargerBiens({ categorie, zone, coupDeCoeur, vendu, meuble, coher
       return liste;
     }
     conteneur.innerHTML = liste.map(carteBienHTML).join("");
+    reveler(".carte-bien", conteneur);
     return liste;
   } catch (e) {
     conteneur.innerHTML = `<div class="etat-vide">Impossible de charger les annonces (${echapper(e.message)}).</div>`;
@@ -129,6 +136,7 @@ function initialiserFiltres(idFiltres, idGrille, categorieFixe, valeurInitiale, 
         conteneur.innerHTML = '<div class="etat-vide">Aucune annonce dans cette catégorie pour le moment.</div>';
       } else {
         conteneur.innerHTML = filtres.map(carteBienHTML).join("");
+        reveler(".carte-bien", conteneur);
       }
     }
   }

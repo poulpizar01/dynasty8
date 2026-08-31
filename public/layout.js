@@ -30,6 +30,17 @@ function logoImg(cssClass) {
   return `<img src="/img/logo-full.png" alt="Dynasty 8" class="${cssClass || ""}">`;
 }
 
+// Petit emblème SVG (losange à pointe centrale) — le motif signature du thème
+// "Marbre & Or", réutilisé dans l'en-tête et le pied de page. En ligne (pas un
+// fichier séparé) pour hériter directement de la couleur CSS ambiante.
+function embleme(taille, cssClass) {
+  const t = taille || 44;
+  return `<svg class="${cssClass || ""}" width="${t}" height="${t}" viewBox="0 0 44 44" fill="none" aria-hidden="true">
+    <path d="M22 3 L39 22 L22 41 L5 22 Z" stroke="currentColor" stroke-width="1.2"/>
+    <circle cx="22" cy="22" r="3" stroke="currentColor" stroke-width="1.2"/>
+  </svg>`;
+}
+
 function injecterEntete(cleActive) {
   const monte = document.getElementById("site-entete");
   if (!monte) return;
@@ -47,7 +58,11 @@ function injecterEntete(cleActive) {
   }).join("");
   monte.innerHTML = `
     <div class="entete-barre">
-      <a href="/" class="logo">${logoImg("logo-entete")}</a>
+      <a href="/" class="logo">
+        <img src="/img/logo-mark.png" alt="Dynasty 8" class="logo-marque">
+        <span class="logo-filet" aria-hidden="true"></span>
+        <span class="logo-texte">Dynasty 8</span>
+      </a>
       <nav class="nav-principale" id="nav-mobile">${liens}</nav>
       <div class="nav-cta">
         <button class="bouton-menu" id="bouton-menu" aria-label="Ouvrir le menu">☰</button>
@@ -69,6 +84,7 @@ function injecterPied() {
   if (!monte) return;
   const annee = new Date().getFullYear();
   monte.innerHTML = `
+    <div class="pied-filet" aria-hidden="true">${embleme(36, "pied-embleme")}</div>
     <div class="conteneur">
       <div class="pied-grille">
         <div>
@@ -108,9 +124,48 @@ function injecterPied() {
     </div>`;
 }
 
+// Double filet or fixe en bordure de la fenêtre (le "cadre" du thème Marbre & Or) —
+// purement décoratif, jamais au-dessus d'un élément cliquable (z-index sous l'en-tête,
+// pointer-events désactivés) et masqué automatiquement en-dessous de 480px.
+function injecterCadre() {
+  if (document.querySelector(".d8-frame")) return;
+  const cadre = document.createElement("div");
+  cadre.className = "d8-frame";
+  cadre.setAttribute("aria-hidden", "true");
+  document.body.appendChild(cadre);
+}
+
 function initialiserLayout(cleActive) {
   injecterEntete(cleActive);
   injecterPied();
+  injecterCadre();
+  // Grilles déjà présentes dans le HTML statique au chargement (équipe, services,
+  // pages "hub"). Les grilles de biens (cartes chargées depuis l'API) sont
+  // révélées séparément par biens.js, une fois injectées dans la page.
+  reveler(".carte-hub, .carte-service, .carte-membre");
+}
+
+// Légère apparition au défilement (fondu + léger déplacement vers le haut), jouée une
+// seule fois par élément et désactivée automatiquement si la personne a demandé de
+// réduire les animations. `racine` limite la recherche à un conteneur précis (utile
+// juste après avoir injecté de nouvelles cartes) ; par défaut on cherche sur toute la page.
+function reveler(selecteur, racine) {
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!("IntersectionObserver" in window)) return;
+  const elements = (racine || document).querySelectorAll(selecteur);
+  if (!elements.length) return;
+  const observateur = new IntersectionObserver((entrees) => {
+    entrees.forEach((entree) => {
+      if (!entree.isIntersecting) return;
+      entree.target.classList.add("d8-visible");
+      observateur.unobserve(entree.target);
+    });
+  }, { threshold: 0.15 });
+  elements.forEach((el, i) => {
+    el.classList.add("d8-reveal");
+    el.style.transitionDelay = (i % 12) * 60 + "ms";
+    observateur.observe(el);
+  });
 }
 
 // ---- petites fonctions utilitaires partagées ----

@@ -17,7 +17,7 @@
 <meta name="twitter:image" content="https://dynasty8.poulpizar.workers.dev/img/og-image.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,600;1,300;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 <link rel="icon" type="image/png" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/favicon-180.png">
@@ -88,6 +88,7 @@
     conteneur.innerHTML = liste.length
       ? liste.map(carteBienHTML).join("")
       : '<div class="etat-vide">Aucun garage dans cette catégorie pour le moment.</div>';
+    if (liste.length) reveler(".carte-bien", conteneur);
   }
 
   function majStatsGarages(liste) {
