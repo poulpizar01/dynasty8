@@ -913,7 +913,7 @@ section.section.serre {
 .carte-bien {
   position: relative;
   border: 1px solid var(--border);
-  border-radius: var(--d8-r-sm);
+  border-radius: 16px;
   background: var(--d8-grad-card);
   box-shadow: var(--d8-shadow-card);
   overflow: hidden;
@@ -929,8 +929,8 @@ section.section.serre {
   content: ""; position: absolute; z-index: 3; width: 14px; height: 14px;
   opacity: 0; transition: opacity var(--d8-t); pointer-events: none;
 }
-.carte-bien::before { top: 8px; left: 8px; border-top: 1px solid rgba(242, 223, 168, 0.55); border-left: 1px solid rgba(242, 223, 168, 0.55); }
-.carte-bien::after { bottom: 8px; right: 8px; border-bottom: 1px solid rgba(242, 223, 168, 0.55); border-right: 1px solid rgba(242, 223, 168, 0.55); }
+.carte-bien::before { top: 14px; left: 14px; border-top: 1px solid rgba(242, 223, 168, 0.55); border-left: 1px solid rgba(242, 223, 168, 0.55); }
+.carte-bien::after { bottom: 14px; right: 14px; border-bottom: 1px solid rgba(242, 223, 168, 0.55); border-right: 1px solid rgba(242, 223, 168, 0.55); }
 .carte-bien:hover::before, .carte-bien:hover::after { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .carte-bien, .carte-bien::before, .carte-bien::after { transition: none; } }
 
