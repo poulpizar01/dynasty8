@@ -730,17 +730,24 @@ section.section.serre { padding: 56px 24px; }
   display: flex; align-items: center; justify-content: space-between;
   margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border);
 }
-.carte-bien .prix { font-family: "Poppins", sans-serif; font-size: 1.2rem; color: var(--gold-strong); }
-.carte-bien .prix span { font-size: 0.75rem; color: var(--text-faint); font-family: "Inter", sans-serif; }
-.prix-double { display: flex; flex-direction: column; gap: 2px; }
-.prix-double .prix-ligne { font-size: 0.92rem; font-family: "Poppins", sans-serif; color: var(--gold-strong); }
-.prix-etiquette {
-  display: inline-block; min-width: 52px; font-size: 0.68rem; font-family: "Inter", sans-serif;
-  color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; margin-right: 6px;
+.carte-bien .prix { font-family: "Poppins", sans-serif; font-weight: 700; font-size: 1.3rem; color: var(--gold-light); }
+.carte-bien .prix span { font-size: 0.75rem; font-weight: 500; color: var(--text-faint); font-family: "Inter", sans-serif; }
+.prix-double { display: flex; flex-direction: column; gap: 5px; }
+.prix-double .prix-ligne {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 1.08rem; font-weight: 700; font-family: "Poppins", sans-serif; color: var(--gold-light);
 }
-.fiche-prix-double { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
-.fiche-prix-double .fiche-prix-ligne { font-family: "Poppins", sans-serif; font-size: 1.5rem; color: var(--gold-strong); }
-.fiche-prix-double .prix-etiquette { min-width: 66px; font-size: 0.72rem; }
+.prix-double .prix-ligne span { font-size: 0.72rem; font-weight: 500; color: var(--text-faint); font-family: "Inter", sans-serif; }
+.prix-etiquette {
+  display: inline-block; min-width: 54px; font-size: 0.7rem; font-weight: 700; font-family: "Inter", sans-serif;
+  color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.6px;
+}
+.fiche-prix-double { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+.fiche-prix-double .fiche-prix-ligne {
+  display: flex; align-items: baseline; gap: 10px;
+  font-family: "Poppins", sans-serif; font-weight: 700; font-size: 1.5rem; color: var(--gold-light);
+}
+.fiche-prix-double .prix-etiquette { min-width: 66px; font-size: 0.75rem; }
 
 /* ---------- fiche d'une annonce : protocole de contact en jeu (Eyefind) ---------- */
 
@@ -793,7 +800,7 @@ section.section.serre { padding: 56px 24px; }
 .miniatures img { width: 100%; height: 100%; object-fit: cover; }
 
 .fiche-fiche { position: sticky; top: 100px; }
-.fiche-prix { font-family: "Poppins", sans-serif; font-size: 2.1rem; color: var(--gold-strong); margin-bottom: 4px; }
+.fiche-prix { font-family: "Poppins", sans-serif; font-weight: 700; font-size: 2.1rem; color: var(--gold-light); margin-bottom: 4px; }
 .fiche-carac { display: flex; gap: 22px; margin: 20px 0; flex-wrap: wrap; }
 .fiche-carac div { font-size: 0.85rem; color: var(--text-muted); }
 .fiche-carac strong { display: block; color: var(--gold); font-size: 1.1rem; font-family: "Poppins", sans-serif; }
