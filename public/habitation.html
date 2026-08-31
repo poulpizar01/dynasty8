@@ -34,28 +34,7 @@
 
 <section class="section serre">
   <div class="conteneur">
-    <div class="filtres" id="filtres-habitation">
-      <button class="filtre" data-sous-categorie="tous">Tous</button>
-      <button class="filtre" data-sous-categorie="Eclipse Tower">Eclipse Tower</button>
-      <button class="filtre" data-sous-categorie="Tinsel Tower">Tinsel Tower</button>
-      <button class="filtre" data-sous-categorie="Villa">Villa</button>
-      <button class="filtre" data-sous-categorie="Del Perro Heights">Del Perro Heights</button>
-      <button class="filtre" data-sous-categorie="Richards Majestic">Richards Majestic</button>
-      <button class="filtre" data-sous-categorie="Weazel Plaza">Weazel Plaza</button>
-      <button class="filtre" data-sous-categorie="San Andreas">San Andreas</button>
-      <button class="filtre" data-sous-categorie="Alta Street">Alta Street</button>
-      <button class="filtre" data-sous-categorie="Maison">Maison</button>
-      <button class="filtre" data-sous-categorie="Entrepôt">Entrepôt</button>
-      <button class="filtre" data-sous-categorie="Flat">Flat</button>
-      <button class="filtre" data-sous-categorie="Bureau">Bureau</button>
-      <button class="filtre" data-sous-categorie="Headquarter">Headquarter</button>
-      <button class="filtre" data-sous-categorie="Caravane">Caravane</button>
-      <button class="filtre" data-sous-categorie="Motel">Motel</button>
-      <button class="filtre" data-sous-categorie="Appartement">Appartement</button>
-      <button class="filtre" data-sous-categorie="Duplex">Duplex</button>
-      <button class="filtre" data-sous-categorie="Bar">Bar</button>
-      <button class="filtre" data-sous-categorie="Autre">Autre</button>
-    </div>
+    <div class="d8-filtre2" id="filtre-habitation"></div>
     <div class="grille-biens" id="grille-biens"></div>
   </div>
 </section>
@@ -87,8 +66,69 @@
     document.title = "Intérieurs Non Meublés — Dynasty 8";
   }
 
-  const sousCategorieDepart = parametres.get("sous_categorie") || "tous";
-  initialiserFiltres("filtres-habitation", "grille-biens", "habitation", sousCategorieDepart, { meuble });
+  // Les 19 sous-catégories (voir SOUS_CATEGORIES_HABITATION dans layout.js)
+  // sont regroupées en 4 familles pour un filtre à deux niveaux plus lisible
+  // que les 19 boutons à plat d'avant. "Autres" n'a pas de sous-filtre visible
+  // (la ligne 2 se replie), mais couvre bien les 5 adresses qui ne rentrent
+  // dans aucune des 3 autres familles, pour ne perdre aucune annonce.
+  const FAMILLES_HABITATION = [
+    { id: "residences", label: "Résidences", categories: ["Villa", "Maison"] },
+    { id: "immeubles", label: "Immeubles", categories: [
+        "Eclipse Tower", "Tinsel Tower", "Flat", "Motel", "Duplex",
+        "Del Perro Heights", "Richards Majestic", "Weazel Plaza",
+      ] },
+    { id: "business", label: "Business", categories: ["Bureau", "Entrepôt", "Headquarter", "Bar"] },
+    { id: "autres", label: "Autres", categories: [] },
+  ];
+  const SOUS_CATEGORIES_AUTRES = ["San Andreas", "Alta Street", "Caravane", "Appartement", "Autre"];
+
+  function sousCategoriesDeFamille(familleId) {
+    if (familleId === "autres") return SOUS_CATEGORIES_AUTRES;
+    const famille = FAMILLES_HABITATION.find((f) => f.id === familleId);
+    return famille ? famille.categories : [];
+  }
+
+  function familleDeSousCategorie(sousCategorie) {
+    if (!sousCategorie) return null;
+    const famille = FAMILLES_HABITATION.find((f) => f.categories.includes(sousCategorie));
+    if (famille) return famille.id;
+    return SOUS_CATEGORIES_AUTRES.includes(sousCategorie) ? "autres" : null;
+  }
+
+  let tousLesBiensHabitation = [];
+
+  function appliquerFiltreAnnonces(familleId, categorieNom) {
+    const conteneur = document.getElementById("grille-biens");
+    let liste = tousLesBiensHabitation.filter((b) => sousCategoriesDeFamille(familleId).includes(b.sous_categorie));
+    if (categorieNom) liste = liste.filter((b) => b.sous_categorie === categorieNom);
+    conteneur.innerHTML = liste.length
+      ? liste.map(carteBienHTML).join("")
+      : '<div class="etat-vide">Aucune annonce dans cette catégorie pour le moment.</div>';
+    if (liste.length) reveler(".carte-bien", conteneur);
+  }
+
+  const sousCategorieDepart = parametres.get("sous_categorie") || "";
+
+  (async () => {
+    tousLesBiensHabitation = await chargerBiens({ categorie: "habitation", meuble, cible: "grille-biens" });
+
+    // Compteurs réels par sous-catégorie (nombre d'annonces), affichés comme
+    // petit badge à côté du nom quand il y en a au moins une.
+    const comptes = {};
+    tousLesBiensHabitation.forEach((b) => { comptes[b.sous_categorie] = (comptes[b.sous_categorie] || 0) + 1; });
+    const famillesAvecComptes = FAMILLES_HABITATION.map((f) => ({
+      ...f,
+      categories: f.categories.map((nom) => (comptes[nom] ? { nom, n: comptes[nom] } : nom)),
+    }));
+
+    construireFiltre2Niveaux({
+      conteneur: "filtre-habitation",
+      familles: famillesAvecComptes,
+      familleDepart: familleDeSousCategorie(sousCategorieDepart) || "residences",
+      categorieDepart: sousCategorieDepart || null,
+      onChange: appliquerFiltreAnnonces,
+    });
+  })();
 </script>
 </body>
 </html>

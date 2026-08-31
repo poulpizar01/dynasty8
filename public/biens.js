@@ -119,30 +119,187 @@ async function chargerBiens({ categorie, zone, coupDeCoeur, vendu, meuble, coher
   }
 }
 
-function initialiserFiltres(idFiltres, idGrille, categorieFixe, valeurInitiale, filtresSupplementaires) {
-  const zoneFiltres = document.getElementById(idFiltres);
-  if (!zoneFiltres) {
-    chargerBiens({ categorie: categorieFixe, cible: idGrille, ...filtresSupplementaires });
-    return;
+// ============================================================================
+// Filtre à deux niveaux (familles → catégories), avec indicateur doré qui
+// glisse sous l'onglet actif. Utilisé par /habitation.html.
+//
+// `familles` : [{ id, label, categories: [] }], où chaque catégorie est soit
+// une chaîne ("Villa"), soit un objet { nom, n } pour afficher un compteur.
+// Une famille avec `categories: []` replie entièrement la ligne 2 (ex. la
+// famille "Autres", qui n'a pas de sous-filtre — voir habitation.html).
+//
+// Tous les boutons sont générés depuis `familles` (rien en dur dans le HTML).
+// `onChange(familleId, categorieNom)` est appelé à chaque changement, y
+// compris une fois au démarrage ; `categorieNom` vaut `null` quand "Tout"
+// est actif ou que la famille n'a pas de ligne 2.
+// ============================================================================
+function construireFiltre2Niveaux({ conteneur, familles, familleDepart, categorieDepart, onChange }) {
+  const racine = typeof conteneur === "string" ? document.getElementById(conteneur) : conteneur;
+  if (!racine || !familles || !familles.length) return null;
+
+  racine.innerHTML = `
+    <div class="d8-filtre2-rail" role="tablist" aria-label="Familles">
+      <span class="d8-filtre2-indicateur" aria-hidden="true"></span>
+    </div>
+    <div class="d8-filtre2-rail2-wrap">
+      <div class="d8-filtre2-rail2-inner">
+        <div class="d8-filtre2-rail" role="tablist" aria-label="Catégories">
+          <span class="d8-filtre2-indicateur" aria-hidden="true"></span>
+        </div>
+      </div>
+    </div>`;
+  const railFamilles = racine.children[0];
+  const rail2Wrap = racine.children[1];
+  const indicateurFamilles = railFamilles.querySelector(".d8-filtre2-indicateur");
+  const railCategories = rail2Wrap.querySelector(".d8-filtre2-rail");
+  const indicateurCategories = railCategories.querySelector(".d8-filtre2-indicateur");
+
+  const etat = { familleId: null, categorieNom: null };
+
+  function reduireMouvement() {
+    return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
-  const boutons = Array.from(zoneFiltres.querySelectorAll("[data-sous-categorie]"));
-  async function appliquer(sousCategorie) {
-    boutons.forEach((b) => b.classList.toggle("actif", b.dataset.sousCategorie === sousCategorie));
-    const liste = await chargerBiens({ categorie: categorieFixe, cible: idGrille, ...filtresSupplementaires });
-    if (sousCategorie !== "tous") {
-      const conteneur = document.getElementById(idGrille);
-      const filtres = liste.filter((b) => b.sous_categorie === sousCategorie);
-      if (!filtres.length) {
-        conteneur.innerHTML = '<div class="etat-vide">Aucune annonce dans cette catégorie pour le moment.</div>';
-      } else {
-        conteneur.innerHTML = filtres.map(carteBienHTML).join("");
-        reveler(".carte-bien", conteneur);
-      }
+  function nomCat(c) { return typeof c === "string" ? c : c.nom; }
+  function nCat(c) { return (typeof c === "object" && c.n != null) ? c.n : null; }
+
+  function creerOnglet(texte, { actif, n } = {}) {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "d8-filtre2-tab";
+    bouton.setAttribute("role", "tab");
+    bouton.setAttribute("aria-selected", actif ? "true" : "false");
+    bouton.tabIndex = actif ? 0 : -1;
+    const libelle = document.createElement("span");
+    libelle.textContent = texte;
+    bouton.appendChild(libelle);
+    if (n != null) {
+      const badge = document.createElement("span");
+      badge.className = "d8-filtre2-n";
+      badge.textContent = n;
+      bouton.appendChild(badge);
+    }
+    return bouton;
+  }
+
+  function positionner(indicateur, bouton, animer) {
+    if (!bouton) { indicateur.style.width = "0px"; return; }
+    const x = bouton.offsetLeft;
+    const largeur = bouton.offsetWidth;
+    const sansTransition = !animer || reduireMouvement();
+    if (sansTransition) indicateur.classList.add("sans-transition");
+    indicateur.style.transform = "translateX(" + x + "px)";
+    indicateur.style.width = largeur + "px";
+    if (sansTransition) {
+      void indicateur.offsetWidth;
+      indicateur.classList.remove("sans-transition");
     }
   }
-  boutons.forEach((b) => b.addEventListener("click", () => appliquer(b.dataset.sousCategorie)));
-  const depart = boutons.some((b) => b.dataset.sousCategorie === valeurInitiale) ? valeurInitiale : "tous";
-  appliquer(depart);
+  function boutonActif(rail) { return rail.querySelector('.d8-filtre2-tab[aria-selected="true"]'); }
+
+  function construireFamilles() {
+    railFamilles.querySelectorAll(".d8-filtre2-tab").forEach((b) => b.remove());
+    familles.forEach((famille) => {
+      const bouton = creerOnglet(famille.label, { actif: famille.id === etat.familleId });
+      bouton.dataset.id = famille.id;
+      bouton.addEventListener("click", () => selectionnerFamille(famille.id));
+      railFamilles.appendChild(bouton);
+    });
+  }
+
+  function selectionnerFamille(id) {
+    etat.familleId = id;
+    etat.categorieNom = null; // "Tout" redevient actif à chaque changement de famille
+    railFamilles.querySelectorAll(".d8-filtre2-tab").forEach((b) => {
+      const actif = b.dataset.id === id;
+      b.setAttribute("aria-selected", actif ? "true" : "false");
+      b.tabIndex = actif ? 0 : -1;
+    });
+    positionner(indicateurFamilles, boutonActif(railFamilles), true);
+    construireCategories(id);
+    if (onChange) onChange(etat.familleId, etat.categorieNom);
+  }
+
+  function construireCategories(familleId) {
+    const famille = familles.find((f) => f.id === familleId);
+    railCategories.querySelectorAll(".d8-filtre2-tab").forEach((b) => b.remove());
+    if (!famille || !famille.categories.length) {
+      rail2Wrap.classList.add("repliee");
+      positionner(indicateurCategories, null, false);
+      return;
+    }
+    rail2Wrap.classList.remove("repliee");
+    const boutonTout = creerOnglet("Tout", { actif: etat.categorieNom === null });
+    boutonTout.dataset.nom = "";
+    boutonTout.addEventListener("click", () => selectionnerCategorie(null));
+    railCategories.appendChild(boutonTout);
+    famille.categories.forEach((cat) => {
+      const nom = nomCat(cat);
+      const bouton = creerOnglet(nom, { actif: etat.categorieNom === nom, n: nCat(cat) });
+      bouton.dataset.nom = nom;
+      bouton.addEventListener("click", () => selectionnerCategorie(nom));
+      railCategories.appendChild(bouton);
+    });
+    // ligne toute neuve : indicateur calé sans transition (rien à quitter).
+    positionner(indicateurCategories, boutonActif(railCategories), false);
+  }
+
+  function selectionnerCategorie(nom) {
+    etat.categorieNom = nom; // null = "Tout"
+    const nomCompare = nom || "";
+    railCategories.querySelectorAll(".d8-filtre2-tab").forEach((b) => {
+      const actif = b.dataset.nom === nomCompare;
+      b.setAttribute("aria-selected", actif ? "true" : "false");
+      b.tabIndex = actif ? 0 : -1;
+    });
+    const bouton = boutonActif(railCategories);
+    positionner(indicateurCategories, bouton, true);
+    if (bouton) bouton.scrollIntoView({ behavior: reduireMouvement() ? "auto" : "smooth", inline: "nearest", block: "nearest" });
+    if (onChange) onChange(etat.familleId, etat.categorieNom);
+  }
+
+  function gestionClavier(e) {
+    const rail = e.currentTarget;
+    const onglets = Array.from(rail.querySelectorAll(".d8-filtre2-tab"));
+    const index = onglets.indexOf(document.activeElement);
+    if (index === -1) return;
+    let suivant = null;
+    if (e.key === "ArrowRight") suivant = onglets[(index + 1) % onglets.length];
+    else if (e.key === "ArrowLeft") suivant = onglets[(index - 1 + onglets.length) % onglets.length];
+    else if (e.key === "Home") suivant = onglets[0];
+    else if (e.key === "End") suivant = onglets[onglets.length - 1];
+    if (suivant) { e.preventDefault(); suivant.focus(); suivant.click(); }
+  }
+  railFamilles.addEventListener("keydown", gestionClavier);
+  railCategories.addEventListener("keydown", gestionClavier);
+
+  function debounce(fn, delai) {
+    let t;
+    return function () { clearTimeout(t); t = setTimeout(fn, delai); };
+  }
+  window.addEventListener("resize", debounce(() => {
+    positionner(indicateurFamilles, boutonActif(railFamilles), false);
+    positionner(indicateurCategories, boutonActif(railCategories), false);
+  }, 120));
+
+  // état de départ (ex. venant d'un lien externe avec ?sous_categorie=...)
+  const familleValide = familles.some((f) => f.id === familleDepart);
+  etat.familleId = familleValide ? familleDepart : familles[0].id;
+  const familleObjDepart = familles.find((f) => f.id === etat.familleId);
+  const catValide = familleObjDepart && familleObjDepart.categories.some((c) => nomCat(c) === categorieDepart);
+  etat.categorieNom = catValide ? categorieDepart : null;
+
+  construireFamilles();
+  positionner(indicateurFamilles, boutonActif(railFamilles), false);
+  construireCategories(etat.familleId);
+  if (onChange) onChange(etat.familleId, etat.categorieNom);
+
+  return {
+    etat,
+    definir(familleId, categorieNom) {
+      selectionnerFamille(familleId);
+      if (categorieNom) selectionnerCategorie(categorieNom);
+    },
+  };
 }
 
 // ---- page de fiche détaillée (bien.html) ----
