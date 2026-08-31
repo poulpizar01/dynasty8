@@ -743,6 +743,18 @@ label, .eyebrow-label {
 .hero-accueil .hero-actions { justify-content: flex-start; }
 .hero-accueil .hero-stats { justify-content: flex-start; margin-top: 44px; }
 .hero-accueil .hero-stats div { text-align: left; }
+/* Ici, contrairement aux autres pages, le bloc de stats est posé directement sur
+   la photo du siège Dynasty 8 (pas sur un fond uni) : selon l'endroit de la photo
+   qui se trouve derrière, le texte peut se fondre dans l'image. On ajoute donc une
+   ombre portée sombre + un fond légèrement assombri à chaque nombre pour garantir
+   la lisibilité partout, quelle que soit la zone de la photo en arrière-plan. */
+.hero-accueil .hero-stats strong {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85), 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.hero-accueil .hero-stats span {
+  color: #f1eee6;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 1px 1px rgba(0, 0, 0, 1);
+}
 
 @media (max-width: 900px) {
   .hero-accueil-grille { grid-template-columns: 1fr; }
