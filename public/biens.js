@@ -27,7 +27,7 @@ function etiquetteTransaction(bien) {
 // Prix compact pour les cartes (carrousels, catalogue).
 function prixCarteHTML(bien) {
   if (bien.dispo_vente && bien.dispo_location) {
-    return `<span class="prix prix-double">
+    return `<span class="prix-double">
       <span class="prix-ligne"><span class="prix-etiquette">Vente</span>${formaterPrix(bien.prix)}</span>
       <span class="prix-ligne"><span class="prix-etiquette">Location</span>${formaterPrix(bien.prix_location)}<span> /sem.</span></span>
     </span>`;
