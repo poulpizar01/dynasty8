@@ -30,10 +30,22 @@
   <div class="hero-etiquette">🚗 Garages</div>
   <h1>Un abri sûr pour vos véhicules</h1>
   <p class="lead">Du box individuel au garage collection grande capacité, sécurisez et rangez vos véhicules dans toute la ville.</p>
+  <div class="hero-stats" id="garages-stats">
+    <div><strong id="garages-total">—</strong><span>Garages disponibles</span></div>
+    <div><strong id="garages-prix-min">—</strong><span>À partir de (vente)</span></div>
+    <div><strong id="garages-loc-min">—</strong><span>À partir de (location/sem.)</span></div>
+  </div>
 </section>
 
 <section class="section serre">
   <div class="conteneur">
+    <div class="filtres" id="filtres-garages">
+      <button class="filtre actif" data-filtre="tous">Tous</button>
+      <button class="filtre" data-filtre="petit">1 à 6 places</button>
+      <button class="filtre" data-filtre="moyen">7 à 15 places</button>
+      <button class="filtre" data-filtre="grand">16 places et +</button>
+      <button class="filtre" data-filtre="vip">VIP</button>
+    </div>
     <div class="grille-biens" id="grille-biens"></div>
   </div>
 </section>
@@ -44,7 +56,59 @@
 <script src="/biens.js"></script>
 <script>
   initialiserLayout("garages");
-  chargerBiens({ categorie: "garage", cible: "grille-biens" });
+
+  // Les garages n'ont pas de sous-catégorie comme les habitations : on filtre
+  // ici par nombre de places (le critère qui compte pour ce type de bien),
+  // directement sur la liste déjà chargée (pas de nouvel appel réseau).
+  let tousLesGarages = [];
+
+  function nombrePlaces(bien) {
+    // Le champ "places" n'est pas toujours renseigné dans l'espace agents :
+    // on retombe sur le titre ("Garage 25 places"), qui lui est toujours écrit.
+    if (bien.places) return Number(bien.places);
+    const trouve = (bien.titre || "").match(/(\d+)\s*places?/i);
+    return trouve ? Number(trouve[1]) : 0;
+  }
+
+  function trancheDePlaces(bien) {
+    const p = nombrePlaces(bien);
+    if (p <= 6) return "petit";
+    if (p <= 15) return "moyen";
+    return "grand";
+  }
+
+  function appliquerFiltreGarages(filtre) {
+    const conteneur = document.getElementById("grille-biens");
+    let liste = tousLesGarages;
+    if (filtre === "vip") {
+      liste = tousLesGarages.filter((b) => b.vip);
+    } else if (filtre !== "tous") {
+      liste = tousLesGarages.filter((b) => trancheDePlaces(b) === filtre);
+    }
+    conteneur.innerHTML = liste.length
+      ? liste.map(carteBienHTML).join("")
+      : '<div class="etat-vide">Aucun garage dans cette catégorie pour le moment.</div>';
+  }
+
+  function majStatsGarages(liste) {
+    const prixVente = liste.filter((b) => b.dispo_vente && b.prix).map((b) => b.prix);
+    const prixLocation = liste.filter((b) => b.dispo_location && b.prix_location).map((b) => b.prix_location);
+    document.getElementById("garages-total").textContent = liste.length;
+    document.getElementById("garages-prix-min").textContent = prixVente.length ? formaterPrix(Math.min(...prixVente)) : "—";
+    document.getElementById("garages-loc-min").textContent = prixLocation.length ? formaterPrix(Math.min(...prixLocation)) : "—";
+  }
+
+  (async () => {
+    tousLesGarages = await chargerBiens({ categorie: "garage", cible: "grille-biens" });
+    majStatsGarages(tousLesGarages);
+    document.querySelectorAll("#filtres-garages .filtre").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#filtres-garages .filtre").forEach((b) => b.classList.remove("actif"));
+        btn.classList.add("actif");
+        appliquerFiltreGarages(btn.dataset.filtre);
+      });
+    });
+  })();
 </script>
 </body>
 </html>

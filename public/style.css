@@ -683,6 +683,14 @@ section.section.serre { padding: 56px 24px; }
   flex-direction: column;
 }
 .carte-bien:hover { border-color: var(--gold); transform: translateY(-3px); }
+/* Petit rappel doré permanent (pas seulement au survol) sur les biens VIP/VIP+,
+   pour qu'ils se distinguent vraiment dans une grille plutôt que de ne compter
+   que sur la petite pastille "VIP" posée sur la photo. */
+.carte-bien:has(.badge-vip) {
+  border-color: rgba(207, 159, 86, 0.45);
+  box-shadow: 0 0 0 1px rgba(207, 159, 86, 0.12);
+}
+.carte-bien:has(.badge-vip):hover { border-color: var(--gold); }
 
 .carte-bien .visuel {
   aspect-ratio: 4 / 3;
