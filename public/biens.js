@@ -7,6 +7,42 @@ function iconeCategorie(categorie) {
   return icones[categorie] || "🏠";
 }
 
+// Un bien peut être proposé à la vente, à la location, ou aux deux en même temps
+// (bien.dispo_vente / bien.dispo_location, chacun avec son propre prix).
+
+function etiquetteTransaction(bien) {
+  if (bien.dispo_vente && bien.dispo_location) return "Vente & Location";
+  return bien.dispo_location ? "Location" : "Vente";
+}
+
+// Prix compact pour les cartes (carrousels, catalogue).
+function prixCarteHTML(bien) {
+  if (bien.dispo_vente && bien.dispo_location) {
+    return `<span class="prix prix-double">
+      <span class="prix-ligne"><span class="prix-etiquette">Vente</span>${formaterPrix(bien.prix)}</span>
+      <span class="prix-ligne"><span class="prix-etiquette">Location</span>${formaterPrix(bien.prix_location)}<span> /sem.</span></span>
+    </span>`;
+  }
+  if (bien.dispo_location) {
+    return `<span class="prix">${formaterPrix(bien.prix_location)}<span> /semaine</span></span>`;
+  }
+  return `<span class="prix">${formaterPrix(bien.prix)}</span>`;
+}
+
+// Prix détaillé pour la fiche d'une annonce.
+function prixFicheHTML(bien) {
+  if (bien.dispo_vente && bien.dispo_location) {
+    return `<div class="fiche-prix fiche-prix-double">
+      <div class="fiche-prix-ligne"><span class="prix-etiquette">Vente</span>${formaterPrix(bien.prix)}</div>
+      <div class="fiche-prix-ligne"><span class="prix-etiquette">Location</span>${formaterPrix(bien.prix_location)} / semaine</div>
+    </div>`;
+  }
+  if (bien.dispo_location) {
+    return `<div class="fiche-prix">${formaterPrix(bien.prix_location)} / semaine</div>`;
+  }
+  return `<div class="fiche-prix">${formaterPrix(bien.prix)}</div>`;
+}
+
 function badgesSecondairesHTML(bien) {
   const badges = [];
   if (bien.categorie === "habitation" && bien.meuble) badges.push('<span class="badge-info">Meublé</span>');
@@ -24,7 +60,7 @@ function carteBienHTML(bien) {
     <a class="carte-bien" href="/bien.html?id=${bien.id}">
       <div class="visuel">
         ${bien.vendu ? '<span class="badge-coeur badge-vendu">Vendu</span>' : (bien.coup_de_coeur ? '<span class="badge-coeur">Coup de cœur</span>' : "")}
-        <span class="badge-transaction">${bien.transaction_type === "location" ? "Location" : "Vente"}</span>
+        <span class="badge-transaction">${etiquetteTransaction(bien)}</span>
         ${badgesSecondairesHTML(bien)}
         ${visuel}
       </div>
@@ -33,7 +69,7 @@ function carteBienHTML(bien) {
         <h3>${echapper(bien.titre)}</h3>
         <p class="description">${echapper((bien.description || "").slice(0, 90))}${(bien.description || "").length > 90 ? "…" : ""}</p>
         <div class="pied">
-          <span class="prix">${formaterPrix(bien.prix)}${bien.transaction_type === "location" ? '<span> /semaine</span>' : ""}</span>
+          ${prixCarteHTML(bien)}
           ${bien.places ? `<span class="zone-tag">${bien.places} places</span>` : ""}
         </div>
       </div>
@@ -121,10 +157,10 @@ async function chargerFicheBien() {
       <div class="fiche-fiche">
         <span class="zone-tag">${echapper(bien.sous_categorie || ETIQUETTES_CATEGORIE[bien.categorie] || "")}${bien.coup_de_coeur ? " · Coup de cœur" : ""}${bien.standing ? " · Bien d'exception" : ""}</span>
         <h1>${echapper(bien.titre)}</h1>
-        <div class="fiche-prix">${formaterPrix(bien.prix)}${bien.transaction_type === "location" ? " / semaine" : ""}</div>
+        ${prixFicheHTML(bien)}
         ${bien.vendu ? '<p class="champ-aide" style="color:var(--success);font-weight:600;">Ce bien a été vendu.</p>' : (!bien.disponible ? '<p class="champ-aide" style="color:var(--danger);font-weight:600;">Ce bien n’est plus disponible.</p>' : "")}
         <div class="fiche-carac">
-          <div><strong>${bien.transaction_type === "location" ? "Location" : "Vente"}</strong>Transaction</div>
+          <div><strong>${etiquetteTransaction(bien)}</strong>Transaction</div>
           <div><strong>${ETIQUETTES_CATEGORIE[bien.categorie] || ""}</strong>Catégorie</div>
           ${bien.categorie === "habitation" ? `<div><strong>${bien.meuble ? "Meublé" : "Non meublé"}</strong>Ameublement</div>` : ""}
           ${bien.places ? `<div><strong>${bien.places}</strong>Places</div>` : ""}

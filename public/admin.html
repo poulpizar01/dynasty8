@@ -149,19 +149,31 @@
         <input type="checkbox" id="bien-meuble" checked>
         <label for="bien-meuble" style="margin:0;">Meublé (sinon : non meublé)</label>
       </div>
-      <div class="champ-deux">
-        <div class="champ">
-          <label for="bien-prix">Prix ($) <span class="champ-obligatoire">*</span></label>
-          <input type="number" id="bien-prix" min="0" step="1">
-          <p class="champ-erreur cache" id="erreur-bien-prix">Indiquez un prix valide (0 ou plus).</p>
+      <div class="champ">
+        <label>Transaction <span class="champ-obligatoire">*</span></label>
+        <p class="champ-aide" style="margin:0 0 10px;">Un bien peut être proposé à la vente, à la location, ou aux deux en même temps.</p>
+
+        <div class="champ-checkbox">
+          <input type="checkbox" id="bien-dispo-vente" checked>
+          <label for="bien-dispo-vente" style="margin:0;">À la vente</label>
         </div>
-        <div class="champ">
-          <label for="bien-transaction">Transaction</label>
-          <select id="bien-transaction">
-            <option value="vente">Vente</option>
-            <option value="location">Location (par semaine)</option>
-          </select>
+        <div class="champ" id="ligne-bien-prix-vente" style="margin:8px 0 16px 26px;">
+          <label for="bien-prix-vente">Prix de vente ($)</label>
+          <input type="number" id="bien-prix-vente" min="0" step="1">
+          <p class="champ-erreur cache" id="erreur-bien-prix-vente">Indiquez un prix de vente valide (0 ou plus).</p>
         </div>
+
+        <div class="champ-checkbox">
+          <input type="checkbox" id="bien-dispo-location">
+          <label for="bien-dispo-location" style="margin:0;">À la location (par semaine)</label>
+        </div>
+        <div class="champ cache" id="ligne-bien-prix-location" style="margin:8px 0 0 26px;">
+          <label for="bien-prix-location">Prix de location ($ / semaine)</label>
+          <input type="number" id="bien-prix-location" min="0" step="1">
+          <p class="champ-erreur cache" id="erreur-bien-prix-location">Indiquez un prix de location valide (0 ou plus).</p>
+        </div>
+
+        <p class="champ-erreur cache" id="erreur-bien-transaction">Cochez au moins une option : à la vente et/ou à la location.</p>
       </div>
       <div class="champ-deux">
         <div class="champ">

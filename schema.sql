@@ -24,13 +24,23 @@ CREATE TABLE IF NOT EXISTS biens (
   sous_categorie TEXT,              -- pour 'habitation' uniquement, ex: 'Eclipse Tower', 'Villa'...
   titre TEXT NOT NULL,
   zone TEXT,                        -- conservé pour compatibilité, plus utilisé par le formulaire
-  prix INTEGER NOT NULL DEFAULT 0,
-  transaction_type TEXT NOT NULL DEFAULT 'vente', -- 'vente' | 'location'
+  prix INTEGER NOT NULL DEFAULT 0,           -- prix de vente (utilisé si dispo_vente = 1)
+  prix_location INTEGER,                     -- prix de location par semaine (utilisé si dispo_location = 1)
+  dispo_vente INTEGER NOT NULL DEFAULT 1,    -- le bien est-il proposé à la vente ?
+  dispo_location INTEGER NOT NULL DEFAULT 0, -- le bien est-il proposé à la location ? (les deux peuvent être actifs en même temps)
+  transaction_type TEXT NOT NULL DEFAULT 'vente', -- conservé pour compatibilité, plus utilisé par l'affichage (voir dispo_vente / dispo_location)
   places INTEGER,                   -- nb de chambres / véhicules selon la catégorie
   description TEXT,
   images TEXT NOT NULL DEFAULT '[]', -- tableau JSON d'URLs d'images
   coup_de_coeur INTEGER NOT NULL DEFAULT 0,
   disponible INTEGER NOT NULL DEFAULT 1,
+  vendu INTEGER NOT NULL DEFAULT 0,
+  vendu_le TEXT,
+  meuble INTEGER NOT NULL DEFAULT 1, -- pertinent uniquement pour la catégorie 'habitation'
+  coherence TEXT,                    -- 'Habitation' | 'Garage' | 'Cayo Perico' | 'Roxwood' | 'Portolina'
+  coffre_kg INTEGER,
+  vip TEXT NOT NULL DEFAULT '',      -- '' | 'vip' | 'vip+' (informatif, boutique FlashbackFA)
+  standing INTEGER NOT NULL DEFAULT 0, -- bien d'exception mis en avant sur /exclusifs.html
   auteur TEXT,
   cree_le TEXT NOT NULL,
   maj TEXT NOT NULL

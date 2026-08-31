@@ -296,9 +296,24 @@ function validerBien(b) {
     const coffre = Number(b.coffre_kg);
     if (!Number.isFinite(coffre) || coffre < 0) return "La capacité de coffre doit être un nombre positif.";
   }
-  const prix = Number(b.prix);
-  if (b.prix === "" || b.prix == null || !Number.isFinite(prix) || prix < 0) {
-    return "Le prix doit être un nombre positif.";
+  // Un bien doit être proposé à la vente et/ou à la location (les deux en même temps sont
+  // possibles), avec un prix valide pour chaque mode coché.
+  const dispoVente = !!b.dispo_vente;
+  const dispoLocation = !!b.dispo_location;
+  if (!dispoVente && !dispoLocation) {
+    return "Le bien doit être proposé à la vente et/ou à la location.";
+  }
+  if (dispoVente) {
+    const prixVente = Number(b.prix);
+    if (b.prix === "" || b.prix == null || !Number.isFinite(prixVente) || prixVente < 0) {
+      return "Le prix de vente doit être un nombre positif.";
+    }
+  }
+  if (dispoLocation) {
+    const prixLocation = Number(b.prix_location);
+    if (b.prix_location === "" || b.prix_location == null || !Number.isFinite(prixLocation) || prixLocation < 0) {
+      return "Le prix de location doit être un nombre positif.";
+    }
   }
   const images = Array.isArray(b.images) ? b.images : [];
   if (images.length > 5) return "5 photos maximum par bien.";
@@ -317,6 +332,8 @@ function normaliserBien(b) {
     images = [];
   }
   const categorie = CATEGORIES.includes(b.categorie) ? b.categorie : "habitation";
+  const dispoVente = !!b.dispo_vente;
+  const dispoLocation = !!b.dispo_location;
   return {
     categorie,
     // La sous-catégorie n'a de sens que pour "habitation" ; on l'ignore pour "garage".
@@ -325,8 +342,13 @@ function normaliserBien(b) {
       : "",
     titre: txt(b.titre, 120).trim(),
     zone: txt(b.zone, 60),
-    prix: Math.max(0, Number(b.prix) || 0),
-    transaction_type: b.transaction_type === "location" ? "location" : "vente",
+    prix: dispoVente ? Math.max(0, Number(b.prix) || 0) : 0,
+    prix_location: dispoLocation ? Math.max(0, Number(b.prix_location) || 0) : null,
+    dispo_vente: dispoVente ? 1 : 0,
+    dispo_location: dispoLocation ? 1 : 0,
+    // Conservé pour compatibilité avec d'anciennes lectures éventuelles ; l'affichage se base
+    // désormais sur dispo_vente / dispo_location, qui permettent les deux à la fois.
+    transaction_type: dispoLocation && !dispoVente ? "location" : "vente",
     places: b.places === "" || b.places == null ? null : Math.max(0, Number(b.places) || 0),
     description: txt(b.description, 4000),
     images: JSON.stringify(images),
@@ -415,14 +437,16 @@ async function biens(request, url, env) {
     if (erreur) return json({ erreur }, 400);
     const n = normaliserBien(b);
     const r = await env.DB.prepare(
-      `INSERT INTO biens (categorie, sous_categorie, titre, zone, prix, transaction_type, places,
+      `INSERT INTO biens (categorie, sous_categorie, titre, zone, prix, prix_location, dispo_vente,
+                          dispo_location, transaction_type, places,
                           description, images, coup_de_coeur, disponible, vendu, vendu_le,
                           meuble, coherence, coffre_kg, vip, standing, auteur, cree_le, maj)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12,
-               CASE WHEN ?12 = 1 THEN datetime('now') ELSE NULL END,
-               ?13, ?14, ?15, ?16, ?17, ?18, datetime('now'), datetime('now'))`
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15,
+               CASE WHEN ?15 = 1 THEN datetime('now') ELSE NULL END,
+               ?16, ?17, ?18, ?19, ?20, ?21, datetime('now'), datetime('now'))`
     ).bind(
-      n.categorie, n.sous_categorie, n.titre, n.zone, n.prix, n.transaction_type, n.places,
+      n.categorie, n.sous_categorie, n.titre, n.zone, n.prix, n.prix_location, n.dispo_vente,
+      n.dispo_location, n.transaction_type, n.places,
       n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu,
       n.meuble, n.coherence, n.coffre_kg, n.vip, n.standing, s.pseudo
     ).run();
@@ -439,17 +463,19 @@ async function biens(request, url, env) {
     const n = normaliserBien(b);
     await env.DB.prepare(
       `UPDATE biens SET categorie=?2, sous_categorie=?3, titre=?4, zone=?5, prix=?6,
-              transaction_type=?7, places=?8, description=?9, images=?10, coup_de_coeur=?11,
-              disponible=?12, vendu=?13,
+              prix_location=?7, dispo_vente=?8, dispo_location=?9, transaction_type=?10,
+              places=?11, description=?12, images=?13, coup_de_coeur=?14,
+              disponible=?15, vendu=?16,
               vendu_le = CASE
-                WHEN ?13 = 1 AND vendu = 0 THEN datetime('now')
-                WHEN ?13 = 0 THEN NULL
+                WHEN ?16 = 1 AND vendu = 0 THEN datetime('now')
+                WHEN ?16 = 0 THEN NULL
                 ELSE vendu_le
               END,
-              meuble=?14, coherence=?15, coffre_kg=?16, vip=?17, standing=?18,
+              meuble=?17, coherence=?18, coffre_kg=?19, vip=?20, standing=?21,
               maj=datetime('now') WHERE id=?1`
     ).bind(
-      id, n.categorie, n.sous_categorie, n.titre, n.zone, n.prix, n.transaction_type,
+      id, n.categorie, n.sous_categorie, n.titre, n.zone, n.prix,
+      n.prix_location, n.dispo_vente, n.dispo_location, n.transaction_type,
       n.places, n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu,
       n.meuble, n.coherence, n.coffre_kg, n.vip, n.standing
     ).run();
@@ -480,6 +506,8 @@ function bienPourAffichage(d) {
     vendu: !!d.vendu,
     meuble: !!d.meuble,
     standing: !!d.standing,
+    dispo_vente: !!d.dispo_vente,
+    dispo_location: !!d.dispo_location,
   };
 }
 

@@ -161,7 +161,7 @@ async function chargerTableBiens() {
         <td>${echapper(b.titre)}${b.coup_de_coeur ? ' <span class="puce puce-or">Coup de cœur</span>' : ""}${b.standing ? ' <span class="puce puce-or">Exception</span>' : ""}</td>
         <td>${ETIQUETTES_CATEGORIE[b.categorie] || b.categorie}</td>
         <td>${echapper(b.sous_categorie || "—")}${b.coherence ? ` <span class="champ-aide" style="display:inline;">· ${echapper(b.coherence)}</span>` : ""}</td>
-        <td>${formaterPrix(b.prix)}${b.transaction_type === "location" ? " /sem." : ""}</td>
+        <td>${b.dispo_vente ? formaterPrix(b.prix) : ""}${b.dispo_vente && b.dispo_location ? " · " : ""}${b.dispo_location ? formaterPrix(b.prix_location) + " /sem." : ""}</td>
         <td>${b.vendu ? '<span class="puce puce-or">Vendu</span>' : (b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>')}</td>
         <td><div class="actions-ligne"><button class="btn btn-fantome btn-petit" data-editer="${b.id}">Modifier</button></div></td>
       </tr>`).join("");
@@ -201,6 +201,15 @@ document.getElementById("bien-categorie").addEventListener("change", (ev) => {
 
 document.getElementById("bien-coherence").addEventListener("change", (ev) => {
   ev.target.dataset.modifieManuellement = "1";
+});
+
+// ---- transaction : vente et/ou location, chacune avec sa propre ligne de prix -----
+
+document.getElementById("bien-dispo-vente").addEventListener("change", (ev) => {
+  document.getElementById("ligne-bien-prix-vente").classList.toggle("cache", !ev.target.checked);
+});
+document.getElementById("bien-dispo-location").addEventListener("change", (ev) => {
+  document.getElementById("ligne-bien-prix-location").classList.toggle("cache", !ev.target.checked);
 });
 
 // ---- photos : ajout par URL ou depuis l'ordinateur, prévisualisation ------
@@ -317,8 +326,10 @@ function etatFormulaireBien() {
     categorie: document.getElementById("bien-categorie").value,
     sousCategorie: document.getElementById("bien-sous-categorie").value,
     meuble: document.getElementById("bien-meuble").checked,
-    prix: document.getElementById("bien-prix").value,
-    transaction: document.getElementById("bien-transaction").value,
+    dispoVente: document.getElementById("bien-dispo-vente").checked,
+    prixVente: document.getElementById("bien-prix-vente").value,
+    dispoLocation: document.getElementById("bien-dispo-location").checked,
+    prixLocation: document.getElementById("bien-prix-location").value,
     places: document.getElementById("bien-places").value,
     coffre: document.getElementById("bien-coffre").value,
     coherence: document.getElementById("bien-coherence").value,
@@ -342,8 +353,14 @@ function ouvrirModaleBien(id) {
   remplirSousCategories(categorie, bien ? bien.sous_categorie || "" : "");
   document.getElementById("bien-meuble").checked = bien ? !!bien.meuble : true;
   document.getElementById("bien-places").value = bien && bien.places != null ? bien.places : "";
-  document.getElementById("bien-prix").value = bien ? bien.prix : "";
-  document.getElementById("bien-transaction").value = bien ? bien.transaction_type : "vente";
+  const dispoVente = bien ? !!bien.dispo_vente : true;
+  const dispoLocation = bien ? !!bien.dispo_location : false;
+  document.getElementById("bien-dispo-vente").checked = dispoVente;
+  document.getElementById("bien-prix-vente").value = bien && bien.dispo_vente ? bien.prix : "";
+  document.getElementById("ligne-bien-prix-vente").classList.toggle("cache", !dispoVente);
+  document.getElementById("bien-dispo-location").checked = dispoLocation;
+  document.getElementById("bien-prix-location").value = bien && bien.dispo_location ? bien.prix_location : "";
+  document.getElementById("ligne-bien-prix-location").classList.toggle("cache", !dispoLocation);
   document.getElementById("bien-coffre").value = bien && bien.coffre_kg != null ? bien.coffre_kg : "";
   const champCoherence = document.getElementById("bien-coherence");
   champCoherence.value = bien && bien.coherence ? bien.coherence : (categorie === "garage" ? "Garage" : "Habitation");
@@ -392,15 +409,27 @@ document.getElementById("formulaire-bien").addEventListener("submit", async (ev)
   document.querySelectorAll("#formulaire-bien .champ-erreur").forEach((p) => p.classList.add("cache"));
 
   const titre = document.getElementById("bien-titre").value.trim();
-  const prixBrut = document.getElementById("bien-prix").value;
-  const prix = Number(prixBrut);
+  const dispoVente = document.getElementById("bien-dispo-vente").checked;
+  const prixVenteBrut = document.getElementById("bien-prix-vente").value;
+  const prixVente = Number(prixVenteBrut);
+  const dispoLocation = document.getElementById("bien-dispo-location").checked;
+  const prixLocationBrut = document.getElementById("bien-prix-location").value;
+  const prixLocation = Number(prixLocationBrut);
   let valide = true;
   if (!titre) {
     document.getElementById("erreur-bien-titre").classList.remove("cache");
     valide = false;
   }
-  if (prixBrut === "" || !Number.isFinite(prix) || prix < 0) {
-    document.getElementById("erreur-bien-prix").classList.remove("cache");
+  if (!dispoVente && !dispoLocation) {
+    document.getElementById("erreur-bien-transaction").classList.remove("cache");
+    valide = false;
+  }
+  if (dispoVente && (prixVenteBrut === "" || !Number.isFinite(prixVente) || prixVente < 0)) {
+    document.getElementById("erreur-bien-prix-vente").classList.remove("cache");
+    valide = false;
+  }
+  if (dispoLocation && (prixLocationBrut === "" || !Number.isFinite(prixLocation) || prixLocation < 0)) {
+    document.getElementById("erreur-bien-prix-location").classList.remove("cache");
     valide = false;
   }
   if (!valide) {
@@ -419,8 +448,10 @@ document.getElementById("formulaire-bien").addEventListener("submit", async (ev)
     coffre_kg: document.getElementById("bien-coffre").value === "" ? null : Number(document.getElementById("bien-coffre").value),
     coherence: document.getElementById("bien-coherence").value,
     vip: document.getElementById("bien-vip").value,
-    prix,
-    transaction_type: document.getElementById("bien-transaction").value,
+    dispo_vente: dispoVente,
+    prix: dispoVente ? prixVente : 0,
+    dispo_location: dispoLocation,
+    prix_location: dispoLocation ? prixLocation : null,
     description: document.getElementById("bien-description").value.trim(),
     images: IMAGES_BIEN.slice(),
     coup_de_coeur: document.getElementById("bien-coup-de-coeur").checked,
