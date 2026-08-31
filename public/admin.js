@@ -265,8 +265,6 @@ function redessinerImagesBien() {
   });
   document.getElementById("bien-images-compteur").textContent = IMAGES_BIEN.length + " / 5";
   const complet = IMAGES_BIEN.length >= 5;
-  document.getElementById("bien-image-url").disabled = complet;
-  document.getElementById("bouton-ajouter-url").disabled = complet;
   document.getElementById("bouton-parcourir").disabled = complet;
   afficherErreurImages(complet ? "Limite de 5 photos atteinte. Retirez une photo pour en ajouter une autre." : "");
 }
@@ -276,27 +274,6 @@ function ajouterImageBien(valeur) {
   IMAGES_BIEN.push(valeur);
   redessinerImagesBien();
 }
-
-document.getElementById("bouton-ajouter-url").addEventListener("click", () => {
-  const champ = document.getElementById("bien-image-url");
-  const valeur = champ.value.trim();
-  if (!valeur) return;
-  try {
-    new URL(valeur);
-  } catch (e) {
-    afficherErreurImages("Ce lien ne ressemble pas à une adresse valide.");
-    return;
-  }
-  ajouterImageBien(valeur);
-  champ.value = "";
-});
-
-document.getElementById("bien-image-url").addEventListener("keydown", (ev) => {
-  if (ev.key === "Enter") {
-    ev.preventDefault();
-    document.getElementById("bouton-ajouter-url").click();
-  }
-});
 
 document.getElementById("bouton-parcourir").addEventListener("click", () => {
   document.getElementById("bien-image-fichier").click();
@@ -367,7 +344,6 @@ function ouvrirModaleBien(id) {
   delete champCoherence.dataset.modifieManuellement;
   document.getElementById("bien-vip").value = bien ? bien.vip || "" : "";
   document.getElementById("bien-description").value = bien ? bien.description || "" : "";
-  document.getElementById("bien-image-url").value = "";
   document.getElementById("bien-coup-de-coeur").checked = !!(bien && bien.coup_de_coeur);
   document.getElementById("bien-disponible").checked = bien ? !!bien.disponible : true;
   document.getElementById("bien-vendu").checked = !!(bien && bien.vendu);
