@@ -52,13 +52,10 @@ Le site a besoin d'une clé secrète pour signer les connexions à l'espace agen
 3. Clique sur **Add**.
    - Nom (Variable name) : `SESSION_SECRET`
    - Type : **Secret** (surtout pas « Text », pour qu'elle reste invisible)
-   - Valeur : colle exactement ceci :
-     ```
-     P77U7g-MyLffHKjJ-nJKkKbUZwy-4e6cU7aXyp9CBVk
-     ```
+   - Valeur : une chaîne aléatoire longue et unique (demande-la moi directement en message si tu veux que je t'en génère une — **jamais dans ce fichier ni dans aucun fichier du dépôt**, uniquement collée à la main dans ce champ Cloudflare).
 4. Clique sur **Save**, puis **Deploy** si le site te propose de redéployer (sinon, un nouveau déploiement se lance automatiquement).
 
-⚠️ Cette clé doit rester confidentielle : ne la mets jamais dans le code ni dans un message public. Si tu penses qu'elle a fuité, reviens sur cette page et remplace-la par une nouvelle valeur (génère-en une nouvelle en me le demandant, ou avec n'importe quel générateur de mot de passe long).
+⚠️ Cette clé doit rester confidentielle : ne la mets jamais dans le code, dans ce README, ni dans un message public. Si tu penses qu'elle a fuité, reviens sur cette page et remplace-la par une nouvelle valeur (génère-en une nouvelle en me le demandant, ou avec n'importe quel générateur de mot de passe long).
 
 ---
 
