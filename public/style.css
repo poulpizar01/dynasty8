@@ -1289,27 +1289,6 @@ section.section.serre {
 .carte-hub p { color: var(--text-muted); font-size: 0.92rem; flex: 1; margin: 0; }
 .carte-hub .carte-hub-fleche { color: var(--gold); font-size: 0.88rem; font-weight: 600; margin-top: 6px; }
 
-/* ---------- paliers VIP (page /vip.html) ---------- */
-
-.grille-vip { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 22px; }
-.carte-vip {
-  display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 32px 24px;
-  border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card);
-  text-align: center; transition: border-color 0.2s, transform 0.2s, background 0.2s;
-}
-.carte-vip:hover { border-color: var(--gold); transform: translateY(-3px); background: var(--bg-card-hover); }
-.carte-vip-titre {
-  font-family: var(--d8-font-ui); font-size: 0.76rem; text-transform: uppercase;
-  letter-spacing: 0.16em; color: var(--text-muted);
-}
-.carte-vip-prix {
-  font-family: var(--d8-font-display); font-weight: 500; font-size: 2.1rem;
-  background: var(--or-grad); background-size: 220% 100%;
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.carte-vip-prix span { font-size: 0.95rem; font-family: var(--d8-font-ui); font-weight: 400; -webkit-text-fill-color: var(--text-faint); }
-.carte-vip p { color: var(--text-muted); font-size: 0.9rem; flex: 1; margin: 0; }
-
 /* ---------- pages de cohérence : blocs de règlement (règles / biens / intérieurs) ---------- */
 
 .guide-bloc { margin-bottom: 34px; }
