@@ -133,6 +133,32 @@ function injecterCadre() {
   cadre.className = "d8-frame";
   cadre.setAttribute("aria-hidden", "true");
   document.body.appendChild(cadre);
+
+  ajusterCadre();
+
+  // Le haut du cadre doit toujours rester juste sous l'en-tête, jamais le
+  // traverser : on recalcule dès que la hauteur de l'en-tête change (menu qui
+  // repasse à la ligne, menu mobile ouvert, redimensionnement, polices qui
+  // finissent de charger après le premier rendu).
+  const entete = document.querySelector(".entete");
+  if (entete && "ResizeObserver" in window) {
+    new ResizeObserver(ajusterCadre).observe(entete);
+  } else {
+    window.addEventListener("resize", ajusterCadre);
+  }
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(ajusterCadre);
+  }
+}
+
+// Mesure la hauteur réelle de l'en-tête et pousse le haut du cadre juste en
+// dessous (petite marge de 10px), via la variable CSS --d8-frame-top.
+function ajusterCadre() {
+  const entete = document.querySelector(".entete");
+  const cadre = document.querySelector(".d8-frame");
+  if (!entete || !cadre) return;
+  const hauteur = entete.getBoundingClientRect().height;
+  cadre.style.setProperty("--d8-frame-top", (hauteur + 10) + "px");
 }
 
 function initialiserLayout(cleActive) {
