@@ -20,6 +20,7 @@ const LIENS_NAV = [
       { href: "/coherence.html?zone=Roxwood", texte: "Cohérence Roxwood" },
     ] },
   { href: "/exclusifs.html", texte: "Exclusifs", cle: "exclusifs" },
+  { href: "/vip.html", texte: "VIP", cle: "vip" },
   { href: "/services.html", texte: "Services", cle: "services" },
   { href: "/equipe.html", texte: "Équipe", cle: "equipe" },
   { href: "/faq.html", texte: "FAQ", cle: "faq" },
@@ -98,6 +99,7 @@ function injecterPied() {
             <li><a href="/garages.html">Garages</a></li>
             <li><a href="/coherences.html">Cohérences</a></li>
             <li><a href="/exclusifs.html">Exclusifs</a></li>
+            <li><a href="/vip.html">Avantages VIP</a></li>
           </ul>
         </div>
         <div>
