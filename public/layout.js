@@ -117,7 +117,9 @@ function initialiserLayout(cleActive) {
 
 function formaterPrix(valeur) {
   const n = Number(valeur) || 0;
-  return n.toLocaleString("fr-FR") + " $";
+  // "HT" (hors taxe) : les prix du catalogue Dynasty 8 sont donnés hors taxe,
+  // comme dans le règlement officiel des cohérences.
+  return n.toLocaleString("fr-FR") + " $ HT";
 }
 
 function echapper(texte) {
