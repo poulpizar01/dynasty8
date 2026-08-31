@@ -207,7 +207,17 @@
       </div>
       <div class="champ">
         <label for="bien-description">Description</label>
+        <div class="description-outils">
+          <button type="button" class="btn btn-fantome btn-petit" id="bouton-description-gras" title="Mettre en gras"><strong>G</strong></button>
+          <button type="button" class="btn btn-fantome btn-petit" id="bouton-description-italique" title="Mettre en italique"><em>I</em></button>
+          <div class="emoji-outil">
+            <button type="button" class="btn btn-fantome btn-petit" id="bouton-description-emoji" aria-expanded="false" aria-haspopup="true">🙂 Emoji</button>
+            <div class="emoji-panneau cache" id="panneau-description-emoji"></div>
+          </div>
+        </div>
         <textarea id="bien-description" maxlength="4000" placeholder="Décrivez le bien : superficie, atouts, équipements..."></textarea>
+        <p class="champ-aide">Sélectionnez du texte puis cliquez sur <strong>G</strong> (gras) ou <em>I</em> (italique) — ou tapez directement <code>**gras**</code> / <code>*italique*</code>. Aperçu tel qu'affiché sur la fiche du bien :</p>
+        <div class="description-apercu vide" id="apercu-description"></div>
       </div>
       <div class="champ">
         <label>Photos <span class="champ-compteur" id="bien-images-compteur">0 / 5</span></label>

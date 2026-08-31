@@ -82,7 +82,7 @@ function carteBienHTML(bien) {
       <div class="corps">
         <span class="zone-tag">${etiquetteZoneHTML(bien)}</span>
         <h3>${echapper(bien.titre)}</h3>
-        <p class="description">${echapper((bien.description || "").slice(0, 90))}${(bien.description || "").length > 90 ? "…" : ""}</p>
+        <p class="description">${echapper(texteSansMarquage(bien.description).slice(0, 90))}${texteSansMarquage(bien.description).length > 90 ? "…" : ""}</p>
         <div class="pied">
           ${prixCarteHTML(bien)}
           ${bien.places ? `<span class="zone-tag">${bien.places} places</span>` : ""}
@@ -327,6 +327,9 @@ async function chargerFicheBien() {
               `<button data-i="${i}" class="${i === 0 ? "actif" : ""}">${u ? `<img src="${echapper(u)}">` : ""}</button>`
           )
           .join("")}</div>` : ""}
+        ${bien.description
+          ? `<div class="fiche-description-vitrine">${analyserDescription(bien.description)}</div>`
+          : `<div class="fiche-description-vitrine vide">Aucune description fournie pour cette annonce.</div>`}
       </div>
       <div class="fiche-fiche">
         <span class="zone-tag">${echapper(bien.sous_categorie || ETIQUETTES_CATEGORIE[bien.categorie] || "")}${bien.coup_de_coeur ? " · Coup de cœur" : ""}${bien.standing ? " · Bien d'exception" : ""}</span>
@@ -343,7 +346,6 @@ async function chargerFicheBien() {
           ${bien.coherence ? `<div><strong>${echapper(bien.coherence)}</strong>Cohérence</div>` : ""}
         </div>
         ${bien.coherence ? `<a class="btn btn-fantome btn-petit" style="margin-bottom:14px;" href="/coherence.html?zone=${encodeURIComponent(bien.coherence)}">Voir la fiche de cohérence « ${echapper(bien.coherence)} » →</a>` : ""}
-        <p>${echapper(bien.description || "Aucune description fournie pour cette annonce.").replace(/\n/g, "<br>")}</p>
         <div class="encart-contact">
           <div class="encart-contact-titre">📱 Comment obtenir ce bien ?</div>
           <ol class="encart-contact-etapes">

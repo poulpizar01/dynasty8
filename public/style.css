@@ -1195,6 +1195,32 @@ section.section.serre {
 .miniatures button.actif { border-color: var(--gold); }
 .miniatures img { width: 100%; height: 100%; object-fit: cover; }
 
+/* Description de l'annonce, sous les photos : présentée comme une petite
+   vitrine (police display, plus grande, centrée) plutôt qu'un simple
+   paragraphe technique — les marqueurs **gras** / *italique* saisis dans
+   l'espace agents y sont rendus (voir analyserDescription() dans layout.js). */
+.fiche-description-vitrine {
+  margin-top: 26px;
+  padding-top: 22px;
+  font-family: var(--d8-font-display);
+  font-size: 1.08rem;
+  line-height: 1.75;
+  color: var(--d8-text);
+  text-align: center;
+  position: relative;
+}
+.fiche-description-vitrine::before {
+  content: "";
+  display: block;
+  width: 44px;
+  height: 1px;
+  margin: 0 auto 18px;
+  background: linear-gradient(90deg, transparent, var(--d8-gold-500), transparent);
+}
+.fiche-description-vitrine strong { color: var(--d8-gold-300); font-weight: 600; }
+.fiche-description-vitrine em { font-style: italic; }
+.fiche-description-vitrine.vide { color: var(--text-faint); font-style: italic; font-size: 0.98rem; }
+
 .fiche-fiche { position: sticky; top: 100px; }
 .fiche-fiche h1 { font-family: var(--d8-font-display); font-weight: 500; font-style: italic; }
 .fiche-fiche p { max-width: 62ch; }
@@ -1398,6 +1424,40 @@ section.section.serre {
 .champ-checkbox input { width: auto; min-height: 0; }
 .champ-deux { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .champ-aide { font-size: 0.78rem; color: var(--text-faint); margin-top: 5px; }
+
+/* ---------- admin : petite barre d'outils au-dessus de la description (gras / italique / emoji) ---------- */
+
+.description-outils { display: flex; gap: 8px; margin-bottom: 8px; position: relative; }
+.description-outils .btn-petit { min-height: 34px; padding: 0 14px; }
+.emoji-outil { position: relative; }
+.emoji-panneau {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 5;
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
+  width: 264px; padding: 10px; border-radius: var(--radius-sm);
+  background: var(--bg-elevated); border: 1px solid rgba(201, 165, 92, 0.3);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+.emoji-bouton {
+  font-size: 1.15rem; line-height: 1; padding: 6px 0; border-radius: 6px;
+  background: none; border: none; cursor: pointer; transition: background var(--d8-t);
+}
+.emoji-bouton:hover, .emoji-bouton:focus-visible { background: rgba(201, 165, 92, 0.16); }
+
+/* Aperçu de la description telle qu'elle apparaîtra sur la fiche du bien
+   (voir .fiche-description-vitrine dans style.css et analyserDescription()
+   dans layout.js — même logique de mise en forme, appliquée en direct). */
+.description-apercu {
+  margin-top: 10px; padding: 14px 16px; border-radius: var(--radius-sm);
+  background: rgba(6, 12, 26, 0.4); border: 1px dashed rgba(201, 165, 92, 0.28);
+  font-family: var(--d8-font-display); font-size: 1rem; line-height: 1.65;
+  color: var(--d8-text); text-align: center;
+}
+.description-apercu strong { color: var(--d8-gold-300); font-weight: 600; }
+.description-apercu:empty::before,
+.description-apercu.vide::before {
+  content: "L'aperçu de la description apparaîtra ici.";
+  color: var(--text-faint); font-style: italic; font-family: var(--d8-font-ui); font-size: 0.82rem;
+}
 
 /* ---------- admin : structure ---------- */
 

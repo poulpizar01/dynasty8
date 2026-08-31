@@ -233,6 +233,28 @@ function echapper(texte) {
   return d.innerHTML;
 }
 
+// Mise en forme simple des descriptions de biens : **gras** et *italique*,
+// plus les retours à la ligne. Le texte est d'abord échappé (echapper) donc
+// une balise HTML tapée par un agent ne peut jamais s'exécuter — seuls ces
+// deux marqueurs sont reconnus, tout le reste reste du texte brut affiché
+// tel quel (les emoji n'ont besoin d'aucun traitement particulier, ce sont
+// de simples caractères).
+function analyserDescription(texte) {
+  if (!texte) return "";
+  return echapper(texte)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/\n/g, "<br>");
+}
+
+// Même texte mais sans les marqueurs **/*, pour les endroits (cartes d'annonces)
+// où seul un extrait en texte brut est affiché.
+function texteSansMarquage(texte) {
+  return (texte || "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1");
+}
+
 async function appelAPI(chemin, options) {
   const reponse = await fetch(chemin, {
     credentials: "same-origin",

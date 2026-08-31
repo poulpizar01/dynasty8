@@ -295,6 +295,71 @@ document.getElementById("bien-image-fichier").addEventListener("change", async (
   }
 });
 
+// ---- barre d'outils de la description (gras / italique / emoji) + aperçu en direct ----
+
+const EMOJIS_DESCRIPTION = [
+  "🏠", "🏢", "🏙️", "🌴", "🚗", "🛏️", "🛋️", "🚿",
+  "🛁", "🍽️", "🎉", "🍸", "💰", "🔑", "📍", "✨",
+  "⭐", "🔥", "🌊", "🏊", "🎮", "🖥️", "🧳", "✅",
+];
+
+function majApercuDescription() {
+  const apercu = document.getElementById("apercu-description");
+  const texte = document.getElementById("bien-description").value;
+  apercu.innerHTML = analyserDescription(texte);
+  apercu.classList.toggle("vide", !texte.trim());
+}
+
+// Entoure la sélection en cours dans la description du marqueur donné (ex: "**"
+// pour le gras). S'il n'y a rien de sélectionné, insère un texte d'exemple à
+// la place, déjà sélectionné, pour que l'agent puisse taper par-dessus.
+function entourerDescription(marqueur, texteParDefaut) {
+  const champ = document.getElementById("bien-description");
+  const debut = champ.selectionStart;
+  const fin = champ.selectionEnd;
+  const valeur = champ.value;
+  const selection = valeur.slice(debut, fin) || texteParDefaut;
+  champ.value = valeur.slice(0, debut) + marqueur + selection + marqueur + valeur.slice(fin);
+  const nouveauDebut = debut + marqueur.length;
+  champ.focus();
+  champ.setSelectionRange(nouveauDebut, nouveauDebut + selection.length);
+  majApercuDescription();
+}
+
+document.getElementById("bien-description").addEventListener("input", majApercuDescription);
+document.getElementById("bouton-description-gras").addEventListener("click", () => entourerDescription("**", "texte en gras"));
+document.getElementById("bouton-description-italique").addEventListener("click", () => entourerDescription("*", "texte en italique"));
+
+const boutonEmoji = document.getElementById("bouton-description-emoji");
+const panneauEmoji = document.getElementById("panneau-description-emoji");
+panneauEmoji.innerHTML = EMOJIS_DESCRIPTION.map((e) => `<button type="button" class="emoji-bouton">${e}</button>`).join("");
+boutonEmoji.addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  const ouvert = panneauEmoji.classList.contains("cache");
+  panneauEmoji.classList.toggle("cache", !ouvert);
+  boutonEmoji.setAttribute("aria-expanded", String(ouvert));
+});
+panneauEmoji.querySelectorAll(".emoji-bouton").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const champ = document.getElementById("bien-description");
+    const debut = champ.selectionStart;
+    const fin = champ.selectionEnd;
+    champ.value = champ.value.slice(0, debut) + btn.textContent + champ.value.slice(fin);
+    const position = debut + btn.textContent.length;
+    champ.focus();
+    champ.setSelectionRange(position, position);
+    panneauEmoji.classList.add("cache");
+    boutonEmoji.setAttribute("aria-expanded", "false");
+    majApercuDescription();
+  });
+});
+document.addEventListener("click", (ev) => {
+  if (!panneauEmoji.contains(ev.target) && ev.target !== boutonEmoji) {
+    panneauEmoji.classList.add("cache");
+    boutonEmoji.setAttribute("aria-expanded", "false");
+  }
+});
+
 // ---- ouverture / fermeture de la modale, avec protection contre la perte de données ----
 
 function etatFormulaireBien() {
@@ -344,6 +409,7 @@ function ouvrirModaleBien(id) {
   delete champCoherence.dataset.modifieManuellement;
   document.getElementById("bien-vip").value = bien ? bien.vip || "" : "";
   document.getElementById("bien-description").value = bien ? bien.description || "" : "";
+  majApercuDescription();
   document.getElementById("bien-coup-de-coeur").checked = !!(bien && bien.coup_de_coeur);
   document.getElementById("bien-disponible").checked = bien ? !!bien.disponible : true;
   document.getElementById("bien-vendu").checked = !!(bien && bien.vendu);
