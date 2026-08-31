@@ -170,7 +170,14 @@ async function chargerFicheBien() {
         </div>
         ${bien.coherence ? `<a class="btn btn-fantome btn-petit" style="margin-bottom:14px;" href="/coherence.html?zone=${encodeURIComponent(bien.coherence)}">Voir la fiche de cohérence « ${echapper(bien.coherence)} » →</a>` : ""}
         <p>${echapper(bien.description || "Aucune description fournie pour cette annonce.").replace(/\n/g, "<br>")}</p>
-        <a class="btn btn-or btn-large" style="width:100%;margin-top:10px;" href="${LIEN_DISCORD}" target="_blank" rel="noopener">Contacter un agent sur Discord</a>
+        <div class="encart-contact">
+          <div class="encart-contact-titre">📱 Comment obtenir ce bien ?</div>
+          <ol class="encart-contact-etapes">
+            <li>Ouvrez l'application <strong>Eyefind</strong> sur votre téléphone, en jeu.</li>
+            <li>Recherchez <strong>Dynasty 8</strong> et envoyez-nous un message.</li>
+            <li>Patientez sur place : un agent Dynasty 8 arrive pour finaliser avec vous.</li>
+          </ol>
+        </div>
         <a class="btn btn-fantome" style="width:100%;margin-top:10px;" href="javascript:history.back()">← Retour aux annonces</a>
       </div>`;
     const miniatures = conteneur.querySelectorAll(".miniatures button");
