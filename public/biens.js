@@ -10,6 +10,15 @@ function iconeCategorie(categorie) {
 // Un bien peut être proposé à la vente, à la location, ou aux deux en même temps
 // (bien.dispo_vente / bien.dispo_location, chacun avec son propre prix).
 
+// Étiquette de zone d'une carte : "sous-catégorie · cohérence" (ex: "Villa · Roxwood").
+// Pour un garage sans sous-catégorie, la cohérence vaut souvent aussi "Garage" : dans ce
+// cas on n'affiche le mot qu'une seule fois plutôt que "Garage · Garage".
+function etiquetteZoneHTML(bien) {
+  const principal = bien.sous_categorie || ETIQUETTES_CATEGORIE[bien.categorie] || "";
+  const suffixe = bien.coherence && bien.coherence !== principal ? " · " + echapper(bien.coherence) : "";
+  return echapper(principal) + suffixe;
+}
+
 function etiquetteTransaction(bien) {
   if (bien.dispo_vente && bien.dispo_location) return "Vente & Location";
   return bien.dispo_location ? "Location" : "Vente";
@@ -65,7 +74,7 @@ function carteBienHTML(bien) {
         ${visuel}
       </div>
       <div class="corps">
-        <span class="zone-tag">${echapper(bien.sous_categorie || ETIQUETTES_CATEGORIE[bien.categorie] || "")}${bien.coherence ? " · " + echapper(bien.coherence) : ""}</span>
+        <span class="zone-tag">${etiquetteZoneHTML(bien)}</span>
         <h3>${echapper(bien.titre)}</h3>
         <p class="description">${echapper((bien.description || "").slice(0, 90))}${(bien.description || "").length > 90 ? "…" : ""}</p>
         <div class="pied">
