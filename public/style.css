@@ -27,6 +27,16 @@
   --accent: #cf9f56;
   --accent-strong: #e6c07f;
   --accent-contrast: #0a0f22;
+  /* Or "métallique" (façon Cabinet de Versailles) : dégradé à 5 tons qui simule un
+     reflet de métal poli, utilisé sur les prix, les boutons principaux et les badges
+     VIP — un aplat doré tout seul lit comme du "jaune", ce dégradé lit comme de l'or. */
+  --or-1: #5c4413;
+  --or-2: #a9791d;
+  --or-3: #e8c04a;
+  --or-4: #fff6d8;
+  --or-5: #c9962a;
+  --or-grad: linear-gradient(115deg, var(--or-1) 0%, var(--or-2) 16%, var(--or-3) 34%, var(--or-4) 48%, var(--or-3) 62%, var(--or-2) 80%, var(--or-1) 100%);
+  --or-contrast: #2a1d05;
   --danger: #e8534a;
   --danger-strong: #ff8177;
   --success: #3fc774;
@@ -315,8 +325,26 @@ button { font-family: inherit; cursor: pointer; }
 .btn:active { transform: translateY(1px); }
 
 .btn-or {
-  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
-  color: var(--accent-contrast);
+  position: relative;
+  overflow: hidden;
+  background: var(--or-grad);
+  background-size: 220% 100%;
+  color: var(--or-contrast);
+  border-color: var(--or-4);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), inset 0 -2px 3px rgba(0, 0, 0, 0.35), 0 8px 18px -6px rgba(201, 162, 39, 0.55);
+}
+/* Reflet lumineux diagonal fixe (façon métal poli), en plus de l'éclaircissement au survol. */
+.btn-or::after {
+  content: "";
+  position: absolute;
+  top: -60%;
+  left: -25%;
+  width: 35%;
+  height: 220%;
+  background: linear-gradient(75deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  transform: rotate(20deg);
+  pointer-events: none;
 }
 .btn-or:hover { filter: brightness(1.08); }
 
@@ -364,7 +392,10 @@ button { font-family: inherit; cursor: pointer; }
   margin-bottom: 22px;
 }
 
-.hero h1 { max-width: 820px; margin-left: auto; margin-right: auto; }
+.hero h1 {
+  max-width: 820px; margin-left: auto; margin-right: auto;
+  font-family: "Playfair Display", serif; font-style: italic; font-weight: 700;
+}
 .hero p.lead {
   max-width: 620px;
   margin: 18px auto 34px;
@@ -387,7 +418,11 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .hero-stats div { text-align: center; }
-.hero-stats strong { display: block; font-family: "Poppins", sans-serif; font-size: 1.8rem; color: var(--gold); }
+.hero-stats strong {
+  display: block; font-family: "Playfair Display", serif; font-weight: 700; font-size: 1.8rem;
+  background: var(--or-grad); background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
 .hero-stats span { font-size: 0.82rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 1px; }
 
 /* ---------- hero d'accueil : variante "vitrine produit" (page d'accueil uniquement) ---------- */
@@ -687,10 +722,15 @@ section.section.serre { padding: 56px 24px; }
    pour qu'ils se distinguent vraiment dans une grille plutôt que de ne compter
    que sur la petite pastille "VIP" posée sur la photo. */
 .carte-bien:has(.badge-vip) {
-  border-color: rgba(207, 159, 86, 0.45);
-  box-shadow: 0 0 0 1px rgba(207, 159, 86, 0.12);
+  /* Liseré doré à 2 tons (clair + sombre) plutôt qu'une bordure plate : ça lit
+     comme un cadre ciselé/métallique, cohérent avec le reste du thème "Cabinet
+     de Versailles". */
+  border-color: transparent;
+  box-shadow: 0 0 0 1px var(--bg), 0 0 0 2.5px var(--or-4), 0 0 0 3.5px var(--or-2), 0 10px 26px -16px rgba(0, 0, 0, 0.5);
 }
-.carte-bien:has(.badge-vip):hover { border-color: var(--gold); }
+.carte-bien:has(.badge-vip):hover {
+  box-shadow: 0 0 0 1px var(--bg), 0 0 0 2.5px var(--or-3), 0 0 0 3.5px var(--or-1), 0 14px 32px -16px rgba(0, 0, 0, 0.55);
+}
 
 .carte-bien .visuel {
   aspect-ratio: 4 / 3;
@@ -727,27 +767,30 @@ section.section.serre { padding: 56px 24px; }
   color: var(--text); font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
   padding: 4px 9px; border-radius: 999px; letter-spacing: 0.4px;
 }
-.carte-bien .badge-vip { background: var(--gold); border-color: var(--gold); color: var(--accent-contrast); }
+.carte-bien .badge-vip {
+  background: var(--or-grad); background-size: 220% 100%; border-color: var(--or-4); color: var(--or-contrast);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -1px 2px rgba(0, 0, 0, 0.3);
+}
 .carte-bien .badge-standing { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--accent-contrast); }
 
 .carte-bien .corps { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.carte-bien h3 { font-size: 1.08rem; margin-bottom: 0; }
+.carte-bien h3 { font-family: "Playfair Display", serif; font-weight: 700; font-size: 1.12rem; margin-bottom: 0; }
 .carte-bien .zone-tag { font-size: 0.78rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; }
 .carte-bien .description { font-size: 0.88rem; margin-bottom: 4px; flex: 1; }
 .carte-bien .pied {
   display: flex; align-items: center; justify-content: space-between;
   margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border);
 }
-.carte-bien .prix { font-family: "Poppins", sans-serif; font-weight: 700; font-size: 1.3rem; color: var(--gold-strong); }
-.carte-bien .prix span { font-size: 0.75rem; font-weight: 500; color: var(--text-faint); font-family: "Inter", sans-serif; }
+.carte-bien .prix { font-family: "Poppins", sans-serif; font-weight: 700; font-size: 1.3rem; }
+.carte-bien .prix span:not(.prix-valeur) { font-size: 0.75rem; font-weight: 500; color: var(--text-faint); font-family: "Inter", sans-serif; }
 .prix-double { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
 .prix-double .prix-ligne {
   display: flex; align-items: center; gap: 8px; white-space: nowrap;
   background: var(--bg); border: 1px solid rgba(230, 192, 127, 0.4);
   border-radius: 8px; padding: 7px 12px;
-  font-size: 1.15rem; font-weight: 800; font-family: "Poppins", sans-serif; color: var(--gold-strong);
+  font-size: 1.15rem; font-weight: 800; font-family: "Poppins", sans-serif;
 }
-.prix-double .prix-ligne > span:not(.prix-etiquette) { font-size: 0.68rem; font-weight: 600; color: var(--text-faint); font-family: "Inter", sans-serif; }
+.prix-double .prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { font-size: 0.68rem; font-weight: 600; color: var(--text-faint); font-family: "Inter", sans-serif; }
 .prix-etiquette {
   display: inline-block; min-width: 60px; font-size: 0.66rem; font-weight: 800; font-family: "Inter", sans-serif;
   color: var(--gold); text-transform: uppercase; letter-spacing: 0.6px;
@@ -757,9 +800,19 @@ section.section.serre { padding: 56px 24px; }
   display: flex; align-items: center; gap: 12px; white-space: nowrap;
   background: var(--bg); border: 1px solid rgba(230, 192, 127, 0.4);
   border-radius: 10px; padding: 10px 16px;
-  font-family: "Poppins", sans-serif; font-weight: 800; font-size: 1.5rem; color: var(--gold-strong);
+  font-family: "Poppins", sans-serif; font-weight: 800; font-size: 1.5rem;
 }
+.fiche-prix-double .fiche-prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { font-size: 0.75rem; font-weight: 500; color: var(--text-faint); font-family: "Inter", sans-serif; }
 .fiche-prix-double .prix-etiquette { min-width: 72px; font-size: 0.78rem; }
+
+/* Le chiffre du prix (et lui seul) reçoit le dégradé "or métallique" — porté par un
+   <span class="prix-valeur"> dédié plutôt que par le conteneur (chip/flex) directement :
+   le dégradé texte (background-clip:text) doit s'appliquer à un élément dont le SEUL
+   contenu est le texte à colorer, sinon il se comporte mal sur un conteneur flex. */
+.prix-valeur {
+  background: var(--or-grad); background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
 
 /* ---------- fiche d'une annonce : protocole de contact en jeu (Eyefind) ---------- */
 
@@ -788,7 +841,10 @@ section.section.serre { padding: 56px 24px; }
   transition: all 0.15s;
 }
 .filtre:hover { color: var(--text); }
-.filtre.actif { background: var(--gold); border-color: var(--gold); color: var(--accent-contrast); font-weight: 600; }
+.filtre.actif {
+  background: var(--or-grad); background-size: 220% 100%; border-color: var(--or-4); color: var(--or-contrast); font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -1px 2px rgba(0, 0, 0, 0.25);
+}
 
 /* ---------- fiche bien détaillée ---------- */
 
@@ -812,7 +868,9 @@ section.section.serre { padding: 56px 24px; }
 .miniatures img { width: 100%; height: 100%; object-fit: cover; }
 
 .fiche-fiche { position: sticky; top: 100px; }
-.fiche-prix { font-family: "Poppins", sans-serif; font-weight: 700; font-size: 2.1rem; color: var(--gold-strong); margin-bottom: 4px; }
+.fiche-fiche h1 { font-family: "Playfair Display", serif; font-weight: 700; }
+.fiche-prix { font-family: "Poppins", sans-serif; font-weight: 700; font-size: 2.1rem; margin-bottom: 4px; }
+.fiche-prix > span:not(.prix-valeur) { font-size: 1rem; font-weight: 500; color: var(--text-faint); font-family: "Inter", sans-serif; }
 .fiche-carac { display: flex; gap: 22px; margin: 20px 0; flex-wrap: wrap; }
 .fiche-carac div { font-size: 0.85rem; color: var(--text-muted); }
 .fiche-carac strong { display: block; color: var(--gold); font-size: 1.1rem; font-family: "Poppins", sans-serif; }

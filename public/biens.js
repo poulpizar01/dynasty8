@@ -28,28 +28,28 @@ function etiquetteTransaction(bien) {
 function prixCarteHTML(bien) {
   if (bien.dispo_vente && bien.dispo_location) {
     return `<span class="prix-double">
-      <span class="prix-ligne"><span class="prix-etiquette">Vente</span>${formaterPrix(bien.prix)}</span>
-      <span class="prix-ligne"><span class="prix-etiquette">Location</span>${formaterPrix(bien.prix_location)}<span> /sem.</span></span>
+      <span class="prix-ligne"><span class="prix-etiquette">Vente</span><span class="prix-valeur">${formaterPrix(bien.prix)}</span></span>
+      <span class="prix-ligne"><span class="prix-etiquette">Location</span><span class="prix-valeur">${formaterPrix(bien.prix_location)}</span><span> /sem.</span></span>
     </span>`;
   }
   if (bien.dispo_location) {
-    return `<span class="prix">${formaterPrix(bien.prix_location)}<span> /semaine</span></span>`;
+    return `<span class="prix"><span class="prix-valeur">${formaterPrix(bien.prix_location)}</span><span> /semaine</span></span>`;
   }
-  return `<span class="prix">${formaterPrix(bien.prix)}</span>`;
+  return `<span class="prix"><span class="prix-valeur">${formaterPrix(bien.prix)}</span></span>`;
 }
 
 // Prix détaillé pour la fiche d'une annonce.
 function prixFicheHTML(bien) {
   if (bien.dispo_vente && bien.dispo_location) {
     return `<div class="fiche-prix fiche-prix-double">
-      <div class="fiche-prix-ligne"><span class="prix-etiquette">Vente</span>${formaterPrix(bien.prix)}</div>
-      <div class="fiche-prix-ligne"><span class="prix-etiquette">Location</span>${formaterPrix(bien.prix_location)} / semaine</div>
+      <div class="fiche-prix-ligne"><span class="prix-etiquette">Vente</span><span class="prix-valeur">${formaterPrix(bien.prix)}</span></div>
+      <div class="fiche-prix-ligne"><span class="prix-etiquette">Location</span><span class="prix-valeur">${formaterPrix(bien.prix_location)}</span><span> / semaine</span></div>
     </div>`;
   }
   if (bien.dispo_location) {
-    return `<div class="fiche-prix">${formaterPrix(bien.prix_location)} / semaine</div>`;
+    return `<div class="fiche-prix"><span class="prix-valeur">${formaterPrix(bien.prix_location)}</span><span> / semaine</span></div>`;
   }
-  return `<div class="fiche-prix">${formaterPrix(bien.prix)}</div>`;
+  return `<div class="fiche-prix"><span class="prix-valeur">${formaterPrix(bien.prix)}</span></div>`;
 }
 
 function badgesSecondairesHTML(bien) {
