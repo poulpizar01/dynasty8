@@ -165,10 +165,30 @@ function initialiserLayout(cleActive) {
   injecterEntete(cleActive);
   injecterPied();
   injecterCadre();
+  demarrerDiaporamaHero();
   // Grilles déjà présentes dans le HTML statique au chargement (équipe, services,
   // pages "hub"). Les grilles de biens (cartes chargées depuis l'API) sont
   // révélées séparément par biens.js, une fois injectées dans la page.
   reveler(".carte-hub, .carte-service, .carte-membre");
+}
+
+// Diaporama du fond du hero d'accueil (page /index.html uniquement) : les
+// photos empilées dans #hero-ville (voir index.html) alternent en fondu
+// enchaîné toutes les 8 secondes, en repassant simplement la classe
+// .hero-ville-active de l'une à l'autre (le fondu est géré en CSS). Ne fait
+// rien s'il n'y a pas ce bloc sur la page, ou une seule photo, ou si la
+// personne a demandé de réduire les animations.
+function demarrerDiaporamaHero() {
+  const images = document.querySelectorAll("#hero-ville img");
+  if (images.length < 2) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let index = Array.prototype.findIndex.call(images, (img) => img.classList.contains("hero-ville-active"));
+  if (index < 0) index = 0;
+  setInterval(() => {
+    images[index].classList.remove("hero-ville-active");
+    index = (index + 1) % images.length;
+    images[index].classList.add("hero-ville-active");
+  }, 8000);
 }
 
 // Légère apparition au défilement (fondu + léger déplacement vers le haut), jouée une
