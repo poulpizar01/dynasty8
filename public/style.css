@@ -1417,6 +1417,9 @@ section.section.serre {
   padding-top: 24px; border-top: 1px solid var(--border);
   font-family: var(--d8-font-ui); font-size: 0.82rem; color: var(--text-faint);
 }
+.pied-bas span { max-width: 640px; line-height: 1.5; }
+.pied-bas a { font-size: inherit; color: var(--text-faint); text-decoration: underline; text-underline-offset: 2px; }
+.pied-bas a:hover { color: var(--gold); }
 
 /* ---------- formulaires (admin) ---------- */
 

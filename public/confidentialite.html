@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confidentialité & données — Dynasty 8</title>
+<meta name="description" content="Ce que Dynasty 8 enregistre réellement (et ce qu'il n'enregistre pas) : espace agents, cookie de session, Discord, aucun traceur tiers.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dynasty 8">
+<meta property="og:title" content="Confidentialité & données — Dynasty 8">
+<meta property="og:description" content="Ce que Dynasty 8 enregistre réellement (et ce qu'il n'enregistre pas) : espace agents, cookie de session, Discord, aucun traceur tiers.">
+<meta property="og:image" content="https://dynasty8.poulpizar.workers.dev/img/og-image.jpg">
+<meta property="og:url" content="https://dynasty8.poulpizar.workers.dev/confidentialite.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Confidentialité & données — Dynasty 8">
+<meta name="twitter:description" content="Ce que Dynasty 8 enregistre réellement (et ce qu'il n'enregistre pas) : espace agents, cookie de session, Discord, aucun traceur tiers.">
+<meta name="twitter:image" content="https://dynasty8.poulpizar.workers.dev/img/og-image.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,600;1,300;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/png" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/favicon-180.png">
+</head>
+<body>
+
+<header class="entete" id="site-entete"></header>
+
+<section class="hero" style="padding:70px 24px 50px;">
+  <div class="hero-etiquette">✦ Transparence</div>
+  <h1>Confidentialité & données</h1>
+  <p class="lead">Cette page explique simplement ce que Dynasty 8 enregistre réellement — et surtout, ce qu'il n'enregistre pas.</p>
+</section>
+
+<section class="section serre">
+  <div class="conteneur" style="max-width:760px;">
+
+    <div class="encart-info" style="margin-bottom:40px;">
+      <h2>ℹ️ En résumé</h2>
+      <p>Ce site ne propose <strong>aucune connexion via Discord</strong> et ne dépose <strong>aucun traceur publicitaire</strong>. Les seules informations conservées servent uniquement à faire fonctionner l'espace agents de l'agence.</p>
+    </div>
+
+    <div class="guide-bloc">
+      <h3>À propos de Dynasty 8</h3>
+      <p>Dynasty 8 est une agence immobilière fictive, utilisée exclusivement dans le cadre de l'univers roleplay du serveur <strong>FlashbackFA</strong> (GTA V / FiveM). Les biens, prix et transactions présentés sur ce site appartiennent à cet univers de jeu et ne constituent pas des offres immobilières réelles.</p>
+    </div>
+
+    <div class="guide-bloc">
+      <h3>Connexion Discord</h3>
+      <p>Ce site ne propose <strong>pas</strong> de connexion ou d'authentification via Discord : il n'y a pas de bouton « Se connecter avec Discord », et aucune information (identifiant, pseudo, avatar...) n'est échangée avec votre compte Discord depuis ce site.</p>
+      <p>Le mot « Discord » que vous croisez ici (menu, pied de page, pages de contact) désigne uniquement un lien externe vers le serveur Discord communautaire de FlashbackFA. Cliquer dessus vous fait simplement quitter Dynasty 8 pour rejoindre ce serveur, comme n'importe quel lien vers un autre site.</p>
+    </div>
+
+    <div class="guide-bloc">
+      <h3>Données réellement enregistrées</h3>
+      <p>Voici, sans exception, ce que la base de données de Dynasty 8 conserve :</p>
+      <ul class="guide-liste">
+        <li><strong>Comptes de l'espace agents</strong> (réservé à l'équipe) : le pseudo RP choisi par l'agent, son grade, une version chiffrée (hachée) de son code d'accès — jamais le code en clair — et les dates de création / dernière connexion du compte. Aucun email, aucun nom réel, aucun identifiant Discord n'est demandé.</li>
+        <li><strong>Cookie de session</strong> (<code>d8_session</code>) : posé uniquement après une connexion réussie à l'espace agents, pour garder la session ouverte 12 heures. Il est signé cryptographiquement, illisible par un script, et n'est jamais déposé chez un simple visiteur qui consulte le catalogue.</li>
+        <li><strong>Protection anti-piratage</strong> : après plusieurs échecs de connexion à l'espace agents, l'adresse IP concernée est brièvement mémorisée pour bloquer les tentatives automatisées, puis supprimée dès qu'une connexion réussit.</li>
+        <li><strong>Annonces immobilières</strong> : titre, prix, description, photos et pseudo de l'agent auteur — un contenu RP, jamais une donnée personnelle d'un visiteur.</li>
+      </ul>
+    </div>
+
+    <div class="guide-bloc">
+      <h3>Ce que nous n'utilisons pas</h3>
+      <ul class="guide-liste">
+        <li>Aucun cookie publicitaire, aucun traceur ou pixel tiers.</li>
+        <li>Aucun outil d'analyse d'audience (type Google Analytics).</li>
+        <li>Aucune donnée stockée dans votre navigateur (<code>localStorage</code> / <code>sessionStorage</code>).</li>
+        <li>Seule ressource externe chargée : les polices d'écriture du site, depuis Google Fonts — nécessaires à son affichage, comme sur la grande majorité des sites web.</li>
+      </ul>
+    </div>
+
+    <div class="guide-bloc">
+      <h3>Utilisation des données</h3>
+      <p>Les quelques informations listées ci-dessus servent uniquement à permettre la connexion des agents à leur espace, empêcher les tentatives de connexion frauduleuses, et faire fonctionner le catalogue d'annonces. Elles ne sont ni vendues, ni partagées avec un tiers, ni utilisées à des fins publicitaires.</p>
+    </div>
+
+    <div class="guide-bloc">
+      <h3>Suppression de vos données</h3>
+      <p>Si vous êtes agent Dynasty 8 et souhaitez la suppression de votre compte, ou si vous avez une question sur les données conservées, contactez l'équipe responsable du site directement sur le Discord du serveur FlashbackFA — il n'existe pas encore de suppression automatique, la demande sera traitée manuellement par l'équipe.</p>
+    </div>
+
+  </div>
+</section>
+
+<section class="section alterne" style="text-align:center;">
+  <div class="conteneur">
+    <h2>Une question sur cette page ?</h2>
+    <p style="max-width:520px;margin:0 auto 26px;">L'équipe Dynasty 8 / FlashbackFA reste disponible sur le Discord du serveur.</p>
+    <a href="#" id="lien-discord-cta" class="btn btn-or btn-large">Contacter l'équipe sur Discord</a>
+  </div>
+</section>
+
+<footer class="pied-page" id="site-pied"></footer>
+
+<script src="/layout.js"></script>
+<script>
+  initialiserLayout("confidentialite");
+  const cta = document.getElementById("lien-discord-cta");
+  cta.href = LIEN_DISCORD; cta.target = "_blank"; cta.rel = "noopener";
+</script>
+</body>
+</html>

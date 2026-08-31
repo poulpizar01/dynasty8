@@ -120,8 +120,8 @@ function injecterPied() {
         </div>
       </div>
       <div class="pied-bas">
-        <span>© ${annee} Dynasty 8 — Serveur RP FlashbackFA. Univers fictif, sans lien avec des biens réels.</span>
-        <span>Site non officiel réalisé pour la communauté.</span>
+        <span>© ${annee} Dynasty 8 — Serveur RP FlashbackFA. Univers fictif : biens, prix et transactions présentés n'ont aucune valeur réelle. Projet communautaire non affilié à Rockstar Games ou Take-Two Interactive.</span>
+        <span>Site non officiel réalisé pour la communauté. · <a href="/confidentialite.html">Confidentialité</a></span>
       </div>
     </div>`;
 }
