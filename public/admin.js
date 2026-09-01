@@ -276,14 +276,6 @@ function rendreStats() {
     <div class="stat-carte">
       <span class="stat-icone stat-icone--vert">👁️</span>
       <div><div class="stat-valeur">${s.visibles}</div><div class="stat-libelle">Visibles</div><div class="stat-sous-libelle">En ligne</div></div>
-    </div>
-    <div class="stat-carte">
-      <span class="stat-icone stat-icone--ambre">🏷️</span>
-      <div><div class="stat-valeur">${formaterPrix(s.valeurTotale)}</div><div class="stat-libelle">Valeur totale</div><div class="stat-sous-libelle">Estimation du catalogue</div></div>
-    </div>
-    <div class="stat-carte">
-      <span class="stat-icone stat-icone--mauve">📈</span>
-      <div><div class="stat-valeur">${formaterPrix(s.prixMoyen)}</div><div class="stat-libelle">Prix moyen</div><div class="stat-sous-libelle">Par bien</div></div>
     </div>`;
 }
 
