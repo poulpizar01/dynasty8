@@ -1787,6 +1787,8 @@ section.section.serre {
   width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
   background: var(--d8-grad-gold); color: var(--or-contrast); font-family: var(--d8-font-ui); font-size: 0.78rem; font-weight: 600;
 }
+.admin-avatar-img { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; object-fit: cover; background: var(--bg-card-hover); display: block; }
+.table-admin .admin-avatar, .table-admin .admin-avatar-img { width: 32px; height: 32px; }
 .admin-compte-profil > div { min-width: 0; }
 .admin-compte-profil strong { display: block; font-size: 0.88rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .admin-compte-grade { font-size: 0.74rem; color: var(--text-faint); }

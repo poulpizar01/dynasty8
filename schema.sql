@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS membres (
   linkedin TEXT,                              -- inutilisé (conservé pour compatibilité)
   discord_id TEXT,                            -- identifiant Discord permanent, lié à vie à la première connexion
   discord_pseudo TEXT,                        -- pseudo Discord exact — sert à la pré-autorisation ("Créer le compte")
+  discord_avatar TEXT,                        -- adresse de la photo de profil Discord — mise à jour à chaque connexion
   statut TEXT NOT NULL DEFAULT 'attente'      -- 'attente' | 'invite' | 'valide' | 'desactive' — voir src/index.js
 );
 

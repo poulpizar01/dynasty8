@@ -212,6 +212,24 @@ async function discordAutoriser(request, env) {
   );
 }
 
+// Construit l'adresse de la photo de profil Discord à partir de l'identifiant
+// et du "hash" d'avatar renvoyés par Discord. Si la personne n'a jamais mis de
+// photo (avatarHash vide), on retombe sur l'avatar par défaut de Discord.
+function urlAvatarDiscord(discordId, avatarHash) {
+  if (avatarHash) {
+    const extension = avatarHash.startsWith("a_") ? "gif" : "png";
+    return `https://cdn.discordapp.com/avatars/${discordId}/${avatarHash}.${extension}?size=64`;
+  }
+  try {
+    // Formule officielle Discord pour l'avatar par défaut (nouveaux comptes,
+    // sans discriminant) : (identifiant >> 22) % 6.
+    const index = Number((BigInt(discordId) >> 22n) % 6n);
+    return `https://cdn.discordapp.com/embed/avatars/${index}.png`;
+  } catch (e) {
+    return "";
+  }
+}
+
 async function discordCallback(request, url, env) {
   const echec = (raison) =>
     redirection("/admin.html?d8=" + encodeURIComponent(raison), [poserCookie(COOKIE_ETAT_OAUTH, "", 0)]);
@@ -260,6 +278,7 @@ async function discordCallback(request, url, env) {
   const discordId = String(discordUser.id || "");
   const discordPseudo = String(discordUser.username || "").trim();
   if (!discordId || !discordPseudo) return echec("erreur");
+  const discordAvatar = urlAvatarDiscord(discordId, discordUser.avatar || "");
 
   // Toute la partie base de données est protégée : si la migration n'a pas
   // encore été appliquée (colonnes manquantes) ou qu'un autre souci survient,
@@ -276,15 +295,15 @@ async function discordCallback(request, url, env) {
       if (preAutorise) {
         // Lien définitif : à partir de maintenant, seul ce compte Discord ouvrira ce compte Dynasty 8.
         await env.DB.prepare(
-          "UPDATE membres SET discord_id = ?2, discord_pseudo = ?3, statut = 'valide', derniere_visite = datetime('now') WHERE id = ?1"
-        ).bind(preAutorise.id, discordId, discordPseudo).run();
+          "UPDATE membres SET discord_id = ?2, discord_pseudo = ?3, discord_avatar = ?4, statut = 'valide', derniere_visite = datetime('now') WHERE id = ?1"
+        ).bind(preAutorise.id, discordId, discordPseudo, discordAvatar).run();
         m = { ...preAutorise, discord_id: discordId, statut: "valide" };
       } else {
         // Personne ne l'attendait : on crée une demande en attente de validation.
         await env.DB.prepare(
-          `INSERT INTO membres (pseudo, grade, code_hash, code_indice, actif, statut, discord_id, discord_pseudo, cree_le)
-           VALUES (?1, '', lower(hex(randomblob(32))), '----', 0, 'attente', ?2, ?3, datetime('now'))`
-        ).bind(discordUser.global_name || discordPseudo, discordId, discordPseudo).run();
+          `INSERT INTO membres (pseudo, grade, code_hash, code_indice, actif, statut, discord_id, discord_pseudo, discord_avatar, cree_le)
+           VALUES (?1, '', lower(hex(randomblob(32))), '----', 0, 'attente', ?2, ?3, ?4, datetime('now'))`
+        ).bind(discordUser.global_name || discordPseudo, discordId, discordPseudo, discordAvatar).run();
         return echec("attente");
       }
     }
@@ -292,7 +311,9 @@ async function discordCallback(request, url, env) {
     if (m.statut === "attente") return echec("attente");
     if (m.statut !== "valide" || !m.actif) return echec("desactive");
 
-    await env.DB.prepare("UPDATE membres SET derniere_visite = datetime('now') WHERE id = ?1").bind(m.id).run();
+    // On rafraîchit aussi l'avatar à chaque connexion : la photo Discord de la
+    // personne a pu changer depuis la dernière fois.
+    await env.DB.prepare("UPDATE membres SET derniere_visite = datetime('now'), discord_avatar = ?2 WHERE id = ?1").bind(m.id, discordAvatar).run();
     const jeton = await creerSession(env.SESSION_SECRET, {
       id: m.id,
       pseudo: m.pseudo,
@@ -683,7 +704,7 @@ async function comptes(request, url, env) {
 
   if (m === "GET") {
     const r = await env.DB.prepare(
-      `SELECT id, pseudo, grade, discord_pseudo, statut, actif, cree_le, derniere_visite, poste, specialite, bio, photo
+      `SELECT id, pseudo, grade, discord_pseudo, discord_avatar, statut, actif, cree_le, derniere_visite, poste, specialite, bio, photo
          FROM membres
          WHERE statut != 'desactive'
          ORDER BY CASE statut WHEN 'attente' THEN 0 WHEN 'invite' THEN 1 ELSE 2 END,

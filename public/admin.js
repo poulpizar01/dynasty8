@@ -828,9 +828,18 @@ document.getElementById("bouton-supprimer-bien").addEventListener("click", async
 const OPTIONS_GRADES_HTML = GRADES.map((g) => `<option value="${echapper(g.nom)}">${echapper(g.nom)}</option>`).join("");
 document.getElementById("membre-grade").innerHTML = OPTIONS_GRADES_HTML;
 
+// Affiche la vraie photo de profil Discord de la personne (récupérée à sa
+// dernière connexion) si on l'a, sinon retombe sur le rond avec ses initiales.
+function avatarHtml(m) {
+  if (m.discord_avatar) {
+    return `<img src="${echapper(m.discord_avatar)}" alt="" class="admin-avatar-img" loading="lazy">`;
+  }
+  return `<span class="admin-avatar">${initialesPseudo(m.pseudo)}</span>`;
+}
+
 async function chargerTableMembres() {
   const corps = document.getElementById("corps-table-membres");
-  corps.innerHTML = `<tr><td colspan="6">Chargement…</td></tr>`;
+  corps.innerHTML = `<tr><td colspan="7">Chargement…</td></tr>`;
   afficherMessage("zone-message-membres", "", null);
   try {
     const data = await appelAPI("/api/membres");
@@ -843,7 +852,7 @@ async function chargerTableMembres() {
     document.getElementById("liste-demandes-attente").innerHTML = enAttente.map((m) => `
       <div class="demande-attente-ligne">
         <div class="demande-attente-info">
-          <span class="admin-avatar">${initialesPseudo(m.pseudo)}</span>
+          ${avatarHtml(m)}
           <div>
             <strong>${echapper(m.pseudo)}</strong>
             <span class="champ-aide">Discord : @${echapper(m.discord_pseudo || "?")}</span>
@@ -862,12 +871,13 @@ async function chargerTableMembres() {
     });
 
     if (!comptes.length) {
-      corps.innerHTML = `<tr><td colspan="6">Aucun compte pour le moment. Utilisez « + Créer le compte » pour pré-autoriser un pseudo Discord.</td></tr>`;
+      corps.innerHTML = `<tr><td colspan="7">Aucun compte pour le moment. Utilisez « + Créer le compte » pour pré-autoriser un pseudo Discord.</td></tr>`;
       return;
     }
     nettoyerSelectsPortee("comptes"); // retire les menus déroulants de l'affichage précédent avant de le remplacer
     corps.innerHTML = comptes.map((m) => `
       <tr data-ligne="${m.id}">
+        <td>${avatarHtml(m)}</td>
         <td><input type="text" class="table-input" value="${echapper(m.pseudo)}" data-identifiant="${m.id}" maxlength="40"></td>
         <td>${m.discord_pseudo ? "@" + echapper(m.discord_pseudo) : "—"}</td>
         <td><select class="table-select" data-grade="${m.id}" style="border-color:${couleurGrade(m.grade)};">${OPTIONS_GRADES_HTML}</select></td>
