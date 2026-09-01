@@ -1311,15 +1311,39 @@ section.section.serre {
 
 /* ---------- services / équipe / faq ---------- */
 
-.grille-services { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+/* Petit séparateur décoratif "──── ✧ ────" sous un titre de hero (services.html). */
+.hero-diviseur {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin: 16px 0 22px; color: var(--gold);
+}
+.hero-diviseur span:not(.hero-diviseur-losange) { width: 44px; height: 1px; background: var(--border-light); }
+.hero-diviseur-losange { font-size: 0.7rem; }
+
+.grille-services { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+@media (max-width: 980px) { .grille-services { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .grille-services { grid-template-columns: 1fr; } }
+
 .carte-service {
-  padding: 30px 26px; border-radius: var(--radius); border: 1px solid var(--border);
-  background: var(--bg-card);
+  padding: 36px 26px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--bg-card); text-align: center;
+  transition: border-color var(--d8-t), transform var(--d8-t), box-shadow var(--d8-t);
 }
+.carte-service:hover { border-color: var(--gold); transform: translateY(-4px); box-shadow: var(--d8-shadow-card-hover); }
 .carte-service .icone {
-  width: 46px; height: 46px; border-radius: 12px; background: rgba(207,159,86,0.14);
-  color: var(--gold); display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+  width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 20px;
+  background: var(--bg-elevated); border: 1px solid var(--d8-gold-600);
+  box-shadow: 0 0 18px rgba(201, 165, 92, 0.35), inset 0 0 10px rgba(201, 165, 92, 0.14);
+  color: var(--gold); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
 }
+.carte-service h3 {
+  font-family: var(--d8-font-display); font-style: italic; font-weight: 500; font-size: 1.05rem;
+  margin: 0 0 14px;
+}
+.carte-service h3::after {
+  content: ""; display: block; width: 28px; height: 2px; background: var(--gold);
+  margin: 10px auto 0;
+}
+.carte-service p { font-size: 0.86rem; color: var(--text-faint); line-height: 1.65; margin: 0; }
 
 /* ---------- cartes "hub" : pages de catégorie (interieurs.html, coherences.html) ---------- */
 /* Grandes cartes cliquables qui font office de sommaire — chacune mène vers une
