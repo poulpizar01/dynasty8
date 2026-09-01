@@ -169,13 +169,17 @@ export default {
       if (!env.SESSION_SECRET) {
         return json({ erreur: "SESSION_SECRET n'est pas configuré sur le serveur." }, 500);
       }
-      if (chemin === "/api/auth/discord") return discordAutoriser(request, env);
-      if (chemin === "/api/auth/discord/callback") return discordCallback(request, url, env);
+      // "await" est indispensable ici (et pas juste "return xxx(...)") : sans lui,
+      // une erreur survenant DANS une de ces fonctions passerait au travers du
+      // "catch" ci-dessous et ferait planter tout le Worker (page Cloudflare
+      // "Error 1101"), au lieu d'afficher un message clair.
+      if (chemin === "/api/auth/discord") return await discordAutoriser(request, env);
+      if (chemin === "/api/auth/discord/callback") return await discordCallback(request, url, env);
       if (chemin === "/api/deconnexion") return deconnexion();
-      if (chemin === "/api/moi") return moi(request, env);
-      if (chemin === "/api/biens") return biens(request, url, env);
-      if (chemin === "/api/membres") return comptes(request, url, env);
-      if (chemin === "/api/equipe") return equipe(env);
+      if (chemin === "/api/moi") return await moi(request, env);
+      if (chemin === "/api/biens") return await biens(request, url, env);
+      if (chemin === "/api/membres") return await comptes(request, url, env);
+      if (chemin === "/api/equipe") return await equipe(env);
       return json({ erreur: "Adresse inconnue." }, 404);
     } catch (e) {
       return json({ erreur: "Erreur interne", detail: String((e && e.message) || e) }, 500);
@@ -256,44 +260,51 @@ async function discordCallback(request, url, env) {
   const discordPseudo = String(discordUser.username || "").trim();
   if (!discordId || !discordPseudo) return echec("erreur");
 
-  let m = await env.DB.prepare("SELECT * FROM membres WHERE discord_id = ?1").bind(discordId).first();
+  // Toute la partie base de données est protégée : si la migration n'a pas
+  // encore été appliquée (colonnes manquantes) ou qu'un autre souci survient,
+  // on affiche l'écran d'erreur habituel plutôt que de faire planter le Worker.
+  try {
+    let m = await env.DB.prepare("SELECT * FROM membres WHERE discord_id = ?1").bind(discordId).first();
 
-  if (!m) {
-    // Pas encore lié à ce Discord : peut-être pré-autorisé par la Direction ?
-    const preAutorise = await env.DB.prepare(
-      "SELECT * FROM membres WHERE discord_id IS NULL AND statut = 'invite' AND lower(discord_pseudo) = lower(?1)"
-    ).bind(discordPseudo).first();
+    if (!m) {
+      // Pas encore lié à ce Discord : peut-être pré-autorisé par la Direction ?
+      const preAutorise = await env.DB.prepare(
+        "SELECT * FROM membres WHERE discord_id IS NULL AND statut = 'invite' AND lower(discord_pseudo) = lower(?1)"
+      ).bind(discordPseudo).first();
 
-    if (preAutorise) {
-      // Lien définitif : à partir de maintenant, seul ce compte Discord ouvrira ce compte Dynasty 8.
-      await env.DB.prepare(
-        "UPDATE membres SET discord_id = ?2, discord_pseudo = ?3, statut = 'valide', derniere_visite = datetime('now') WHERE id = ?1"
-      ).bind(preAutorise.id, discordId, discordPseudo).run();
-      m = { ...preAutorise, discord_id: discordId, statut: "valide" };
-    } else {
-      // Personne ne l'attendait : on crée une demande en attente de validation.
-      await env.DB.prepare(
-        `INSERT INTO membres (pseudo, grade, code_hash, code_indice, actif, statut, discord_id, discord_pseudo, cree_le)
-         VALUES (?1, '', lower(hex(randomblob(32))), '----', 0, 'attente', ?2, ?3, datetime('now'))`
-      ).bind(discordUser.global_name || discordPseudo, discordId, discordPseudo).run();
-      return echec("attente");
+      if (preAutorise) {
+        // Lien définitif : à partir de maintenant, seul ce compte Discord ouvrira ce compte Dynasty 8.
+        await env.DB.prepare(
+          "UPDATE membres SET discord_id = ?2, discord_pseudo = ?3, statut = 'valide', derniere_visite = datetime('now') WHERE id = ?1"
+        ).bind(preAutorise.id, discordId, discordPseudo).run();
+        m = { ...preAutorise, discord_id: discordId, statut: "valide" };
+      } else {
+        // Personne ne l'attendait : on crée une demande en attente de validation.
+        await env.DB.prepare(
+          `INSERT INTO membres (pseudo, grade, code_hash, code_indice, actif, statut, discord_id, discord_pseudo, cree_le)
+           VALUES (?1, '', lower(hex(randomblob(32))), '----', 0, 'attente', ?2, ?3, datetime('now'))`
+        ).bind(discordUser.global_name || discordPseudo, discordId, discordPseudo).run();
+        return echec("attente");
+      }
     }
+
+    if (m.statut === "attente") return echec("attente");
+    if (m.statut !== "valide" || !m.actif) return echec("desactive");
+
+    await env.DB.prepare("UPDATE membres SET derniere_visite = datetime('now') WHERE id = ?1").bind(m.id).run();
+    const jeton = await creerSession(env.SESSION_SECRET, {
+      id: m.id,
+      pseudo: m.pseudo,
+      grade: m.grade,
+      exp: maintenant() + DUREE,
+    });
+    return redirection("/admin.html", [
+      poserCookie(COOKIE, jeton, DUREE),
+      poserCookie(COOKIE_ETAT_OAUTH, "", 0),
+    ]);
+  } catch (e) {
+    return echec("erreur");
   }
-
-  if (m.statut === "attente") return echec("attente");
-  if (m.statut !== "valide" || !m.actif) return echec("desactive");
-
-  await env.DB.prepare("UPDATE membres SET derniere_visite = datetime('now') WHERE id = ?1").bind(m.id).run();
-  const jeton = await creerSession(env.SESSION_SECRET, {
-    id: m.id,
-    pseudo: m.pseudo,
-    grade: m.grade,
-    exp: maintenant() + DUREE,
-  });
-  return redirection("/admin.html", [
-    poserCookie(COOKIE, jeton, DUREE),
-    poserCookie(COOKIE_ETAT_OAUTH, "", 0),
-  ]);
 }
 
 function deconnexion() {
