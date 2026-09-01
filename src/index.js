@@ -671,7 +671,7 @@ async function comptes(request, url, env) {
 
   if (m === "GET") {
     const r = await env.DB.prepare(
-      `SELECT id, pseudo, grade, discord_pseudo, statut, actif, cree_le, derniere_visite
+      `SELECT id, pseudo, grade, discord_pseudo, statut, actif, cree_le, derniere_visite, poste, specialite, bio, photo
          FROM membres
          WHERE statut != 'desactive'
          ORDER BY CASE statut WHEN 'attente' THEN 0 WHEN 'invite' THEN 1 ELSE 2 END,
@@ -736,6 +736,21 @@ async function comptes(request, url, env) {
       }
       binds.push(b.actif ? 1 : 0);
       champs.push(`actif = ?${binds.length}`);
+    }
+    // La Direction peut aussi éditer la fiche publique (équipe.html) de
+    // n'importe quel membre — mêmes champs et mêmes règles que « Mon profil ».
+    if (b.poste !== undefined || b.specialite !== undefined || b.bio !== undefined || b.photo !== undefined) {
+      const erreurProfil = validerProfil({
+        poste: b.poste !== undefined ? b.poste : "",
+        specialite: b.specialite !== undefined ? b.specialite : "",
+        bio: b.bio !== undefined ? b.bio : "",
+        photo: b.photo !== undefined ? b.photo : "",
+      });
+      if (erreurProfil) return json({ erreur: erreurProfil }, 400);
+      if (b.poste !== undefined) { binds.push(txt(b.poste, 80).trim()); champs.push(`poste = ?${binds.length}`); }
+      if (b.specialite !== undefined) { binds.push(txt(b.specialite, 100).trim()); champs.push(`specialite = ?${binds.length}`); }
+      if (b.bio !== undefined) { binds.push(txt(b.bio, 1000).trim()); champs.push(`bio = ?${binds.length}`); }
+      if (b.photo !== undefined) { binds.push(typeof b.photo === "string" ? b.photo.trim() : ""); champs.push(`photo = ?${binds.length}`); }
     }
     if (!champs.length) return json({ erreur: "Aucune modification envoyée." }, 400);
     await env.DB.prepare(`UPDATE membres SET ${champs.join(", ")} WHERE id = ?1`).bind(...binds).run();

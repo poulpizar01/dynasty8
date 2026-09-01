@@ -7,6 +7,7 @@ let CACHE_BIENS = [];
 let CACHE_MEMBRES = [];
 let IMAGES_BIEN = []; // photos du bien en cours d'édition (URLs et/ou images importées)
 let PHOTO_PROFIL = ""; // photo de profil en cours d'édition (onglet Mon profil)
+let PHOTO_PROFIL_COMPTE = ""; // photo en cours d'édition dans la modale « Profil public » (Direction, pour un autre membre)
 let ETAT_INITIAL_BIEN = ""; // instantané du formulaire à l'ouverture, pour détecter les changements non enregistrés
 
 // ---- tableau de bord "Annonces" : recherche, filtres, vue et pagination ----
@@ -870,10 +871,14 @@ async function chargerTableMembres() {
           : (m.actif ? '<span class="puce puce-ok">Actif</span>' : '<span class="puce puce-off">Suspendu</span>')}</td>
         <td>${m.derniere_visite ? echapper(m.derniere_visite) : "Jamais connecté"}</td>
         <td><div class="actions-ligne">
+          <button type="button" class="btn btn-fantome btn-petit" data-profil="${m.id}">✏️ Profil</button>
           <button type="button" class="btn btn-fantome btn-petit" data-suspendre="${m.id}" data-actif="${m.actif ? 1 : 0}">${m.actif ? "Suspendre" : "Réactiver"}</button>
           <button type="button" class="actions-icone actions-icone--danger" data-supprimer="${m.id}" title="Supprimer" aria-label="Supprimer">🗑️</button>
         </div></td>
       </tr>`).join("");
+    corps.querySelectorAll("[data-profil]").forEach((btn) => {
+      btn.addEventListener("click", () => ouvrirModaleProfilCompte(Number(btn.dataset.profil)));
+    });
     corps.querySelectorAll("[data-grade]").forEach((sel) => {
       sel.value = CACHE_MEMBRES.find((m) => m.id === Number(sel.dataset.grade)).grade;
       sel.style.borderColor = couleurGrade(sel.value);
@@ -970,6 +975,101 @@ document.getElementById("formulaire-membre").addEventListener("submit", async (e
     chargerTableMembres();
   } catch (e) {
     afficherMessage("zone-message-modale-membre", e.message, "erreur");
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Modale « Profil public » — la Direction édite la fiche équipe.html de
+// n'importe quel membre (mêmes champs que « Mon profil », pour un autre id).
+// ---------------------------------------------------------------------------
+
+function ouvrirModaleProfilCompte(id) {
+  const m = CACHE_MEMBRES.find((x) => x.id === id);
+  if (!m) return;
+  document.getElementById("titre-modale-profil-compte").textContent = "Profil de " + m.pseudo;
+  document.getElementById("profil-compte-id").value = m.id;
+  document.getElementById("profil-compte-poste").value = m.poste || "";
+  document.getElementById("profil-compte-specialite").value = m.specialite || "";
+  document.getElementById("profil-compte-bio").value = m.bio || "";
+  PHOTO_PROFIL_COMPTE = m.photo || "";
+  majApercuPhotoProfilCompte();
+  majCompteurBioProfilCompte();
+  afficherMessage("zone-message-modale-profil-compte", "", null);
+  document.getElementById("modale-profil-compte").classList.remove("cache");
+}
+
+function fermerModaleProfilCompte() {
+  document.getElementById("modale-profil-compte").classList.add("cache");
+}
+
+function majApercuPhotoProfilCompte() {
+  const apercu = document.getElementById("profil-compte-photo-apercu");
+  const m = CACHE_MEMBRES.find((x) => x.id === Number(document.getElementById("profil-compte-id").value));
+  apercu.innerHTML = PHOTO_PROFIL_COMPTE
+    ? `<img src="${PHOTO_PROFIL_COMPTE}" alt="Photo de profil">`
+    : `<span>${initialesPseudo(m ? m.pseudo : "?")}</span>`;
+  document.getElementById("bouton-profil-compte-photo-retirer").classList.toggle("cache", !PHOTO_PROFIL_COMPTE);
+}
+
+function majCompteurBioProfilCompte() {
+  const n = document.getElementById("profil-compte-bio").value.length;
+  document.getElementById("profil-compte-bio-compteur").textContent = n + " / 1000";
+}
+
+document.getElementById("profil-compte-bio").addEventListener("input", majCompteurBioProfilCompte);
+
+document.getElementById("fermer-modale-profil-compte").addEventListener("click", fermerModaleProfilCompte);
+document.getElementById("modale-profil-compte").addEventListener("click", (ev) => { if (ev.target.id === "modale-profil-compte") fermerModaleProfilCompte(); });
+
+document.getElementById("bouton-profil-compte-photo").addEventListener("click", () => {
+  document.getElementById("profil-compte-photo-fichier").click();
+});
+
+document.getElementById("profil-compte-photo-fichier").addEventListener("change", async (ev) => {
+  const fichier = (ev.target.files || [])[0];
+  ev.target.value = "";
+  if (!fichier) return;
+  const erreur = document.getElementById("erreur-profil-compte-photo");
+  erreur.classList.add("cache");
+  try {
+    PHOTO_PROFIL_COMPTE = await redimensionnerImage(fichier, 480, 0.82);
+    majApercuPhotoProfilCompte();
+  } catch (e) {
+    erreur.textContent = e.message;
+    erreur.classList.remove("cache");
+  }
+});
+
+document.getElementById("bouton-profil-compte-photo-retirer").addEventListener("click", () => {
+  PHOTO_PROFIL_COMPTE = "";
+  majApercuPhotoProfilCompte();
+});
+
+document.getElementById("formulaire-profil-compte").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  afficherMessage("zone-message-modale-profil-compte", "", null);
+  const id = document.getElementById("profil-compte-id").value;
+  const bouton = document.querySelector('#formulaire-profil-compte button[type="submit"]');
+  const texteInitial = bouton.textContent;
+  bouton.disabled = true;
+  bouton.textContent = "Enregistrement…";
+  try {
+    await appelAPI("/api/membres?id=" + id, {
+      method: "PATCH",
+      body: JSON.stringify({
+        poste: document.getElementById("profil-compte-poste").value.trim(),
+        specialite: document.getElementById("profil-compte-specialite").value.trim(),
+        bio: document.getElementById("profil-compte-bio").value.trim(),
+        photo: PHOTO_PROFIL_COMPTE,
+      }),
+    });
+    fermerModaleProfilCompte();
+    chargerTableMembres();
+  } catch (e) {
+    afficherMessage("zone-message-modale-profil-compte", e.message, "erreur");
+  } finally {
+    bouton.disabled = false;
+    bouton.textContent = texteInitial;
   }
 });
 

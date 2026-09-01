@@ -351,6 +351,44 @@
   </div>
 </div>
 
+<!-- Modale « Profil public » : la Direction édite la fiche publique de n'importe quel membre (équipe.html) -->
+<div class="modale-fond cache" id="modale-profil-compte">
+  <div class="modale" style="max-width:560px;">
+    <div class="modale-entete">
+      <h3 id="titre-modale-profil-compte">Profil public</h3>
+      <button id="fermer-modale-profil-compte">✕</button>
+    </div>
+    <div id="zone-message-modale-profil-compte"></div>
+    <p class="champ-aide" style="margin-bottom:18px;">Ces informations sont affichées publiquement sur la page « Notre équipe » du site, à la place de ce membre.</p>
+    <div class="profil-mise-en-page">
+      <div class="profil-photo-bloc">
+        <div class="profil-photo-apercu" id="profil-compte-photo-apercu"></div>
+        <button type="button" class="btn btn-fantome btn-petit" id="bouton-profil-compte-photo">📁 Changer la photo</button>
+        <button type="button" class="btn btn-fantome btn-petit cache" id="bouton-profil-compte-photo-retirer">✕ Retirer la photo</button>
+        <input type="file" id="profil-compte-photo-fichier" accept="image/*" class="cache">
+        <p class="champ-erreur cache" id="erreur-profil-compte-photo"></p>
+      </div>
+      <form id="formulaire-profil-compte">
+        <input type="hidden" id="profil-compte-id">
+        <div class="champ">
+          <label for="profil-compte-poste">Intitulé du poste</label>
+          <input type="text" id="profil-compte-poste" maxlength="80" placeholder="Ex : Agent — Habitation">
+        </div>
+        <div class="champ">
+          <label for="profil-compte-specialite">Spécialité</label>
+          <input type="text" id="profil-compte-specialite" maxlength="100" placeholder="Ex : Villas & Maisons">
+        </div>
+        <div class="champ">
+          <label for="profil-compte-bio">Biographie</label>
+          <textarea id="profil-compte-bio" maxlength="1000" placeholder="Présentez-vous en quelques lignes : votre parcours, ce que vous aimez chez Dynasty 8..."></textarea>
+          <p class="champ-aide" id="profil-compte-bio-compteur">0 / 1000</p>
+        </div>
+        <button type="submit" class="btn btn-or" style="width:100%;">Enregistrer</button>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Modale de confirmation (remplace les popups « confirm() » du navigateur) -->
 <div class="modale-fond cache" id="modale-confirmation">
   <div class="modale" style="max-width:420px;">
