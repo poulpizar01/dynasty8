@@ -1958,13 +1958,17 @@ section.section.serre {
 }
 
 .d8-select-flottant {
-  position: fixed; z-index: 500; max-height: 260px; overflow-y: auto;
+  position: fixed; z-index: 500; max-height: 260px; overflow-y: auto; overflow-x: hidden;
   background: var(--bg-card); border: 1px solid var(--d8-gold-400); border-radius: var(--radius-sm);
   box-shadow: var(--shadow); padding: 6px;
+  scrollbar-width: thin; scrollbar-color: var(--d8-gold-400) transparent;
 }
+.d8-select-flottant::-webkit-scrollbar { width: 8px; }
+.d8-select-flottant::-webkit-scrollbar-track { background: transparent; }
+.d8-select-flottant::-webkit-scrollbar-thumb { background: var(--d8-gold-400); border-radius: 4px; }
 .d8-select-option {
   padding: 9px 12px; border-radius: 6px; font-size: 0.86rem; cursor: pointer; color: var(--text);
-  display: flex; align-items: center; gap: 9px; white-space: nowrap; transition: background var(--d8-t);
+  display: flex; align-items: center; gap: 9px; white-space: normal; transition: background var(--d8-t);
 }
 .d8-select-option:hover { background: rgba(201, 165, 92, 0.16); }
 .d8-select-option.selectionnee { color: var(--gold-strong); font-weight: 600; background: rgba(201, 165, 92, 0.1); }

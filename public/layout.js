@@ -397,8 +397,11 @@ function ameliorerSelect(select, pastille, portee) {
   function positionner() {
     const r = select.getBoundingClientRect();
     const hauteurEstimee = Math.min(select.options.length * 38 + 12, 260);
-    flottant.style.left = Math.round(r.left) + "px";
-    flottant.style.width = Math.max(Math.round(r.width), 170) + "px";
+    const largeur = Math.max(Math.round(r.width), 230);
+    // On ne laisse jamais le menu déborder à droite de la fenêtre.
+    const gauche = Math.min(Math.round(r.left), window.innerWidth - largeur - 8);
+    flottant.style.left = Math.max(8, gauche) + "px";
+    flottant.style.width = largeur + "px";
     if (r.bottom + hauteurEstimee > window.innerHeight && r.top > hauteurEstimee) {
       flottant.style.top = Math.round(r.top - hauteurEstimee - 6) + "px";
     } else {
