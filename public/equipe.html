@@ -114,8 +114,10 @@
     return `
       <article class="carte-membre">
         <div class="carte-membre-photo">
-          ${linkedin}
-          ${photo}
+          <div class="carte-membre-photo-cadre">
+            ${linkedin}
+            ${photo}
+          </div>
           <span class="carte-membre-avatar">${initiales(m.pseudo)}</span>
         </div>
         <div class="carte-membre-corps">
