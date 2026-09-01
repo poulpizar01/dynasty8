@@ -126,8 +126,9 @@ function demarrerEspaceAdmin() {
   if (SESSION.direction) {
     document.getElementById("onglet-comptes").classList.remove("cache");
   }
-  // Le lien Webmap est réservé au Patron et au Co Patron (pas au reste de la Direction).
-  document.getElementById("lien-webmap").classList.toggle("cache", !["Patron", "Co Patron"].includes(SESSION.grade));
+  // Le lien Webmap est réservé au Patron, au Co Patron, et au Développeur web
+  // (qui a exactement les mêmes accès que le Patron, y compris ici).
+  document.getElementById("lien-webmap").classList.toggle("cache", !["Patron", "Co Patron", "Développeur web"].includes(SESSION.grade));
   // [data-onglet] exclut volontairement le lien Webmap : c'est un vrai lien externe
   // (nouvel onglet), pas un onglet à basculer dans la page.
   document.querySelectorAll(".lien-onglet[data-onglet]").forEach((btn) => {
