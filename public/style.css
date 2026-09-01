@@ -967,15 +967,19 @@ section.section.serre {
 
 /* Petit rappel doré permanent (pas seulement au survol) sur les biens VIP/VIP+,
    pour qu'ils se distinguent vraiment dans une grille plutôt que de ne compter
-   que sur la petite pastille "VIP" posée sur la photo. */
+   que sur la petite pastille "VIP" posée sur la photo.
+   Une vraie bordure (au lieu d'un empilement de plusieurs box-shadow fines) :
+   plus épaisse, plus contrastée sur le fond marine, et le tracé reste net et
+   continu sur toute la hauteur de la carte (photo ET bloc prix), au lieu de
+   se voir seulement là où elle croise la photo. */
 .carte-bien:has(.badge-vip) {
-  /* Liseré doré à 2 tons (clair + sombre) plutôt qu'une bordure plate : ça lit
-     comme un cadre ciselé/métallique. */
-  border-color: transparent;
-  box-shadow: 0 0 0 1px var(--bg), 0 0 0 2.5px var(--d8-gold-100), 0 0 0 3.5px var(--d8-gold-600), var(--d8-shadow-card);
+  border-width: 2px;
+  border-color: var(--d8-gold-500);
+  box-shadow: 0 0 0 1px var(--d8-gold-100), var(--d8-shadow-card);
 }
 .carte-bien:has(.badge-vip):hover {
-  box-shadow: 0 0 0 1px var(--bg), 0 0 0 2.5px var(--d8-gold-300), 0 0 0 3.5px var(--d8-gold-700), var(--d8-shadow-card-hover);
+  border-color: var(--d8-gold-400);
+  box-shadow: 0 0 0 1px var(--d8-gold-300), var(--d8-shadow-card-hover);
 }
 
 .carte-bien .visuel {
