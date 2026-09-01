@@ -311,7 +311,11 @@
           <label for="bien-disponible" style="margin:0;">Annonce visible sur le site</label>
         </div>
       </div>
-      <div class="champ champ-checkbox">
+      <!-- Case retirée du formulaire à la demande de Paul (ne s'en sert plus). On garde
+           volontairement le champ cache/JS existant plutôt que de le supprimer partout :
+           ça évite de re-mettre "vendu" à faux sur les biens déjà marqués comme vendus
+           dès qu'on modifie autre chose sur leur fiche (prix, description, etc.). -->
+      <div class="champ champ-checkbox cache">
         <input type="checkbox" id="bien-vendu">
         <label for="bien-vendu" style="margin:0;">Bien vendu — affiche un badge « Vendu » sur l'annonce</label>
       </div>
