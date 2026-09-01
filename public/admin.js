@@ -65,63 +65,40 @@ function confirmerAction(message, titre) {
 // ---------------------------------------------------------------------------
 
 async function demarrer() {
+  // Discord nous renvoie ici avec ?d8=... pour indiquer ce qui s'est passé
+  // (voir discordCallback côté serveur). On lit cette info puis on nettoie
+  // l'adresse pour qu'un rechargement de page ne la réaffiche pas.
+  const params = new URLSearchParams(window.location.search);
+  const etat = params.get("d8");
+  if (etat) window.history.replaceState({}, "", window.location.pathname);
+
   try {
     const moi = await appelAPI("/api/moi");
     if (moi.connecte) {
-      SESSION = { connecte: true, pseudo: moi.pseudo, grade: moi.grade, direction: String(moi.grade).toLowerCase() === "direction" };
+      SESSION = {
+        connecte: true,
+        pseudo: moi.pseudo,
+        grade: moi.grade,
+        direction: !!moi.direction,
+        peutGererAnnonces: !!moi.peut_gerer_annonces,
+      };
       return demarrerEspaceAdmin();
     }
   } catch (e) {
     // Non connecté : on continue vers l'écran de connexion.
   }
-  try {
-    const etat = await appelAPI("/api/init");
-    if (etat.premier_demarrage) {
-      document.getElementById("bloc-premier-demarrage").classList.remove("cache");
-      document.getElementById("bloc-connexion").classList.add("cache");
-    }
-  } catch (e) {
-    afficherMessage("zone-message", "Impossible de contacter le serveur. Réessayez dans un instant.", "erreur");
+
+  if (etat === "attente") {
+    document.getElementById("bloc-connexion").classList.add("cache");
+    document.getElementById("bloc-attente").classList.remove("cache");
+  } else if (etat === "desactive") {
+    afficherMessage("zone-message", "Ce compte est désactivé. Contactez la Direction si vous pensez qu'il s'agit d'une erreur.", "erreur");
+  } else if (etat === "config") {
+    afficherMessage("zone-message", "La connexion Discord n'est pas encore configurée sur le serveur.", "erreur");
+  } else if (etat === "erreur") {
+    afficherMessage("zone-message", "La connexion via Discord a échoué. Réessayez.", "erreur");
   }
 }
-
-document.getElementById("formulaire-init").addEventListener("submit", async (ev) => {
-  ev.preventDefault();
-  afficherMessage("zone-message", "", null);
-  const pseudo = document.getElementById("init-pseudo").value.trim();
-  try {
-    const r = await appelAPI("/api/init", { method: "POST", body: JSON.stringify({ pseudo }) });
-    document.getElementById("bloc-premier-demarrage").classList.add("cache");
-    document.getElementById("bloc-code-genere").classList.remove("cache");
-    document.getElementById("code-genere").textContent = r.code;
-  } catch (e) {
-    afficherMessage("zone-message", e.message, "erreur");
-  }
-});
-
-document.getElementById("bouton-code-note").addEventListener("click", () => {
-  document.getElementById("bloc-code-genere").classList.add("cache");
-  document.getElementById("bloc-connexion").classList.remove("cache");
-});
-
-document.getElementById("formulaire-connexion").addEventListener("submit", async (ev) => {
-  ev.preventDefault();
-  afficherMessage("zone-message", "", null);
-  const bouton = document.getElementById("bouton-connexion");
-  bouton.disabled = true;
-  bouton.textContent = "Connexion…";
-  try {
-    const code = document.getElementById("champ-code").value;
-    const moi = await appelAPI("/api/connexion", { method: "POST", body: JSON.stringify({ code }) });
-    SESSION = { connecte: true, pseudo: moi.pseudo, grade: moi.grade, direction: String(moi.grade).toLowerCase() === "direction" };
-    demarrerEspaceAdmin();
-  } catch (e) {
-    afficherMessage("zone-message", e.message, "erreur");
-  } finally {
-    bouton.disabled = false;
-    bouton.textContent = "Se connecter";
-  }
-});
 
 document.getElementById("bouton-deconnexion").addEventListener("click", async () => {
   try { await appelAPI("/api/deconnexion", { method: "POST" }); } catch (e) {}
@@ -141,24 +118,28 @@ function initialesPseudo(pseudo) {
 function demarrerEspaceAdmin() {
   document.body.classList.add("admin-connecte");
   document.getElementById("pseudo-connecte").textContent = SESSION.pseudo;
-  document.getElementById("grade-connecte").textContent = SESSION.direction ? "Administrateur" : "Agent";
+  document.getElementById("grade-connecte").textContent = SESSION.grade || "—";
   document.getElementById("avatar-connecte").textContent = initialesPseudo(SESSION.pseudo);
+  // Un membre sans droits sur les annonces (grade "Stagiaire") n'a accès qu'à son profil.
+  document.getElementById("onglet-annonces").classList.toggle("cache", !SESSION.peutGererAnnonces);
   if (SESSION.direction) {
-    document.getElementById("onglet-membres").classList.remove("cache");
+    document.getElementById("onglet-comptes").classList.remove("cache");
   }
   document.querySelectorAll(".lien-onglet").forEach((btn) => {
     btn.addEventListener("click", () => basculerOnglet(btn.dataset.onglet));
   });
-  chargerTableBiens();
+  const ongletDepart = SESSION.peutGererAnnonces ? "annonces" : "profil";
+  basculerOnglet(ongletDepart);
+  if (ongletDepart === "annonces") chargerTableBiens();
 }
 
 function basculerOnglet(nom) {
   document.querySelectorAll(".lien-onglet").forEach((b) => b.classList.toggle("actif", b.dataset.onglet === nom));
   document.getElementById("panneau-annonces").classList.toggle("cache", nom !== "annonces");
   document.getElementById("panneau-profil").classList.toggle("cache", nom !== "profil");
-  document.getElementById("panneau-membres").classList.toggle("cache", nom !== "membres");
+  document.getElementById("panneau-comptes").classList.toggle("cache", nom !== "comptes");
   if (nom === "profil") chargerMonProfil();
-  if (nom === "membres") chargerTableMembres();
+  if (nom === "comptes") chargerTableMembres();
 }
 
 // ---------------------------------------------------------------------------
@@ -832,44 +813,138 @@ document.getElementById("bouton-supprimer-bien").addEventListener("click", async
 });
 
 // ---------------------------------------------------------------------------
-// Gestion de l'équipe (membres) — réservé à la Direction
+// Comptes & accès — réservé à la Direction
+// Regroupe les demandes en attente (connexion Discord non reconnue), le
+// tableau des comptes (identifiant renommable, grade modifiable en direct,
+// suspension, suppression) et la création de comptes pré-autorisés.
 // ---------------------------------------------------------------------------
+
+const OPTIONS_GRADES_HTML = GRADES.map((g) => `<option value="${echapper(g.nom)}">${echapper(g.nom)}</option>`).join("");
+document.getElementById("membre-grade").innerHTML = OPTIONS_GRADES_HTML;
 
 async function chargerTableMembres() {
   const corps = document.getElementById("corps-table-membres");
   corps.innerHTML = `<tr><td colspan="6">Chargement…</td></tr>`;
+  afficherMessage("zone-message-membres", "", null);
   try {
     const data = await appelAPI("/api/membres");
     CACHE_MEMBRES = data.membres || [];
-    corps.innerHTML = CACHE_MEMBRES.map((m) => `
-      <tr>
-        <td>${echapper(m.pseudo)}</td>
-        <td>${echapper(m.grade)}</td>
-        <td>•••• ${echapper(m.code_indice)}</td>
-        <td>${m.actif ? '<span class="puce puce-ok">Actif</span>' : '<span class="puce puce-off">Désactivé</span>'}</td>
+    const enAttente = CACHE_MEMBRES.filter((m) => m.statut === "attente");
+    const comptes = CACHE_MEMBRES.filter((m) => m.statut !== "attente");
+
+    document.getElementById("bloc-demandes-attente").classList.toggle("cache", !enAttente.length);
+    document.getElementById("compteur-attente").textContent = enAttente.length ? `(${enAttente.length})` : "";
+    document.getElementById("liste-demandes-attente").innerHTML = enAttente.map((m) => `
+      <div class="demande-attente-ligne">
+        <div class="demande-attente-info">
+          <span class="admin-avatar">${initialesPseudo(m.pseudo)}</span>
+          <div>
+            <strong>${echapper(m.pseudo)}</strong>
+            <span class="champ-aide">Discord : @${echapper(m.discord_pseudo || "?")}</span>
+          </div>
+        </div>
+        <div class="demande-attente-actions">
+          <button type="button" class="btn btn-or btn-petit" data-valider="${m.id}">✓ Valider</button>
+          <button type="button" class="btn btn-fantome btn-petit" data-refuser="${m.id}">✕</button>
+        </div>
+      </div>`).join("");
+    document.getElementById("liste-demandes-attente").querySelectorAll("[data-valider]").forEach((btn) => {
+      btn.addEventListener("click", () => validerDemande(Number(btn.dataset.valider)));
+    });
+    document.getElementById("liste-demandes-attente").querySelectorAll("[data-refuser]").forEach((btn) => {
+      btn.addEventListener("click", () => refuserDemande(Number(btn.dataset.refuser)));
+    });
+
+    if (!comptes.length) {
+      corps.innerHTML = `<tr><td colspan="6">Aucun compte pour le moment. Utilisez « + Créer le compte » pour pré-autoriser un pseudo Discord.</td></tr>`;
+      return;
+    }
+    corps.innerHTML = comptes.map((m) => `
+      <tr data-ligne="${m.id}">
+        <td><input type="text" class="table-input" value="${echapper(m.pseudo)}" data-identifiant="${m.id}" maxlength="40"></td>
+        <td>${m.discord_pseudo ? "@" + echapper(m.discord_pseudo) : "—"}</td>
+        <td><select class="table-select" data-grade="${m.id}" style="border-color:${couleurGrade(m.grade)};">${OPTIONS_GRADES_HTML}</select></td>
+        <td>${m.statut === "invite"
+          ? '<span class="puce puce-or" title="Pré-autorisé, en attente de sa première connexion Discord">Invité</span>'
+          : (m.actif ? '<span class="puce puce-ok">Actif</span>' : '<span class="puce puce-off">Suspendu</span>')}</td>
         <td>${m.derniere_visite ? echapper(m.derniere_visite) : "Jamais connecté"}</td>
-        <td><div class="actions-ligne"><button class="btn btn-fantome btn-petit" data-editer="${m.id}">Modifier</button></div></td>
+        <td><div class="actions-ligne">
+          <button type="button" class="btn btn-fantome btn-petit" data-suspendre="${m.id}" data-actif="${m.actif ? 1 : 0}">${m.actif ? "Suspendre" : "Réactiver"}</button>
+          <button type="button" class="actions-icone actions-icone--danger" data-supprimer="${m.id}" title="Supprimer" aria-label="Supprimer">🗑️</button>
+        </div></td>
       </tr>`).join("");
-    corps.querySelectorAll("[data-editer]").forEach((btn) => {
-      btn.addEventListener("click", () => ouvrirModaleMembre(Number(btn.dataset.editer)));
+    corps.querySelectorAll("[data-grade]").forEach((sel) => {
+      sel.value = CACHE_MEMBRES.find((m) => m.id === Number(sel.dataset.grade)).grade;
+      sel.style.borderColor = couleurGrade(sel.value);
+      sel.addEventListener("change", () => {
+        sel.style.borderColor = couleurGrade(sel.value);
+        modifierCompte(Number(sel.dataset.grade), { grade: sel.value });
+      });
+    });
+    corps.querySelectorAll("[data-identifiant]").forEach((champ) => {
+      champ.addEventListener("change", () => {
+        const pseudo = champ.value.trim();
+        if (!pseudo) { champ.value = CACHE_MEMBRES.find((m) => m.id === Number(champ.dataset.identifiant)).pseudo; return; }
+        modifierCompte(Number(champ.dataset.identifiant), { pseudo });
+      });
+    });
+    corps.querySelectorAll("[data-suspendre]").forEach((btn) => {
+      btn.addEventListener("click", () => modifierCompte(Number(btn.dataset.suspendre), { actif: btn.dataset.actif !== "1" }));
+    });
+    corps.querySelectorAll("[data-supprimer]").forEach((btn) => {
+      btn.addEventListener("click", () => supprimerCompte(Number(btn.dataset.supprimer)));
     });
   } catch (e) {
     corps.innerHTML = `<tr><td colspan="6">Erreur de chargement : ${echapper(e.message)}</td></tr>`;
   }
 }
 
-function ouvrirModaleMembre(id) {
-  const membre = id ? CACHE_MEMBRES.find((m) => m.id === id) : null;
-  document.getElementById("titre-modale-membre").textContent = membre ? "Modifier l'agent" : "Nouvel agent";
-  document.getElementById("membre-id").value = membre ? membre.id : "";
-  document.getElementById("membre-pseudo").value = membre ? membre.pseudo : "";
-  document.getElementById("membre-grade").value = membre ? membre.grade : "Agent";
-  document.getElementById("membre-actif").checked = membre ? !!membre.actif : true;
-  document.getElementById("ligne-membre-actif").classList.toggle("cache", !membre);
-  document.getElementById("bouton-regenerer-code").classList.toggle("cache", !membre);
-  document.getElementById("bouton-supprimer-membre").classList.toggle("cache", !membre);
-  document.getElementById("bloc-code-membre").classList.add("cache");
-  document.getElementById("formulaire-membre").classList.remove("cache");
+async function validerDemande(id) {
+  try {
+    await appelAPI("/api/membres?id=" + id, { method: "PATCH", body: JSON.stringify({ action: "valider" }) });
+    afficherMessage("zone-message-membres", "Accès validé ✓ Vous pouvez ajuster son grade dans le tableau ci-dessous.", "succes");
+    chargerTableMembres();
+  } catch (e) {
+    afficherMessage("zone-message-membres", e.message, "erreur");
+  }
+}
+
+async function refuserDemande(id) {
+  const ok = await confirmerAction("La personne devra se reconnecter avec Discord pour refaire une demande.", "Refuser cette demande ?");
+  if (!ok) return;
+  try {
+    await appelAPI("/api/membres?id=" + id, { method: "DELETE" });
+    chargerTableMembres();
+  } catch (e) {
+    afficherMessage("zone-message-membres", e.message, "erreur");
+  }
+}
+
+async function modifierCompte(id, changements) {
+  try {
+    await appelAPI("/api/membres?id=" + id, { method: "PATCH", body: JSON.stringify(changements) });
+    afficherMessage("zone-message-membres", "Compte mis à jour ✓", "succes");
+    chargerTableMembres();
+  } catch (e) {
+    afficherMessage("zone-message-membres", e.message, "erreur");
+    chargerTableMembres();
+  }
+}
+
+async function supprimerCompte(id) {
+  const ok = await confirmerAction("Cette action est définitive et ne peut pas être annulée.", "Supprimer ce compte ?");
+  if (!ok) return;
+  try {
+    await appelAPI("/api/membres?id=" + id, { method: "DELETE" });
+    chargerTableMembres();
+  } catch (e) {
+    afficherMessage("zone-message-membres", e.message, "erreur");
+  }
+}
+
+function ouvrirModaleMembre() {
+  document.getElementById("membre-discord-pseudo").value = "";
+  document.getElementById("membre-grade").value = "Stagiaire";
   afficherMessage("zone-message-modale-membre", "", null);
   document.getElementById("modale-membre").classList.remove("cache");
 }
@@ -878,58 +953,17 @@ function fermerModaleMembre() {
   document.getElementById("modale-membre").classList.add("cache");
 }
 
-document.getElementById("bouton-nouveau-membre").addEventListener("click", () => ouvrirModaleMembre(null));
+document.getElementById("bouton-nouveau-membre").addEventListener("click", () => ouvrirModaleMembre());
 document.getElementById("fermer-modale-membre").addEventListener("click", fermerModaleMembre);
 document.getElementById("modale-membre").addEventListener("click", (ev) => { if (ev.target.id === "modale-membre") fermerModaleMembre(); });
 
 document.getElementById("formulaire-membre").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   afficherMessage("zone-message-modale-membre", "", null);
-  const id = document.getElementById("membre-id").value;
-  const pseudo = document.getElementById("membre-pseudo").value.trim();
+  const discordPseudo = document.getElementById("membre-discord-pseudo").value.trim();
   const grade = document.getElementById("membre-grade").value;
-  const actif = document.getElementById("membre-actif").checked;
   try {
-    if (id) {
-      await appelAPI("/api/membres?id=" + id, { method: "PATCH", body: JSON.stringify({ pseudo, grade, actif }) });
-      fermerModaleMembre();
-      chargerTableMembres();
-    } else {
-      const r = await appelAPI("/api/membres", { method: "POST", body: JSON.stringify({ pseudo, grade }) });
-      document.getElementById("formulaire-membre").classList.add("cache");
-      document.getElementById("bloc-code-membre").classList.remove("cache");
-      document.getElementById("code-membre-genere").textContent = r.code;
-      chargerTableMembres();
-    }
-  } catch (e) {
-    afficherMessage("zone-message-modale-membre", e.message, "erreur");
-  }
-});
-
-document.getElementById("bouton-fermer-code-membre").addEventListener("click", fermerModaleMembre);
-
-document.getElementById("bouton-regenerer-code").addEventListener("click", async () => {
-  const id = document.getElementById("membre-id").value;
-  if (!id) return;
-  const ok = await confirmerAction("L'ancien code cessera de fonctionner immédiatement.", "Générer un nouveau code pour cet agent ?");
-  if (!ok) return;
-  try {
-    const r = await appelAPI("/api/membres?id=" + id, { method: "PATCH", body: JSON.stringify({ action: "regenerer" }) });
-    document.getElementById("formulaire-membre").classList.add("cache");
-    document.getElementById("bloc-code-membre").classList.remove("cache");
-    document.getElementById("code-membre-genere").textContent = r.code;
-  } catch (e) {
-    afficherMessage("zone-message-modale-membre", e.message, "erreur");
-  }
-});
-
-document.getElementById("bouton-supprimer-membre").addEventListener("click", async () => {
-  const id = document.getElementById("membre-id").value;
-  if (!id) return;
-  const ok = await confirmerAction("Cette action est définitive et ne peut pas être annulée.", "Supprimer l'accès de cet agent ?");
-  if (!ok) return;
-  try {
-    await appelAPI("/api/membres?id=" + id, { method: "DELETE" });
+    await appelAPI("/api/membres", { method: "POST", body: JSON.stringify({ discord_pseudo: discordPseudo, grade }) });
     fermerModaleMembre();
     chargerTableMembres();
   } catch (e) {

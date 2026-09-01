@@ -3,19 +3,24 @@
 
 CREATE TABLE IF NOT EXISTS membres (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  pseudo TEXT NOT NULL,
-  grade TEXT NOT NULL DEFAULT 'Agent',       -- 'Direction' ou 'Agent' — droits d'accès, Direction uniquement
-  code_hash TEXT NOT NULL,
-  code_indice TEXT NOT NULL,                  -- 4 derniers caractères du code, pour l'affichage
-  actif INTEGER NOT NULL DEFAULT 1,
+  pseudo TEXT NOT NULL,                       -- "identifiant" affiché partout sur le site — renommable par la Direction
+  grade TEXT NOT NULL DEFAULT '',             -- un des 10 grades RP (voir GRADES dans layout.js / index.js) — détermine les droits d'accès
+  code_hash TEXT NOT NULL,                    -- hérité de l'ancien système par code ; toujours rempli (valeur aléatoire) mais plus utilisé pour se connecter
+  code_indice TEXT NOT NULL,                  -- hérité de l'ancien système par code ; plus utilisé
+  actif INTEGER NOT NULL DEFAULT 1,           -- interrupteur : la Direction peut suspendre un compte sans le supprimer
   cree_le TEXT NOT NULL,
   derniere_visite TEXT,
   poste TEXT,                                 -- intitulé public affiché sur /equipe.html (ex: "Agent — Habitation")
   specialite TEXT,                            -- ex: "Villas & Maisons" — auto-édité par le membre
   bio TEXT,                                   -- biographie affichée sur la fiche « voir le profil »
   photo TEXT,                                 -- photo de profil (JPEG en base64, comme les photos de biens)
-  linkedin TEXT                               -- lien LinkedIn (ou autre réseau), optionnel
+  linkedin TEXT,                              -- inutilisé (conservé pour compatibilité)
+  discord_id TEXT,                            -- identifiant Discord permanent, lié à vie à la première connexion
+  discord_pseudo TEXT,                        -- pseudo Discord exact — sert à la pré-autorisation ("Créer le compte")
+  statut TEXT NOT NULL DEFAULT 'attente'      -- 'attente' | 'invite' | 'valide' | 'desactive' — voir src/index.js
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_membres_discord_id ON membres(discord_id);
 
 CREATE TABLE IF NOT EXISTS tentatives (
   ip TEXT PRIMARY KEY,

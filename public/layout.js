@@ -301,3 +301,27 @@ const SOUS_CATEGORIES_HABITATION = [
 
 // Les 4 "cohérences" (zones RP) auxquelles un bien peut être rattaché.
 const COHERENCES = ["Habitation", "Garage", "Cayo Perico", "Roxwood"];
+
+// Les 10 grades de la hiérarchie Dynasty 8 (espace agents), du plus élevé au
+// plus bas — même liste que côté serveur (src/index.js), à garder synchronisée.
+// "niveau" détermine les droits réels : "direction" (accès total), "commercial"
+// (annonces uniquement) ou "membre" (aucun accès, juste "Mon profil").
+// "couleur" n'est utilisée que pour les badges de l'onglet "Comptes & accès".
+const GRADES = [
+  { nom: "Patron", niveau: "direction", couleur: "#e3a1a1" },
+  { nom: "Co Patron", niveau: "direction", couleur: "#e3a1a1" },
+  { nom: "Manager", niveau: "direction", couleur: "#e3a1a1" },
+  { nom: "DRH", niveau: "direction", couleur: "#e3a1a1" },
+  { nom: "Secrétaire de Direction", niveau: "direction", couleur: "#e3a1a1" },
+  { nom: "Référent Immobilier", niveau: "commercial", couleur: "#c1a8e8" },
+  { nom: "Agent Expert", niveau: "commercial", couleur: "#a3d9a5" },
+  { nom: "Agent", niveau: "commercial", couleur: "#9dc6ea" },
+  { nom: "Agent Novice", niveau: "commercial", couleur: "#bfe0f5" },
+  { nom: "Stagiaire", niveau: "membre", couleur: "#f0b8a0" },
+];
+const NOMS_GRADES = GRADES.map((g) => g.nom);
+const NIVEAU_PAR_GRADE = Object.fromEntries(GRADES.map((g) => [g.nom, g.niveau]));
+function couleurGrade(nom) {
+  const g = GRADES.find((x) => x.nom === nom);
+  return g ? g.couleur : "#8a93b8";
+}

@@ -6,18 +6,24 @@
 // (les pages du site) sont servies directement par Cloudflare depuis le
 // dossier /public, sans passer par ce code.
 //
-// Principe de connexion : chaque membre de l'équipe reçoit un « code
-// d'accès » unique (ex: DYN-4F2A-9K1B-77XQ). Ce code n'est jamais stocké en
-// clair : on garde seulement son empreinte (hash) en base. Quand quelqu'un se
-// connecte avec le bon code, le Worker pose un cookie signé (comme un
-// bracelet infalsifiable) qui prouve son identité pendant 12h.
+// Principe de connexion : chaque membre se connecte avec son compte Discord
+// (bouton "Se connecter avec Discord"). On ne stocke jamais son mot de passe
+// Discord — seulement son identifiant Discord (numéro permanent), obtenu via
+// le protocole standard "OAuth2". Une fois l'identité confirmée par Discord,
+// le Worker pose un cookie signé (comme un bracelet infalsifiable) qui prouve
+// l'identité de la personne pendant 12h.
+//
+// Le tout premier accès d'un pseudo Discord inconnu crée une "demande en
+// attente" que la Direction doit valider (bouton ✓) depuis l'onglet "Comptes
+// & accès". La Direction peut aussi pré-autoriser quelqu'un à l'avance via
+// "Créer le compte" (en tapant son pseudo Discord exact) : cette personne
+// obtient alors l'accès dès sa toute première connexion, sans validation
+// manuelle.
 // ============================================================================
 
 const COOKIE = "d8_session";
+const COOKIE_ETAT_OAUTH = "d8_oauth_state"; // protection anti-CSRF pendant l'aller-retour vers Discord
 const DUREE = 60 * 60 * 12; // 12 heures, en secondes
-const MAX_ESSAIS = 10;
-const FENETRE = 10 * 60; // 10 minutes
-const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sans caractères ambigus (0/O, 1/I...)
 const CATEGORIES = ["habitation", "garage"];
 
 // Sous-catégories autorisées pour la catégorie "habitation" (la catégorie "garage"
@@ -36,6 +42,31 @@ const COHERENCES = ["Habitation", "Garage", "Cayo Perico", "Roxwood"];
 // Statuts VIP : purement informatifs (liés à la boutique officielle FlashbackFA,
 // pas gérés par l'agence elle-même) — voir le texte affiché sur les pages publiques.
 const VALEURS_VIP = ["", "vip", "vip+"];
+
+// Les 10 grades de la hiérarchie Dynasty 8, du plus élevé au plus bas. "niveau"
+// détermine les droits réels dans l'espace agents :
+//   "direction"  -> accès total (annonces + comptes & accès)
+//   "commercial" -> gestion des annonces uniquement
+//   "membre"     -> aucun accès, seulement "Mon profil"
+// (même liste côté site public, dans layout.js — à garder synchronisée si elle change un jour)
+const GRADES = [
+  { nom: "Patron", niveau: "direction" },
+  { nom: "Co Patron", niveau: "direction" },
+  { nom: "Manager", niveau: "direction" },
+  { nom: "DRH", niveau: "direction" },
+  { nom: "Secrétaire de Direction", niveau: "direction" },
+  { nom: "Référent Immobilier", niveau: "commercial" },
+  { nom: "Agent Expert", niveau: "commercial" },
+  { nom: "Agent", niveau: "commercial" },
+  { nom: "Agent Novice", niveau: "commercial" },
+  { nom: "Stagiaire", niveau: "membre" },
+];
+const NOMS_GRADES = GRADES.map((g) => g.nom);
+const NIVEAU_PAR_GRADE = Object.fromEntries(GRADES.map((g) => [g.nom, g.niveau]));
+// Grade attribué automatiquement quand la Direction clique "✓ Valider" sur une
+// demande : le plus prudent (aucun accès annonces). La Direction l'ajuste
+// ensuite via le menu déroulant de la ligne, dans le tableau des comptes.
+const GRADE_PAR_DEFAUT = "Stagiaire";
 
 const enc = new TextEncoder();
 const maintenant = () => Math.floor(Date.now() / 1000);
@@ -56,15 +87,9 @@ function unb64url(str) {
   return out;
 }
 
-function hex(bytes) {
-  let s = "";
-  for (const b of bytes) s += b.toString(16).padStart(2, "0");
-  return s;
-}
-
 function egal(a, b) {
-  // Comparaison "à temps constant" : évite de révéler des indices sur le
-  // code correct via le temps de réponse.
+  // Comparaison "à temps constant" : évite de révéler des indices via le
+  // temps de réponse.
   if (a.length !== b.length) return false;
   let d = 0;
   for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
@@ -121,51 +146,16 @@ function json(d, s = 200) {
   });
 }
 
+// Redirection HTTP classique (utilisée pour l'aller-retour OAuth Discord),
+// avec la possibilité de poser plusieurs cookies à la fois.
+function redirection(location, setCookies) {
+  const headers = new Headers({ Location: location });
+  (setCookies || []).forEach((c) => headers.append("Set-Cookie", c));
+  return new Response(null, { status: 302, headers });
+}
+
 function txt(v, max) {
   return v == null ? "" : String(v).slice(0, max);
-}
-
-// ---- codes d'accès ----------------------------------------------------
-
-function normaliserCode(brut) {
-  return String(brut || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-}
-
-async function empreinte(secret, codeNormalise) {
-  const buf = await crypto.subtle.digest("SHA-256", enc.encode(secret + ":dynasty8:" + codeNormalise));
-  return hex(new Uint8Array(buf));
-}
-
-function genererCode() {
-  const brut = crypto.getRandomValues(new Uint8Array(12));
-  let corps = "";
-  for (const o of brut) corps += ALPHABET[o % ALPHABET.length];
-  return "DYN-" + corps.slice(0, 4) + "-" + corps.slice(4, 8) + "-" + corps.slice(8, 12);
-}
-
-// ---- anti-bruteforce (limite les essais de connexion par adresse IP) -----
-
-async function bloque(env, ip) {
-  const t = await env.DB.prepare("SELECT nombre, depuis FROM tentatives WHERE ip = ?1").bind(ip).first();
-  if (!t) return false;
-  if (maintenant() - t.depuis > FENETRE) return false;
-  return t.nombre >= MAX_ESSAIS;
-}
-
-async function noterEchec(env, ip) {
-  const t = await env.DB.prepare("SELECT nombre, depuis FROM tentatives WHERE ip = ?1").bind(ip).first();
-  if (!t || maintenant() - t.depuis > FENETRE) {
-    await env.DB.prepare(
-      `INSERT INTO tentatives (ip, nombre, depuis) VALUES (?1, 1, ?2)
-       ON CONFLICT(ip) DO UPDATE SET nombre = 1, depuis = ?2`
-    ).bind(ip, maintenant()).run();
-  } else {
-    await env.DB.prepare("UPDATE tentatives SET nombre = nombre + 1 WHERE ip = ?1").bind(ip).run();
-  }
-}
-
-async function oublierEchecs(env, ip) {
-  await env.DB.prepare("DELETE FROM tentatives WHERE ip = ?1").bind(ip).run();
 }
 
 // ---- point d'entrée ---------------------------------------------------
@@ -179,12 +169,12 @@ export default {
       if (!env.SESSION_SECRET) {
         return json({ erreur: "SESSION_SECRET n'est pas configuré sur le serveur." }, 500);
       }
-      if (chemin === "/api/init") return initialisation(request, env);
-      if (chemin === "/api/connexion") return connexion(request, env);
+      if (chemin === "/api/auth/discord") return discordAutoriser(request, env);
+      if (chemin === "/api/auth/discord/callback") return discordCallback(request, url, env);
       if (chemin === "/api/deconnexion") return deconnexion();
       if (chemin === "/api/moi") return moi(request, env);
       if (chemin === "/api/biens") return biens(request, url, env);
-      if (chemin === "/api/membres") return membres(request, url, env);
+      if (chemin === "/api/membres") return comptes(request, url, env);
       if (chemin === "/api/equipe") return equipe(env);
       return json({ erreur: "Adresse inconnue." }, 404);
     } catch (e) {
@@ -193,49 +183,106 @@ export default {
   },
 };
 
-// ---- initialisation (création du tout premier compte Direction) ----------
+// ---- connexion via Discord (OAuth2) ---------------------------------------
 
-async function initialisation(request, env) {
-  const combien = await env.DB.prepare("SELECT COUNT(*) AS n FROM membres").first();
-  const vide = !combien || combien.n === 0;
-  if (request.method === "GET") return json({ premier_demarrage: vide });
-  if (request.method !== "POST") return json({ erreur: "Méthode non gérée." }, 405);
-  if (!vide) return json({ erreur: "L'espace admin est déjà initialisé." }, 403);
-  const b = await request.json().catch(() => null);
-  const pseudo = txt(b && b.pseudo, 40).trim() || "Direction";
-  const code = genererCode();
-  const h = await empreinte(env.SESSION_SECRET, normaliserCode(code));
-  await env.DB.prepare(
-    `INSERT INTO membres (pseudo, grade, code_hash, code_indice, actif, cree_le)
-     VALUES (?1, 'Direction', ?2, ?3, 1, datetime('now'))`
-  ).bind(pseudo, h, code.slice(-4)).run();
-  return json({ code, pseudo });
+async function discordAutoriser(request, env) {
+  if (!env.DISCORD_CLIENT_ID || !env.DISCORD_REDIRECT_URI) {
+    return json({ erreur: "La connexion Discord n'est pas encore configurée sur le serveur." }, 500);
+  }
+  // "état" aléatoire à usage unique : on le pose dans un cookie ET on le
+  // renvoie à Discord, qui nous le redonne tel quel au retour. S'ils ne
+  // correspondent pas au retour, on refuse (protection contre les faux liens).
+  const etat = b64url(crypto.getRandomValues(new Uint8Array(24)));
+  const params = new URLSearchParams({
+    client_id: env.DISCORD_CLIENT_ID,
+    redirect_uri: env.DISCORD_REDIRECT_URI,
+    response_type: "code",
+    scope: "identify",
+    state: etat,
+    prompt: "consent",
+  });
+  return redirection(
+    "https://discord.com/api/oauth2/authorize?" + params.toString(),
+    [poserCookie(COOKIE_ETAT_OAUTH, etat, 600)]
+  );
 }
 
-// ---- connexion / session ------------------------------------------------
+async function discordCallback(request, url, env) {
+  const echec = (raison) =>
+    redirection("/admin.html?d8=" + encodeURIComponent(raison), [poserCookie(COOKIE_ETAT_OAUTH, "", 0)]);
 
-async function connexion(request, env) {
-  if (request.method !== "POST") return json({ erreur: "Méthode non gérée." }, 405);
-  const ip = request.headers.get("CF-Connecting-IP") || "inconnue";
-  if (await bloque(env, ip)) {
-    return json({ erreur: "Trop de tentatives. Réessayez dans 10 minutes." }, 429);
+  if (!env.DISCORD_CLIENT_ID || !env.DISCORD_CLIENT_SECRET || !env.DISCORD_REDIRECT_URI) {
+    return echec("config");
   }
-  const b = await request.json().catch(() => null);
-  const codeNormalise = normaliserCode(b && b.code);
-  const refus = () => json({ erreur: "Code invalide." }, 401);
-  if (codeNormalise.length < 8) {
-    await noterEchec(env, ip);
-    return refus();
+
+  const code = url.searchParams.get("code");
+  const etatRecu = url.searchParams.get("state");
+  const etatAttendu = cookies(request)[COOKIE_ETAT_OAUTH];
+  if (!code || !etatRecu || !etatAttendu || etatRecu !== etatAttendu) {
+    return echec("erreur");
   }
-  const h = await empreinte(env.SESSION_SECRET, codeNormalise);
-  const m = await env.DB.prepare("SELECT id, pseudo, grade, actif FROM membres WHERE code_hash = ?1")
-    .bind(h)
-    .first();
-  if (!m || !m.actif) {
-    await noterEchec(env, ip);
-    return refus();
+
+  let jetonDiscord;
+  try {
+    const reponseJeton = await fetch("https://discord.com/api/oauth2/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: env.DISCORD_CLIENT_ID,
+        client_secret: env.DISCORD_CLIENT_SECRET,
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: env.DISCORD_REDIRECT_URI,
+      }),
+    });
+    if (!reponseJeton.ok) return echec("erreur");
+    jetonDiscord = await reponseJeton.json();
+  } catch (e) {
+    return echec("erreur");
   }
-  await oublierEchecs(env, ip);
+
+  let discordUser;
+  try {
+    const reponseUser = await fetch("https://discord.com/api/users/@me", {
+      headers: { Authorization: `${jetonDiscord.token_type || "Bearer"} ${jetonDiscord.access_token}` },
+    });
+    if (!reponseUser.ok) return echec("erreur");
+    discordUser = await reponseUser.json();
+  } catch (e) {
+    return echec("erreur");
+  }
+
+  const discordId = String(discordUser.id || "");
+  const discordPseudo = String(discordUser.username || "").trim();
+  if (!discordId || !discordPseudo) return echec("erreur");
+
+  let m = await env.DB.prepare("SELECT * FROM membres WHERE discord_id = ?1").bind(discordId).first();
+
+  if (!m) {
+    // Pas encore lié à ce Discord : peut-être pré-autorisé par la Direction ?
+    const preAutorise = await env.DB.prepare(
+      "SELECT * FROM membres WHERE discord_id IS NULL AND statut = 'invite' AND lower(discord_pseudo) = lower(?1)"
+    ).bind(discordPseudo).first();
+
+    if (preAutorise) {
+      // Lien définitif : à partir de maintenant, seul ce compte Discord ouvrira ce compte Dynasty 8.
+      await env.DB.prepare(
+        "UPDATE membres SET discord_id = ?2, discord_pseudo = ?3, statut = 'valide', derniere_visite = datetime('now') WHERE id = ?1"
+      ).bind(preAutorise.id, discordId, discordPseudo).run();
+      m = { ...preAutorise, discord_id: discordId, statut: "valide" };
+    } else {
+      // Personne ne l'attendait : on crée une demande en attente de validation.
+      await env.DB.prepare(
+        `INSERT INTO membres (pseudo, grade, code_hash, code_indice, actif, statut, discord_id, discord_pseudo, cree_le)
+         VALUES (?1, '', lower(hex(randomblob(32))), '----', 0, 'attente', ?2, ?3, datetime('now'))`
+      ).bind(discordUser.global_name || discordPseudo, discordId, discordPseudo).run();
+      return echec("attente");
+    }
+  }
+
+  if (m.statut === "attente") return echec("attente");
+  if (m.statut !== "valide" || !m.actif) return echec("desactive");
+
   await env.DB.prepare("UPDATE membres SET derniere_visite = datetime('now') WHERE id = ?1").bind(m.id).run();
   const jeton = await creerSession(env.SESSION_SECRET, {
     id: m.id,
@@ -243,14 +290,10 @@ async function connexion(request, env) {
     grade: m.grade,
     exp: maintenant() + DUREE,
   });
-  return new Response(JSON.stringify({ pseudo: m.pseudo, grade: m.grade }), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-      "Set-Cookie": poserCookie(COOKIE, jeton, DUREE),
-    },
-  });
+  return redirection("/admin.html", [
+    poserCookie(COOKIE, jeton, DUREE),
+    poserCookie(COOKIE_ETAT_OAUTH, "", 0),
+  ]);
 }
 
 function deconnexion() {
@@ -267,8 +310,17 @@ async function session(request, env) {
   return lireSession(env.SESSION_SECRET, cookies(request)[COOKIE]);
 }
 
+// "niveau" résume le grade en 3 paliers de droits (voir GRADES ci-dessus).
+// Un grade vide/inconnu (ex: demande en attente) n'a par sécurité aucun accès.
+function niveauAcces(s) {
+  return NIVEAU_PAR_GRADE[(s && s.grade) || ""] || "membre";
+}
 function estDirection(s) {
-  return String((s && s.grade) || "").toLowerCase() === "direction";
+  return niveauAcces(s) === "direction";
+}
+function peutGererAnnonces(s) {
+  const n = niveauAcces(s);
+  return n === "direction" || n === "commercial";
 }
 
 async function moi(request, env) {
@@ -283,6 +335,7 @@ async function moi(request, env) {
     pseudo: s.pseudo,
     grade: s.grade,
     direction: estDirection(s),
+    peut_gerer_annonces: peutGererAnnonces(s),
     poste: (m && m.poste) || "",
     specialite: (m && m.specialite) || "",
     bio: (m && m.bio) || "",
@@ -291,7 +344,7 @@ async function moi(request, env) {
 }
 
 // ---- « Mon profil » : chaque membre édite sa propre fiche publique ------
-// Volontairement séparé de la gestion des comptes (membres()) : ces champs
+// Volontairement séparé de la gestion des comptes (comptes()) : ces champs
 // n'ont aucun effet sur les droits d'accès (grade), qui reste réservé à la
 // Direction. Un agent ne peut modifier que sa propre fiche (son id vient de
 // la session signée, jamais du corps de la requête).
@@ -323,19 +376,24 @@ async function modifierMonProfil(request, env, s) {
 
 // ---- équipe (page publique /equipe.html) ----------------------------------
 // Lecture publique, aucune connexion requise. Ne renvoie que des champs
-// destinés à être affichés (jamais code_hash, code_indice, dates internes...).
+// destinés à être affichés (jamais discord_id, code_hash, dates internes...).
 
 async function equipe(env) {
   const r = await env.DB.prepare(
     `SELECT id, pseudo, grade, poste, specialite, bio, photo
        FROM membres
-       WHERE actif = 1
-       ORDER BY CASE WHEN grade = 'Direction' THEN 0 ELSE 1 END, pseudo COLLATE NOCASE`
+       WHERE statut = 'valide' AND actif = 1
+       ORDER BY CASE grade
+         WHEN 'Patron' THEN 0 WHEN 'Co Patron' THEN 1 WHEN 'Manager' THEN 2 WHEN 'DRH' THEN 3
+         WHEN 'Secrétaire de Direction' THEN 4 WHEN 'Référent Immobilier' THEN 5
+         WHEN 'Agent Expert' THEN 6 WHEN 'Agent' THEN 7 WHEN 'Agent Novice' THEN 8
+         WHEN 'Stagiaire' THEN 9 ELSE 10 END,
+         pseudo COLLATE NOCASE`
   ).all();
   const liste = (r.results || []).map((m) => ({
     id: m.id,
     pseudo: m.pseudo,
-    poste: m.poste || (String(m.grade).toLowerCase() === "direction" ? "Direction de l'agence" : "Agent immobilier"),
+    poste: m.poste || m.grade || "Agent immobilier",
     specialite: m.specialite || "",
     bio: m.bio || "",
     photo: m.photo || "",
@@ -345,7 +403,9 @@ async function equipe(env) {
 
 // ---- biens (annonces immobilières) ---------------------------------------
 // Lecture publique (aucune connexion requise) : tout le monde peut voir les
-// annonces disponibles. Écriture réservée aux membres connectés.
+// annonces disponibles. Écriture réservée aux membres ayant un grade Direction
+// ou Commercial (voir GRADES) — un membre de niveau "membre" (ex: Stagiaire)
+// n'a accès qu'à son propre profil.
 
 // Vérifie les données envoyées par le formulaire avant tout enregistrement.
 // Renvoie un message d'erreur clair (en français, affichable tel quel dans la
@@ -494,9 +554,12 @@ async function biens(request, url, env) {
     return json({ biens: (r.results || []).map(bienPourAffichage) });
   }
 
-  // Toute écriture nécessite d'être connecté.
+  // Toute écriture nécessite d'être connecté ET d'avoir un grade Direction ou Commercial.
   const s = await session(request, env);
   if (!s) return json({ erreur: "Non connecté." }, 401);
+  if (!peutGererAnnonces(s)) {
+    return json({ erreur: "Votre grade ne permet pas de gérer les annonces." }, 403);
+  }
 
   if (m === "POST") {
     const b = await request.json().catch(() => null);
@@ -578,9 +641,16 @@ function bienPourAffichage(d) {
   };
 }
 
-// ---- membres (comptes de l'équipe admin) ----------------------------------
+// ---- comptes & accès (réservé à la Direction) ------------------------------
+// Regroupe 3 choses dans l'onglet "Comptes & accès" de l'espace agents :
+//  - les demandes en attente (quelqu'un s'est connecté via Discord, personne
+//    ne l'attendait) : la Direction clique ✓ (Valider) ou ✕ (Refuser/supprimer) ;
+//  - le tableau des comptes existants : identifiant renommable, grade
+//    modifiable, compte suspendable/supprimable ;
+//  - "Créer le compte" : pré-autoriser un pseudo Discord exact à l'avance —
+//    cette personne obtient l'accès dès sa toute première connexion.
 
-async function membres(request, url, env) {
+async function comptes(request, url, env) {
   const s = await session(request, env);
   if (!s) return json({ erreur: "Non connecté." }, 401);
   if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
@@ -589,48 +659,74 @@ async function membres(request, url, env) {
 
   if (m === "GET") {
     const r = await env.DB.prepare(
-      `SELECT id, pseudo, grade, code_indice, actif, cree_le, derniere_visite
-         FROM membres ORDER BY grade ASC, pseudo COLLATE NOCASE`
+      `SELECT id, pseudo, grade, discord_pseudo, statut, actif, cree_le, derniere_visite
+         FROM membres
+         WHERE statut != 'desactive'
+         ORDER BY CASE statut WHEN 'attente' THEN 0 WHEN 'invite' THEN 1 ELSE 2 END,
+                  pseudo COLLATE NOCASE`
     ).all();
     return json({ membres: r.results || [] });
   }
 
   if (m === "POST") {
+    // "Créer le compte" — pré-autorisation par pseudo Discord exact.
     const b = await request.json().catch(() => null);
-    const pseudo = txt(b && b.pseudo, 40).trim();
-    if (!pseudo) return json({ erreur: "Le pseudo est obligatoire." }, 400);
-    const grade = (b && b.grade) === "Direction" ? "Direction" : "Agent";
-    const code = genererCode();
-    const h = await empreinte(env.SESSION_SECRET, normaliserCode(code));
+    const discordPseudo = txt(b && b.discord_pseudo, 40).trim();
+    const grade = NOMS_GRADES.includes(b && b.grade) ? b.grade : GRADE_PAR_DEFAUT;
+    if (!discordPseudo) return json({ erreur: "Le pseudo Discord exact est obligatoire." }, 400);
+    const existe = await env.DB.prepare(
+      "SELECT id FROM membres WHERE statut != 'desactive' AND lower(discord_pseudo) = lower(?1)"
+    ).bind(discordPseudo).first();
+    if (existe) return json({ erreur: "Un compte existe déjà pour ce pseudo Discord." }, 400);
     const r = await env.DB.prepare(
-      `INSERT INTO membres (pseudo, grade, code_hash, code_indice, actif, cree_le)
-       VALUES (?1, ?2, ?3, ?4, 1, datetime('now'))`
-    ).bind(pseudo, grade, h, code.slice(-4)).run();
-    return json({ id: r.meta.last_row_id, pseudo, grade, code });
+      `INSERT INTO membres (pseudo, grade, code_hash, code_indice, actif, statut, discord_pseudo, cree_le)
+       VALUES (?1, ?2, lower(hex(randomblob(32))), '----', 1, 'invite', ?3, datetime('now'))`
+    ).bind(discordPseudo, grade, discordPseudo).run();
+    return json({ id: r.meta.last_row_id, pseudo: discordPseudo, grade });
   }
 
   if (m === "PATCH") {
     if (!id) return json({ erreur: "Identifiant manquant." }, 400);
     const b = await request.json().catch(() => null);
     if (!b) return json({ erreur: "Requête illisible." }, 400);
-    if (b.action === "regenerer") {
-      const code = genererCode();
-      const h = await empreinte(env.SESSION_SECRET, normaliserCode(code));
-      await env.DB.prepare("UPDATE membres SET code_hash = ?2, code_indice = ?3 WHERE id = ?1")
-        .bind(id, h, code.slice(-4))
-        .run();
-      return json({ code });
+
+    if (b.action === "valider") {
+      // Un seul clic suffit : le compte est activé avec le grade le plus
+      // prudent, que la Direction pourra ajuster ensuite dans le tableau.
+      await env.DB.prepare(
+        "UPDATE membres SET statut = 'valide', actif = 1, grade = ?2 WHERE id = ?1 AND statut = 'attente'"
+      ).bind(id, GRADE_PAR_DEFAUT).run();
+      return json({ ok: true });
     }
-    const pseudo = txt(b.pseudo, 40).trim();
-    if (!pseudo) return json({ erreur: "Le pseudo est obligatoire." }, 400);
-    const grade = b.grade === "Direction" ? "Direction" : "Agent";
-    const actif = b.actif ? 1 : 0;
-    if (String(id) === String(s.id) && (grade !== "Direction" || !actif)) {
-      return json({ erreur: "Vous ne pouvez pas retirer vos propres droits." }, 400);
+
+    const cible = await env.DB.prepare("SELECT id FROM membres WHERE id = ?1 AND statut != 'desactive'").bind(id).first();
+    if (!cible) return json({ erreur: "Introuvable." }, 404);
+
+    const champs = [];
+    const binds = [id];
+    if (b.pseudo !== undefined) {
+      const pseudo = txt(b.pseudo, 40).trim();
+      if (!pseudo) return json({ erreur: "L'identifiant est obligatoire." }, 400);
+      binds.push(pseudo);
+      champs.push(`pseudo = ?${binds.length}`);
     }
-    await env.DB.prepare("UPDATE membres SET pseudo = ?2, grade = ?3, actif = ?4 WHERE id = ?1")
-      .bind(id, pseudo, grade, actif)
-      .run();
+    if (b.grade !== undefined) {
+      if (!NOMS_GRADES.includes(b.grade)) return json({ erreur: "Grade invalide." }, 400);
+      if (String(id) === String(s.id) && NIVEAU_PAR_GRADE[b.grade] !== "direction") {
+        return json({ erreur: "Vous ne pouvez pas retirer vos propres droits de Direction." }, 400);
+      }
+      binds.push(b.grade);
+      champs.push(`grade = ?${binds.length}`);
+    }
+    if (b.actif !== undefined) {
+      if (String(id) === String(s.id) && !b.actif) {
+        return json({ erreur: "Vous ne pouvez pas suspendre votre propre compte." }, 400);
+      }
+      binds.push(b.actif ? 1 : 0);
+      champs.push(`actif = ?${binds.length}`);
+    }
+    if (!champs.length) return json({ erreur: "Aucune modification envoyée." }, 400);
+    await env.DB.prepare(`UPDATE membres SET ${champs.join(", ")} WHERE id = ?1`).bind(...binds).run();
     return json({ ok: true });
   }
 

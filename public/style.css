@@ -1916,4 +1916,32 @@ section.section.serre {
 .profil-photo-apercu img { width: 100%; height: 100%; object-fit: cover; }
 #formulaire-profil { flex: 1; min-width: 280px; }
 
+/* Écran de connexion : bouton "Se connecter avec Discord" */
+.bouton-discord { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.bouton-discord svg { flex-shrink: 0; }
+
+/* Onglet admin « Comptes & accès » */
+.comptes-sous-titre { margin: 26px 0 4px; font-size: 1.05rem; }
+.comptes-sous-titre:first-of-type { margin-top: 0; }
+
+.demande-attente-ligne {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: rgba(201, 165, 92, 0.06); margin-bottom: 10px;
+}
+.demande-attente-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.demande-attente-info strong { display: block; font-size: 0.92rem; color: var(--text); }
+.demande-attente-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.table-input, .table-select {
+  min-height: 38px; padding: 7px 10px; border-radius: var(--radius-sm);
+  border: 1px solid rgba(201, 165, 92, 0.28); background: rgba(6, 12, 26, 0.55);
+  color: var(--text); font-size: 0.86rem; font-family: inherit;
+}
+.table-input:focus, .table-select:focus {
+  outline: none; border-color: var(--d8-gold-400); box-shadow: 0 0 0 3px rgba(201, 165, 92, 0.15);
+}
+.table-input { width: 100%; min-width: 140px; }
+.table-select { width: 100%; min-width: 170px; border-width: 2px; }
+
 .cache { display: none !important; }

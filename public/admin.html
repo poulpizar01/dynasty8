@@ -23,38 +23,21 @@
 
     <div id="zone-message"></div>
 
-    <!-- Formulaire affiché uniquement au tout premier démarrage du site -->
-    <div id="bloc-premier-demarrage" class="cache">
-      <h3 style="text-align:center;">Bienvenue !</h3>
-      <p style="text-align:center;font-size:0.88rem;">Aucun compte n'existe encore. Créez le tout premier compte, celui de la Direction.</p>
-      <form id="formulaire-init">
-        <div class="champ">
-          <label for="init-pseudo">Votre pseudo</label>
-          <input type="text" id="init-pseudo" required maxlength="40" placeholder="Ex: Alexia Ferrero">
-        </div>
-        <button class="btn btn-or" style="width:100%;" type="submit">Créer mon accès</button>
-      </form>
-    </div>
-
-    <!-- Code généré après l'initialisation ou l'ajout d'un membre : à noter précieusement -->
-    <div id="bloc-code-genere" class="cache">
-      <h3 style="text-align:center;">Votre code d'accès</h3>
-      <p style="text-align:center;font-size:0.88rem;">Notez-le précieusement : il ne sera plus jamais affiché. C'est votre seul moyen de connexion.</p>
-      <div class="code-affiche" id="code-genere"></div>
-      <button class="btn btn-or" style="width:100%;" id="bouton-code-note">J'ai noté mon code, continuer</button>
-    </div>
-
-    <!-- Formulaire de connexion normal -->
+    <!-- Formulaire de connexion normal : tout se passe via Discord, aucun mot de passe -->
     <div id="bloc-connexion">
-      <p style="text-align:center;font-size:0.88rem;margin-bottom:20px;">Réservé aux agents Dynasty 8. Entrez votre code d'accès personnel.</p>
-      <form id="formulaire-connexion">
-        <div class="champ">
-          <label for="champ-code">Code d'accès</label>
-          <input type="text" id="champ-code" required placeholder="DYN-XXXX-XXXX-XXXX" autocomplete="off">
-        </div>
-        <button class="btn btn-or" style="width:100%;" type="submit" id="bouton-connexion">Se connecter</button>
-      </form>
+      <p style="text-align:center;font-size:0.88rem;margin-bottom:20px;">Réservé aux membres Dynasty 8. Connectez-vous avec votre compte Discord.</p>
+      <a class="btn btn-or bouton-discord" style="width:100%;" href="/api/auth/discord" id="lien-connexion-discord">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M20.3 5.3A16.6 16.6 0 0 0 16 4c-.2.4-.4.8-.5 1.2a15 15 0 0 0-6.9 0A9 9 0 0 0 8 4a16.6 16.6 0 0 0-4.3 1.3C1.4 9 .8 12.6 1 16.2A16.7 16.7 0 0 0 6 18.8c.4-.5.8-1.1 1.1-1.7a10.6 10.6 0 0 1-1.7-.8l.4-.3a12 12 0 0 0 10.4 0l.4.3c-.5.3-1.1.6-1.7.8.3.6.7 1.2 1.1 1.7a16.6 16.6 0 0 0 5-2.6c.3-4.2-.7-7.7-2.7-11zM9 14.1c-.9 0-1.7-.9-1.7-1.9 0-1.1.7-2 1.7-2s1.7.9 1.7 2c0 1-.8 1.9-1.7 1.9zm6 0c-.9 0-1.7-.9-1.7-1.9 0-1.1.7-2 1.7-2s1.7.9 1.7 2c0 1-.7 1.9-1.7 1.9z"/></svg>
+        Se connecter avec Discord
+      </a>
       <p style="text-align:center;margin-top:18px;"><a href="/" style="font-size:0.85rem;color:var(--text-faint);">← Retour au site</a></p>
+    </div>
+
+    <!-- Affiché juste après le retour de Discord, si personne ne validait déjà ce compte -->
+    <div id="bloc-attente" class="cache">
+      <h3 style="text-align:center;">Demande envoyée ✓</h3>
+      <p style="text-align:center;font-size:0.88rem;">Votre compte Discord a bien été reconnu. Un membre de la Direction doit maintenant valider votre accès depuis l'onglet « Comptes & accès ». Revenez un peu plus tard.</p>
+      <a href="/" class="btn btn-fantome" style="width:100%;">Retour au site</a>
     </div>
   </div>
 </div>
@@ -65,9 +48,9 @@
     <a href="/" target="_blank" class="logo" style="margin-bottom:24px;padding:0 8px;" title="Voir le site public">
       <img src="/img/logo-full.png" alt="Dynasty 8" class="logo-entete">
     </a>
-    <button class="lien-onglet actif" data-onglet="annonces">🏠 Annonces</button>
+    <button class="lien-onglet actif" data-onglet="annonces" id="onglet-annonces">🏠 Annonces</button>
     <button class="lien-onglet" data-onglet="profil">🪪 Mon profil</button>
-    <button class="lien-onglet cache" data-onglet="membres" id="onglet-membres">👥 Équipe</button>
+    <button class="lien-onglet cache" data-onglet="comptes" id="onglet-comptes">🔐 Comptes &amp; accès</button>
 
     <div class="admin-bas">
       <div class="admin-aide">
@@ -176,20 +159,28 @@
       </div>
     </section>
 
-    <!-- Onglet Équipe (Direction uniquement) -->
-    <section id="panneau-membres" class="cache">
+    <!-- Onglet Comptes & accès (Direction uniquement) -->
+    <section id="panneau-comptes" class="cache">
       <div class="entete-admin">
         <div>
-          <h2 style="margin-bottom:2px;">Équipe</h2>
-          <p style="margin:0;font-size:0.88rem;">Gérez les comptes d'accès de vos agents.</p>
+          <h2 style="margin-bottom:2px;">Comptes &amp; accès</h2>
+          <p style="margin:0;font-size:0.88rem;">Validez les demandes de connexion Discord et gérez les droits de chacun.</p>
         </div>
-        <button class="btn btn-or" id="bouton-nouveau-membre">+ Nouvel agent</button>
+        <button class="btn btn-or" id="bouton-nouveau-membre">+ Créer le compte</button>
       </div>
       <div id="zone-message-membres"></div>
+
+      <div id="bloc-demandes-attente" class="cache">
+        <h3 class="comptes-sous-titre">Demandes en attente <span class="champ-compteur" id="compteur-attente"></span></h3>
+        <p class="champ-aide">Ces personnes se sont connectées avec Discord mais personne ne les attendait. Validez-les pour leur donner accès.</p>
+        <div id="liste-demandes-attente"></div>
+      </div>
+
+      <h3 class="comptes-sous-titre">Comptes</h3>
       <div style="overflow-x:auto;">
         <table class="table-admin">
           <thead>
-            <tr><th>Pseudo</th><th>Grade</th><th>Code</th><th>Statut</th><th>Dernière visite</th><th></th></tr>
+            <tr><th>Identifiant</th><th>Discord</th><th>Grade</th><th>Statut</th><th>Dernière visite</th><th></th></tr>
           </thead>
           <tbody id="corps-table-membres"></tbody>
         </table>
@@ -337,41 +328,25 @@
   </div>
 </div>
 
-<!-- Modale de formulaire pour un membre -->
+<!-- Modale « Créer le compte » : pré-autoriser un pseudo Discord exact -->
 <div class="modale-fond cache" id="modale-membre">
   <div class="modale" style="max-width:440px;">
     <div class="modale-entete">
-      <h3 id="titre-modale-membre">Nouvel agent</h3>
+      <h3 id="titre-modale-membre">Créer le compte</h3>
       <button id="fermer-modale-membre">✕</button>
     </div>
     <div id="zone-message-modale-membre"></div>
-    <div id="bloc-code-membre" class="cache">
-      <p style="font-size:0.88rem;">Communiquez ce code au nouvel agent. Il ne sera plus jamais affiché.</p>
-      <div class="code-affiche" id="code-membre-genere"></div>
-      <button class="btn btn-or" style="width:100%;" id="bouton-fermer-code-membre">Terminé</button>
-    </div>
+    <p class="champ-aide">Tapez le pseudo Discord exact de la personne (celui après le @, pas son surnom affiché sur le serveur). Elle obtiendra l'accès dès sa toute première connexion via le bouton « Se connecter avec Discord ».</p>
     <form id="formulaire-membre">
-      <input type="hidden" id="membre-id">
       <div class="champ">
-        <label for="membre-pseudo">Pseudo</label>
-        <input type="text" id="membre-pseudo" required maxlength="40">
+        <label for="membre-discord-pseudo">Pseudo Discord exact</label>
+        <input type="text" id="membre-discord-pseudo" required maxlength="40" placeholder="ex : jdupont" autocomplete="off">
       </div>
       <div class="champ">
         <label for="membre-grade">Grade</label>
-        <select id="membre-grade">
-          <option value="Agent">Agent</option>
-          <option value="Direction">Direction</option>
-        </select>
+        <select id="membre-grade"></select>
       </div>
-      <div class="champ champ-checkbox" id="ligne-membre-actif">
-        <input type="checkbox" id="membre-actif" checked>
-        <label for="membre-actif" style="margin:0;">Compte actif</label>
-      </div>
-      <div style="display:flex;gap:12px;margin-top:18px;flex-wrap:wrap;">
-        <button type="submit" class="btn btn-or" style="flex:1;">Enregistrer</button>
-        <button type="button" class="btn btn-fantome cache" id="bouton-regenerer-code">Régénérer le code</button>
-        <button type="button" class="btn btn-danger cache" id="bouton-supprimer-membre">Supprimer</button>
-      </div>
+      <button type="submit" class="btn btn-or" style="width:100%;margin-top:18px;">Créer le compte</button>
     </form>
   </div>
 </div>
