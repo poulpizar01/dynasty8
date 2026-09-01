@@ -50,6 +50,7 @@ const VALEURS_VIP = ["", "vip", "vip+"];
 //   "membre"     -> aucun accès, seulement "Mon profil"
 // (même liste côté site public, dans layout.js — à garder synchronisée si elle change un jour)
 const GRADES = [
+  { nom: "Développeur web", niveau: "direction" },
   { nom: "Patron", niveau: "direction" },
   { nom: "Co Patron", niveau: "direction" },
   { nom: "Manager", niveau: "direction" },
@@ -395,10 +396,10 @@ async function equipe(env) {
        FROM membres
        WHERE statut = 'valide' AND actif = 1
        ORDER BY CASE grade
-         WHEN 'Patron' THEN 0 WHEN 'Co Patron' THEN 1 WHEN 'Manager' THEN 2 WHEN 'DRH' THEN 3
-         WHEN 'Secrétaire de Direction' THEN 4 WHEN 'Référent Immobilier' THEN 5
-         WHEN 'Agent Expert' THEN 6 WHEN 'Agent' THEN 7 WHEN 'Agent Novice' THEN 8
-         WHEN 'Stagiaire' THEN 9 ELSE 10 END,
+         WHEN 'Développeur web' THEN 0 WHEN 'Patron' THEN 1 WHEN 'Co Patron' THEN 2 WHEN 'Manager' THEN 3
+         WHEN 'DRH' THEN 4 WHEN 'Secrétaire de Direction' THEN 5 WHEN 'Référent Immobilier' THEN 6
+         WHEN 'Agent Expert' THEN 7 WHEN 'Agent' THEN 8 WHEN 'Agent Novice' THEN 9
+         WHEN 'Stagiaire' THEN 10 ELSE 11 END,
          pseudo COLLATE NOCASE`
   ).all();
   const liste = (r.results || []).map((m) => ({

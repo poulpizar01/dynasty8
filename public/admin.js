@@ -859,6 +859,7 @@ async function chargerTableMembres() {
       corps.innerHTML = `<tr><td colspan="6">Aucun compte pour le moment. Utilisez « + Créer le compte » pour pré-autoriser un pseudo Discord.</td></tr>`;
       return;
     }
+    nettoyerSelectsPortee("comptes"); // retire les menus déroulants de l'affichage précédent avant de le remplacer
     corps.innerHTML = comptes.map((m) => `
       <tr data-ligne="${m.id}">
         <td><input type="text" class="table-input" value="${echapper(m.pseudo)}" data-identifiant="${m.id}" maxlength="40"></td>
@@ -880,6 +881,7 @@ async function chargerTableMembres() {
         sel.style.borderColor = couleurGrade(sel.value);
         modifierCompte(Number(sel.dataset.grade), { grade: sel.value });
       });
+      ameliorerSelect(sel, couleurGrade, "comptes");
     });
     corps.querySelectorAll("[data-identifiant]").forEach((champ) => {
       champ.addEventListener("change", () => {
@@ -970,5 +972,16 @@ document.getElementById("formulaire-membre").addEventListener("submit", async (e
     afficherMessage("zone-message-modale-membre", e.message, "erreur");
   }
 });
+
+// ---------------------------------------------------------------------------
+// Habillage des menus déroulants (voir ameliorerSelect dans layout.js) —
+// remplace le rendu natif (gris, non personnalisable) par un menu flottant
+// aux couleurs du site. Fait une seule fois pour les <select> déjà présents
+// dans la page ; ceux du tableau des comptes sont habillés à chaque
+// reconstruction du tableau (voir chargerTableMembres).
+// ---------------------------------------------------------------------------
+
+["filtre-categorie", "filtre-statut", "bien-categorie", "bien-sous-categorie", "bien-coherence", "bien-vip", "membre-grade"]
+  .forEach((id) => ameliorerSelect(document.getElementById(id), id === "membre-grade" ? couleurGrade : null));
 
 demarrer();

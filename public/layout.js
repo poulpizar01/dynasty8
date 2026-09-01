@@ -308,6 +308,7 @@ const COHERENCES = ["Habitation", "Garage", "Cayo Perico", "Roxwood"];
 // (annonces uniquement) ou "membre" (aucun accès, juste "Mon profil").
 // "couleur" n'est utilisée que pour les badges de l'onglet "Comptes & accès".
 const GRADES = [
+  { nom: "Développeur web", niveau: "direction", couleur: "#7fd4c9" },
   { nom: "Patron", niveau: "direction", couleur: "#e3a1a1" },
   { nom: "Co Patron", niveau: "direction", couleur: "#e3a1a1" },
   { nom: "Manager", niveau: "direction", couleur: "#e3a1a1" },
@@ -324,4 +325,113 @@ const NIVEAU_PAR_GRADE = Object.fromEntries(GRADES.map((g) => [g.nom, g.niveau])
 function couleurGrade(nom) {
   const g = GRADES.find((x) => x.nom === nom);
   return g ? g.couleur : "#8a93b8";
+}
+
+// ---------------------------------------------------------------------------
+// Menu déroulant personnalisé (habillage d'un <select> natif)
+// ---------------------------------------------------------------------------
+// Un <select> HTML standard ne peut pas être stylé (la petite liste qui
+// s'ouvre reste toujours grise, avec la police du système). ameliorerSelect()
+// habille un <select> existant : il reste dans la page (toujours utilisable
+// au clavier, toujours ce qui porte la vraie valeur du formulaire), mais on
+// intercepte son ouverture pour afficher à la place une liste flottante
+// dessinée avec le thème du site. Un seul menu peut être ouvert à la fois.
+
+let D8_SELECT_OUVERT = null; // { select, flottant, enveloppe }
+
+function fermerSelectOuvert() {
+  if (!D8_SELECT_OUVERT) return;
+  D8_SELECT_OUVERT.flottant.classList.add("cache");
+  D8_SELECT_OUVERT.enveloppe.classList.remove("ouvert");
+  D8_SELECT_OUVERT = null;
+}
+
+document.addEventListener("mousedown", (ev) => {
+  if (D8_SELECT_OUVERT && !D8_SELECT_OUVERT.flottant.contains(ev.target) && ev.target !== D8_SELECT_OUVERT.select) {
+    fermerSelectOuvert();
+  }
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") fermerSelectOuvert();
+});
+window.addEventListener("resize", fermerSelectOuvert);
+window.addEventListener("scroll", fermerSelectOuvert, true);
+
+// `pastille` (optionnel) : fonction qui renvoie une couleur CSS pour une petite
+// puce ronde devant chaque option (utilisé pour les grades). `portee`
+// (optionnel) : marque la liste flottante pour pouvoir la nettoyer plus tard
+// (voir nettoyerSelectsPortee), utile pour un <select> recréé dynamiquement.
+function ameliorerSelect(select, pastille, portee) {
+  if (!select || select.dataset.ameliore) return;
+  select.dataset.ameliore = "1";
+
+  const enveloppe = document.createElement("span");
+  enveloppe.className = "d8-select-enveloppe";
+  select.parentNode.insertBefore(enveloppe, select);
+  enveloppe.appendChild(select);
+
+  const flottant = document.createElement("div");
+  flottant.className = "d8-select-flottant cache";
+  if (portee) flottant.dataset.portee = portee;
+  document.body.appendChild(flottant);
+
+  function rendreOptions() {
+    flottant.innerHTML = Array.from(select.options).map((o) => `
+      <div class="d8-select-option ${o.value === select.value ? "selectionnee" : ""}" data-valeur="${echapper(o.value)}">
+        ${pastille ? `<span class="d8-select-pastille" style="background:${pastille(o.value)};"></span>` : ""}
+        <span>${echapper(o.textContent)}</span>
+      </div>`).join("");
+    flottant.querySelectorAll("[data-valeur]").forEach((el) => {
+      el.addEventListener("mousedown", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (select.value !== el.dataset.valeur) {
+          select.value = el.dataset.valeur;
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        fermerSelectOuvert();
+      });
+    });
+  }
+
+  function positionner() {
+    const r = select.getBoundingClientRect();
+    const hauteurEstimee = Math.min(select.options.length * 38 + 12, 260);
+    flottant.style.left = Math.round(r.left) + "px";
+    flottant.style.width = Math.max(Math.round(r.width), 170) + "px";
+    if (r.bottom + hauteurEstimee > window.innerHeight && r.top > hauteurEstimee) {
+      flottant.style.top = Math.round(r.top - hauteurEstimee - 6) + "px";
+    } else {
+      flottant.style.top = Math.round(r.bottom + 6) + "px";
+    }
+  }
+
+  function ouvrir() {
+    if (select.disabled) return;
+    rendreOptions();
+    positionner();
+    flottant.classList.remove("cache");
+    enveloppe.classList.add("ouvert");
+    D8_SELECT_OUVERT = { select, flottant, enveloppe };
+  }
+
+  select.addEventListener("mousedown", (ev) => {
+    ev.preventDefault();
+    select.focus();
+    if (D8_SELECT_OUVERT && D8_SELECT_OUVERT.select === select) fermerSelectOuvert();
+    else ouvrir();
+  });
+  select.addEventListener("keydown", (ev) => {
+    if (["Enter", " ", "ArrowDown", "ArrowUp"].includes(ev.key)) {
+      ev.preventDefault();
+      if (!(D8_SELECT_OUVERT && D8_SELECT_OUVERT.select === select)) ouvrir();
+    }
+  });
+}
+
+// À appeler juste avant de recréer des <select> dynamiques (ex: le tableau des
+// comptes, reconstruit à chaque rechargement) : retire les listes flottantes
+// orphelines de la fois précédente pour ne pas les accumuler dans la page.
+function nettoyerSelectsPortee(portee) {
+  document.querySelectorAll(`.d8-select-flottant[data-portee="${portee}"]`).forEach((el) => el.remove());
 }
