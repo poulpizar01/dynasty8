@@ -91,6 +91,32 @@ function carteBienHTML(bien) {
     </a>`;
 }
 
+// Carte enrichie utilisée uniquement par la vitrine "Nos coups de cœur" de l'accueil
+// (carrousel avec flèches + filtres) : emplacement (via etiquetteZoneHTML) mis en avant
+// avec une puce de repère, et un appel à l'action "Voir le bien" en pied de carte.
+// Le premier bien de la sélection filtrée reçoit un liseré doré "vedette".
+function carteCoeurHTML(bien, vedette) {
+  const image = bien.images && bien.images[0];
+  const visuel = image
+    ? `<img src="${echapper(image)}" alt="${echapper(bien.titre)}" loading="lazy" decoding="async">`
+    : `<span style="font-size:2.2rem;">${iconeCategorie(bien.categorie)}</span>`;
+  return `
+    <a class="carte-bien${vedette ? " carte-coeur--vedette" : ""}" href="/bien.html?id=${bien.id}">
+      <div class="visuel">
+        ${bien.vendu ? '<span class="badge-coeur badge-vendu">Vendu</span>' : '<span class="badge-coeur">♥ Coup de cœur</span>'}
+        ${badgesSecondairesHTML(bien)}
+        ${visuel}
+      </div>
+      <div class="corps">
+        <span class="zone-tag">${ETIQUETTES_CATEGORIE[bien.categorie] || bien.categorie}</span>
+        <h3>${echapper(bien.titre)}</h3>
+        <span class="carte-coeur-lieu">📍 ${etiquetteZoneHTML(bien)}</span>
+        <div class="pied">${prixCarteHTML(bien)}</div>
+        <span class="carte-coeur-cta">Voir le bien <span aria-hidden="true">→</span></span>
+      </div>
+    </a>`;
+}
+
 async function chargerBiens({ categorie, zone, coupDeCoeur, vendu, meuble, coherence, standing, cible, videMessage } = {}) {
   const conteneur = document.getElementById(cible || "grille-biens");
   if (!conteneur) return [];

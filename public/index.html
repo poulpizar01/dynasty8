@@ -102,7 +102,38 @@
       <h2>Nos coups de cœur</h2>
       <p>Une sélection de biens mis en avant par nos agents cette semaine.</p>
     </div>
-    <div class="carrousel-scroll" id="grille-coeur"></div>
+
+    <div class="coeur-filtres" id="coeur-filtres">
+      <button type="button" class="coeur-filtre actif" data-filtre="tous">♥ Tous les coups de cœur</button>
+      <button type="button" class="coeur-filtre" data-filtre="vente-location">🏷️ Vente &amp; Location</button>
+      <button type="button" class="coeur-filtre" data-filtre="garage">🚗 Garages</button>
+      <button type="button" class="coeur-filtre" data-filtre="habitation">🏠 Habitations</button>
+    </div>
+
+    <div class="coeur-rangee">
+      <button type="button" class="coeur-fleche coeur-fleche--precedent cache" id="coeur-precedent" aria-label="Biens précédents">‹</button>
+      <div class="carrousel-scroll" id="grille-coeur"></div>
+      <button type="button" class="coeur-fleche coeur-fleche--suivant cache" id="coeur-suivant" aria-label="Biens suivants">›</button>
+    </div>
+
+    <div class="coeur-atouts">
+      <div class="coeur-atout">
+        <span class="coeur-atout-icone" aria-hidden="true">💎</span>
+        <div><h4>Biens sélectionnés</h4><p>Triés sur le volet par nos agents experts.</p></div>
+      </div>
+      <div class="coeur-atout">
+        <span class="coeur-atout-icone" aria-hidden="true">⭐</span>
+        <div><h4>Opportunités rares</h4><p>Des biens d'exception à ne pas laisser passer.</p></div>
+      </div>
+      <div class="coeur-atout">
+        <span class="coeur-atout-icone" aria-hidden="true">🕓</span>
+        <div><h4>Mises à jour hebdo</h4><p>Chaque semaine, une nouvelle sélection exclusive.</p></div>
+      </div>
+      <div class="coeur-atout">
+        <span class="coeur-atout-icone" aria-hidden="true">🛡️</span>
+        <div><h4>Accompagnement VIP</h4><p>Un suivi personnalisé pour chaque projet.</p></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -151,12 +182,69 @@
 <script>
   initialiserLayout("accueil");
 
-  chargerBiens({ coupDeCoeur: true, cible: "grille-coeur", videMessage: "Aucun coup de cœur pour le moment. Ajoutez-en depuis l'espace agents." })
-    .then((liste) => {
+  // ---- vitrine "Nos coups de cœur" : filtres + carrousel à flèches -------------
+  let COEUR_BIENS = [];
+  let COEUR_FILTRE = "tous";
+  const reduireMouvement = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function biensCoeurFiltres() {
+    return COEUR_BIENS.filter((b) => {
+      if (COEUR_FILTRE === "vente-location") return b.dispo_vente && b.dispo_location;
+      if (COEUR_FILTRE === "garage") return b.categorie === "garage";
+      if (COEUR_FILTRE === "habitation") return b.categorie === "habitation";
+      return true;
+    });
+  }
+
+  function majFlechesCoeur() {
+    const conteneur = document.getElementById("grille-coeur");
+    const precedent = document.getElementById("coeur-precedent");
+    const suivant = document.getElementById("coeur-suivant");
+    if (!conteneur || !precedent || !suivant) return;
+    const peutDefiler = conteneur.scrollWidth > conteneur.clientWidth + 4;
+    precedent.classList.toggle("cache", !peutDefiler);
+    suivant.classList.toggle("cache", !peutDefiler);
+  }
+
+  function rendreCoeur() {
+    const conteneur = document.getElementById("grille-coeur");
+    if (!COEUR_BIENS.length) {
+      conteneur.innerHTML = `<div class="etat-vide">Aucun coup de cœur pour le moment. Ajoutez-en depuis l'espace agents.</div>`;
+      document.getElementById("coeur-filtres").classList.add("cache");
+      majFlechesCoeur();
+      return;
+    }
+    const liste = biensCoeurFiltres();
+    conteneur.innerHTML = liste.length
+      ? liste.map((b, i) => carteCoeurHTML(b, i === 0)).join("")
+      : `<div class="etat-vide">Aucun coup de cœur ne correspond à ce filtre pour le moment.</div>`;
+    conteneur.scrollTo({ left: 0 });
+    majFlechesCoeur();
+  }
+
+  document.querySelectorAll(".coeur-filtre").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      COEUR_FILTRE = btn.dataset.filtre;
+      document.querySelectorAll(".coeur-filtre").forEach((b) => b.classList.toggle("actif", b === btn));
+      rendreCoeur();
+    });
+  });
+  document.getElementById("coeur-precedent").addEventListener("click", () => {
+    document.getElementById("grille-coeur").scrollBy({ left: -320, behavior: reduireMouvement ? "auto" : "smooth" });
+  });
+  document.getElementById("coeur-suivant").addEventListener("click", () => {
+    document.getElementById("grille-coeur").scrollBy({ left: 320, behavior: reduireMouvement ? "auto" : "smooth" });
+  });
+  window.addEventListener("resize", majFlechesCoeur);
+
+  appelAPI("/api/biens?coup_de_coeur=1")
+    .then((d) => {
+      COEUR_BIENS = d.biens || [];
+      rendreCoeur();
       const zoneVitrine = document.getElementById("hero-vitrine");
       if (!zoneVitrine) return;
-      if (liste && liste.length) {
-        zoneVitrine.innerHTML = carteBienHTML(liste[0]);
+      if (COEUR_BIENS.length) {
+        zoneVitrine.innerHTML = carteBienHTML(COEUR_BIENS[0]);
       } else {
         zoneVitrine.innerHTML = `
           <div class="hero-vitrine-vide">
@@ -165,6 +253,10 @@
             <a href="/admin.html" class="btn btn-fantome btn-petit">Ajouter un bien</a>
           </div>`;
       }
+    })
+    .catch(() => {
+      document.getElementById("grille-coeur").innerHTML = `<div class="etat-vide">Impossible de charger les coups de cœur pour le moment.</div>`;
+      document.getElementById("coeur-filtres").classList.add("cache");
     });
 
   appelAPI("/api/biens").then((d) => {

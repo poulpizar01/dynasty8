@@ -1255,6 +1255,63 @@ section.section.serre {
 .carrousel-scroll::-webkit-scrollbar { height: 6px; }
 .carrousel-scroll::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
 
+/* ---------- section "coups de cœur" : filtres + flèches + carte enrichie ---------- */
+
+.coeur-filtres { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: -14px auto 40px; }
+.coeur-filtre {
+  display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 18px; border-radius: var(--d8-r-pill);
+  border: 1px solid var(--border); background: rgba(255, 255, 255, 0.03); color: var(--text-muted);
+  font-family: var(--d8-font-ui); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.14em;
+  transition: background var(--d8-t), border-color var(--d8-t), color var(--d8-t);
+}
+.coeur-filtre:hover { border-color: var(--d8-gold-400); color: var(--text); }
+.coeur-filtre.actif { background: var(--d8-grad-gold); border-color: transparent; color: var(--or-contrast); box-shadow: var(--d8-shadow-gold); }
+
+.coeur-rangee { position: relative; }
+.coeur-fleche {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 4;
+  width: 44px; height: 44px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border-light);
+  color: var(--gold-strong); font-size: 1.2rem; line-height: 1; display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--d8-shadow-card); transition: background var(--d8-t), opacity var(--d8-t);
+}
+.coeur-fleche:hover { background: var(--bg-card-hover); }
+.coeur-fleche--precedent { left: -22px; }
+.coeur-fleche--suivant { right: -22px; }
+@media (max-width: 900px) { .coeur-fleche { display: none !important; } }
+
+/* Met en valeur le premier bien de la sélection filtrée (le "coup de cœur" vedette). */
+.carte-coeur--vedette {
+  border-color: transparent;
+  box-shadow: 0 0 0 1px var(--bg), 0 0 0 2.5px var(--d8-gold-400), var(--d8-shadow-card);
+}
+.carte-coeur--vedette:hover { box-shadow: 0 0 0 1px var(--bg), 0 0 0 2.5px var(--d8-gold-300), var(--d8-shadow-card-hover); }
+
+.carte-coeur-lieu {
+  display: flex; align-items: center; gap: 5px;
+  font-family: var(--d8-font-ui); font-size: 0.78rem; color: var(--text-faint);
+}
+.carte-coeur-cta {
+  display: flex; align-items: center; gap: 6px; margin-top: 6px;
+  font-family: var(--d8-font-ui); font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.16em;
+  color: var(--gold-strong); transition: gap var(--d8-t);
+}
+.carte-bien:hover .carte-coeur-cta { gap: 10px; }
+@media (prefers-reduced-motion: reduce) { .carte-coeur-cta, .carte-bien:hover .carte-coeur-cta { transition: none; } }
+
+.coeur-atouts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 46px; }
+@media (max-width: 900px) { .coeur-atouts { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .coeur-atouts { grid-template-columns: 1fr; } }
+.coeur-atout { display: flex; align-items: flex-start; gap: 14px; }
+.coeur-atout-icone {
+  flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: rgba(201, 165, 92, 0.12);
+  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+}
+.coeur-atout h4 {
+  font-family: var(--d8-font-ui); font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text); margin-bottom: 4px; font-style: normal; font-weight: 500;
+}
+.coeur-atout p { font-size: 0.82rem; color: var(--text-faint); margin: 0; }
+
 /* ---------- services / équipe / faq ---------- */
 
 .grille-services { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
