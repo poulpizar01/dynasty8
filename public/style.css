@@ -1421,6 +1421,21 @@ section.section.serre {
 .pied-bas a { font-size: inherit; color: var(--text-faint); text-decoration: underline; text-underline-offset: 2px; }
 .pied-bas a:hover { color: var(--gold); }
 
+/* Petit badge discret créditant le prestataire technique (Roxwood Network),
+   repris sur toutes les pages via injecterPied(). */
+.pied-credit {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: 8px; width: fit-content; max-width: 100%; margin: 18px auto 0;
+  padding: 8px 18px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border);
+  font-family: var(--d8-font-ui); font-size: 0.78rem; color: var(--text-faint);
+}
+.pied-credit-logo { width: 20px; height: auto; display: block; border-radius: 4px; flex-shrink: 0; }
+.pied-credit strong { color: var(--gold); font-weight: 500; }
+.pied-credit-sep { color: var(--border); }
+.pied-credit a { font-size: inherit; color: var(--text-faint); text-decoration: none; }
+.pied-credit a:hover { color: var(--gold); }
+
 /* ---------- formulaires (admin) ---------- */
 
 .champ { margin-bottom: 18px; }

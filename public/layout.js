@@ -123,6 +123,14 @@ function injecterPied() {
         <span>© ${annee} Dynasty 8 — Serveur RP FlashbackFA. Univers fictif : biens, prix et transactions présentés n'ont aucune valeur réelle. Projet communautaire non affilié à Rockstar Games ou Take-Two Interactive.</span>
         <span>Site non officiel réalisé pour la communauté. · <a href="/confidentialite.html">Confidentialité</a></span>
       </div>
+      <div class="pied-credit">
+        <img src="/img/roxwood-logo.png" alt="" class="pied-credit-logo" width="28" height="26" loading="lazy">
+        <span>Développé par <strong>Roxwood Network</strong></span>
+        <span class="pied-credit-sep" aria-hidden="true">|</span>
+        <a href="https://roxwood-network.fbfa.fr/" target="_blank" rel="noopener">Site</a>
+        <span class="pied-credit-sep" aria-hidden="true">|</span>
+        <a href="https://discord.com/invite/dDAFWxeU8" target="_blank" rel="noopener">Discord</a>
+      </div>
     </div>`;
 }
 
