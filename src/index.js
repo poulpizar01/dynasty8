@@ -318,8 +318,20 @@ function deconnexion() {
   });
 }
 
+// On ne se contente jamais du grade/pseudo enregistrés dans le cookie au moment
+// de la connexion (il peut rester valable jusqu'à 12h) : à chaque requête, on
+// revérifie en base que le compte existe toujours, qu'il est bien "valide" et
+// actif, et on renvoie son grade ACTUEL. Comme ça, un changement de grade fait
+// par la Direction (ou une suspension) s'applique tout de suite, même si la
+// personne concernée est déjà connectée — sans attendre qu'elle se déconnecte.
 async function session(request, env) {
-  return lireSession(env.SESSION_SECRET, cookies(request)[COOKIE]);
+  const s = await lireSession(env.SESSION_SECRET, cookies(request)[COOKIE]);
+  if (!s || !s.id) return null;
+  const m = await env.DB.prepare(
+    "SELECT id, pseudo, grade, statut, actif FROM membres WHERE id = ?1"
+  ).bind(s.id).first();
+  if (!m || m.statut !== "valide" || !m.actif) return null;
+  return { id: m.id, pseudo: m.pseudo, grade: m.grade, exp: s.exp };
 }
 
 // "niveau" résume le grade en 3 paliers de droits (voir GRADES ci-dessus).
