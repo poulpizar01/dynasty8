@@ -61,7 +61,7 @@ function prixFicheHTML(bien) {
 function badgesSecondairesHTML(bien) {
   const badges = [];
   if (bien.categorie === "habitation" && bien.meuble) badges.push('<span class="badge-info">Meublé</span>');
-  if (bien.vip) badges.push(`<span class="badge-info badge-vip">${bien.vip === "vip+" ? "VIP+" : "VIP"}</span>`);
+  if (bien.vip) badges.push('<span class="badge-info badge-vip">VIP</span>');
   if (bien.standing) badges.push('<span class="badge-info badge-standing">Exception</span>');
   return badges.length ? `<div class="badges-secondaires">${badges.join("")}</div>` : "";
 }
@@ -94,7 +94,7 @@ function carteBienHTML(bien) {
 // Carte enrichie utilisée uniquement par la vitrine "Nos coups de cœur" de l'accueil
 // (carrousel avec flèches + filtres) : emplacement (via etiquetteZoneHTML) mis en avant
 // avec une puce de repère, et un appel à l'action "Voir le bien" en pied de carte.
-// (Le liseré doré des biens VIP/VIP+ — règle .carte-bien:has(.badge-vip) déjà
+// (Le liseré doré des biens VIP — règle .carte-bien:has(.badge-vip) déjà
 // existante — suffit à mettre en valeur une carte : pas de second liseré "vedette"
 // séparé, qui ferait doublon et brouillerait le message.)
 function carteCoeurHTML(bien) {
@@ -370,7 +370,7 @@ async function chargerFicheBien() {
           ${bien.categorie === "habitation" ? `<div><strong>${bien.meuble ? "Meublé" : "Non meublé"}</strong>Ameublement</div>` : ""}
           ${bien.places ? `<div><strong>${bien.places}</strong>Places</div>` : ""}
           ${bien.coffre_kg ? `<div><strong>${bien.coffre_kg} kg</strong>Coffre</div>` : ""}
-          ${bien.vip ? `<div><strong>${bien.vip === "vip+" ? "VIP+" : "VIP"}</strong>Statut</div>` : ""}
+          ${bien.vip ? '<div><strong>VIP</strong>Statut</div>' : ""}
           ${bien.coherence ? `<div><strong>${echapper(bien.coherence)}</strong>Cohérence</div>` : ""}
         </div>
         ${bien.coherence ? `<a class="btn btn-fantome btn-petit" style="margin-bottom:14px;" href="/coherence.html?zone=${encodeURIComponent(bien.coherence)}">Voir la fiche de cohérence « ${echapper(bien.coherence)} » →</a>` : ""}

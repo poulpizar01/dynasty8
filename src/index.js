@@ -41,7 +41,7 @@ const COHERENCES = ["Habitation", "Garage", "Cayo Perico", "Roxwood"];
 
 // Statuts VIP : purement informatifs (liés à la boutique officielle FlashbackFA,
 // pas gérés par l'agence elle-même) — voir le texte affiché sur les pages publiques.
-const VALEURS_VIP = ["", "vip", "vip+"];
+const VALEURS_VIP = ["", "vip"];
 
 // Les 10 grades de la hiérarchie Dynasty 8, du plus élevé au plus bas. "niveau"
 // détermine les droits réels dans l'espace agents :

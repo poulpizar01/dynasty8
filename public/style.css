@@ -965,7 +965,7 @@ section.section.serre {
 .carte-bien:hover::before, .carte-bien:hover::after { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .carte-bien, .carte-bien::before, .carte-bien::after { transition: none; } }
 
-/* Petit rappel doré permanent (pas seulement au survol) sur les biens VIP/VIP+,
+/* Petit rappel doré permanent (pas seulement au survol) sur les biens VIP,
    pour qu'ils se distinguent vraiment dans une grille plutôt que de ne compter
    que sur la petite pastille "VIP" posée sur la photo.
    Une vraie bordure (au lieu d'un empilement de plusieurs box-shadow fines) :

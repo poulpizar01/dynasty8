@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS biens (
   meuble INTEGER NOT NULL DEFAULT 1, -- pertinent uniquement pour la catégorie 'habitation'
   coherence TEXT,                    -- 'Habitation' | 'Garage' | 'Cayo Perico' | 'Roxwood'
   coffre_kg INTEGER,
-  vip TEXT NOT NULL DEFAULT '',      -- '' | 'vip' | 'vip+' (informatif, boutique FlashbackFA)
+  vip TEXT NOT NULL DEFAULT '',      -- '' | 'vip' — statut VIP PLUS (informatif, boutique FlashbackFA)
   standing INTEGER NOT NULL DEFAULT 0, -- bien d'exception mis en avant sur /exclusifs.html
   auteur TEXT,
   cree_le TEXT NOT NULL,
