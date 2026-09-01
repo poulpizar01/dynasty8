@@ -67,9 +67,22 @@
     </a>
     <button class="lien-onglet actif" data-onglet="annonces">🏠 Annonces</button>
     <button class="lien-onglet cache" data-onglet="membres" id="onglet-membres">👥 Équipe</button>
-    <div style="margin-top:auto;padding-top:20px;border-top:1px solid var(--border);">
-      <p style="font-size:0.82rem;margin-bottom:10px;">Connecté en tant que <strong id="pseudo-connecte" style="color:var(--text);"></strong></p>
-      <button class="btn btn-fantome btn-petit" style="width:100%;" id="bouton-deconnexion">Se déconnecter</button>
+
+    <div class="admin-bas">
+      <div class="admin-aide">
+        <p class="admin-aide-titre">🎧 Besoin d'aide ?</p>
+        <a href="/faq.html" target="_blank" rel="noopener">Consultez notre FAQ</a>
+      </div>
+      <div>
+        <div class="admin-compte-profil">
+          <span class="admin-avatar" id="avatar-connecte"></span>
+          <div>
+            <strong id="pseudo-connecte"></strong>
+            <span class="admin-compte-grade" id="grade-connecte"></span>
+          </div>
+        </div>
+        <button class="btn btn-fantome btn-petit" style="width:100%;" id="bouton-deconnexion">↪ Se déconnecter</button>
+      </div>
     </div>
   </aside>
 
@@ -83,15 +96,45 @@
         </div>
         <button class="btn btn-or" id="bouton-nouveau-bien">+ Nouvelle annonce</button>
       </div>
+
+      <div class="admin-stats" id="admin-stats"></div>
+
+      <div class="annonces-outils">
+        <div class="annonces-recherche">
+          <span class="annonces-recherche-icone" aria-hidden="true">🔎</span>
+          <input type="search" id="recherche-biens" placeholder="Rechercher un bien, une catégorie…">
+        </div>
+        <select id="filtre-categorie">
+          <option value="">Toutes catégories</option>
+          <option value="habitation">Habitation</option>
+          <option value="garage">Garage</option>
+        </select>
+        <select id="filtre-statut">
+          <option value="">Tous statuts</option>
+          <option value="visible">Visible</option>
+          <option value="masquee">Masquée</option>
+          <option value="vendu">Vendu</option>
+        </select>
+        <button type="button" class="btn btn-fantome btn-petit cache" id="bouton-reinitialiser-filtres">✕ Réinitialiser</button>
+        <div class="annonces-vue-toggle" role="group" aria-label="Mode d'affichage">
+          <button type="button" class="annonces-vue-bouton" id="bouton-vue-liste" title="Vue liste" aria-pressed="true">☰</button>
+          <button type="button" class="annonces-vue-bouton" id="bouton-vue-grille" title="Vue grille" aria-pressed="false">▦</button>
+        </div>
+      </div>
+
       <div id="zone-message-annonces"></div>
-      <div style="overflow-x:auto;">
+
+      <div id="vue-liste-biens" style="overflow-x:auto;">
         <table class="table-admin">
           <thead>
-            <tr><th>Titre</th><th>Catégorie</th><th>Sous-catégorie</th><th>Prix</th><th>Statut</th><th></th></tr>
+            <tr><th></th><th>Bien</th><th>Catégorie</th><th>Sous-catégorie</th><th>Prix</th><th>Statut</th><th>Actions</th></tr>
           </thead>
           <tbody id="corps-table-biens"></tbody>
         </table>
       </div>
+      <div id="vue-grille-biens" class="grille-admin-biens cache"></div>
+
+      <div class="annonces-pagination" id="annonces-pagination"></div>
     </section>
 
     <!-- Onglet Équipe (Direction uniquement) -->

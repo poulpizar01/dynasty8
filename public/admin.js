@@ -8,6 +8,14 @@ let CACHE_MEMBRES = [];
 let IMAGES_BIEN = []; // photos du bien en cours d'édition (URLs et/ou images importées)
 let ETAT_INITIAL_BIEN = ""; // instantané du formulaire à l'ouverture, pour détecter les changements non enregistrés
 
+// ---- tableau de bord "Annonces" : recherche, filtres, vue et pagination ----
+let FILTRE_RECHERCHE = "";
+let FILTRE_CATEGORIE = "";
+let FILTRE_STATUT = "";
+let MODE_VUE_BIENS = "liste"; // "liste" | "grille"
+let PAGE_BIENS = 1;
+const TAILLE_PAGE_BIENS = 10;
+
 function afficherMessage(idZone, texte, type) {
   const zone = document.getElementById(idZone);
   if (!zone) return;
@@ -59,7 +67,7 @@ async function demarrer() {
   try {
     const moi = await appelAPI("/api/moi");
     if (moi.connecte) {
-      SESSION = moi;
+      SESSION = { connecte: true, pseudo: moi.pseudo, grade: moi.grade, direction: String(moi.grade).toLowerCase() === "direction" };
       return demarrerEspaceAdmin();
     }
   } catch (e) {
@@ -123,9 +131,17 @@ document.getElementById("bouton-deconnexion").addEventListener("click", async ()
 // Espace admin (une fois connecté)
 // ---------------------------------------------------------------------------
 
+function initialesPseudo(pseudo) {
+  const mots = String(pseudo || "").trim().split(/\s+/).filter(Boolean);
+  if (!mots.length) return "?";
+  return mots.slice(0, 2).map((m) => m[0].toUpperCase()).join("");
+}
+
 function demarrerEspaceAdmin() {
   document.body.classList.add("admin-connecte");
   document.getElementById("pseudo-connecte").textContent = SESSION.pseudo;
+  document.getElementById("grade-connecte").textContent = SESSION.direction ? "Administrateur" : "Agent";
+  document.getElementById("avatar-connecte").textContent = initialesPseudo(SESSION.pseudo);
   if (SESSION.direction) {
     document.getElementById("onglet-membres").classList.remove("cache");
   }
@@ -148,30 +164,220 @@ function basculerOnglet(nom) {
 
 async function chargerTableBiens() {
   const corps = document.getElementById("corps-table-biens");
-  corps.innerHTML = `<tr><td colspan="6">Chargement…</td></tr>`;
+  corps.innerHTML = `<tr><td colspan="7">Chargement…</td></tr>`;
+  afficherMessage("zone-message-annonces", "", null);
   try {
     const data = await appelAPI("/api/biens");
     CACHE_BIENS = data.biens || [];
-    if (!CACHE_BIENS.length) {
-      corps.innerHTML = `<tr><td colspan="6">Aucune annonce pour le moment. Cliquez sur « Nouvelle annonce » pour commencer.</td></tr>`;
-      return;
-    }
-    corps.innerHTML = CACHE_BIENS.map((b) => `
-      <tr>
-        <td>${echapper(b.titre)}${b.coup_de_coeur ? ' <span class="puce puce-or">Coup de cœur</span>' : ""}${b.standing ? ' <span class="puce puce-or">Exception</span>' : ""}</td>
-        <td>${ETIQUETTES_CATEGORIE[b.categorie] || b.categorie}</td>
-        <td>${echapper(b.sous_categorie || "—")}${b.coherence ? ` <span class="champ-aide" style="display:inline;">· ${echapper(b.coherence)}</span>` : ""}</td>
-        <td>${b.dispo_vente ? formaterPrix(b.prix) : ""}${b.dispo_vente && b.dispo_location ? " · " : ""}${b.dispo_location ? formaterPrix(b.prix_location) + " /sem." : ""}</td>
-        <td>${b.vendu ? '<span class="puce puce-or">Vendu</span>' : (b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>')}</td>
-        <td><div class="actions-ligne"><button class="btn btn-fantome btn-petit" data-editer="${b.id}">Modifier</button></div></td>
-      </tr>`).join("");
-    corps.querySelectorAll("[data-editer]").forEach((btn) => {
-      btn.addEventListener("click", () => ouvrirModaleBien(Number(btn.dataset.editer)));
-    });
+    actualiserVueAnnonces();
   } catch (e) {
-    corps.innerHTML = `<tr><td colspan="6">Erreur de chargement : ${echapper(e.message)}</td></tr>`;
+    corps.innerHTML = `<tr><td colspan="7">Erreur de chargement : ${echapper(e.message)}</td></tr>`;
   }
 }
+
+// ---- statut / statistiques / filtres -----------------------------------
+
+function statutBien(b) {
+  if (b.vendu) return "vendu";
+  return b.disponible ? "visible" : "masquee";
+}
+
+function calculerStatsBiens(liste) {
+  const total = liste.length;
+  const visibles = liste.filter((b) => b.disponible).length;
+  const valeurTotale = liste.reduce((s, b) => s + (b.dispo_vente ? Number(b.prix) || 0 : 0), 0);
+  const prixMoyen = total ? Math.round(valeurTotale / total) : 0;
+  return { total, visibles, valeurTotale, prixMoyen };
+}
+
+function rendreStats() {
+  const s = calculerStatsBiens(CACHE_BIENS);
+  document.getElementById("admin-stats").innerHTML = `
+    <div class="stat-carte">
+      <span class="stat-icone stat-icone--or">🏠</span>
+      <div><div class="stat-valeur">${s.total}</div><div class="stat-libelle">Annonces</div><div class="stat-sous-libelle">Total des biens</div></div>
+    </div>
+    <div class="stat-carte">
+      <span class="stat-icone stat-icone--vert">👁️</span>
+      <div><div class="stat-valeur">${s.visibles}</div><div class="stat-libelle">Visibles</div><div class="stat-sous-libelle">En ligne</div></div>
+    </div>
+    <div class="stat-carte">
+      <span class="stat-icone stat-icone--ambre">🏷️</span>
+      <div><div class="stat-valeur">${formaterPrix(s.valeurTotale)}</div><div class="stat-libelle">Valeur totale</div><div class="stat-sous-libelle">Estimation du catalogue</div></div>
+    </div>
+    <div class="stat-carte">
+      <span class="stat-icone stat-icone--mauve">📈</span>
+      <div><div class="stat-valeur">${formaterPrix(s.prixMoyen)}</div><div class="stat-libelle">Prix moyen</div><div class="stat-sous-libelle">Par bien</div></div>
+    </div>`;
+}
+
+function biensFiltres() {
+  const q = FILTRE_RECHERCHE.trim().toLowerCase();
+  return CACHE_BIENS.filter((b) => {
+    if (FILTRE_CATEGORIE && b.categorie !== FILTRE_CATEGORIE) return false;
+    if (FILTRE_STATUT && statutBien(b) !== FILTRE_STATUT) return false;
+    if (q) {
+      const cible = [b.titre, ETIQUETTES_CATEGORIE[b.categorie] || b.categorie, b.sous_categorie, b.coherence]
+        .filter(Boolean).join(" ").toLowerCase();
+      if (!cible.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+// ---- rendu : tableau, grille et pagination -------------------------------
+
+function ligneVignetteHTML(b) {
+  return `<div class="table-biens-vignette">${b.images && b.images[0] ? `<img src="${b.images[0]}" alt="">` : ""}</div>`;
+}
+
+function rendreTableBiens(liste) {
+  const corps = document.getElementById("corps-table-biens");
+  corps.innerHTML = liste.map((b) => `
+    <tr class="${b.coup_de_coeur ? "ligne-coup-de-coeur" : ""}">
+      <td class="cellule-vignette">${ligneVignetteHTML(b)}</td>
+      <td>${echapper(b.titre)}${b.coup_de_coeur ? ' <span class="puce puce-or">Coup de cœur</span>' : ""}${b.standing ? ' <span class="puce puce-or">Exception</span>' : ""}</td>
+      <td>${ETIQUETTES_CATEGORIE[b.categorie] || b.categorie}</td>
+      <td>${echapper(b.sous_categorie || "—")}${b.coherence ? ` <span class="champ-aide" style="display:inline;">· ${echapper(b.coherence)}</span>` : ""}</td>
+      <td>${b.dispo_vente ? formaterPrix(b.prix) : ""}${b.dispo_vente && b.dispo_location ? " · " : ""}${b.dispo_location ? formaterPrix(b.prix_location) + " /sem." : ""}</td>
+      <td>${b.vendu ? '<span class="puce puce-or">Vendu</span>' : (b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>')}</td>
+      <td><div class="actions-ligne">
+        <button class="actions-icone" data-editer="${b.id}" title="Modifier" aria-label="Modifier">✏️</button>
+        <button class="actions-icone actions-icone--danger" data-supprimer="${b.id}" title="Supprimer" aria-label="Supprimer">🗑️</button>
+      </div></td>
+    </tr>`).join("");
+  corps.querySelectorAll("[data-editer]").forEach((btn) => btn.addEventListener("click", () => ouvrirModaleBien(Number(btn.dataset.editer))));
+  corps.querySelectorAll("[data-supprimer]").forEach((btn) => btn.addEventListener("click", () => supprimerBienDepuisListe(Number(btn.dataset.supprimer))));
+}
+
+function rendreGrilleBiens(liste) {
+  const conteneur = document.getElementById("vue-grille-biens");
+  conteneur.innerHTML = liste.map((b) => `
+    <div class="carte-admin-bien ${b.coup_de_coeur ? "ligne-coup-de-coeur" : ""}">
+      <div class="carte-admin-bien-visuel">${b.images && b.images[0] ? `<img src="${b.images[0]}" alt="">` : ""}</div>
+      <div class="carte-admin-bien-corps">
+        <div class="carte-admin-bien-titre">${echapper(b.titre)}</div>
+        <div class="carte-admin-bien-meta">${ETIQUETTES_CATEGORIE[b.categorie] || b.categorie}${b.sous_categorie ? " · " + echapper(b.sous_categorie) : ""}</div>
+        <div>${b.vendu ? '<span class="puce puce-or">Vendu</span>' : (b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>')}${b.coup_de_coeur ? ' <span class="puce puce-or">Coup de cœur</span>' : ""}</div>
+        <div class="carte-admin-bien-pied">
+          <span class="carte-admin-bien-prix">${b.dispo_vente ? formaterPrix(b.prix) : (b.dispo_location ? formaterPrix(b.prix_location) + " /sem." : "—")}</span>
+          <div class="carte-admin-bien-actions">
+            <button class="actions-icone" data-editer="${b.id}" title="Modifier" aria-label="Modifier">✏️</button>
+            <button class="actions-icone actions-icone--danger" data-supprimer="${b.id}" title="Supprimer" aria-label="Supprimer">🗑️</button>
+          </div>
+        </div>
+      </div>
+    </div>`).join("");
+  conteneur.querySelectorAll("[data-editer]").forEach((btn) => btn.addEventListener("click", () => ouvrirModaleBien(Number(btn.dataset.editer))));
+  conteneur.querySelectorAll("[data-supprimer]").forEach((btn) => btn.addEventListener("click", () => supprimerBienDepuisListe(Number(btn.dataset.supprimer))));
+}
+
+function rendrePagination(totalFiltre) {
+  const conteneur = document.getElementById("annonces-pagination");
+  if (!totalFiltre) { conteneur.innerHTML = ""; return; }
+  const totalPages = Math.max(1, Math.ceil(totalFiltre / TAILLE_PAGE_BIENS));
+  const debut = (PAGE_BIENS - 1) * TAILLE_PAGE_BIENS + 1;
+  const fin = Math.min(totalFiltre, PAGE_BIENS * TAILLE_PAGE_BIENS);
+  let pages = "";
+  for (let p = 1; p <= totalPages; p++) {
+    pages += `<button type="button" class="pagination-page ${p === PAGE_BIENS ? "actif" : ""}" data-page="${p}">${p}</button>`;
+  }
+  conteneur.innerHTML = `
+    <span>Affichage de ${debut} à ${fin} sur ${totalFiltre} résultat${totalFiltre > 1 ? "s" : ""}</span>
+    <div class="pagination-boutons">
+      <button type="button" class="pagination-fleche" id="pagination-precedent" ${PAGE_BIENS <= 1 ? "disabled" : ""} aria-label="Page précédente">‹</button>
+      ${pages}
+      <button type="button" class="pagination-fleche" id="pagination-suivant" ${PAGE_BIENS >= totalPages ? "disabled" : ""} aria-label="Page suivante">›</button>
+    </div>`;
+  const boutonPrecedent = document.getElementById("pagination-precedent");
+  const boutonSuivant = document.getElementById("pagination-suivant");
+  if (boutonPrecedent) boutonPrecedent.addEventListener("click", () => { PAGE_BIENS--; actualiserVueAnnonces(); });
+  if (boutonSuivant) boutonSuivant.addEventListener("click", () => { PAGE_BIENS++; actualiserVueAnnonces(); });
+  conteneur.querySelectorAll("[data-page]").forEach((btn) => btn.addEventListener("click", () => { PAGE_BIENS = Number(btn.dataset.page); actualiserVueAnnonces(); }));
+}
+
+function actualiserVueAnnonces() {
+  rendreStats();
+  document.getElementById("bouton-reinitialiser-filtres").classList.toggle("cache", !(FILTRE_RECHERCHE || FILTRE_CATEGORIE || FILTRE_STATUT));
+
+  const corps = document.getElementById("corps-table-biens");
+  if (!CACHE_BIENS.length) {
+    corps.innerHTML = `<tr><td colspan="7">Aucune annonce pour le moment. Cliquez sur « Nouvelle annonce » pour commencer.</td></tr>`;
+    document.getElementById("vue-grille-biens").innerHTML = "";
+    document.getElementById("annonces-pagination").innerHTML = "";
+    return;
+  }
+
+  const filtres = biensFiltres();
+  const totalPages = Math.max(1, Math.ceil(filtres.length / TAILLE_PAGE_BIENS));
+  if (PAGE_BIENS > totalPages) PAGE_BIENS = totalPages;
+  if (PAGE_BIENS < 1) PAGE_BIENS = 1;
+
+  if (!filtres.length) {
+    corps.innerHTML = `<tr><td colspan="7">Aucune annonce ne correspond à ces filtres.</td></tr>`;
+    document.getElementById("vue-grille-biens").innerHTML = `<div class="etat-vide">Aucune annonce ne correspond à ces filtres.</div>`;
+    document.getElementById("annonces-pagination").innerHTML = "";
+    return;
+  }
+
+  const debut = (PAGE_BIENS - 1) * TAILLE_PAGE_BIENS;
+  const page = filtres.slice(debut, debut + TAILLE_PAGE_BIENS);
+  rendreTableBiens(page);
+  rendreGrilleBiens(page);
+  rendrePagination(filtres.length);
+}
+
+async function supprimerBienDepuisListe(id) {
+  const ok = await confirmerAction("Cette action est définitive et ne peut pas être annulée.", "Supprimer cette annonce ?");
+  if (!ok) return;
+  try {
+    await appelAPI("/api/biens?id=" + id, { method: "DELETE" });
+    await chargerTableBiens();
+    afficherMessage("zone-message-annonces", "Annonce supprimée avec succès.", "succes");
+  } catch (e) {
+    afficherMessage("zone-message-annonces", e.message, "erreur");
+  }
+}
+
+// ---- barre d'outils : recherche, filtres, bascule liste/grille -----------
+
+function appliquerModeVueBiens() {
+  document.getElementById("vue-liste-biens").classList.toggle("cache", MODE_VUE_BIENS !== "liste");
+  document.getElementById("vue-grille-biens").classList.toggle("cache", MODE_VUE_BIENS !== "grille");
+  document.getElementById("bouton-vue-liste").classList.toggle("actif", MODE_VUE_BIENS === "liste");
+  document.getElementById("bouton-vue-liste").setAttribute("aria-pressed", String(MODE_VUE_BIENS === "liste"));
+  document.getElementById("bouton-vue-grille").classList.toggle("actif", MODE_VUE_BIENS === "grille");
+  document.getElementById("bouton-vue-grille").setAttribute("aria-pressed", String(MODE_VUE_BIENS === "grille"));
+}
+document.getElementById("bouton-vue-liste").addEventListener("click", () => { MODE_VUE_BIENS = "liste"; appliquerModeVueBiens(); });
+document.getElementById("bouton-vue-grille").addEventListener("click", () => { MODE_VUE_BIENS = "grille"; appliquerModeVueBiens(); });
+appliquerModeVueBiens();
+
+document.getElementById("recherche-biens").addEventListener("input", (ev) => {
+  FILTRE_RECHERCHE = ev.target.value;
+  PAGE_BIENS = 1;
+  actualiserVueAnnonces();
+});
+document.getElementById("filtre-categorie").addEventListener("change", (ev) => {
+  FILTRE_CATEGORIE = ev.target.value;
+  PAGE_BIENS = 1;
+  actualiserVueAnnonces();
+});
+document.getElementById("filtre-statut").addEventListener("change", (ev) => {
+  FILTRE_STATUT = ev.target.value;
+  PAGE_BIENS = 1;
+  actualiserVueAnnonces();
+});
+document.getElementById("bouton-reinitialiser-filtres").addEventListener("click", () => {
+  FILTRE_RECHERCHE = "";
+  FILTRE_CATEGORIE = "";
+  FILTRE_STATUT = "";
+  PAGE_BIENS = 1;
+  document.getElementById("recherche-biens").value = "";
+  document.getElementById("filtre-categorie").value = "";
+  document.getElementById("filtre-statut").value = "";
+  actualiserVueAnnonces();
+});
 
 // ---- catégorie / sous-catégorie (cascade) ---------------------------------
 
