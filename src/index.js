@@ -276,7 +276,7 @@ async function moi(request, env) {
   if (!s) return json({ connecte: false }, 401);
   if (request.method === "PUT") return modifierMonProfil(request, env, s);
   const m = await env.DB.prepare(
-    "SELECT poste, specialite, bio, photo, linkedin FROM membres WHERE id = ?1"
+    "SELECT poste, specialite, bio, photo FROM membres WHERE id = ?1"
   ).bind(s.id).first();
   return json({
     connecte: true,
@@ -287,7 +287,6 @@ async function moi(request, env) {
     specialite: (m && m.specialite) || "",
     bio: (m && m.bio) || "",
     photo: (m && m.photo) || "",
-    linkedin: (m && m.linkedin) || "",
   });
 }
 
@@ -302,9 +301,6 @@ function validerProfil(b) {
   if (String(b.poste || "").length > 80) return "L'intitulé du poste est trop long (80 caractères maximum).";
   if (String(b.specialite || "").length > 100) return "La spécialité est trop longue (100 caractères maximum).";
   if (String(b.bio || "").length > 1000) return "La biographie est trop longue (1000 caractères maximum).";
-  const lien = String(b.linkedin || "").trim();
-  if (lien.length > 300) return "Le lien est trop long.";
-  if (lien && !/^https?:\/\//i.test(lien)) return "Le lien doit commencer par http:// ou https://";
   if (b.photo && (typeof b.photo !== "string" || b.photo.length > 1_500_000)) {
     return "La photo est invalide ou trop volumineuse.";
   }
@@ -318,11 +314,10 @@ async function modifierMonProfil(request, env, s) {
   const poste = txt(b.poste, 80).trim();
   const specialite = txt(b.specialite, 100).trim();
   const bio = txt(b.bio, 1000).trim();
-  const linkedin = txt(b.linkedin, 300).trim();
   const photo = typeof b.photo === "string" ? b.photo.trim() : "";
   await env.DB.prepare(
-    "UPDATE membres SET poste=?2, specialite=?3, bio=?4, linkedin=?5, photo=?6 WHERE id=?1"
-  ).bind(s.id, poste, specialite, bio, linkedin, photo).run();
+    "UPDATE membres SET poste=?2, specialite=?3, bio=?4, photo=?5 WHERE id=?1"
+  ).bind(s.id, poste, specialite, bio, photo).run();
   return json({ ok: true });
 }
 
@@ -332,7 +327,7 @@ async function modifierMonProfil(request, env, s) {
 
 async function equipe(env) {
   const r = await env.DB.prepare(
-    `SELECT id, pseudo, grade, poste, specialite, bio, photo, linkedin
+    `SELECT id, pseudo, grade, poste, specialite, bio, photo
        FROM membres
        WHERE actif = 1
        ORDER BY CASE WHEN grade = 'Direction' THEN 0 ELSE 1 END, pseudo COLLATE NOCASE`
@@ -344,7 +339,6 @@ async function equipe(env) {
     specialite: m.specialite || "",
     bio: m.bio || "",
     photo: m.photo || "",
-    linkedin: m.linkedin || "",
   }));
   return json({ membres: liste });
 }

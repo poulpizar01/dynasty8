@@ -83,7 +83,6 @@
       </div>
     </div>
     <p class="profil-membre-bio" id="profil-membre-bio"></p>
-    <p id="profil-membre-lien" style="margin-top:16px;"></p>
   </div>
 </div>
 
@@ -105,9 +104,6 @@
     const photo = m.photo
       ? `<img src="${echapper(m.photo)}" alt="${echapper(m.pseudo)}" loading="lazy" decoding="async">`
       : `<span aria-hidden="true">👤</span>`;
-    const linkedin = m.linkedin
-      ? `<a class="carte-membre-linkedin" href="${echapper(m.linkedin)}" target="_blank" rel="noopener" aria-label="Profil LinkedIn de ${echapper(m.pseudo)}" onclick="event.stopPropagation()">in</a>`
-      : "";
     const specialite = m.specialite
       ? `<div class="carte-membre-specialite"><span>Spécialité</span><strong>${echapper(m.specialite)}</strong></div>`
       : "";
@@ -115,7 +111,6 @@
       <article class="carte-membre">
         <div class="carte-membre-photo">
           <div class="carte-membre-photo-cadre">
-            ${linkedin}
             ${photo}
           </div>
           <span class="carte-membre-avatar">${initiales(m.pseudo)}</span>
@@ -141,9 +136,6 @@
     document.getElementById("profil-membre-bio").textContent = m.bio
       ? m.bio
       : "Cet agent n'a pas encore rédigé de biographie.";
-    document.getElementById("profil-membre-lien").innerHTML = m.linkedin
-      ? `<a class="btn btn-fantome btn-petit" href="${echapper(m.linkedin)}" target="_blank" rel="noopener">Voir le profil LinkedIn ↗</a>`
-      : "";
     document.getElementById("modale-profil-membre").classList.remove("cache");
   }
 

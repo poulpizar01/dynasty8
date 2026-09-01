@@ -174,7 +174,6 @@ async function chargerMonProfil() {
     document.getElementById("profil-poste").value = moiActuel.poste || "";
     document.getElementById("profil-specialite").value = moiActuel.specialite || "";
     document.getElementById("profil-bio").value = moiActuel.bio || "";
-    document.getElementById("profil-linkedin").value = moiActuel.linkedin || "";
     PHOTO_PROFIL = moiActuel.photo || "";
     majApercuPhotoProfil();
     majCompteurBioProfil();
@@ -225,13 +224,6 @@ document.getElementById("bouton-profil-photo-retirer").addEventListener("click",
 document.getElementById("formulaire-profil").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   afficherMessage("zone-message-profil", "", null);
-  const erreurLien = document.getElementById("erreur-profil-linkedin");
-  erreurLien.classList.add("cache");
-  const linkedin = document.getElementById("profil-linkedin").value.trim();
-  if (linkedin && !/^https?:\/\//i.test(linkedin)) {
-    erreurLien.classList.remove("cache");
-    return;
-  }
   const bouton = document.getElementById("bouton-enregistrer-profil");
   const texteInitial = bouton.textContent;
   bouton.disabled = true;
@@ -243,7 +235,6 @@ document.getElementById("formulaire-profil").addEventListener("submit", async (e
         poste: document.getElementById("profil-poste").value.trim(),
         specialite: document.getElementById("profil-specialite").value.trim(),
         bio: document.getElementById("profil-bio").value.trim(),
-        linkedin,
         photo: PHOTO_PROFIL,
       }),
     });
