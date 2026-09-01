@@ -66,6 +66,7 @@
       <img src="/img/logo-full.png" alt="Dynasty 8" class="logo-entete">
     </a>
     <button class="lien-onglet actif" data-onglet="annonces">🏠 Annonces</button>
+    <button class="lien-onglet" data-onglet="profil">🪪 Mon profil</button>
     <button class="lien-onglet cache" data-onglet="membres" id="onglet-membres">👥 Équipe</button>
 
     <div class="admin-bas">
@@ -135,6 +136,49 @@
       <div id="vue-grille-biens" class="grille-admin-biens cache"></div>
 
       <div class="annonces-pagination" id="annonces-pagination"></div>
+    </section>
+
+    <!-- Onglet Mon profil (visible à tous les membres connectés) -->
+    <section id="panneau-profil" class="cache">
+      <div class="entete-admin">
+        <div>
+          <h2 style="margin-bottom:2px;">Mon profil</h2>
+          <p style="margin:0;font-size:0.88rem;">Ces informations sont affichées publiquement sur la page « Notre équipe » du site.</p>
+        </div>
+      </div>
+      <div id="zone-message-profil"></div>
+      <div class="profil-mise-en-page">
+        <div class="profil-photo-bloc">
+          <div class="profil-photo-apercu" id="profil-photo-apercu"></div>
+          <button type="button" class="btn btn-fantome btn-petit" id="bouton-profil-photo">📁 Changer la photo</button>
+          <button type="button" class="btn btn-fantome btn-petit cache" id="bouton-profil-photo-retirer">✕ Retirer la photo</button>
+          <input type="file" id="profil-photo-fichier" accept="image/*" class="cache">
+          <p class="champ-erreur cache" id="erreur-profil-photo"></p>
+          <p class="champ-aide" style="text-align:center;">Format carré recommandé — JPG, PNG ou WEBP.</p>
+        </div>
+        <form id="formulaire-profil">
+          <div class="champ">
+            <label for="profil-poste">Intitulé du poste</label>
+            <input type="text" id="profil-poste" maxlength="80" placeholder="Ex : Agent — Habitation">
+            <p class="champ-aide">Affiché sous votre nom, sur la page équipe du site.</p>
+          </div>
+          <div class="champ">
+            <label for="profil-specialite">Spécialité</label>
+            <input type="text" id="profil-specialite" maxlength="100" placeholder="Ex : Villas & Maisons">
+          </div>
+          <div class="champ">
+            <label for="profil-bio">Biographie</label>
+            <textarea id="profil-bio" maxlength="1000" placeholder="Présentez-vous en quelques lignes : votre parcours, ce que vous aimez chez Dynasty 8..."></textarea>
+            <p class="champ-aide" id="profil-bio-compteur">0 / 1000</p>
+          </div>
+          <div class="champ">
+            <label for="profil-linkedin">Lien LinkedIn (optionnel)</label>
+            <input type="text" id="profil-linkedin" maxlength="300" placeholder="https://www.linkedin.com/in/...">
+            <p class="champ-erreur cache" id="erreur-profil-linkedin">Le lien doit commencer par http:// ou https://</p>
+          </div>
+          <button type="submit" class="btn btn-or" id="bouton-enregistrer-profil">Enregistrer mon profil</button>
+        </form>
+      </div>
     </section>
 
     <!-- Onglet Équipe (Direction uniquement) -->

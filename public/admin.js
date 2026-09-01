@@ -6,6 +6,7 @@ let SESSION = null; // { pseudo, grade, direction }
 let CACHE_BIENS = [];
 let CACHE_MEMBRES = [];
 let IMAGES_BIEN = []; // photos du bien en cours d'édition (URLs et/ou images importées)
+let PHOTO_PROFIL = ""; // photo de profil en cours d'édition (onglet Mon profil)
 let ETAT_INITIAL_BIEN = ""; // instantané du formulaire à l'ouverture, pour détecter les changements non enregistrés
 
 // ---- tableau de bord "Annonces" : recherche, filtres, vue et pagination ----
@@ -154,9 +155,106 @@ function demarrerEspaceAdmin() {
 function basculerOnglet(nom) {
   document.querySelectorAll(".lien-onglet").forEach((b) => b.classList.toggle("actif", b.dataset.onglet === nom));
   document.getElementById("panneau-annonces").classList.toggle("cache", nom !== "annonces");
+  document.getElementById("panneau-profil").classList.toggle("cache", nom !== "profil");
   document.getElementById("panneau-membres").classList.toggle("cache", nom !== "membres");
+  if (nom === "profil") chargerMonProfil();
   if (nom === "membres") chargerTableMembres();
 }
+
+// ---------------------------------------------------------------------------
+// Onglet « Mon profil » — chaque membre édite sa propre fiche publique
+// (photo, poste, spécialité, biographie, LinkedIn), affichée sur /equipe.html.
+// Ne touche jamais au grade (droits d'accès), qui reste réservé à la Direction.
+// ---------------------------------------------------------------------------
+
+async function chargerMonProfil() {
+  afficherMessage("zone-message-profil", "", null);
+  try {
+    const moiActuel = await appelAPI("/api/moi");
+    document.getElementById("profil-poste").value = moiActuel.poste || "";
+    document.getElementById("profil-specialite").value = moiActuel.specialite || "";
+    document.getElementById("profil-bio").value = moiActuel.bio || "";
+    document.getElementById("profil-linkedin").value = moiActuel.linkedin || "";
+    PHOTO_PROFIL = moiActuel.photo || "";
+    majApercuPhotoProfil();
+    majCompteurBioProfil();
+  } catch (e) {
+    afficherMessage("zone-message-profil", "Impossible de charger votre profil : " + e.message, "erreur");
+  }
+}
+
+function majApercuPhotoProfil() {
+  const apercu = document.getElementById("profil-photo-apercu");
+  apercu.innerHTML = PHOTO_PROFIL
+    ? `<img src="${PHOTO_PROFIL}" alt="Photo de profil">`
+    : `<span>${initialesPseudo(SESSION.pseudo)}</span>`;
+  document.getElementById("bouton-profil-photo-retirer").classList.toggle("cache", !PHOTO_PROFIL);
+}
+
+function majCompteurBioProfil() {
+  const n = document.getElementById("profil-bio").value.length;
+  document.getElementById("profil-bio-compteur").textContent = n + " / 1000";
+}
+
+document.getElementById("profil-bio").addEventListener("input", majCompteurBioProfil);
+
+document.getElementById("bouton-profil-photo").addEventListener("click", () => {
+  document.getElementById("profil-photo-fichier").click();
+});
+
+document.getElementById("profil-photo-fichier").addEventListener("change", async (ev) => {
+  const fichier = (ev.target.files || [])[0];
+  ev.target.value = ""; // permet de resélectionner le même fichier plus tard si besoin
+  if (!fichier) return;
+  const erreur = document.getElementById("erreur-profil-photo");
+  erreur.classList.add("cache");
+  try {
+    PHOTO_PROFIL = await redimensionnerImage(fichier, 480, 0.82);
+    majApercuPhotoProfil();
+  } catch (e) {
+    erreur.textContent = e.message;
+    erreur.classList.remove("cache");
+  }
+});
+
+document.getElementById("bouton-profil-photo-retirer").addEventListener("click", () => {
+  PHOTO_PROFIL = "";
+  majApercuPhotoProfil();
+});
+
+document.getElementById("formulaire-profil").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  afficherMessage("zone-message-profil", "", null);
+  const erreurLien = document.getElementById("erreur-profil-linkedin");
+  erreurLien.classList.add("cache");
+  const linkedin = document.getElementById("profil-linkedin").value.trim();
+  if (linkedin && !/^https?:\/\//i.test(linkedin)) {
+    erreurLien.classList.remove("cache");
+    return;
+  }
+  const bouton = document.getElementById("bouton-enregistrer-profil");
+  const texteInitial = bouton.textContent;
+  bouton.disabled = true;
+  bouton.textContent = "Enregistrement…";
+  try {
+    await appelAPI("/api/moi", {
+      method: "PUT",
+      body: JSON.stringify({
+        poste: document.getElementById("profil-poste").value.trim(),
+        specialite: document.getElementById("profil-specialite").value.trim(),
+        bio: document.getElementById("profil-bio").value.trim(),
+        linkedin,
+        photo: PHOTO_PROFIL,
+      }),
+    });
+    afficherMessage("zone-message-profil", "Profil enregistré ✓ Les changements sont déjà visibles sur la page équipe du site.", "succes");
+  } catch (e) {
+    afficherMessage("zone-message-profil", e.message, "erreur");
+  } finally {
+    bouton.disabled = false;
+    bouton.textContent = texteInitial;
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Gestion des annonces (biens)
@@ -420,7 +518,7 @@ document.getElementById("bien-dispo-location").addEventListener("change", (ev) =
 
 // ---- photos : ajout par URL ou depuis l'ordinateur, prévisualisation ------
 
-function redimensionnerImage(fichier) {
+function redimensionnerImage(fichier, largeurMax = 1280, qualite = 0.72) {
   return new Promise((resolve, reject) => {
     if (!fichier.type.startsWith("image/")) return reject(new Error(`« ${fichier.name} » n'est pas une image.`));
     if (fichier.size > 15 * 1024 * 1024) return reject(new Error(`« ${fichier.name} » dépasse 15 Mo.`));
@@ -430,17 +528,16 @@ function redimensionnerImage(fichier) {
       const image = new Image();
       image.onerror = () => reject(new Error(`Fichier image invalide : « ${fichier.name} ».`));
       image.onload = () => {
-        const LARGEUR_MAX = 1280;
         let { width, height } = image;
-        if (width > LARGEUR_MAX) {
-          height = Math.round(height * (LARGEUR_MAX / width));
-          width = LARGEUR_MAX;
+        if (width > largeurMax) {
+          height = Math.round(height * (largeurMax / width));
+          width = largeurMax;
         }
         const toile = document.createElement("canvas");
         toile.width = width;
         toile.height = height;
         toile.getContext("2d").drawImage(image, 0, 0, width, height);
-        resolve(toile.toDataURL("image/jpeg", 0.72));
+        resolve(toile.toDataURL("image/jpeg", qualite));
       };
       image.src = lecteur.result;
     };

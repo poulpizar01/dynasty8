@@ -34,10 +34,58 @@
 
 <section class="section serre">
   <div class="conteneur">
+    <div class="bandeau-atouts">
+      <div class="bandeau-atout">
+        <span class="bandeau-atout-icone" aria-hidden="true">📍</span>
+        <div><div class="bandeau-atout-titre">Expertise locale</div><div class="bandeau-atout-texte">Une connaissance fine du marché</div></div>
+      </div>
+      <div class="bandeau-atout">
+        <span class="bandeau-atout-icone" aria-hidden="true">🤝</span>
+        <div><div class="bandeau-atout-titre">Accompagnement sur-mesure</div><div class="bandeau-atout-texte">Un suivi personnalisé à chaque étape</div></div>
+      </div>
+      <div class="bandeau-atout">
+        <span class="bandeau-atout-icone" aria-hidden="true">⏱️</span>
+        <div><div class="bandeau-atout-titre">Disponibilité & réactivité</div><div class="bandeau-atout-texte">À votre écoute, à tout moment</div></div>
+      </div>
+      <div class="bandeau-atout">
+        <span class="bandeau-atout-icone" aria-hidden="true">🛡️</span>
+        <div><div class="bandeau-atout-titre">Confidentialité</div><div class="bandeau-atout-texte">Des échanges sécurisés et discrets</div></div>
+      </div>
+    </div>
+
     <div class="grille-equipe" id="grille-equipe"></div>
-    <p class="champ-aide" style="text-align:center;margin-top:24px;">Équipe de démonstration — remplacez les noms et rôles dans <code>equipe.html</code> par les vrais membres de votre agence.</p>
+
+    <div class="equipe-cta">
+      <div class="equipe-cta-texte">
+        <span class="equipe-cta-icone" aria-hidden="true">👥</span>
+        <div>
+          <strong>Vous souhaitez rejoindre notre équipe ?</strong>
+          <p>Nous sommes toujours à la recherche de talents passionnés.</p>
+        </div>
+      </div>
+      <a class="btn btn-or" href="https://discord.com/invite/dDAFWxeU8" target="_blank" rel="noopener">Découvrir nos offres →</a>
+    </div>
   </div>
 </section>
+
+<!-- Modale « voir le profil » -->
+<div class="modale-fond cache" id="modale-profil-membre">
+  <div class="modale" style="max-width:520px;">
+    <div class="modale-entete">
+      <h3 id="titre-modale-profil-membre">Profil</h3>
+      <button id="fermer-modale-profil-membre" aria-label="Fermer">✕</button>
+    </div>
+    <div class="profil-membre-entete">
+      <div class="profil-membre-photo" id="profil-membre-photo"></div>
+      <div>
+        <h3 id="profil-membre-nom"></h3>
+        <span class="carte-membre-poste" id="profil-membre-poste"></span>
+      </div>
+    </div>
+    <p class="profil-membre-bio" id="profil-membre-bio"></p>
+    <p id="profil-membre-lien" style="margin-top:16px;"></p>
+  </div>
+</div>
 
 <footer class="pied-page" id="site-pied"></footer>
 
@@ -45,21 +93,81 @@
 <script>
   initialiserLayout("equipe");
 
-  const EQUIPE = [
-    { nom: "Alexia Ferrero", role: "Directrice de l'agence" },
-    { nom: "Mika Duval", role: "Agent — Biens exclusifs" },
-    { nom: "Toni Reyes", role: "Agent — Habitation" },
-    { nom: "Sasha Cole", role: "Agent — Garages" },
-    { nom: "Nova Bianchi", role: "Conseillère investissement" },
-    { nom: "Eliot Marchetti", role: "Agent — Habitation" },
-  ];
+  function initiales(nom) {
+    const mots = String(nom || "").trim().split(/\s+/).filter(Boolean);
+    if (!mots.length) return "?";
+    return mots.slice(0, 2).map((m) => m[0].toUpperCase()).join("");
+  }
 
-  document.getElementById("grille-equipe").innerHTML = EQUIPE.map((m) => `
-    <div class="carte-membre">
-      <div class="avatar">${m.nom.split(" ").map((p) => p[0]).join("")}</div>
-      <h3>${m.nom}</h3>
-      <span class="role">${m.role}</span>
-    </div>`).join("");
+  let EQUIPE = [];
+
+  function carteMembreHTML(m) {
+    const photo = m.photo
+      ? `<img src="${echapper(m.photo)}" alt="${echapper(m.pseudo)}" loading="lazy" decoding="async">`
+      : `<span aria-hidden="true">👤</span>`;
+    const linkedin = m.linkedin
+      ? `<a class="carte-membre-linkedin" href="${echapper(m.linkedin)}" target="_blank" rel="noopener" aria-label="Profil LinkedIn de ${echapper(m.pseudo)}" onclick="event.stopPropagation()">in</a>`
+      : "";
+    const specialite = m.specialite
+      ? `<div class="carte-membre-specialite"><span>Spécialité</span><strong>${echapper(m.specialite)}</strong></div>`
+      : "";
+    return `
+      <article class="carte-membre">
+        <div class="carte-membre-photo">
+          ${linkedin}
+          ${photo}
+          <span class="carte-membre-avatar">${initiales(m.pseudo)}</span>
+        </div>
+        <div class="carte-membre-corps">
+          <h3>${echapper(m.pseudo)}</h3>
+          <span class="carte-membre-poste">${echapper(m.poste)}</span>
+          ${specialite}
+          <button type="button" class="carte-membre-cta" data-id="${m.id}">Voir le profil <span aria-hidden="true">→</span></button>
+        </div>
+      </article>`;
+  }
+
+  function ouvrirProfilMembre(id) {
+    const m = EQUIPE.find((x) => String(x.id) === String(id));
+    if (!m) return;
+    document.getElementById("titre-modale-profil-membre").textContent = m.pseudo;
+    document.getElementById("profil-membre-nom").textContent = m.pseudo;
+    document.getElementById("profil-membre-poste").textContent = m.poste;
+    document.getElementById("profil-membre-photo").innerHTML = m.photo
+      ? `<img src="${echapper(m.photo)}" alt="${echapper(m.pseudo)}">`
+      : initiales(m.pseudo);
+    document.getElementById("profil-membre-bio").textContent = m.bio
+      ? m.bio
+      : "Cet agent n'a pas encore rédigé de biographie.";
+    document.getElementById("profil-membre-lien").innerHTML = m.linkedin
+      ? `<a class="btn btn-fantome btn-petit" href="${echapper(m.linkedin)}" target="_blank" rel="noopener">Voir le profil LinkedIn ↗</a>`
+      : "";
+    document.getElementById("modale-profil-membre").classList.remove("cache");
+  }
+
+  document.getElementById("fermer-modale-profil-membre").addEventListener("click", () => {
+    document.getElementById("modale-profil-membre").classList.add("cache");
+  });
+  document.getElementById("modale-profil-membre").addEventListener("click", (ev) => {
+    if (ev.target.id === "modale-profil-membre") ev.currentTarget.classList.add("cache");
+  });
+
+  const grille = document.getElementById("grille-equipe");
+  appelAPI("/api/equipe")
+    .then((d) => {
+      EQUIPE = d.membres || [];
+      if (!EQUIPE.length) {
+        grille.innerHTML = `<div class="etat-vide">L'équipe n'a pas encore été présentée sur le site.</div>`;
+        return;
+      }
+      grille.innerHTML = EQUIPE.map(carteMembreHTML).join("");
+      grille.querySelectorAll("[data-id]").forEach((btn) => {
+        btn.addEventListener("click", () => ouvrirProfilMembre(btn.dataset.id));
+      });
+    })
+    .catch(() => {
+      grille.innerHTML = `<div class="etat-vide">Impossible de charger l'équipe pour le moment.</div>`;
+    });
 </script>
 </body>
 </html>

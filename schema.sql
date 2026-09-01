@@ -4,12 +4,17 @@
 CREATE TABLE IF NOT EXISTS membres (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   pseudo TEXT NOT NULL,
-  grade TEXT NOT NULL DEFAULT 'Agent',       -- 'Direction' ou 'Agent'
+  grade TEXT NOT NULL DEFAULT 'Agent',       -- 'Direction' ou 'Agent' — droits d'accès, Direction uniquement
   code_hash TEXT NOT NULL,
   code_indice TEXT NOT NULL,                  -- 4 derniers caractères du code, pour l'affichage
   actif INTEGER NOT NULL DEFAULT 1,
   cree_le TEXT NOT NULL,
-  derniere_visite TEXT
+  derniere_visite TEXT,
+  poste TEXT,                                 -- intitulé public affiché sur /equipe.html (ex: "Agent — Habitation")
+  specialite TEXT,                            -- ex: "Villas & Maisons" — auto-édité par le membre
+  bio TEXT,                                   -- biographie affichée sur la fiche « voir le profil »
+  photo TEXT,                                 -- photo de profil (JPEG en base64, comme les photos de biens)
+  linkedin TEXT                               -- lien LinkedIn (ou autre réseau), optionnel
 );
 
 CREATE TABLE IF NOT EXISTS tentatives (
