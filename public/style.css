@@ -1279,13 +1279,6 @@ section.section.serre {
 .coeur-fleche--suivant { right: -22px; }
 @media (max-width: 900px) { .coeur-fleche { display: none !important; } }
 
-/* Met en valeur le premier bien de la sélection filtrée (le "coup de cœur" vedette). */
-.carte-coeur--vedette {
-  border-color: transparent;
-  box-shadow: 0 0 0 1px var(--bg), 0 0 0 2.5px var(--d8-gold-400), var(--d8-shadow-card);
-}
-.carte-coeur--vedette:hover { box-shadow: 0 0 0 1px var(--bg), 0 0 0 2.5px var(--d8-gold-300), var(--d8-shadow-card-hover); }
-
 .carte-coeur-lieu {
   display: flex; align-items: center; gap: 5px;
   font-family: var(--d8-font-ui); font-size: 0.78rem; color: var(--text-faint);

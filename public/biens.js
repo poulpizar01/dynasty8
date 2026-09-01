@@ -94,14 +94,16 @@ function carteBienHTML(bien) {
 // Carte enrichie utilisée uniquement par la vitrine "Nos coups de cœur" de l'accueil
 // (carrousel avec flèches + filtres) : emplacement (via etiquetteZoneHTML) mis en avant
 // avec une puce de repère, et un appel à l'action "Voir le bien" en pied de carte.
-// Le premier bien de la sélection filtrée reçoit un liseré doré "vedette".
-function carteCoeurHTML(bien, vedette) {
+// (Le liseré doré des biens VIP/VIP+ — règle .carte-bien:has(.badge-vip) déjà
+// existante — suffit à mettre en valeur une carte : pas de second liseré "vedette"
+// séparé, qui ferait doublon et brouillerait le message.)
+function carteCoeurHTML(bien) {
   const image = bien.images && bien.images[0];
   const visuel = image
     ? `<img src="${echapper(image)}" alt="${echapper(bien.titre)}" loading="lazy" decoding="async">`
     : `<span style="font-size:2.2rem;">${iconeCategorie(bien.categorie)}</span>`;
   return `
-    <a class="carte-bien${vedette ? " carte-coeur--vedette" : ""}" href="/bien.html?id=${bien.id}">
+    <a class="carte-bien" href="/bien.html?id=${bien.id}">
       <div class="visuel">
         ${bien.vendu ? '<span class="badge-coeur badge-vendu">Vendu</span>' : '<span class="badge-coeur">♥ Coup de cœur</span>'}
         ${badgesSecondairesHTML(bien)}

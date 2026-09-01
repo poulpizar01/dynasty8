@@ -216,7 +216,7 @@
     }
     const liste = biensCoeurFiltres();
     conteneur.innerHTML = liste.length
-      ? liste.map((b, i) => carteCoeurHTML(b, i === 0)).join("")
+      ? liste.map((b) => carteCoeurHTML(b)).join("")
       : `<div class="etat-vide">Aucun coup de cœur ne correspond à ce filtre pour le moment.</div>`;
     conteneur.scrollTo({ left: 0 });
     majFlechesCoeur();
