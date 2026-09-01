@@ -1966,6 +1966,7 @@ section.section.serre {
 .d8-select-flottant::-webkit-scrollbar { width: 8px; }
 .d8-select-flottant::-webkit-scrollbar-track { background: transparent; }
 .d8-select-flottant::-webkit-scrollbar-thumb { background: var(--d8-gold-400); border-radius: 4px; }
+.d8-select-flottant::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
 .d8-select-option {
   padding: 9px 12px; border-radius: 6px; font-size: 0.86rem; cursor: pointer; color: var(--text);
   display: flex; align-items: center; gap: 9px; white-space: normal; transition: background var(--d8-t);

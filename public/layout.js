@@ -355,7 +355,14 @@ document.addEventListener("keydown", (ev) => {
   if (ev.key === "Escape") fermerSelectOuvert();
 });
 window.addEventListener("resize", fermerSelectOuvert);
-window.addEventListener("scroll", fermerSelectOuvert, true);
+// "true" (phase de capture) est nécessaire pour détecter un défilement de la
+// page ou d'un conteneur (ex: le tableau des comptes), mais ça capte AUSSI le
+// défilement à l'intérieur du menu flottant lui-même (sa propre liste
+// d'options) : dans ce cas précis, il ne faut surtout pas le refermer.
+window.addEventListener("scroll", (ev) => {
+  if (D8_SELECT_OUVERT && D8_SELECT_OUVERT.flottant.contains(ev.target)) return;
+  fermerSelectOuvert();
+}, true);
 
 // `pastille` (optionnel) : fonction qui renvoie une couleur CSS pour une petite
 // puce ronde devant chaque option (utilisé pour les grades). `portee`
