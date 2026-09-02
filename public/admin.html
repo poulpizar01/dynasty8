@@ -52,6 +52,7 @@
     <button class="lien-onglet" data-onglet="agenda">🗓️ Mon agenda</button>
     <button class="lien-onglet" data-onglet="profil">🪪 Mon profil</button>
     <button class="lien-onglet cache" data-onglet="comptabilite" id="onglet-comptabilite">🧮 Comptabilité</button>
+    <button class="lien-onglet cache" data-onglet="statistiques" id="onglet-statistiques">📈 Statistiques</button>
     <button class="lien-onglet cache" data-onglet="comptes" id="onglet-comptes">🔐 Comptes &amp; accès</button>
     <a href="https://webmap.dynasty8.fbfa.fr/" target="_blank" rel="noopener" class="lien-onglet cache" id="lien-webmap">🗺️ Webmap Dynasty8</a>
 
@@ -230,6 +231,32 @@
       <!-- Sous-onglet : DOT (à construire — détail à venir) -->
       <div id="compta-panneau-dot" class="cache">
         <div class="etat-vide"><p>Cette section n'est pas encore configurée. Dites-moi ce qu'elle doit contenir et je la construirai.</p></div>
+      </div>
+    </section>
+
+    <!-- Onglet Statistiques (Direction uniquement) — les ventes/locations sont
+         envoyées automatiquement par le bot RP (voir /api/stats/ventes) ;
+         cet écran ne fait qu'afficher ce qui a déjà été reçu, semaine par
+         semaine. Le détail par agent (primes, commissions) arrivera dans une
+         prochaine étape une fois cette base vérifiée avec Paul. -->
+    <section id="panneau-statistiques" class="cache">
+      <div class="entete-admin">
+        <div>
+          <h2 style="margin-bottom:2px;">Statistiques</h2>
+          <p style="margin:0;font-size:0.88rem;">Ventes et locations reçues automatiquement du bot, semaine par semaine — réservé à la Direction.</p>
+        </div>
+      </div>
+      <div id="zone-message-statistiques"></div>
+      <div id="statistiques-vide" class="etat-vide cache">
+        <p>Aucune vente reçue pour le moment. Les données arriveront automatiquement dès que le bot sera connecté.</p>
+      </div>
+      <div id="statistiques-resultat" class="cache" style="overflow-x:auto;">
+        <table class="table-admin">
+          <thead>
+            <tr><th>Semaine</th><th>Période</th><th>Ventes/locations enregistrées</th></tr>
+          </thead>
+          <tbody id="corps-table-statistiques"></tbody>
+        </table>
       </div>
     </section>
 

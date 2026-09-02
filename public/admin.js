@@ -129,6 +129,7 @@ function demarrerEspaceAdmin() {
   if (SESSION.direction) {
     document.getElementById("onglet-comptes").classList.remove("cache");
     document.getElementById("onglet-comptabilite").classList.remove("cache");
+    document.getElementById("onglet-statistiques").classList.remove("cache");
   }
   // Le lien Webmap est réservé au Patron, au Co Patron, et au Développeur web
   // (qui a exactement les mêmes accès que le Patron, y compris ici).
@@ -151,6 +152,7 @@ function basculerOnglet(nom) {
   document.getElementById("panneau-profil").classList.toggle("cache", nom !== "profil");
   document.getElementById("panneau-comptes").classList.toggle("cache", nom !== "comptes");
   document.getElementById("panneau-comptabilite").classList.toggle("cache", nom !== "comptabilite");
+  document.getElementById("panneau-statistiques").classList.toggle("cache", nom !== "statistiques");
   // L'agenda a besoin de toute la largeur disponible (voir style.css) : le
   // reste des onglets garde la mise en page habituelle, limitée en largeur.
   document.getElementById("admin-contenu").classList.toggle("admin-contenu--pleine", nom === "agenda");
@@ -158,6 +160,39 @@ function basculerOnglet(nom) {
   if (nom === "comptes") chargerTableMembres();
   if (nom === "agenda") chargerAgenda(true);
   if (nom === "comptabilite") chargerTablette();
+  if (nom === "statistiques") chargerStatistiques();
+}
+
+// ---------------------------------------------------------------------------
+// Onglet « Statistiques » — les ventes/locations arrivent automatiquement
+// via le bot (POST /api/stats/ventes avec sa clé secrète) ; cet écran se
+// contente d'afficher, semaine par semaine, ce qui a déjà été reçu.
+// ---------------------------------------------------------------------------
+async function chargerStatistiques() {
+  afficherMessage("zone-message-statistiques", "", null);
+  try {
+    const reponse = await appelAPI("/api/stats/semaines");
+    const vide = document.getElementById("statistiques-vide");
+    const resultat = document.getElementById("statistiques-resultat");
+    if (!reponse.semaines || !reponse.semaines.length) {
+      vide.classList.remove("cache");
+      resultat.classList.add("cache");
+      return;
+    }
+    vide.classList.add("cache");
+    resultat.classList.remove("cache");
+    document.getElementById("corps-table-statistiques").innerHTML = reponse.semaines.map((s) => {
+      const periode = s.debut && s.fin ? `${formaterDateCourte(s.debut)} → ${formaterDateCourte(s.fin)}` : "—";
+      return `<tr><td><strong>${s.code}</strong></td><td>${periode}</td><td>${s.lignes}</td></tr>`;
+    }).join("");
+  } catch (e) {
+    afficherMessage("zone-message-statistiques", "Impossible de charger les statistiques : " + e.message, "erreur");
+  }
+}
+
+function formaterDateCourte(isoAAAAMMJJ) {
+  const [a, m, j] = String(isoAAAAMMJJ).split("-");
+  return `${j}/${m}/${a}`;
 }
 
 // ---------------------------------------------------------------------------

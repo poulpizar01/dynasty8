@@ -22,7 +22,6 @@
 // ============================================================================
 
 import { enc, b64url, unb64url } from "./util-crypto.js";
-import { obtenirDonneesStats, statutSynchronisation } from "./stats-sheets.js";
 import * as statsCalc from "./stats-calc.js";
 
 const COOKIE = "d8_session";
@@ -366,9 +365,9 @@ function peutGererAnnonces(s) {
 // remplacer facilement par un vrai système de permissions le jour où la
 // Direction aura arbitré le périmètre exact des rôles (cahier des charges §6,
 // qui le laisse explicitement "à arbitrer plus tard"). Pour l'instant :
-//   stats.voir_soi     -> n'importe quel compte connecté (ses propres chiffres)
+//   stats.voir_soi     -> n'importe quel compte connecté (ses propres chiffres, et le droit d'enregistrer une vente)
 //   stats.voir_tous     -> Direction uniquement (récap de toute l'agence)
-//   stats.administrer   -> Direction uniquement (barèmes, référentiel, sync manuelle)
+//   stats.administrer   -> Direction uniquement (barèmes, référentiel, suppression d'une ligne)
 function statsPeutVoirSoi(s) {
   return !!s;
 }
@@ -752,29 +751,121 @@ async function comptabilite(request, url, env) {
   return json({ erreur: "Méthode non prise en charge." }, 405);
 }
 
-// ---- Statistiques (lecture du Google Sheet "Logs Vente") -------------------
-// Cette première tranche branche uniquement /semaines, /anomalies et /sync :
-// de quoi vérifier bout en bout que la connexion au Sheet, le cache et le
-// moteur de calcul (src/stats-calc.js, src/stats-sheets.js) fonctionnent
-// vraiment sur les données réelles, AVANT de construire les écrans "Mes
-// statistiques" et "Récap direction" par-dessus. /agent/:id et /recap
-// arriveront dans une prochaine étape, une fois cette base vérifiée avec Paul.
+// ---- Statistiques (saisie des ventes/locations, calcul des primes) ---------
+// Les ventes sont enregistrées directement dans la base D1 du site (table
+// stats_logs_ventes), via le formulaire "Enregistrer une vente" du panneau
+// Statistiques — pas de source externe (Google Sheet, etc.). Les colonnes
+// restent celles du cahier des charges (A à P) afin de réutiliser tel quel
+// le moteur de calcul déjà testé (src/stats-calc.js, classifierLignes) :
+// on reconstruit juste des lignes "brutes" à partir des colonnes de la table.
+
+const COLONNES_LOG_VENTE = [
+  "numero_vente", "date_vente", "identite", "formateur", "identite_client", "numero_tel",
+  "interieur", "garage", "garage_indispo", "garage_refus", "entreprise_identite", "id_entreprise",
+  "type", "loc", "achat", "semaine",
+];
+
+// Relit toute la table et la fait passer par le même classement/détection
+// d'anomalies que prévu à l'origine — puis réattache l'id de chaque ligne
+// (même ordre, même longueur que l'entrée : classifierLignes pousse une
+// entrée par ligne brute, dans l'ordre) pour permettre de supprimer une
+// ligne précise depuis l'écran admin.
+async function lireLignesLocales(env) {
+  const r = await env.DB.prepare(
+    `SELECT id, ${COLONNES_LOG_VENTE.join(", ")} FROM stats_logs_ventes ORDER BY id ASC`
+  ).all();
+  const resultats = r.results || [];
+  const lignesBrutes = resultats.map((row) => COLONNES_LOG_VENTE.map((c) => row[c]));
+  const { lignes, anomalies } = statsCalc.classifierLignes(lignesBrutes);
+  lignes.forEach((l, i) => { l.id = resultats[i].id; });
+  return { lignes, anomalies };
+}
+
+function validerLigneVente(b) {
+  if (!b || typeof b !== "object") return "Requête invalide.";
+  if (!b.identite || !String(b.identite).trim()) return "L'agent (Identité) est obligatoire.";
+  if (!b.type || !["Vente", "Location"].includes(b.type)) return "Le type doit être « Vente » ou « Location ».";
+  if (!b.semaine || !/^S\d{1,2}-\d{2}$/i.test(String(b.semaine).trim())) return "La semaine doit être au format « S36-26 ».";
+  if (b.dateVente && !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(String(b.dateVente).trim())) return "La date doit être au format JJ/MM/AAAA.";
+  if (b.achat != null && b.achat !== "" && !isFinite(Number(b.achat))) return "Le montant (Achat) doit être un nombre.";
+  if (b.type === "Location" && b.loc != null && b.loc !== "" && !isFinite(Number(b.loc))) return "La quantité (Loc) doit être un nombre.";
+  const champsTexte = ["numeroVente", "identite", "formateur", "identiteClient", "numeroTel", "interieur", "garage", "entrepriseIdentite", "idEntreprise"];
+  for (const c of champsTexte) {
+    if (b[c] != null && String(b[c]).length > 200) return "Un des champs dépasse 200 caractères.";
+  }
+  return null;
+}
+
+// Le bot (qui lit les ventes RP et les transmet au site) n'a pas de compte
+// Discord/session sur le site : il s'identifie avec une clé secrète fixe,
+// réglée une seule fois via `npx wrangler secret put STATS_BOT_SECRET`, à
+// donner uniquement à la personne qui héberge/programme le bot — jamais
+// affichée ni stockée ailleurs que dans les secrets Cloudflare.
+function verifierCleBot(request, env) {
+  const secret = env.STATS_BOT_SECRET;
+  if (!secret) return false;
+  const entete = request.headers.get("Authorization") || "";
+  const correspond = entete.match(/^Bearer\s+(.+)$/i);
+  return !!correspond && correspond[1] === secret;
+}
+
+async function statsEnregistrerVente(request, env, membreId) {
+  const b = await request.json().catch(() => null);
+  const erreur = validerLigneVente(b);
+  if (erreur) return json({ erreur }, 400);
+  await env.DB.prepare(
+    `INSERT INTO stats_logs_ventes
+      (numero_vente, date_vente, identite, formateur, identite_client, numero_tel,
+       interieur, garage, garage_indispo, garage_refus, entreprise_identite, id_entreprise,
+       type, loc, achat, semaine, cree_par)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)`
+  ).bind(
+    String(b.numeroVente || "").trim(),
+    String(b.dateVente || "").trim(),
+    String(b.identite).trim(),
+    String(b.formateur || "").trim(),
+    String(b.identiteClient || "").trim(),
+    String(b.numeroTel || "").trim(),
+    String(b.interieur || "").trim(),
+    String(b.garage || "").trim(),
+    String(b.garageIndispo || "").trim(),
+    String(b.garageRefus || "").trim(),
+    String(b.entrepriseIdentite || "").trim(),
+    String(b.idEntreprise || "").trim(),
+    b.type,
+    b.type === "Location" && b.loc !== "" && b.loc != null ? Math.trunc(Number(b.loc)) : null,
+    b.achat != null && b.achat !== "" ? Math.round(Number(b.achat)) : 0,
+    String(b.semaine).trim().toUpperCase(),
+    membreId
+  ).run();
+  return json({ ok: true });
+}
+
+async function statsListerVentes(env, url, s) {
+  if (!statsPeutVoirSoi(s)) return json({ erreur: "Non connecté." }, 401);
+  const { lignes } = await lireLignesLocales(env);
+  const semaine = url.searchParams.get("semaine");
+  const filtrees = semaine ? lignes.filter((l) => l.semaine === semaine) : lignes;
+  return json({ lignes: filtrees.slice().reverse() }); // plus récent en premier
+}
+
+async function statsSupprimerVente(env, s, id) {
+  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  if (!id || !/^\d+$/.test(id)) return json({ erreur: "Identifiant invalide." }, 400);
+  await env.DB.prepare("DELETE FROM stats_logs_ventes WHERE id = ?1").bind(Number(id)).run();
+  return json({ ok: true });
+}
 
 async function statsSemaines(env, s) {
   if (!statsPeutVoirSoi(s)) return json({ erreur: "Non connecté." }, 401);
-  let donnees;
-  try {
-    donnees = await obtenirDonneesStats(env, {});
-  } catch (e) {
-    return json({ erreur: String((e && e.message) || e) }, 502);
-  }
+  const { lignes } = await lireLignesLocales(env);
   const compteurs = new Map();
-  donnees.lignes.forEach((l) => {
+  lignes.forEach((l) => {
     if (!l.semaine) return; // absente en colonne P -> exclue de tous les récaps (§7)
     compteurs.set(l.semaine, (compteurs.get(l.semaine) || 0) + 1);
   });
   const semaines = Array.from(compteurs.entries())
-    .map(([code, lignes]) => {
+    .map(([code, nbLignes]) => {
       const analyse = statsCalc.analyserCodeSemaine(code);
       let debut = null;
       let fin = null;
@@ -785,64 +876,43 @@ async function statsSemaines(env, s) {
         debut = lundi.toISOString().slice(0, 10);
         fin = dimanche.toISOString().slice(0, 10);
       }
-      return { code, debut, fin, lignes, ordre: analyse ? analyse.anneeIso * 100 + analyse.numero : -1 };
+      return { code, debut, fin, lignes: nbLignes, ordre: analyse ? analyse.anneeIso * 100 + analyse.numero : -1 };
     })
     .sort((a, b) => b.ordre - a.ordre)
     .map(({ ordre, ...reste }) => reste);
-  return json({
-    semaines,
-    recupereLe: donnees.recupereLe,
-    synchronisationIndisponible: !!donnees.synchronisationIndisponible,
-  });
+  return json({ semaines });
 }
 
 async function statsAnomalies(env, url, s) {
   if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-  let donnees;
-  try {
-    donnees = await obtenirDonneesStats(env, {});
-  } catch (e) {
-    return json({ erreur: String((e && e.message) || e) }, 502);
-  }
+  const { anomalies } = await lireLignesLocales(env);
   const semaine = url.searchParams.get("semaine");
-  const anomalies = semaine ? donnees.anomalies.filter((a) => a.semaine === semaine) : donnees.anomalies;
-  return json({
-    anomalies,
-    recupereLe: donnees.recupereLe,
-    synchronisationIndisponible: !!donnees.synchronisationIndisponible,
-  });
-}
-
-async function statsSync(env, s) {
-  if (!statsPeutVoirTous(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-  try {
-    const donnees = await obtenirDonneesStats(env, { forcer: true, membreId: s.id });
-    return json({
-      ok: true,
-      nbLignes: donnees.lignes.length,
-      nbAnomalies: donnees.anomalies.length,
-      recupereLe: donnees.recupereLe,
-      synchronisationIndisponible: !!donnees.synchronisationIndisponible,
-    });
-  } catch (e) {
-    return json({ erreur: String((e && e.message) || e) }, 502);
-  }
-}
-
-async function statsStatut(env, s) {
-  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-  return json(await statutSynchronisation(env));
+  const filtrees = semaine ? anomalies.filter((a) => a.semaine === semaine) : anomalies;
+  return json({ anomalies: filtrees });
 }
 
 async function statistiques(request, url, env) {
+  const route = url.pathname.slice("/api/stats".length); // "/semaines" | "/anomalies" | "/ventes" | "/ventes/:id"
+  const m = request.method;
+
+  // Le bot envoie ses ventes avec "Authorization: Bearer <clé secrète>",
+  // sans cookie de session — traité à part, avant l'exigence de connexion.
+  if (route === "/ventes" && m === "POST" && request.headers.has("Authorization")) {
+    if (!verifierCleBot(request, env)) return json({ erreur: "Clé du bot invalide." }, 401);
+    return statsEnregistrerVente(request, env, null); // null = importé/envoyé par le bot, pas par un compte du site
+  }
+
   const s = await session(request, env);
   if (!s) return json({ erreur: "Non connecté." }, 401);
-  const route = url.pathname.slice("/api/stats".length); // "/semaines" | "/anomalies" | "/sync" | "/statut"
-  const m = request.method;
   if (route === "/semaines" && m === "GET") return statsSemaines(env, s);
   if (route === "/anomalies" && m === "GET") return statsAnomalies(env, url, s);
-  if (route === "/sync" && m === "POST") return statsSync(env, s);
-  if (route === "/statut" && m === "GET") return statsStatut(env, s);
+  if (route === "/ventes" && m === "POST") {
+    if (!statsPeutVoirSoi(s)) return json({ erreur: "Non connecté." }, 401);
+    return statsEnregistrerVente(request, env, s.id);
+  }
+  if (route === "/ventes" && m === "GET") return statsListerVentes(env, url, s);
+  const mSupp = route.match(/^\/ventes\/(\d+)$/);
+  if (mSupp && m === "DELETE") return statsSupprimerVente(env, s, mSupp[1]);
   return json({ erreur: "Adresse inconnue." }, 404);
 }
 
