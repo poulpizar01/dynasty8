@@ -44,10 +44,26 @@ async function appliquerSchema() {
 const GRADES_DIRECTION = ["Développeur web", "Patron", "Co Patron", "Manager", "DRH", "Secrétaire de Direction"];
 async function amorcerPremierAdmin() {
   const admin = await pool.query(
-    `SELECT id FROM membres WHERE statut = 'valide' AND grade = ANY($1) LIMIT 1`,
+    `SELECT id FROM membres WHERE statut = 'valide' AND actif = 1 AND grade = ANY($1) LIMIT 1`,
     [GRADES_DIRECTION]
   );
   if (admin.rows.length) return;
+
+  // Réparation ponctuelle : une version précédente de cette fonction (2 sept.
+  // 2026) oubliait de remettre actif = 1 en promouvant le tout premier compte,
+  // ce qui laissait le compte "valide" mais affiché comme désactivé. Si c'est
+  // le cas ici, on corrige simplement l'oubli plutôt que de recréer un
+  // deuxième compte Direction.
+  const casse = await pool.query(
+    `SELECT id, pseudo FROM membres WHERE statut = 'valide' AND actif = 0 AND grade = ANY($1) LIMIT 1`,
+    [GRADES_DIRECTION]
+  );
+  if (casse.rows.length) {
+    const { id, pseudo } = casse.rows[0];
+    await pool.query(`UPDATE membres SET actif = 1 WHERE id = $1`, [id]);
+    console.log(`Compte Direction "${pseudo}" (id ${id}) réactivé (oubli corrigé de l'amorçage précédent).`);
+    return;
+  }
 
   const attente = await pool.query(
     `SELECT id, pseudo FROM membres WHERE statut = 'attente' ORDER BY id ASC LIMIT 1`
@@ -55,7 +71,7 @@ async function amorcerPremierAdmin() {
   if (!attente.rows.length) return;
 
   const { id, pseudo } = attente.rows[0];
-  await pool.query(`UPDATE membres SET statut = 'valide', grade = 'Patron' WHERE id = $1`, [id]);
+  await pool.query(`UPDATE membres SET statut = 'valide', actif = 1, grade = 'Patron' WHERE id = $1`, [id]);
   console.log(`Premier compte Direction créé automatiquement : "${pseudo}" (id ${id}), grade "Patron".`);
 }
 
