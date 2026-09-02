@@ -35,6 +35,30 @@ async function appliquerSchema() {
   console.log("Schéma PostgreSQL vérifié/appliqué avec succès.");
 }
 
+// Amorçage du tout premier compte Direction : si AUCUN compte Direction
+// "valide" n'existe encore dans la base (cas d'un site tout juste installé),
+// la toute première demande de connexion en attente est automatiquement
+// validée et promue "Patron". Dès qu'un compte Direction existe, cette
+// fonction ne fait plus jamais rien — elle ne sert qu'à débloquer le tout
+// premier démarrage, sans quoi personne ne pourrait jamais rien valider.
+const GRADES_DIRECTION = ["Développeur web", "Patron", "Co Patron", "Manager", "DRH", "Secrétaire de Direction"];
+async function amorcerPremierAdmin() {
+  const admin = await pool.query(
+    `SELECT id FROM membres WHERE statut = 'valide' AND grade = ANY($1) LIMIT 1`,
+    [GRADES_DIRECTION]
+  );
+  if (admin.rows.length) return;
+
+  const attente = await pool.query(
+    `SELECT id, pseudo FROM membres WHERE statut = 'attente' ORDER BY id ASC LIMIT 1`
+  );
+  if (!attente.rows.length) return;
+
+  const { id, pseudo } = attente.rows[0];
+  await pool.query(`UPDATE membres SET statut = 'valide', grade = 'Patron' WHERE id = $1`, [id]);
+  console.log(`Premier compte Direction créé automatiquement : "${pseudo}" (id ${id}), grade "Patron".`);
+}
+
 function construireEnv() {
   return {
     DB: adaptateurDB,
@@ -94,6 +118,7 @@ app.use((req, res) => {
 });
 
 appliquerSchema()
+  .then(() => amorcerPremierAdmin())
   .catch((e) => {
     console.error("Impossible d'appliquer le schéma PostgreSQL au démarrage :", e);
   })
