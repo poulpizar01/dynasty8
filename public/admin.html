@@ -205,7 +205,10 @@
             <h3 class="comptes-sous-titre" style="margin:0;">Tablettes</h3>
             <p class="champ-aide" style="margin:4px 0 0;">Collez un relevé (facturier, runs, ventes...) copié depuis un tableur ou un bot Discord, pour obtenir un tableau propre et lisible.</p>
           </div>
-          <button type="button" class="btn btn-or" id="bouton-importer-tablette">📋 Importer</button>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-danger cache" id="bouton-reinitialiser-tablette">🗑️ Réinitialiser</button>
+            <button type="button" class="btn btn-or" id="bouton-importer-tablette">📋 Importer</button>
+          </div>
         </div>
         <div id="zone-message-tablette"></div>
         <div id="compta-tablette-vide" class="etat-vide">

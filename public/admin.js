@@ -1184,13 +1184,16 @@ async function chargerTablette() {
     const reponse = await appelAPI("/api/comptabilite/tablettes");
     const vide = document.getElementById("compta-tablette-vide");
     const resultat = document.getElementById("compta-tablette-resultat");
+    const boutonReset = document.getElementById("bouton-reinitialiser-tablette");
     if (!reponse.import) {
       vide.classList.remove("cache");
       resultat.classList.add("cache");
+      boutonReset.classList.add("cache");
       return;
     }
     vide.classList.add("cache");
     resultat.classList.remove("cache");
+    boutonReset.classList.remove("cache");
     document.getElementById("compta-tablette-info").textContent =
       `Importé par ${reponse.import.importe_par || "un membre"} le ${formaterDateHeureCompta(reponse.import.importe_le)}.`;
     document.getElementById("table-tablette").innerHTML = rendreTableCompta(reponse.import.colonnes, reponse.import.lignes);
@@ -1246,6 +1249,20 @@ document.getElementById("bouton-enregistrer-import-tablette").addEventListener("
     chargerTablette();
   } catch (e) {
     afficherMessage("zone-message-modale-import", "Impossible d'enregistrer : " + e.message, "erreur");
+  }
+});
+
+document.getElementById("bouton-reinitialiser-tablette").addEventListener("click", async () => {
+  const ok = await confirmerAction(
+    "Le tableau affiché dans « Tablettes » sera vidé. Rien n'est perdu : cet ancien relevé reste conservé côté serveur, seul l'affichage redevient vide. Vous pourrez importer un nouveau relevé dès que vous le souhaitez.",
+    "Réinitialiser la feuille « Tablettes » ?"
+  );
+  if (!ok) return;
+  try {
+    await appelAPI("/api/comptabilite/tablettes", { method: "DELETE" });
+    chargerTablette();
+  } catch (e) {
+    afficherMessage("zone-message-tablette", "Impossible de réinitialiser : " + e.message, "erreur");
   }
 });
 

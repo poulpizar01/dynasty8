@@ -705,14 +705,31 @@ async function comptaDernier(env, s, type) {
      WHERE ci.type = ?1 ORDER BY ci.importe_le DESC, ci.id DESC LIMIT 1`
   ).bind(type).first();
   if (!r) return json({ import: null });
+  const colonnes = JSON.parse(r.colonnes);
+  // Une "réinitialisation" (comptaReset) enregistre un import sans colonnes :
+  // on le traite exactement comme "aucune donnée", ce qui réutilise tel quel
+  // l'état vide déjà prévu côté interface — aucun code d'affichage en plus.
+  if (!colonnes.length) return json({ import: null });
   return json({
     import: {
-      colonnes: JSON.parse(r.colonnes),
+      colonnes,
       lignes: JSON.parse(r.lignes),
       importe_le: r.importe_le,
       importe_par: r.importe_par_pseudo || null,
     },
   });
+}
+
+// Réinitialiser ne supprime rien : on enregistre un nouvel import "vide" (comme
+// un nouvel import normal, mais sans colonnes). L'historique complet reste donc
+// dans la base pour la Direction — utile si quelqu'un se trompe en réinitialisant,
+// ou pour retrouver un ancien relevé plus tard — seul l'onglet redevient vide.
+async function comptaReset(env, s, type) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  await env.DB.prepare(
+    `INSERT INTO comptabilite_imports (type, colonnes, lignes, importe_par) VALUES (?1, '[]', '[]', ?2)`
+  ).bind(type, s.id).run();
+  return json({ ok: true });
 }
 
 async function comptabilite(request, url, env) {
@@ -723,6 +740,7 @@ async function comptabilite(request, url, env) {
   if (!COMPTA_TYPES.includes(type)) return json({ erreur: "Adresse inconnue." }, 404);
   if (request.method === "GET") return comptaDernier(env, s, type);
   if (request.method === "POST") return comptaImporter(request, env, s, type);
+  if (request.method === "DELETE") return comptaReset(env, s, type);
   return json({ erreur: "Méthode non prise en charge." }, 405);
 }
 
