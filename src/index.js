@@ -21,6 +21,10 @@
 // manuelle.
 // ============================================================================
 
+import { enc, b64url, unb64url } from "./util-crypto.js";
+import { obtenirDonneesStats, statutSynchronisation } from "./stats-sheets.js";
+import * as statsCalc from "./stats-calc.js";
+
 const COOKIE = "d8_session";
 const COOKIE_ETAT_OAUTH = "d8_oauth_state"; // protection anti-CSRF pendant l'aller-retour vers Discord
 const DUREE = 60 * 60 * 12; // 12 heures, en secondes
@@ -69,24 +73,9 @@ const NIVEAU_PAR_GRADE = Object.fromEntries(GRADES.map((g) => [g.nom, g.niveau])
 // ensuite via le menu déroulant de la ligne, dans le tableau des comptes.
 const GRADE_PAR_DEFAUT = "Stagiaire";
 
-const enc = new TextEncoder();
 const maintenant = () => Math.floor(Date.now() / 1000);
 
-// ---- outils bas niveau (encodage, signature, cookies) ---------------------
-
-function b64url(bytes) {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function unb64url(str) {
-  const s = str.replace(/-/g, "+").replace(/_/g, "/");
-  const bin = atob(s + "=".repeat((4 - (s.length % 4)) % 4));
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
+// ---- outils bas niveau (signature, cookies) --------------------------------
 
 function egal(a, b) {
   // Comparaison "à temps constant" : évite de révéler des indices via le
@@ -184,6 +173,7 @@ export default {
       if (chemin === "/api/agenda") return await agenda(request, url, env);
       if (chemin.startsWith("/api/chat/")) return await chat(request, url, env);
       if (chemin.startsWith("/api/comptabilite/")) return await comptabilite(request, url, env);
+      if (chemin.startsWith("/api/stats/")) return await statistiques(request, url, env);
       return json({ erreur: "Adresse inconnue." }, 404);
     } catch (e) {
       return json({ erreur: "Erreur interne", detail: String((e && e.message) || e) }, 500);
@@ -369,6 +359,24 @@ function estDirection(s) {
 function peutGererAnnonces(s) {
   const n = niveauAcces(s);
   return n === "direction" || n === "commercial";
+}
+
+// Permissions de la catégorie "Statistiques" — trois fonctions nommées plutôt
+// que des tests de grade éparpillés dans le code, exactement pour pouvoir les
+// remplacer facilement par un vrai système de permissions le jour où la
+// Direction aura arbitré le périmètre exact des rôles (cahier des charges §6,
+// qui le laisse explicitement "à arbitrer plus tard"). Pour l'instant :
+//   stats.voir_soi     -> n'importe quel compte connecté (ses propres chiffres)
+//   stats.voir_tous     -> Direction uniquement (récap de toute l'agence)
+//   stats.administrer   -> Direction uniquement (barèmes, référentiel, sync manuelle)
+function statsPeutVoirSoi(s) {
+  return !!s;
+}
+function statsPeutVoirTous(s) {
+  return estDirection(s);
+}
+function statsPeutAdministrer(s) {
+  return estDirection(s);
 }
 
 async function moi(request, env) {
@@ -742,6 +750,100 @@ async function comptabilite(request, url, env) {
   if (request.method === "POST") return comptaImporter(request, env, s, type);
   if (request.method === "DELETE") return comptaReset(env, s, type);
   return json({ erreur: "Méthode non prise en charge." }, 405);
+}
+
+// ---- Statistiques (lecture du Google Sheet "Logs Vente") -------------------
+// Cette première tranche branche uniquement /semaines, /anomalies et /sync :
+// de quoi vérifier bout en bout que la connexion au Sheet, le cache et le
+// moteur de calcul (src/stats-calc.js, src/stats-sheets.js) fonctionnent
+// vraiment sur les données réelles, AVANT de construire les écrans "Mes
+// statistiques" et "Récap direction" par-dessus. /agent/:id et /recap
+// arriveront dans une prochaine étape, une fois cette base vérifiée avec Paul.
+
+async function statsSemaines(env, s) {
+  if (!statsPeutVoirSoi(s)) return json({ erreur: "Non connecté." }, 401);
+  let donnees;
+  try {
+    donnees = await obtenirDonneesStats(env, {});
+  } catch (e) {
+    return json({ erreur: String((e && e.message) || e) }, 502);
+  }
+  const compteurs = new Map();
+  donnees.lignes.forEach((l) => {
+    if (!l.semaine) return; // absente en colonne P -> exclue de tous les récaps (§7)
+    compteurs.set(l.semaine, (compteurs.get(l.semaine) || 0) + 1);
+  });
+  const semaines = Array.from(compteurs.entries())
+    .map(([code, lignes]) => {
+      const analyse = statsCalc.analyserCodeSemaine(code);
+      let debut = null;
+      let fin = null;
+      if (analyse) {
+        const lundi = statsCalc.lundiDeSemaineISO(analyse.anneeIso, analyse.numero);
+        const dimanche = new Date(lundi);
+        dimanche.setUTCDate(lundi.getUTCDate() + 6);
+        debut = lundi.toISOString().slice(0, 10);
+        fin = dimanche.toISOString().slice(0, 10);
+      }
+      return { code, debut, fin, lignes, ordre: analyse ? analyse.anneeIso * 100 + analyse.numero : -1 };
+    })
+    .sort((a, b) => b.ordre - a.ordre)
+    .map(({ ordre, ...reste }) => reste);
+  return json({
+    semaines,
+    recupereLe: donnees.recupereLe,
+    synchronisationIndisponible: !!donnees.synchronisationIndisponible,
+  });
+}
+
+async function statsAnomalies(env, url, s) {
+  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  let donnees;
+  try {
+    donnees = await obtenirDonneesStats(env, {});
+  } catch (e) {
+    return json({ erreur: String((e && e.message) || e) }, 502);
+  }
+  const semaine = url.searchParams.get("semaine");
+  const anomalies = semaine ? donnees.anomalies.filter((a) => a.semaine === semaine) : donnees.anomalies;
+  return json({
+    anomalies,
+    recupereLe: donnees.recupereLe,
+    synchronisationIndisponible: !!donnees.synchronisationIndisponible,
+  });
+}
+
+async function statsSync(env, s) {
+  if (!statsPeutVoirTous(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  try {
+    const donnees = await obtenirDonneesStats(env, { forcer: true, membreId: s.id });
+    return json({
+      ok: true,
+      nbLignes: donnees.lignes.length,
+      nbAnomalies: donnees.anomalies.length,
+      recupereLe: donnees.recupereLe,
+      synchronisationIndisponible: !!donnees.synchronisationIndisponible,
+    });
+  } catch (e) {
+    return json({ erreur: String((e && e.message) || e) }, 502);
+  }
+}
+
+async function statsStatut(env, s) {
+  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  return json(await statutSynchronisation(env));
+}
+
+async function statistiques(request, url, env) {
+  const s = await session(request, env);
+  if (!s) return json({ erreur: "Non connecté." }, 401);
+  const route = url.pathname.slice("/api/stats".length); // "/semaines" | "/anomalies" | "/sync" | "/statut"
+  const m = request.method;
+  if (route === "/semaines" && m === "GET") return statsSemaines(env, s);
+  if (route === "/anomalies" && m === "GET") return statsAnomalies(env, url, s);
+  if (route === "/sync" && m === "POST") return statsSync(env, s);
+  if (route === "/statut" && m === "GET") return statsStatut(env, s);
+  return json({ erreur: "Adresse inconnue." }, 404);
 }
 
 // ---- équipe (page publique /equipe.html) ----------------------------------
