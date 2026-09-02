@@ -775,9 +775,16 @@ function caBrutDepuisTablette(colonnes, lignes) {
     const n = parseFloat(String(v == null ? "" : v).replace(/[^\d,.-]/g, "").replace(",", "."));
     return isFinite(n) ? n : 0;
   };
-  const ligneTotal = lignes.find((l) => String(l[0] || "").trim().toLowerCase() === "total");
-  if (ligneTotal) return Math.round(versNombre(ligneTotal[indexTotal]));
-  return Math.round(lignes.reduce((somme, l) => somme + versNombre(l[indexTotal]), 0));
+  // On additionne toujours nous-mêmes chaque ligne d'employé — jamais la
+  // ligne récap "TOTAL" du bas (pour ne pas la compter en double), et jamais
+  // en faisant confiance au total déjà calculé par la tablette/le bot : si
+  // une ligne manque ou qu'il y en a une de trop par rapport à ce total-là,
+  // notre calcul reste juste puisqu'il repart des lignes individuelles.
+  return Math.round(
+    lignes
+      .filter((l) => String(l[0] || "").trim().toLowerCase() !== "total")
+      .reduce((somme, l) => somme + versNombre(l[indexTotal]), 0)
+  );
 }
 
 // Le barème est fixé par la DOT (identique pour toutes les entreprises du
