@@ -35,6 +35,27 @@ async function appliquerSchema() {
   console.log("Schéma PostgreSQL vérifié/appliqué avec succès.");
 }
 
+// Import UNIQUE des vraies données exportées de Cloudflare D1 (membres, biens,
+// historique des ventes, réglages de rémunération...). Protégé par la table
+// migrations_appliquees : ce fichier ne sera jamais rejoué une deuxième fois,
+// même après un redémarrage — indispensable puisqu'il commence par VIDER les
+// tables avant de tout réinsérer.
+async function importerDonneesReelles() {
+  const NOM_MIGRATION = "import_donnees_cloudflare_20260902";
+  const chemin = path.join(__dirname, "donnees-cloudflare.postgres.sql");
+  if (!fs.existsSync(chemin)) return; // fichier déjà supprimé après un import réussi ailleurs
+
+  const deja = await pool.query(
+    "SELECT 1 FROM migrations_appliquees WHERE nom = $1",
+    [NOM_MIGRATION]
+  );
+  if (deja.rows.length) return;
+
+  const sql = fs.readFileSync(chemin, "utf8");
+  await pool.query(sql); // le fichier contient déjà son propre BEGIN ... COMMIT
+  console.log("Données réelles importées depuis Cloudflare D1 (import unique).");
+}
+
 // Amorçage du tout premier compte Direction : si AUCUN compte Direction
 // "valide" n'existe encore dans la base (cas d'un site tout juste installé),
 // la toute première demande de connexion en attente est automatiquement
@@ -134,6 +155,7 @@ app.use((req, res) => {
 });
 
 appliquerSchema()
+  .then(() => importerDonneesReelles())
   .then(() => amorcerPremierAdmin())
   .catch((e) => {
     console.error("Impossible d'appliquer le schéma PostgreSQL au démarrage :", e);

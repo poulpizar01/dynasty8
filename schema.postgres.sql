@@ -7,6 +7,14 @@
 --   Les colonnes 0/1 (booléens "à la SQLite") restent en INTEGER, volontairement,
 --   pour ne pas devoir toucher au code JS qui les compare à 0/1.
 
+-- Sert uniquement à noter "telle réparation ponctuelle a déjà été appliquée",
+-- pour ne jamais la rejouer deux fois par erreur (ex : import unique des
+-- données réelles depuis Cloudflare).
+CREATE TABLE IF NOT EXISTS migrations_appliquees (
+  nom TEXT PRIMARY KEY,
+  applique_le TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS membres (
   id SERIAL PRIMARY KEY,
   pseudo TEXT NOT NULL,

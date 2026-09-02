@@ -2,3 +2,6 @@ node_modules/
 .wrangler/
 .dev.vars
 *.log
+
+# Export brut intermédiaire (SQLite) — le fichier utile est donnees-cloudflare.postgres.sql
+export-cloudflare.sql
