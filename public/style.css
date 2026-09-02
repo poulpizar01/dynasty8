@@ -2250,6 +2250,21 @@ section.section.serre {
 .d8-select-enveloppe select {
   appearance: none; -webkit-appearance: none; -moz-appearance: none;
   padding-right: 34px; cursor: pointer;
+  /* Habillage de base (fond sombre, bordure dorée) pour tout <select> passé à
+     ameliorerSelect() : les selects déjà placés dans un .champ ou un
+     .annonces-outils récupèrent leur propre style plus précis (déclaré plus
+     haut dans ce fichier, donc écrasé ici à égalité de spécificité) — mais un
+     select "tout seul" comme #select-semaine-dot ou #select-semaine-recap
+     n'avait autrement AUCUN habillage de couleur : seule la petite flèche
+     native disparaissait (appearance: none), le reste restait blanc/natif. */
+  width: 100%; min-height: 44px; padding-left: 14px;
+  border-radius: var(--radius-sm); border: 1px solid rgba(201, 165, 92, 0.28);
+  background: rgba(6, 12, 26, 0.55); color: var(--text);
+  font-size: 0.9rem; font-family: inherit;
+  transition: border-color var(--d8-t), box-shadow var(--d8-t);
+}
+.d8-select-enveloppe select:focus {
+  outline: none; border-color: var(--d8-gold-400); box-shadow: 0 0 0 3px rgba(201, 165, 92, 0.15);
 }
 
 .d8-select-flottant {
