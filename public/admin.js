@@ -198,6 +198,10 @@ async function chargerStatistiques() {
     select.value = reponse.semaines.some((s) => s.code === semaineChoisieAvant)
       ? semaineChoisieAvant
       : reponse.semaines[0].code;
+    // Même habillage que le menu déroulant de semaine dans DOT (voir plus
+    // bas dans ce fichier) — sinon ce menu-ci garde le rendu natif du
+    // navigateur, qui détonne sur le thème sombre du site.
+    ameliorerSelect(select);
     chargerRecap(select.value);
   } catch (e) {
     afficherMessage("zone-message-statistiques", "Impossible de charger les statistiques : " + e.message, "erreur");
@@ -1355,6 +1359,10 @@ async function chargerDot() {
       const reponse = await appelAPI("/api/stats/semaines");
       select.innerHTML = (reponse.semaines || []).map((s) => `<option value="${s.code}">${s.code}</option>`).join("");
       select.dataset.rempli = "1";
+      // Sans ça, ce menu déroulant garde le rendu natif du navigateur (fond
+      // blanc, police système) qui détonne sur le thème sombre du site — voir
+      // ameliorerSelect dans layout.js, déjà utilisé pour les autres menus.
+      ameliorerSelect(select);
     } catch (e) { /* la liste des semaines n'a pas pu charger — le résumé s'affichera quand même sans les primes */ }
   }
   await Promise.all([chargerDotResume(), chargerDotEcritures(), chargerDotSalaries()]);
