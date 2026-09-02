@@ -721,7 +721,10 @@ async function comptaDernier(env, s, type) {
   return json({
     import: {
       colonnes,
-      lignes: JSON.parse(r.lignes),
+      // corrigerLigneTotaleDecalee tourne ici (à la LECTURE) plutôt que
+      // seulement à l'import : ça corrige aussi les relevés déjà importés
+      // avant ce correctif, sans obliger à recoller le tableau.
+      lignes: corrigerLigneTotaleDecalee(colonnes, JSON.parse(r.lignes)),
       importe_le: r.importe_le,
       importe_par: r.importe_par_pseudo || null,
     },
