@@ -82,6 +82,9 @@
         <span class="carte-membre-poste" id="profil-membre-poste"></span>
       </div>
     </div>
+    <div class="carte-membre-specialite cache" id="profil-membre-specialite-bloc">
+      <span>Spécialité</span><strong id="profil-membre-specialite"></strong>
+    </div>
     <p class="profil-membre-bio" id="profil-membre-bio"></p>
   </div>
 </div>
@@ -100,20 +103,25 @@
 
   let EQUIPE = [];
 
+  // Portraits uniformisés : que la personne ait une vraie photo ou non, le cadre
+  // garde exactement le même ratio (3/4, voir style.css) et la carte n'affiche
+  // jamais deux indices redondants à la fois (avant : le badge doré des
+  // initiales flottait sur la photo même quand elle existait déjà). Sans photo,
+  // les initiales occupent proprement tout le cadre plutôt qu'un simple 👤.
   function carteMembreHTML(m) {
-    const photo = m.photo
+    const aPhoto = !!m.photo;
+    const visuel = aPhoto
       ? `<img src="${echapper(m.photo)}" alt="${echapper(m.pseudo)}" loading="lazy" decoding="async">`
-      : `<span aria-hidden="true">👤</span>`;
+      : `<span class="carte-membre-initiales" aria-hidden="true">${initiales(m.pseudo)}</span>`;
     const specialite = m.specialite
       ? `<div class="carte-membre-specialite"><span>Spécialité</span><strong>${echapper(m.specialite)}</strong></div>`
       : "";
     return `
       <article class="carte-membre">
         <div class="carte-membre-photo">
-          <div class="carte-membre-photo-cadre">
-            ${photo}
+          <div class="carte-membre-photo-cadre${aPhoto ? "" : " sans-photo"}">
+            ${visuel}
           </div>
-          <span class="carte-membre-avatar">${initiales(m.pseudo)}</span>
         </div>
         <div class="carte-membre-corps">
           <h3>${echapper(m.pseudo)}</h3>
@@ -133,6 +141,8 @@
     document.getElementById("profil-membre-photo").innerHTML = m.photo
       ? `<img src="${echapper(m.photo)}" alt="${echapper(m.pseudo)}">`
       : initiales(m.pseudo);
+    document.getElementById("profil-membre-specialite-bloc").classList.toggle("cache", !m.specialite);
+    document.getElementById("profil-membre-specialite").textContent = m.specialite || "";
     document.getElementById("profil-membre-bio").textContent = m.bio
       ? m.bio
       : "Cet agent n'a pas encore rédigé de biographie.";

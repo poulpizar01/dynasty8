@@ -6,24 +6,31 @@
 // Adresse d'invitation Discord du serveur — à remplacer par la vraie une fois disponible.
 const LIEN_DISCORD = "https://discord.com/invite/zCsPrrR3uw";
 
+// Menu volontairement resserré à 6 entrées (contre 9 avant) pour rester lisible
+// d'un coup d'œil : "Catalogue" regroupe Intérieurs/Garages/Exclusifs, "Agence"
+// regroupe Services/Équipe/FAQ. Aucune page n'est supprimée, seulement
+// regroupée sous un sous-menu — `clesEnfants` liste les `cle` de pages qui
+// doivent garder ce lien parent surligné (voir injecterEntete ci-dessous).
 const LIENS_NAV = [
   { href: "/", texte: "Accueil", cle: "accueil" },
-  { href: "/interieurs.html", texte: "Les Intérieurs", cle: "interieurs", sousMenu: [
-      { href: "/habitation.html?meuble=1", texte: "Intérieurs Meublés" },
-      { href: "/habitation.html?meuble=0", texte: "Intérieurs Non Meublés" },
+  { href: "/interieurs.html", texte: "Catalogue", cle: "catalogue", clesEnfants: ["interieurs", "garages", "exclusifs"], sousMenu: [
+      { href: "/habitation.html?meuble=1", texte: "Intérieurs meublés" },
+      { href: "/habitation.html?meuble=0", texte: "Intérieurs non meublés" },
+      { href: "/garages.html", texte: "Garages" },
+      { href: "/exclusifs.html", texte: "Exclusifs" },
     ] },
-  { href: "/garages.html", texte: "Garages", cle: "garages" },
   { href: "/coherences.html", texte: "Cohérences", cle: "coherences", sousMenu: [
       { href: "/coherence.html?zone=Habitation", texte: "Cohérence Habitation" },
       { href: "/coherence.html?zone=Garage", texte: "Cohérence Garage" },
       { href: "/coherence.html?zone=Cayo+Perico", texte: "Cohérence Cayo Perico" },
       { href: "/coherence.html?zone=Roxwood", texte: "Cohérence Roxwood" },
     ] },
-  { href: "/exclusifs.html", texte: "Exclusifs", cle: "exclusifs" },
-  { href: "/vip.html", texte: "VIP", cle: "vip" },
-  { href: "/services.html", texte: "Services", cle: "services" },
-  { href: "/equipe.html", texte: "Équipe", cle: "equipe" },
-  { href: "/faq.html", texte: "FAQ", cle: "faq" },
+  { href: "/vip.html", texte: "VIP PLUS", cle: "vip" },
+  { href: "/services.html", texte: "Agence", cle: "agence", clesEnfants: ["services", "equipe", "faq"], sousMenu: [
+      { href: "/services.html", texte: "Nos services" },
+      { href: "/equipe.html", texte: "Notre équipe" },
+      { href: "/faq.html", texte: "FAQ" },
+    ] },
   { href: LIEN_DISCORD, texte: "Nous contacter", cle: "contact", externe: true },
 ];
 
@@ -46,16 +53,19 @@ function injecterEntete(cleActive) {
   const monte = document.getElementById("site-entete");
   if (!monte) return;
   const liens = LIENS_NAV.map((l) => {
+    // Un lien qui regroupe plusieurs pages (ex. "Catalogue") reste surligné
+    // tant qu'on est sur l'une des pages qu'il regroupe, pas seulement la sienne.
+    const actif = l.cle === cleActive || (l.clesEnfants && l.clesEnfants.includes(cleActive));
     if (l.sousMenu) {
       const sousLiens = l.sousMenu.map((s) => `<a href="${s.href}">${s.texte}</a>`).join("");
       return `
         <div class="nav-avec-sous-menu">
-          <a href="${l.href}" class="nav-lien-principal" ${l.cle === cleActive ? 'aria-current="page"' : ""}>${l.texte} <span class="nav-chevron" aria-hidden="true">⌄</span></a>
+          <a href="${l.href}" class="nav-lien-principal" ${actif ? 'aria-current="page"' : ""}>${l.texte} <span class="nav-chevron" aria-hidden="true">⌄</span></a>
           <div class="nav-sous-menu">${sousLiens}</div>
         </div>`;
     }
     const attrsExterne = l.externe ? 'target="_blank" rel="noopener"' : "";
-    return `<a href="${l.href}" ${attrsExterne} ${l.cle === cleActive ? 'aria-current="page"' : ""}>${l.texte}</a>`;
+    return `<a href="${l.href}" ${attrsExterne} ${actif ? 'aria-current="page"' : ""}>${l.texte}</a>`;
   }).join("");
   monte.innerHTML = `
     <div class="entete-barre">

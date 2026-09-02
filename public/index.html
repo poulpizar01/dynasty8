@@ -56,6 +56,48 @@
   </div>
 </section>
 
+<section class="section" style="padding-top: clamp(40px, 6vw, 64px);">
+  <div class="conteneur">
+    <div class="section-entete">
+      <span class="etiquette">Accès rapide</span>
+      <h2>Tout le catalogue, en un clic</h2>
+      <p>Cinq portes d'entrée vers l'ensemble de nos annonces et avantages.</p>
+    </div>
+    <div class="grille-hub grille-hub--5">
+      <a class="carte-hub" href="/interieurs.html">
+        <div class="icone">🏠</div>
+        <h3>Habitations</h3>
+        <p>Appartements et villas, meublés ou non, dans tout Los Santos.</p>
+        <span class="carte-hub-fleche">Voir le catalogue →</span>
+      </a>
+      <a class="carte-hub" href="/garages.html">
+        <div class="icone">🚗</div>
+        <h3>Garages</h3>
+        <p>Places de stationnement et de stockage pour vos véhicules.</p>
+        <span class="carte-hub-fleche">Voir le catalogue →</span>
+      </a>
+      <a class="carte-hub" href="/exclusifs.html">
+        <div class="icone">💎</div>
+        <h3>Exclusifs</h3>
+        <p>Notre sélection de biens d'exception, pour une clientèle exigeante.</p>
+        <span class="carte-hub-fleche">Découvrir →</span>
+      </a>
+      <a class="carte-hub" href="/coherences.html">
+        <div class="icone">🧭</div>
+        <h3>Cohérences</h3>
+        <p>Les zones de jeu et règles RP à connaître avant de choisir un bien.</p>
+        <span class="carte-hub-fleche">Consulter →</span>
+      </a>
+      <a class="carte-hub" href="/vip.html">
+        <div class="icone">⭐</div>
+        <h3>VIP PLUS</h3>
+        <p>Le statut VIP PLUS officiel de FlashbackFA et ses avantages.</p>
+        <span class="carte-hub-fleche">En savoir plus →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
 <section class="section">
   <div class="conteneur">
     <div class="section-entete">
@@ -103,11 +145,11 @@
       <p>Une sélection de biens mis en avant par nos agents cette semaine.</p>
     </div>
 
-    <div class="coeur-filtres" id="coeur-filtres">
-      <button type="button" class="coeur-filtre actif" data-filtre="tous">♥ Tous les coups de cœur</button>
-      <button type="button" class="coeur-filtre" data-filtre="vente-location">🏷️ Vente &amp; Location</button>
-      <button type="button" class="coeur-filtre" data-filtre="garage">🚗 Garages</button>
-      <button type="button" class="coeur-filtre" data-filtre="habitation">🏠 Habitations</button>
+    <div class="coeur-filtres" id="coeur-filtres" role="group" aria-label="Filtrer les coups de cœur">
+      <button type="button" class="coeur-filtre actif" data-filtre="tous" aria-pressed="true">♥ Tous les coups de cœur</button>
+      <button type="button" class="coeur-filtre" data-filtre="vente-location" aria-pressed="false">🏷️ Vente &amp; Location</button>
+      <button type="button" class="coeur-filtre" data-filtre="garage" aria-pressed="false">🚗 Garages</button>
+      <button type="button" class="coeur-filtre" data-filtre="habitation" aria-pressed="false">🏠 Habitations</button>
     </div>
 
     <div class="coeur-rangee">
@@ -225,7 +267,11 @@
   document.querySelectorAll(".coeur-filtre").forEach((btn) => {
     btn.addEventListener("click", () => {
       COEUR_FILTRE = btn.dataset.filtre;
-      document.querySelectorAll(".coeur-filtre").forEach((b) => b.classList.toggle("actif", b === btn));
+      document.querySelectorAll(".coeur-filtre").forEach((b) => {
+        const actif = b === btn;
+        b.classList.toggle("actif", actif);
+        b.setAttribute("aria-pressed", actif ? "true" : "false");
+      });
       rendreCoeur();
     });
   });

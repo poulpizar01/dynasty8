@@ -74,7 +74,7 @@ function carteBienHTML(bien) {
   return `
     <a class="carte-bien" href="/bien.html?id=${bien.id}">
       <div class="visuel">
-        ${bien.vendu ? '<span class="badge-coeur badge-vendu">Vendu</span>' : (bien.coup_de_coeur ? '<span class="badge-coeur">Coup de cœur</span>' : "")}
+        ${bien.coup_de_coeur ? '<span class="badge-coeur">Coup de cœur</span>' : ""}
         <span class="badge-transaction${classeBadgeTransaction(bien)}">${etiquetteTransaction(bien)}</span>
         ${badgesSecondairesHTML(bien)}
         ${visuel}
@@ -105,7 +105,7 @@ function carteCoeurHTML(bien) {
   return `
     <a class="carte-bien" href="/bien.html?id=${bien.id}">
       <div class="visuel">
-        ${bien.vendu ? '<span class="badge-coeur badge-vendu">Vendu</span>' : '<span class="badge-coeur">♥ Coup de cœur</span>'}
+        <span class="badge-coeur">♥ Coup de cœur</span>
         ${badgesSecondairesHTML(bien)}
         ${visuel}
       </div>
@@ -348,6 +348,7 @@ async function chargerFicheBien() {
       <div>
         <div class="fiche-visuel-principal" id="visuel-principal">
           ${images[0] ? `<img src="${echapper(images[0])}" alt="${echapper(bien.titre)}">` : `<span style="font-size:3rem;">${iconeCategorie(bien.categorie)}</span>`}
+          ${images.length > 1 ? `<span class="fiche-visuel-compteur" id="visuel-compteur">1 / ${images.length}</span>` : ""}
         </div>
         ${images.length > 1 ? `<div class="miniatures">${images
           .map(
@@ -355,15 +356,15 @@ async function chargerFicheBien() {
               `<button data-i="${i}" class="${i === 0 ? "actif" : ""}">${u ? `<img src="${echapper(u)}">` : ""}</button>`
           )
           .join("")}</div>` : ""}
-        ${bien.description
+        ${bien.description && texteSansMarquage(bien.description).trim()
           ? `<div class="fiche-description-vitrine">${analyserDescription(bien.description)}</div>`
-          : `<div class="fiche-description-vitrine vide">Aucune description fournie pour cette annonce.</div>`}
+          : ""}
       </div>
       <div class="fiche-fiche">
         <span class="zone-tag">${echapper(bien.sous_categorie || ETIQUETTES_CATEGORIE[bien.categorie] || "")}${bien.coup_de_coeur ? " · Coup de cœur" : ""}${bien.standing ? " · Bien d'exception" : ""}</span>
         <h1>${echapper(bien.titre)}</h1>
         ${prixFicheHTML(bien)}
-        ${bien.vendu ? '<p class="champ-aide" style="color:var(--success);font-weight:600;">Ce bien a été vendu.</p>' : (!bien.disponible ? '<p class="champ-aide" style="color:var(--danger);font-weight:600;">Ce bien n’est plus disponible.</p>' : "")}
+        ${!bien.disponible ? '<p class="champ-aide" style="color:var(--danger);font-weight:600;">Ce bien n’est plus disponible.</p>' : ""}
         <div class="fiche-carac">
           <div><strong>${etiquetteTransaction(bien)}</strong>Transaction</div>
           <div><strong>${ETIQUETTES_CATEGORIE[bien.categorie] || ""}</strong>Catégorie</div>
@@ -389,10 +390,12 @@ async function chargerFicheBien() {
       btn.addEventListener("click", () => {
         miniatures.forEach((b) => b.classList.remove("actif"));
         btn.classList.add("actif");
-        const url = images[Number(btn.dataset.i)];
-        document.getElementById("visuel-principal").innerHTML = url
+        const i = Number(btn.dataset.i);
+        const url = images[i];
+        const compteur = images.length > 1 ? `<span class="fiche-visuel-compteur">${i + 1} / ${images.length}</span>` : "";
+        document.getElementById("visuel-principal").innerHTML = (url
           ? `<img src="${echapper(url)}" alt="${echapper(bien.titre)}">`
-          : `<span style="font-size:3rem;">${iconeCategorie(bien.categorie)}</span>`;
+          : `<span style="font-size:3rem;">${iconeCategorie(bien.categorie)}</span>`) + compteur;
       });
     });
   } catch (e) {

@@ -679,9 +679,14 @@ label, .eyebrow-label {
   content: "";
   position: absolute;
   inset: 0;
+  /* Dégradé fortement renforcé (§ lisibilité) : la zone où vit le texte (gauche)
+     reste quasi opaque jusqu'à 60% de la largeur au lieu de 26% avant, et le
+     reste de l'image est nettement plus sombre (0.5 minimum) au lieu d'être
+     presque nue à droite — le texte et les boutons restent lisibles quelle
+     que soit la photo affichée par le diaporama. */
   background:
-    linear-gradient(100deg, var(--bg) 2%, rgba(10, 15, 34, 0.62) 26%, rgba(10, 15, 34, 0.18) 52%, rgba(10, 15, 34, 0.3) 100%),
-    linear-gradient(0deg, rgba(10, 15, 34, 0.5) 0%, transparent 16%, transparent 84%, rgba(10, 15, 34, 0.5) 100%);
+    linear-gradient(100deg, var(--bg) 4%, rgba(8, 12, 28, 0.86) 34%, rgba(8, 12, 28, 0.6) 60%, rgba(8, 12, 28, 0.5) 100%),
+    linear-gradient(0deg, rgba(8, 12, 28, 0.65) 0%, transparent 18%, transparent 82%, rgba(8, 12, 28, 0.65) 100%);
 }
 @keyframes hero-ville-derive {
   0%, 100% { transform: translateX(0) scale(1.02); }
@@ -746,9 +751,36 @@ label, .eyebrow-label {
   margin-right: 0;
 }
 
-.hero-accueil h1 { max-width: 560px; }
-.hero-accueil p.lead { max-width: 460px; }
+/* Lisibilité renforcée : en plus du dégradé sombre sur la photo (.hero-ville::after,
+   déjà bien plus fort), une ombre portée directement sur le texte garantit un
+   contraste correct même sur une zone claire de la photo (ex: façade au soleil). */
+.hero-accueil .hero-etiquette { text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9); }
+.hero-accueil h1 {
+  max-width: 560px;
+  filter: drop-shadow(0 3px 16px rgba(0, 0, 0, 0.85)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
+}
+.hero-accueil p.lead {
+  max-width: 460px;
+  color: #f2efe7;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
+}
 .hero-accueil .hero-actions { justify-content: flex-start; }
+/* Le bouton "fantôme" (fond translucide) se fond trop dans une photo claire :
+   sur le hero uniquement, on le rend plus opaque et on lui ajoute un flou
+   d'arrière-plan pour qu'il reste identifiable comme un vrai bouton, quelle
+   que soit la photo derrière lui. */
+.hero-accueil .hero-actions .btn-fantome {
+  background: rgba(10, 14, 32, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(242, 223, 168, 0.75);
+  color: #f6e9c8;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.hero-accueil .hero-actions .btn-fantome:hover {
+  background: rgba(10, 14, 32, 0.72);
+  border-color: var(--d8-gold-300);
+}
 /* Ici, contrairement aux autres pages, le bloc de stats est posé directement sur
    la photo du siège Dynasty 8 (pas sur un fond uni). Une simple ombre portée sur
    le texte ne suffit pas : par endroits la photo est presque blanche (l'enseigne
@@ -1009,7 +1041,6 @@ section.section.serre {
 }
 /* "Vendu" : gris neutre plutôt que vert — on ne veut pas laisser croire que le bien
    est encore "disponible". Pas de texte barré (moins lisible), juste une opacité réduite. */
-.carte-bien .badge-vendu { background: #4a5468; color: #eef0f6; opacity: 0.92; }
 .carte-bien .badge-transaction {
   position: absolute; top: 12px; right: 12px; z-index: 2;
   background: var(--d8-grad-red); color: #fff3ee;
@@ -1041,14 +1072,14 @@ section.section.serre {
 .carte-bien .badge-standing { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--accent-contrast); }
 
 .carte-bien .corps { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.carte-bien h3 { font-family: var(--d8-font-display); font-weight: 500; font-style: italic; font-size: 1.18rem; margin-bottom: 0; }
+.carte-bien h3 { font-family: var(--d8-font-display); font-weight: 500; font-style: italic; font-size: 1.24rem; line-height: 1.25; margin-bottom: 0; }
 .carte-bien .zone-tag { font-family: var(--d8-font-ui); font-size: 0.68rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.18em; }
 .carte-bien .description { font-size: 0.88rem; margin-bottom: 4px; flex: 1; }
 .carte-bien .pied {
   display: flex; align-items: center; justify-content: space-between;
   margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(201, 165, 92, 0.2);
 }
-.carte-bien .prix { font-family: var(--d8-font-ui); font-weight: 500; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.carte-bien .prix { font-family: var(--d8-font-ui); font-weight: 600; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
 .carte-bien .prix span:not(.prix-valeur) { font-size: 0.72rem; font-weight: 400; color: var(--text-faint); }
 
 /* Bloc prix double (Vente + Location) : grille à 2 colonnes séparées par un filet or,
@@ -1102,8 +1133,22 @@ section.section.serre {
   padding: 18px 20px; margin: 10px 0 14px;
 }
 .encart-contact-titre { font-family: var(--d8-font-ui); font-weight: 500; color: var(--gold-strong); font-size: 0.95rem; margin-bottom: 12px; }
-.encart-contact-etapes { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
-.encart-contact-etapes li { color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; }
+/* Étapes numérotées avec de vrais ronds dorés (compteur CSS) plutôt que la
+   puce "1." par défaut du navigateur — plus lisible, plus "fiche premium". */
+.encart-contact-etapes { margin: 0; padding-left: 0; list-style: none; counter-reset: etape; display: flex; flex-direction: column; gap: 10px; }
+.encart-contact-etapes li {
+  counter-increment: etape;
+  display: flex; align-items: baseline; gap: 10px;
+  color: var(--text-muted); font-size: 0.92rem; line-height: 1.5;
+}
+.encart-contact-etapes li::before {
+  content: counter(etape);
+  flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--d8-grad-gold); color: var(--or-contrast);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--d8-font-ui); font-size: 0.68rem; font-weight: 700;
+  transform: translateY(1px);
+}
 .encart-contact-etapes strong { color: var(--text); }
 
 /* ---------- encart d'information générique (ex: page /vip.html) ---------- */
@@ -1199,19 +1244,35 @@ section.section.serre {
 @media (max-width: 860px) { .fiche-bien { grid-template-columns: 1fr; } }
 
 .fiche-visuel-principal {
+  position: relative;
   aspect-ratio: 16/10; border-radius: var(--radius); overflow: hidden;
   background: linear-gradient(135deg, #1c2450, #141a3a);
   display: flex; align-items: center; justify-content: center; color: var(--text-faint);
   border: 1px solid var(--border);
 }
-.fiche-visuel-principal img { width: 100%; height: 100%; object-fit: cover; }
+.fiche-visuel-principal img { width: 100%; height: 100%; object-fit: cover; animation: fiche-visuel-entree 0.3s ease; }
+@keyframes fiche-visuel-entree { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .fiche-visuel-principal img { animation: none; } }
+/* Repère "2 / 5" en coin — utile dès qu'il y a plusieurs photos, pour savoir
+   combien il en reste sans avoir à compter les vignettes. */
+.fiche-visuel-compteur {
+  position: absolute; right: 14px; bottom: 14px; z-index: 2;
+  background: rgba(6, 9, 24, 0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(201, 165, 92, 0.35); border-radius: var(--d8-r-pill);
+  padding: 4px 12px; font-family: var(--d8-font-ui); font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.04em; color: var(--d8-gold-300); font-variant-numeric: tabular-nums;
+}
 
 .miniatures { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
 .miniatures button {
   width: 70px; height: 52px; border-radius: 8px; overflow: hidden; padding: 0;
-  border: 2px solid var(--border); background: var(--bg-card);
+  border: 2px solid var(--border); background: var(--bg-card); opacity: 0.72;
+  transition: border-color var(--d8-t), opacity var(--d8-t), transform var(--d8-t);
 }
-.miniatures button.actif { border-color: var(--gold); }
+.miniatures button:hover { opacity: 1; transform: translateY(-1px); }
+.miniatures button.actif { border-color: var(--gold); opacity: 1; box-shadow: 0 0 0 2px rgba(201, 165, 92, 0.25); }
+.miniatures button:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .miniatures button { transition: none; } }
 .miniatures img { width: 100%; height: 100%; object-fit: cover; }
 
 /* Description de l'annonce, sous les photos : présentée comme une petite
@@ -1238,16 +1299,22 @@ section.section.serre {
 }
 .fiche-description-vitrine strong { color: var(--d8-gold-300); font-weight: 600; }
 .fiche-description-vitrine em { font-style: italic; }
-.fiche-description-vitrine.vide { color: var(--text-faint); font-style: italic; font-size: 0.98rem; }
 
 .fiche-fiche { position: sticky; top: 100px; }
 .fiche-fiche h1 { font-family: var(--d8-font-display); font-weight: 500; font-style: italic; }
 .fiche-fiche p { max-width: 62ch; }
 .fiche-prix { font-family: var(--d8-font-ui); font-weight: 500; font-size: 2.1rem; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
 .fiche-prix > span:not(.prix-valeur) { font-size: 1rem; font-weight: 400; color: var(--text-faint); font-family: var(--d8-font-ui); }
-.fiche-carac { display: flex; gap: 22px; margin: 20px 0; flex-wrap: wrap; }
-.fiche-carac div { font-size: 0.85rem; color: var(--text-muted); }
-.fiche-carac strong { display: block; color: var(--d8-gold-300); font-size: 1.15rem; font-family: var(--d8-font-display); font-weight: 400; font-style: normal; }
+.fiche-carac {
+  display: flex; gap: 22px; margin: 22px 0; flex-wrap: wrap;
+  padding: 16px 20px; background: rgba(6, 12, 26, 0.35);
+  border: 1px solid var(--border); border-radius: var(--d8-r-sm);
+}
+.fiche-carac div { font-size: 0.78rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+.fiche-carac strong {
+  display: block; color: var(--d8-gold-300); font-size: 1.15rem; font-family: var(--d8-font-display);
+  font-weight: 400; font-style: normal; text-transform: none; letter-spacing: normal; margin-bottom: 2px;
+}
 
 /* ---------- carte "coup de cœur" mise en avant sur l'accueil ---------- */
 
@@ -1270,6 +1337,7 @@ section.section.serre {
 }
 .coeur-filtre:hover { border-color: var(--d8-gold-400); color: var(--text); }
 .coeur-filtre.actif { background: var(--d8-grad-gold); border-color: transparent; color: var(--or-contrast); box-shadow: var(--d8-shadow-gold); }
+.coeur-filtre:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 2px; }
 
 .coeur-rangee { position: relative; }
 .coeur-fleche {
@@ -1351,6 +1419,11 @@ section.section.serre {
 
 .grille-hub {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px;
+}
+/* Accès rapide de l'accueil (5 cartes) : sur grand écran, une seule rangée
+   bien nette plutôt que 3+2 avec la formule auto-fit générique ci-dessus. */
+@media (min-width: 1180px) {
+  .grille-hub--5 { grid-template-columns: repeat(5, 1fr); }
 }
 .carte-hub {
   display: flex; flex-direction: column; padding: 32px 28px; gap: 12px;
@@ -1467,30 +1540,27 @@ section.section.serre {
 }
 .carte-membre:hover { border-color: var(--gold); transform: translateY(-4px); box-shadow: var(--d8-shadow-card-hover); }
 
-/* .carte-membre-photo ne rogne plus rien lui-même : c'est juste une zone de
-   positionnement (hauteur définie par aspect-ratio). Le rognage (coins
-   arrondis + zoom au survol) est délégué à .carte-membre-photo-cadre, un
-   calque interne qui occupe exactement le même espace. Ainsi, le badge doré
-   des initiales — qui doit volontairement dépasser sous la photo — n'est
-   plus coupé en deux par ce rognage (c'était le bug du halo tronqué). */
+/* Portraits uniformes : même ratio 3/4 pour tout le monde, avec ou sans vraie
+   photo (voir carteMembreHTML dans equipe.html). Sans photo, les initiales
+   remplissent proprement le cadre (grand dégradé or) plutôt qu'un badge
+   flottant redondant avec la photo — un seul indice visuel par carte. */
 .carte-membre-photo { aspect-ratio: 3 / 4; position: relative; }
 .carte-membre-photo-cadre {
   position: absolute; inset: 0; overflow: hidden; border-radius: 16px 16px 0 0;
   background: linear-gradient(135deg, #1c2450, #141a3a);
   display: flex; align-items: center; justify-content: center; color: var(--text-faint); font-size: 2.6rem;
 }
-.carte-membre-photo-cadre img { width: 100%; height: 100%; object-fit: cover; transition: transform 600ms var(--d8-ease); }
+.carte-membre-photo-cadre img { width: 100%; height: 100%; object-fit: cover; object-position: center 22%; transition: transform 600ms var(--d8-ease); }
 .carte-membre:hover .carte-membre-photo-cadre img { transform: scale(1.045); }
 @media (prefers-reduced-motion: reduce) { .carte-membre-photo-cadre img { transition: none; } }
 
-.carte-membre-avatar {
-  position: absolute; z-index: 3; left: 20px; bottom: -24px; width: 48px; height: 48px; border-radius: 50%;
-  background: var(--d8-grad-gold); border: 3px solid var(--bg-card);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--or-contrast); font-family: var(--d8-font-ui); font-size: 0.8rem; font-weight: 700;
+.carte-membre-photo-cadre.sans-photo { background: var(--d8-grad-gold); }
+.carte-membre-initiales {
+  font-family: var(--d8-font-display); font-weight: 500; font-size: 2.8rem;
+  color: var(--or-contrast); opacity: 0.92;
 }
 
-.carte-membre-corps { padding: 34px 22px 22px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.carte-membre-corps { padding: 22px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .carte-membre-corps h3 { font-family: var(--d8-font-display); font-weight: 500; font-style: italic; font-size: 1.16rem; margin: 0; }
 .carte-membre-poste { color: var(--gold); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
 .carte-membre-specialite { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px; }
