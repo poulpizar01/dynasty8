@@ -1376,8 +1376,16 @@ async function chargerDotResume() {
     const r = await appelAPI("/api/comptabilite/dot/resume" + (semaine ? `?semaine=${encodeURIComponent(semaine)}` : ""));
     document.getElementById("dot-resume-vide").classList.toggle("cache", r.montantTotalPrimes != null);
     const val = (v) => (v == null ? "—" : formaterArgentStats(v));
+    let noteCaBrut = " <span class=\"champ-aide\">(aucun relevé Tablettes importé)</span>";
+    if (r.caBrutSource) {
+      const src = r.caBrutSource;
+      const quand = `relevé du ${formaterDateHeureCompta(src.importeLe)}${src.importePar ? " par " + echapper(src.importePar) : ""}, ${src.nbLignes} ligne${src.nbLignes > 1 ? "s" : ""}`;
+      noteCaBrut = src.nbLignes <= 1
+        ? ` <span class="champ-aide" style="color:#d99a2b;">⚠️ ${quand} — vérifiez qu'il s'agit bien du relevé complet de l'équipe avant de valider une déclaration réelle.</span>`
+        : ` <span class="champ-aide">(${quand})</span>`;
+    }
     document.getElementById("corps-table-dot-resume").innerHTML = [
-      ligneResumeDot("CA Brut" + (r.caBrutTrouve ? "" : " <span class=\"champ-aide\">(aucun relevé Tablettes importé)</span>"), val(r.caBrut)),
+      ligneResumeDot("CA Brut" + noteCaBrut, val(r.caBrut)),
       ligneResumeDot("Dépense déductible", val(r.depenseDeductible)),
       ligneResumeDot("Bénéfice imposable", val(r.beneficeImposable)),
       ligneResumeDot("Taux d'imposition", r.tauxImposition == null ? "—" : Math.round(r.tauxImposition * 100) + " %"),

@@ -830,16 +830,30 @@ async function comptaDotResume(env, url, s) {
 
   const [tabletteR, ecrituresR, baremeR] = await Promise.all([
     env.DB.prepare(
-      "SELECT colonnes, lignes FROM comptabilite_imports WHERE type = 'tablettes' ORDER BY importe_le DESC, id DESC LIMIT 1"
+      `SELECT ci.colonnes, ci.lignes, ci.importe_le, m.pseudo AS importe_par_pseudo
+       FROM comptabilite_imports ci LEFT JOIN membres m ON m.id = ci.importe_par
+       WHERE ci.type = 'tablettes' ORDER BY ci.importe_le DESC, ci.id DESC LIMIT 1`
     ).first(),
     env.DB.prepare("SELECT type, montant FROM compta_dot_ecritures").all(),
     env.DB.prepare("SELECT * FROM dot_bareme_imposition ORDER BY seuil_min ASC").all(),
   ]);
 
+  // caBrutSource sert d'avertissement visuel côté écran : la case CA Brut
+  // reflète TOUJOURS le dernier relevé Tablettes importé, qu'il soit complet
+  // ou non — le site ne peut pas deviner si un relevé d'une seule ligne est
+  // un test ou volontaire. On affiche donc la date, l'auteur et le nombre de
+  // lignes du relevé utilisé pour que la Direction puisse vérifier elle-même
+  // avant de valider une déclaration réelle.
   let caBrut = null;
+  let caBrutSource = null;
   if (tabletteR) {
     const colonnes = JSON.parse(tabletteR.colonnes);
-    if (colonnes.length) caBrut = caBrutDepuisTablette(colonnes, JSON.parse(tabletteR.lignes));
+    if (colonnes.length) {
+      const lignes = JSON.parse(tabletteR.lignes);
+      caBrut = caBrutDepuisTablette(colonnes, lignes);
+      const nbLignes = lignes.filter((l) => String(l[0] || "").trim().toLowerCase() !== "total").length;
+      caBrutSource = { importeLe: tabletteR.importe_le, importePar: tabletteR.importe_par_pseudo || null, nbLignes };
+    }
   }
 
   const ecritures = ecrituresR.results || [];
@@ -869,6 +883,7 @@ async function comptaDotResume(env, url, s) {
     semaine: semaine || null,
     caBrut,
     caBrutTrouve: caBrut != null,
+    caBrutSource,
     depenseDeductible,
     beneficeImposable,
     tauxImposition: tranche ? tranche.taux : null,
