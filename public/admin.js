@@ -142,10 +142,15 @@ function demarrerEspaceAdmin() {
 function basculerOnglet(nom) {
   document.querySelectorAll(".lien-onglet[data-onglet]").forEach((b) => b.classList.toggle("actif", b.dataset.onglet === nom));
   document.getElementById("panneau-annonces").classList.toggle("cache", nom !== "annonces");
+  document.getElementById("panneau-agenda").classList.toggle("cache", nom !== "agenda");
   document.getElementById("panneau-profil").classList.toggle("cache", nom !== "profil");
   document.getElementById("panneau-comptes").classList.toggle("cache", nom !== "comptes");
+  // L'agenda a besoin de toute la largeur disponible (voir style.css) : le
+  // reste des onglets garde la mise en page habituelle, limitée en largeur.
+  document.getElementById("admin-contenu").classList.toggle("admin-contenu--pleine", nom === "agenda");
   if (nom === "profil") chargerMonProfil();
   if (nom === "comptes") chargerTableMembres();
+  if (nom === "agenda") chargerAgenda(true);
 }
 
 // ---------------------------------------------------------------------------
@@ -231,6 +236,278 @@ document.getElementById("formulaire-profil").addEventListener("submit", async (e
   } finally {
     bouton.disabled = false;
     bouton.textContent = texteInitial;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Onglet « Mon agenda » — planning personnel privé (une semaine à la fois).
+// Chaque membre ne voit et ne modifie que ses propres événements : le serveur
+// s'en charge (voir agenda() dans src/index.js), le rôle du JS ici est juste
+// d'afficher joliment une grille de 7 jours × 24 heures et de gérer les clics.
+// ---------------------------------------------------------------------------
+
+let AGENDA_DECALAGE_SEMAINE = 0; // 0 = semaine en cours, +1 = semaine suivante, -1 = précédente...
+let CACHE_EVENEMENTS = [];
+const AGENDA_HEURE_HAUTEUR = 48; // hauteur en pixels d'une heure dans la grille
+const AGENDA_NOMS_JOURS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+function formaterDateISO(date) {
+  const y = date.getFullYear();
+  const mo = String(date.getMonth() + 1).padStart(2, "0");
+  const j = String(date.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${j}`;
+}
+
+function lundiDeLaSemaine(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const jour = d.getDay(); // 0 = dimanche ... 6 = samedi
+  d.setDate(d.getDate() + (jour === 0 ? -6 : 1 - jour));
+  return d;
+}
+
+function joursAffichesAgenda() {
+  const lundi = lundiDeLaSemaine(new Date());
+  lundi.setDate(lundi.getDate() + AGENDA_DECALAGE_SEMAINE * 7);
+  const jours = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(lundi);
+    d.setDate(lundi.getDate() + i);
+    jours.push(d);
+  }
+  return jours;
+}
+
+function estAujourdhui(date) {
+  const n = new Date();
+  return date.getFullYear() === n.getFullYear() && date.getMonth() === n.getMonth() && date.getDate() === n.getDate();
+}
+
+function minutesDepuisMinuit(hhmm) {
+  const [h, m] = String(hhmm || "00:00").split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function heureActuelleHHMM() {
+  const n = new Date();
+  return String(n.getHours()).padStart(2, "0") + ":" + String(n.getMinutes()).padStart(2, "0");
+}
+
+function majEnteteAgenda(jours) {
+  const debut = jours[0].toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  const fin = jours[6].toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  document.getElementById("agenda-plage-dates").textContent = `Du ${debut} au ${fin}`;
+}
+
+function defilerVersMaintenant() {
+  const conteneur = document.getElementById("agenda-grille-conteneur");
+  if (!conteneur) return;
+  const minutes = minutesDepuisMinuit(heureActuelleHHMM());
+  conteneur.scrollTop = Math.max(0, (minutes / 60) * AGENDA_HEURE_HAUTEUR - AGENDA_HEURE_HAUTEUR * 2);
+}
+
+function rendreGrilleAgenda(jours) {
+  const grille = document.getElementById("agenda-grille");
+
+  const entete = jours.map((d, i) => `
+    <div class="agenda-entete-jour ${estAujourdhui(d) ? "agenda-aujourdhui" : ""}">
+      <span class="agenda-entete-jour-nom">${AGENDA_NOMS_JOURS[i]}</span>
+      <span class="agenda-entete-jour-date">${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}</span>
+    </div>`).join("");
+
+  let colonneHeures = "";
+  for (let h = 0; h < 24; h++) {
+    colonneHeures += `<div class="agenda-heure-label">${String(h).padStart(2, "0")}:00</div>`;
+  }
+
+  const colonnesJours = jours.map((d) => {
+    const jourISO = formaterDateISO(d);
+    let cases = "";
+    for (let h = 0; h < 24; h++) {
+      const heureDebut = String(h).padStart(2, "0") + ":00";
+      const heureFin = h === 23 ? "23:59" : String(h + 1).padStart(2, "0") + ":00";
+      cases += `<button type="button" class="agenda-case" data-jour="${jourISO}" data-heure-debut="${heureDebut}" data-heure-fin="${heureFin}" aria-label="Ajouter un événement le ${jourISO} à ${heureDebut}"></button>`;
+    }
+    const evenementsHtml = CACHE_EVENEMENTS.filter((e) => e.jour === jourISO).map((e) => {
+      const debutMin = minutesDepuisMinuit(e.heure_debut);
+      const finMin = Math.max(minutesDepuisMinuit(e.heure_fin), debutMin + 15);
+      const top = (debutMin / 60) * AGENDA_HEURE_HAUTEUR;
+      const hauteur = Math.max(((finMin - debutMin) / 60) * AGENDA_HEURE_HAUTEUR, 22);
+      return `
+        <div class="agenda-evenement" style="top:${top}px;height:${hauteur}px;" data-id="${e.id}" tabindex="0" role="button" aria-label="${echapper(e.titre)}, de ${e.heure_debut} à ${e.heure_fin}">
+          <span class="agenda-evenement-heure">${e.heure_debut}–${e.heure_fin}</span>
+          <span class="agenda-evenement-titre">${echapper(e.titre)}</span>
+        </div>`;
+    }).join("");
+    const maintenant = estAujourdhui(d)
+      ? `<div class="agenda-maintenant" style="top:${(minutesDepuisMinuit(heureActuelleHHMM()) / 60) * AGENDA_HEURE_HAUTEUR}px;"></div>`
+      : "";
+    return `<div class="agenda-jour">${cases}${evenementsHtml}${maintenant}</div>`;
+  }).join("");
+
+  grille.innerHTML = `
+    <div class="agenda-entete-jours">
+      <div class="agenda-case-coin"></div>
+      ${entete}
+    </div>
+    <div class="agenda-corps">
+      <div class="agenda-colonne-heures">${colonneHeures}</div>
+      <div class="agenda-jours">${colonnesJours}</div>
+    </div>`;
+
+  grille.querySelectorAll(".agenda-case").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      ouvrirModaleEvenement({ jour: btn.dataset.jour, heureDebut: btn.dataset.heureDebut, heureFin: btn.dataset.heureFin });
+    });
+  });
+  grille.querySelectorAll(".agenda-evenement").forEach((el) => {
+    const ouvrir = () => {
+      const e = CACHE_EVENEMENTS.find((x) => String(x.id) === el.dataset.id);
+      if (!e) return;
+      ouvrirModaleEvenement({ id: e.id, jour: e.jour, heureDebut: e.heure_debut, heureFin: e.heure_fin, titre: e.titre, notes: e.notes });
+    };
+    el.addEventListener("click", ouvrir);
+    el.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); ouvrir(); }
+    });
+  });
+}
+
+async function chargerAgenda(reinitialiserDefilement) {
+  const jours = joursAffichesAgenda();
+  majEnteteAgenda(jours);
+  afficherMessage("zone-message-agenda", "", null);
+  try {
+    const debut = formaterDateISO(jours[0]);
+    const fin = formaterDateISO(jours[6]);
+    const data = await appelAPI(`/api/agenda?debut=${debut}&fin=${fin}`);
+    CACHE_EVENEMENTS = data.evenements || [];
+  } catch (e) {
+    afficherMessage("zone-message-agenda", "Impossible de charger votre agenda : " + e.message, "erreur");
+    CACHE_EVENEMENTS = [];
+  }
+  const conteneur = document.getElementById("agenda-grille-conteneur");
+  const scrollAvant = conteneur ? conteneur.scrollTop : 0;
+  rendreGrilleAgenda(jours);
+  if (reinitialiserDefilement) {
+    defilerVersMaintenant();
+  } else if (conteneur) {
+    conteneur.scrollTop = scrollAvant;
+  }
+}
+
+document.getElementById("agenda-semaine-precedente").addEventListener("click", () => {
+  AGENDA_DECALAGE_SEMAINE--;
+  chargerAgenda(true);
+});
+document.getElementById("agenda-semaine-suivante").addEventListener("click", () => {
+  AGENDA_DECALAGE_SEMAINE++;
+  chargerAgenda(true);
+});
+document.getElementById("agenda-aujourdhui").addEventListener("click", () => {
+  AGENDA_DECALAGE_SEMAINE = 0;
+  chargerAgenda(true);
+});
+document.getElementById("agenda-nouvel-evenement").addEventListener("click", () => {
+  const jours = joursAffichesAgenda();
+  const jourDepart = jours.find((d) => estAujourdhui(d)) || jours[0];
+  ouvrirModaleEvenement({ jour: formaterDateISO(jourDepart) });
+});
+
+// ---- modale « ajouter / modifier un événement » ---------------------------
+
+function ouvrirModaleEvenement(options) {
+  const o = options || {};
+  const estEdition = !!o.id;
+  document.getElementById("titre-modale-evenement").textContent = estEdition ? "Modifier l'événement" : "Nouvel événement";
+  document.getElementById("evenement-id").value = o.id || "";
+  document.getElementById("evenement-titre").value = o.titre || "";
+  document.getElementById("evenement-jour").value = o.jour || formaterDateISO(new Date());
+  document.getElementById("evenement-heure-debut").value = o.heureDebut || "09:00";
+  document.getElementById("evenement-heure-fin").value = o.heureFin || "10:00";
+  document.getElementById("evenement-notes").value = o.notes || "";
+  document.getElementById("bouton-supprimer-evenement").classList.toggle("cache", !estEdition);
+  document.querySelectorAll("#formulaire-evenement .champ-erreur").forEach((p) => p.classList.add("cache"));
+  afficherMessage("zone-message-modale-evenement", "", null);
+  document.getElementById("modale-evenement").classList.remove("cache");
+  document.getElementById("evenement-titre").focus();
+}
+
+function fermerModaleEvenement() {
+  document.getElementById("modale-evenement").classList.add("cache");
+}
+
+document.getElementById("fermer-modale-evenement").addEventListener("click", fermerModaleEvenement);
+document.getElementById("bouton-annuler-evenement").addEventListener("click", fermerModaleEvenement);
+document.getElementById("modale-evenement").addEventListener("click", (ev) => { if (ev.target.id === "modale-evenement") fermerModaleEvenement(); });
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && !document.getElementById("modale-evenement").classList.contains("cache")) {
+    fermerModaleEvenement();
+  }
+});
+
+document.getElementById("formulaire-evenement").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  afficherMessage("zone-message-modale-evenement", "", null);
+  document.querySelectorAll("#formulaire-evenement .champ-erreur").forEach((p) => p.classList.add("cache"));
+
+  const titre = document.getElementById("evenement-titre").value.trim();
+  const jour = document.getElementById("evenement-jour").value;
+  const heureDebut = document.getElementById("evenement-heure-debut").value;
+  const heureFin = document.getElementById("evenement-heure-fin").value;
+  let valide = true;
+  if (!titre) {
+    document.getElementById("erreur-evenement-titre").classList.remove("cache");
+    valide = false;
+  }
+  if (!heureDebut || !heureFin || heureFin <= heureDebut) {
+    document.getElementById("erreur-evenement-heures").classList.remove("cache");
+    valide = false;
+  }
+  if (!valide) {
+    afficherMessage("zone-message-modale-evenement", "Corrigez les champs indiqués en rouge avant d'enregistrer.", "erreur");
+    return;
+  }
+
+  const id = document.getElementById("evenement-id").value;
+  const payload = {
+    titre,
+    jour,
+    heure_debut: heureDebut,
+    heure_fin: heureFin,
+    notes: document.getElementById("evenement-notes").value.trim(),
+  };
+  const bouton = document.querySelector('#formulaire-evenement button[type="submit"]');
+  const texteInitial = bouton.textContent;
+  bouton.disabled = true;
+  bouton.textContent = "Enregistrement…";
+  try {
+    if (id) {
+      await appelAPI("/api/agenda?id=" + id, { method: "PUT", body: JSON.stringify(payload) });
+    } else {
+      await appelAPI("/api/agenda", { method: "POST", body: JSON.stringify(payload) });
+    }
+    fermerModaleEvenement();
+    chargerAgenda(false);
+  } catch (e) {
+    afficherMessage("zone-message-modale-evenement", e.message, "erreur");
+  } finally {
+    bouton.disabled = false;
+    bouton.textContent = texteInitial;
+  }
+});
+
+document.getElementById("bouton-supprimer-evenement").addEventListener("click", async () => {
+  const id = document.getElementById("evenement-id").value;
+  if (!id) return;
+  const ok = await confirmerAction("Cette action est définitive et ne peut pas être annulée.", "Supprimer cet événement ?");
+  if (!ok) return;
+  try {
+    await appelAPI("/api/agenda?id=" + id, { method: "DELETE" });
+    fermerModaleEvenement();
+    chargerAgenda(false);
+  } catch (e) {
+    afficherMessage("zone-message-modale-evenement", e.message, "erreur");
   }
 });
 

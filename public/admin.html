@@ -49,6 +49,7 @@
       <img src="/img/logo-full.png" alt="Dynasty 8" class="logo-entete">
     </a>
     <button class="lien-onglet actif" data-onglet="annonces" id="onglet-annonces">🏠 Annonces</button>
+    <button class="lien-onglet" data-onglet="agenda">🗓️ Mon agenda</button>
     <button class="lien-onglet" data-onglet="profil">🪪 Mon profil</button>
     <button class="lien-onglet cache" data-onglet="comptes" id="onglet-comptes">🔐 Comptes &amp; accès</button>
     <a href="https://webmap.dynasty8.fbfa.fr/" target="_blank" rel="noopener" class="lien-onglet cache" id="lien-webmap">🗺️ Webmap Dynasty8</a>
@@ -71,7 +72,7 @@
     </div>
   </aside>
 
-  <main class="admin-contenu">
+  <main class="admin-contenu" id="admin-contenu">
     <!-- Onglet Annonces -->
     <section id="panneau-annonces">
       <div class="entete-admin">
@@ -119,6 +120,28 @@
       <div id="vue-grille-biens" class="grille-admin-biens cache"></div>
 
       <div class="annonces-pagination" id="annonces-pagination"></div>
+    </section>
+
+    <!-- Onglet Mon agenda (visible à tous les membres connectés) — planning
+         personnel privé, prend toute la largeur et la hauteur disponibles. -->
+    <section id="panneau-agenda" class="cache panneau-agenda">
+      <div class="agenda-entete">
+        <div>
+          <h2 style="margin-bottom:2px;">Mon agenda</h2>
+          <p class="agenda-sous-titre">🔒 Personnel — visible uniquement par vous · <span id="agenda-plage-dates"></span></p>
+        </div>
+        <div class="agenda-entete-actions">
+          <button type="button" class="btn btn-fantome btn-petit" id="agenda-semaine-precedente" aria-label="Semaine précédente">‹</button>
+          <button type="button" class="btn btn-fantome btn-petit" id="agenda-aujourdhui">Aujourd'hui</button>
+          <button type="button" class="btn btn-fantome btn-petit" id="agenda-semaine-suivante" aria-label="Semaine suivante">›</button>
+          <button type="button" class="btn btn-or btn-petit" id="agenda-nouvel-evenement">+ Événement</button>
+        </div>
+      </div>
+      <div id="zone-message-agenda"></div>
+      <div class="agenda-grille-conteneur" id="agenda-grille-conteneur">
+        <div class="agenda-grille" id="agenda-grille"></div>
+      </div>
+      <p class="agenda-note">Cliquez sur une case pour ajouter un événement, sur un événement pour le modifier. Chaque compte Discord ne voit que son propre agenda.</p>
     </section>
 
     <!-- Onglet Mon profil (visible à tous les membres connectés) -->
@@ -389,6 +412,49 @@
         <button type="submit" class="btn btn-or" style="width:100%;">Enregistrer</button>
       </form>
     </div>
+  </div>
+</div>
+
+<!-- Modale « Mon agenda » : ajouter ou modifier un événement personnel -->
+<div class="modale-fond cache" id="modale-evenement">
+  <div class="modale" style="max-width:480px;">
+    <div class="modale-entete">
+      <h3 id="titre-modale-evenement">Nouvel événement</h3>
+      <button id="fermer-modale-evenement">✕</button>
+    </div>
+    <div id="zone-message-modale-evenement"></div>
+    <form id="formulaire-evenement">
+      <input type="hidden" id="evenement-id">
+      <div class="champ">
+        <label for="evenement-titre">Titre <span class="champ-obligatoire">*</span></label>
+        <input type="text" id="evenement-titre" maxlength="80" placeholder="Ex : Visite Eclipse Tower">
+        <p class="champ-erreur cache" id="erreur-evenement-titre">Le titre est obligatoire.</p>
+      </div>
+      <div class="champ">
+        <label for="evenement-jour">Date <span class="champ-obligatoire">*</span></label>
+        <input type="date" id="evenement-jour">
+      </div>
+      <div class="champ-deux">
+        <div class="champ">
+          <label for="evenement-heure-debut">Heure de début <span class="champ-obligatoire">*</span></label>
+          <input type="time" id="evenement-heure-debut" step="300">
+        </div>
+        <div class="champ">
+          <label for="evenement-heure-fin">Heure de fin <span class="champ-obligatoire">*</span></label>
+          <input type="time" id="evenement-heure-fin" step="300">
+        </div>
+      </div>
+      <p class="champ-erreur cache" id="erreur-evenement-heures">L'heure de fin doit être après l'heure de début.</p>
+      <div class="champ">
+        <label for="evenement-notes">Notes (optionnel)</label>
+        <textarea id="evenement-notes" maxlength="500" placeholder="Détails, lieu de rendez-vous, contact..."></textarea>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-or" style="flex:1;">Enregistrer</button>
+        <button type="button" class="btn btn-fantome" id="bouton-annuler-evenement">Annuler</button>
+        <button type="button" class="btn btn-danger cache" id="bouton-supprimer-evenement">Supprimer</button>
+      </div>
+    </form>
   </div>
 </div>
 

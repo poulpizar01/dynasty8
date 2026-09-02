@@ -181,6 +181,7 @@ export default {
       if (chemin === "/api/biens") return await biens(request, url, env);
       if (chemin === "/api/membres") return await comptes(request, url, env);
       if (chemin === "/api/equipe") return await equipe(env);
+      if (chemin === "/api/agenda") return await agenda(request, url, env);
       return json({ erreur: "Adresse inconnue." }, 404);
     } catch (e) {
       return json({ erreur: "Erreur interne", detail: String((e && e.message) || e) }, 500);
@@ -417,6 +418,82 @@ async function modifierMonProfil(request, env, s) {
     "UPDATE membres SET poste=?2, specialite=?3, bio=?4, photo=?5 WHERE id=?1"
   ).bind(s.id, poste, specialite, bio, photo).run();
   return json({ ok: true });
+}
+
+// ---- « Mon agenda » : planning personnel de chaque membre ----------------
+// Strictement privé : accessible à tout membre connecté, quel que soit son
+// grade (comme « Mon profil »), mais chaque personne ne voit et ne modifie
+// QUE ses propres événements. La clause "membre_id = s.id" vient toujours de
+// la session signée, jamais d'une valeur envoyée par le client — impossible
+// donc de lire ou modifier l'agenda d'un collègue en devinant un identifiant.
+
+const RE_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const RE_HEURE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function validerEvenementAgenda(b) {
+  if (!b) return "Formulaire invalide.";
+  if (!txt(b.titre, 80).trim()) return "Le titre de l'événement est obligatoire.";
+  if (!RE_DATE.test(String(b.jour || ""))) return "Date invalide.";
+  if (!RE_HEURE.test(String(b.heure_debut || ""))) return "Heure de début invalide.";
+  if (!RE_HEURE.test(String(b.heure_fin || ""))) return "Heure de fin invalide.";
+  if (String(b.heure_fin) <= String(b.heure_debut)) return "L'heure de fin doit être après l'heure de début.";
+  if (String(b.notes || "").length > 500) return "Les notes sont trop longues (500 caractères maximum).";
+  return null;
+}
+
+async function agenda(request, url, env) {
+  const s = await session(request, env);
+  if (!s) return json({ erreur: "Non connecté." }, 401);
+  const id = url.searchParams.get("id");
+  const m = request.method;
+
+  if (m === "GET") {
+    const debut = url.searchParams.get("debut");
+    const fin = url.searchParams.get("fin");
+    if (!RE_DATE.test(debut || "") || !RE_DATE.test(fin || "")) {
+      return json({ erreur: "Plage de dates invalide." }, 400);
+    }
+    const r = await env.DB.prepare(
+      `SELECT id, titre, jour, heure_debut, heure_fin, notes FROM evenements_agenda
+       WHERE membre_id = ?1 AND jour >= ?2 AND jour <= ?3 ORDER BY jour, heure_debut`
+    ).bind(s.id, debut, fin).all();
+    return json({ evenements: r.results || [] });
+  }
+
+  if (m === "POST") {
+    const b = await request.json().catch(() => null);
+    const erreur = validerEvenementAgenda(b);
+    if (erreur) return json({ erreur }, 400);
+    const r = await env.DB.prepare(
+      `INSERT INTO evenements_agenda (membre_id, titre, jour, heure_debut, heure_fin, notes, cree_le, maj)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'), datetime('now'))`
+    ).bind(s.id, txt(b.titre, 80).trim(), b.jour, b.heure_debut, b.heure_fin, txt(b.notes, 500).trim()).run();
+    return json({ id: r.meta.last_row_id });
+  }
+
+  if (m === "PUT") {
+    if (!id) return json({ erreur: "Identifiant manquant." }, 400);
+    const existe = await env.DB.prepare(
+      "SELECT id FROM evenements_agenda WHERE id = ?1 AND membre_id = ?2"
+    ).bind(id, s.id).first();
+    if (!existe) return json({ erreur: "Introuvable." }, 404);
+    const b = await request.json().catch(() => null);
+    const erreur = validerEvenementAgenda(b);
+    if (erreur) return json({ erreur }, 400);
+    await env.DB.prepare(
+      `UPDATE evenements_agenda SET titre=?3, jour=?4, heure_debut=?5, heure_fin=?6, notes=?7, maj=datetime('now')
+       WHERE id=?1 AND membre_id=?2`
+    ).bind(id, s.id, txt(b.titre, 80).trim(), b.jour, b.heure_debut, b.heure_fin, txt(b.notes, 500).trim()).run();
+    return json({ ok: true });
+  }
+
+  if (m === "DELETE") {
+    if (!id) return json({ erreur: "Identifiant manquant." }, 400);
+    await env.DB.prepare("DELETE FROM evenements_agenda WHERE id = ?1 AND membre_id = ?2").bind(id, s.id).run();
+    return json({ ok: true });
+  }
+
+  return json({ erreur: "Méthode non gérée." }, 405);
 }
 
 // ---- équipe (page publique /equipe.html) ----------------------------------

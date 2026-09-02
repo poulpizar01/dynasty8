@@ -59,3 +59,19 @@ CREATE TABLE IF NOT EXISTS biens (
 
 CREATE INDEX IF NOT EXISTS idx_biens_categorie ON biens(categorie);
 CREATE INDEX IF NOT EXISTS idx_biens_disponible ON biens(disponible);
+
+-- Agenda personnel (onglet « Mon agenda » de l'espace agents). Chaque événement
+-- appartient à un seul membre ; personne d'autre ne peut le voir ni le modifier.
+CREATE TABLE IF NOT EXISTS evenements_agenda (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  membre_id INTEGER NOT NULL REFERENCES membres(id) ON DELETE CASCADE,
+  titre TEXT NOT NULL,
+  jour TEXT NOT NULL,          -- date au format AAAA-MM-JJ
+  heure_debut TEXT NOT NULL,   -- heure au format HH:MM (24h)
+  heure_fin TEXT NOT NULL,     -- heure au format HH:MM (24h)
+  notes TEXT DEFAULT '',
+  cree_le TEXT DEFAULT (datetime('now')),
+  maj TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_agenda_membre_jour ON evenements_agenda(membre_id, jour);
