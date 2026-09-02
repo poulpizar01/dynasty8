@@ -234,7 +234,9 @@ async function discordCallback(request, url, env) {
   const etatRecu = url.searchParams.get("state");
   const etatAttendu = cookies(request)[COOKIE_ETAT_OAUTH];
   if (!code || !etatRecu || !etatAttendu || etatRecu !== etatAttendu) {
-    return echec("erreur");
+    // DIAGNOSTIC TEMPORAIRE : précise pourquoi (cookie d'état absent le plus
+    // souvent = redirect_uri qui ne pointe pas vers ce même domaine).
+    return echec("etat_" + (!code ? "sans-code" : !etatRecu ? "sans-state" : !etatAttendu ? "sans-cookie" : "mismatch"));
   }
 
   let jetonDiscord;
@@ -250,10 +252,15 @@ async function discordCallback(request, url, env) {
         redirect_uri: env.DISCORD_REDIRECT_URI,
       }),
     });
-    if (!reponseJeton.ok) return echec("erreur");
+    if (!reponseJeton.ok) {
+      // DIAGNOSTIC TEMPORAIRE : le code Discord (400/401/...) dit précisément
+      // ce qui cloche (client_secret invalide, redirect_uri différent, etc.)
+      const corps = await reponseJeton.text().catch(() => "");
+      return echec("jeton_" + reponseJeton.status + "_" + corps.slice(0, 60).replace(/[^a-zA-Z0-9]/g, ""));
+    }
     jetonDiscord = await reponseJeton.json();
   } catch (e) {
-    return echec("erreur");
+    return echec("jeton_reseau_" + String(e && e.message).slice(0, 40).replace(/[^a-zA-Z0-9]/g, ""));
   }
 
   let discordUser;
@@ -261,15 +268,15 @@ async function discordCallback(request, url, env) {
     const reponseUser = await fetch("https://discord.com/api/users/@me", {
       headers: { Authorization: `${jetonDiscord.token_type || "Bearer"} ${jetonDiscord.access_token}` },
     });
-    if (!reponseUser.ok) return echec("erreur");
+    if (!reponseUser.ok) return echec("user_" + reponseUser.status);
     discordUser = await reponseUser.json();
   } catch (e) {
-    return echec("erreur");
+    return echec("user_reseau");
   }
 
   const discordId = String(discordUser.id || "");
   const discordPseudo = String(discordUser.username || "").trim();
-  if (!discordId || !discordPseudo) return echec("erreur");
+  if (!discordId || !discordPseudo) return echec("donnees_manquantes");
   const discordAvatar = urlAvatarDiscord(discordId, discordUser.avatar || "");
 
   // Toute la partie base de données est protégée : si la migration n'a pas
@@ -317,7 +324,9 @@ async function discordCallback(request, url, env) {
       poserCookie(COOKIE_ETAT_OAUTH, "", 0),
     ]);
   } catch (e) {
-    return echec("erreur");
+    // DIAGNOSTIC TEMPORAIRE : montre le message d'erreur réel de la base de
+    // données (utile si la migration n'a pas encore été appliquée en remote).
+    return echec("bd_" + String(e && e.message).slice(0, 60).replace(/[^a-zA-Z0-9]/g, ""));
   }
 }
 
