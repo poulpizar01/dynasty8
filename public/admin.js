@@ -1436,6 +1436,43 @@ async function supprimerEcritureDot(id) {
   }
 }
 
+// « Réinitialiser » un des deux tableaux (dépenses OU retraits) : supprime
+// toutes ses lignes d'un coup (l'autre tableau n'est jamais touché), comme
+// le bouton équivalent de l'onglet Tablettes.
+async function reinitialiserEcrituresDot(type) {
+  const libelle = type === "depense" ? "des dépenses déductibles" : "des retraits";
+  const ok = await confirmerAction(`Toutes les lignes ${libelle} seront supprimées. Cette action est irréversible.`, "Réinitialiser ce tableau ?");
+  if (!ok) return;
+  try {
+    await appelAPI(`/api/comptabilite/dot/ecritures?type=${type}`, { method: "DELETE" });
+    await Promise.all([chargerDotEcritures(), chargerDotResume()]);
+  } catch (e) {
+    afficherMessage("zone-message-dot", e.message, "erreur");
+  }
+}
+document.getElementById("bouton-reinitialiser-depenses").addEventListener("click", () => reinitialiserEcrituresDot("depense"));
+document.getElementById("bouton-reinitialiser-retraits").addEventListener("click", () => reinitialiserEcrituresDot("retrait"));
+
+// « Copier le tableau » (dépenses ou retraits) : même principe que pour le
+// tableau des salariés — copie au format tableur (colonnes séparées par des
+// tabulations), prêt à coller dans Excel/Google Sheets.
+async function copierEcrituresDot(type, idCorps) {
+  const entetes = ["Date", "Justificatif", "Montant"];
+  const lignes = [entetes.join("\t")];
+  document.querySelectorAll(`#${idCorps} tr`).forEach((tr) => {
+    const cellules = Array.from(tr.querySelectorAll("td")).map((td) => td.textContent.trim());
+    if (cellules.length === 4) lignes.push(cellules.slice(0, 3).join("\t"));
+  });
+  try {
+    await navigator.clipboard.writeText(lignes.join("\n"));
+    afficherMessage("zone-message-dot", "Tableau copié ✓ Vous pouvez le coller dans Excel/Google Sheets.", "succes");
+  } catch (e) {
+    afficherMessage("zone-message-dot", "Impossible de copier automatiquement — sélectionnez le tableau à la main (Ctrl+C).", "erreur");
+  }
+}
+document.getElementById("bouton-copier-depenses").addEventListener("click", () => copierEcrituresDot("depense", "corps-table-dot-depenses"));
+document.getElementById("bouton-copier-retraits").addEventListener("click", () => copierEcrituresDot("retrait", "corps-table-dot-retraits"));
+
 function ouvrirModaleEcritureDot(type) {
   document.getElementById("ecriture-dot-type").value = type;
   document.getElementById("titre-modale-ecriture-dot").textContent = type === "depense" ? "Nouvelle dépense déductible" : "Nouveau retrait";

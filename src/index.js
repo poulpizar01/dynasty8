@@ -831,6 +831,17 @@ async function comptaDotSupprimerEcriture(env, s, id) {
   return json({ ok: true });
 }
 
+// Réinitialiser un des deux tableaux (dépenses OU retraits) : supprime
+// uniquement les écritures du type demandé, jamais l'autre tableau — les
+// deux boutons "Réinitialiser" (un par tableau) restent indépendants.
+async function comptaDotReinitialiserEcritures(env, url, s) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const type = (url.searchParams.get("type") || "").trim();
+  if (!COMPTA_DOT_TYPES.includes(type)) return json({ erreur: "Le paramètre « type » doit être « depense » ou « retrait »." }, 400);
+  await env.DB.prepare("DELETE FROM compta_dot_ecritures WHERE type = ?1").bind(type).run();
+  return json({ ok: true });
+}
+
 async function comptaDotResume(env, url, s) {
   if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
   const semaine = (url.searchParams.get("semaine") || "").trim().toUpperCase();
@@ -917,6 +928,7 @@ async function comptabilite(request, url, env) {
   if (route === "/dot/resume" && request.method === "GET") return comptaDotResume(env, url, s);
   if (route === "/dot/ecritures" && request.method === "GET") return comptaDotListerEcritures(env, s);
   if (route === "/dot/ecritures" && request.method === "POST") return comptaDotCreerEcriture(request, env, s);
+  if (route === "/dot/ecritures" && request.method === "DELETE") return comptaDotReinitialiserEcritures(env, url, s);
   const mEcriture = route.match(/^\/dot\/ecritures\/(\d+)$/);
   if (mEcriture && request.method === "DELETE") return comptaDotSupprimerEcriture(env, s, mEcriture[1]);
 
