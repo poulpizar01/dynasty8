@@ -78,6 +78,7 @@ async function demarrer() {
     if (moi.connecte) {
       SESSION = {
         connecte: true,
+        id: moi.id,
         pseudo: moi.pseudo,
         grade: moi.grade,
         direction: !!moi.direction,
@@ -121,6 +122,8 @@ function demarrerEspaceAdmin() {
   document.getElementById("pseudo-connecte").textContent = SESSION.pseudo;
   document.getElementById("grade-connecte").textContent = SESSION.grade || "—";
   document.getElementById("avatar-connecte").textContent = initialesPseudo(SESSION.pseudo);
+  document.getElementById("messagerie-mon-avatar").textContent = initialesPseudo(SESSION.pseudo);
+  document.getElementById("messagerie-mon-pseudo").textContent = SESSION.pseudo;
   // Un membre sans droits sur les annonces (grade "Stagiaire") n'a accès qu'à son profil.
   document.getElementById("onglet-annonces").classList.toggle("cache", !SESSION.peutGererAnnonces);
   if (SESSION.direction) {
@@ -137,6 +140,7 @@ function demarrerEspaceAdmin() {
   const ongletDepart = SESSION.peutGererAnnonces ? "annonces" : "profil";
   basculerOnglet(ongletDepart);
   if (ongletDepart === "annonces") chargerTableBiens();
+  demarrerMessagerie();
 }
 
 function basculerOnglet(nom) {
@@ -1356,6 +1360,370 @@ document.getElementById("formulaire-profil-compte").addEventListener("submit", a
     bouton.textContent = texteInitial;
   }
 });
+
+// ---------------------------------------------------------------------------
+// Messagerie interne (widget façon MSN / Windows Live Messenger)
+// ---------------------------------------------------------------------------
+// Persiste par-dessus tous les onglets (voir demarrerEspaceAdmin, qui appelle
+// demarrerMessagerie() une fois connecté). Pas de vrai « temps réel » façon
+// Discord ici (ça demanderait une architecture bien plus lourde, avec un coût
+// et une complexité que le site n'a pas besoin d'avoir) : le widget interroge
+// simplement le serveur toutes les 4 secondes ("polling"). Pour une messagerie
+// d'équipe interne, c'est largement assez réactif, et personne ne voit la
+// différence à l'usage.
+
+let MESSAGERIE_MON_STATUT = "disponible";
+let MESSAGERIE_CONTACTS = [];
+let MESSAGERIE_RECHERCHE = "";
+let MESSAGERIE_FENETRES = []; // [{ membreId, pseudo, avatar, statut, dernierId, minimisee }]
+let MESSAGERIE_PREMIER_CHARGEMENT = true;
+let MESSAGERIE_NON_LUS_PRECEDENT = 0;
+let MESSAGERIE_AUDIO_CTX = null;
+const MESSAGERIE_MAX_FENETRES = 3;
+const MESSAGERIE_INTERVALLE_MS = 4000;
+
+const MESSAGERIE_LIBELLES_STATUT = {
+  disponible: "Disponible",
+  absent: "Absent",
+  occupe: "Ne pas déranger",
+  invisible: "Invisible",
+  hors_ligne: "Hors ligne",
+};
+function libelleStatutMessagerie(s) {
+  return MESSAGERIE_LIBELLES_STATUT[s] || "Hors ligne";
+}
+
+// Petit « ding » synthétisé (pas de fichier audio à héberger, fonctionne
+// partout) : deux notes courtes pour un message, quatre pour un clin d'œil.
+function jouerSonMessagerie(type) {
+  try {
+    if (!MESSAGERIE_AUDIO_CTX) MESSAGERIE_AUDIO_CTX = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = MESSAGERIE_AUDIO_CTX;
+    if (ctx.state === "suspended") ctx.resume();
+    const notes = type === "clin_oeil" ? [440, 660, 440, 660] : [660, 880];
+    let t = ctx.currentTime;
+    notes.forEach((freq) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.14, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.18);
+      t += 0.11;
+    });
+  } catch (e) {
+    // Audio indisponible (lecture automatique bloquée par le navigateur tant
+    // qu'on n'a pas interagi avec la page, très ancien navigateur...) : on se
+    // tait simplement, ce n'est jamais bloquant pour l'agent.
+  }
+}
+
+function secouerElement(el) {
+  if (!el) return;
+  el.classList.add("messagerie-secousse");
+  setTimeout(() => el.classList.remove("messagerie-secousse"), 500);
+}
+
+function avatarHtmlMessagerie(c) {
+  if (c.avatar) return `<img src="${echapper(c.avatar)}" alt="" class="messagerie-avatar-img">`;
+  return `<span class="messagerie-avatar">${initialesPseudo(c.pseudo)}</span>`;
+}
+
+// ---- liste de contacts (« buddy list ») -----------------------------------
+
+async function chargerContactsMessagerie() {
+  try {
+    const data = await appelAPI("/api/chat/contacts");
+    MESSAGERIE_MON_STATUT = data.statut || "disponible";
+    MESSAGERIE_CONTACTS = data.contacts || [];
+    const totalNonLus = MESSAGERIE_CONTACTS.reduce((s, c) => s + (c.non_lus || 0), 0);
+    if (!MESSAGERIE_PREMIER_CHARGEMENT && totalNonLus > MESSAGERIE_NON_LUS_PRECEDENT) {
+      jouerSonMessagerie("texte");
+      secouerElement(document.getElementById("messagerie-bouton-liste"));
+    }
+    MESSAGERIE_NON_LUS_PRECEDENT = totalNonLus;
+    MESSAGERIE_PREMIER_CHARGEMENT = false;
+    majMonStatutAffiche();
+    rendreListeContacts();
+    majBadgeTotal(totalNonLus);
+    // Les fenêtres déjà ouvertes affichent aussi le statut de la personne :
+    // pas besoin d'attendre le prochain sondage de CETTE fenêtre pour le savoir.
+    MESSAGERIE_FENETRES.forEach((f) => {
+      const c = MESSAGERIE_CONTACTS.find((x) => x.id === f.membreId);
+      if (c) majEnteteFenetre(f, c.statut);
+    });
+  } catch (e) {
+    // Un sondage qui échoue ponctuellement (coupure réseau...) ne doit jamais
+    // interrompre le travail de l'agent avec un message d'erreur intrusif.
+  }
+}
+
+function rendreListeContacts() {
+  const conteneur = document.getElementById("messagerie-contacts");
+  const q = MESSAGERIE_RECHERCHE.trim().toLowerCase();
+  const liste = MESSAGERIE_CONTACTS.filter((c) => !q || c.pseudo.toLowerCase().includes(q));
+  if (!liste.length) {
+    conteneur.innerHTML = `<div class="messagerie-vide">${MESSAGERIE_CONTACTS.length ? "Aucun contact ne correspond à votre recherche." : "Aucun autre membre pour le moment."}</div>`;
+    return;
+  }
+  conteneur.innerHTML = liste.map((c) => `
+    <button type="button" class="messagerie-contact" data-id="${c.id}">
+      <span class="messagerie-avatar-bloc">
+        ${avatarHtmlMessagerie(c)}
+        <span class="messagerie-pastille messagerie-statut-${c.statut}" title="${libelleStatutMessagerie(c.statut)}"></span>
+      </span>
+      <span class="messagerie-contact-texte">
+        <strong>${echapper(c.pseudo)}</strong>
+        <span class="messagerie-contact-apercu">${c.dernier_message ? echapper(c.dernier_message) : libelleStatutMessagerie(c.statut)}</span>
+      </span>
+      ${c.non_lus ? `<span class="messagerie-badge">${c.non_lus > 9 ? "9+" : c.non_lus}</span>` : ""}
+    </button>`).join("");
+  conteneur.querySelectorAll("[data-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const c = MESSAGERIE_CONTACTS.find((x) => x.id === Number(btn.dataset.id));
+      if (c) ouvrirFenetreChat(c);
+    });
+  });
+}
+
+function majBadgeTotal(total) {
+  const badge = document.getElementById("messagerie-badge-total");
+  badge.textContent = total > 9 ? "9+" : String(total);
+  badge.classList.toggle("cache", !total);
+}
+
+function majMonStatutAffiche() {
+  document.getElementById("mon-statut-pastille").className = "messagerie-pastille messagerie-statut-" + MESSAGERIE_MON_STATUT;
+  document.getElementById("mon-statut-texte").textContent = libelleStatutMessagerie(MESSAGERIE_MON_STATUT);
+}
+
+document.getElementById("messagerie-bouton-liste").addEventListener("click", () => {
+  document.getElementById("messagerie-liste").classList.toggle("cache");
+});
+document.getElementById("messagerie-fermer-liste").addEventListener("click", () => {
+  document.getElementById("messagerie-liste").classList.add("cache");
+});
+document.getElementById("messagerie-recherche").addEventListener("input", (ev) => {
+  MESSAGERIE_RECHERCHE = ev.target.value;
+  rendreListeContacts();
+});
+
+document.getElementById("bouton-mon-statut").addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  const menu = document.getElementById("menu-mon-statut");
+  const vaOuvrir = menu.classList.contains("cache");
+  menu.classList.toggle("cache", !vaOuvrir);
+  document.getElementById("bouton-mon-statut").setAttribute("aria-expanded", String(vaOuvrir));
+});
+document.getElementById("menu-mon-statut").querySelectorAll("[data-statut]").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const statut = btn.dataset.statut;
+    document.getElementById("menu-mon-statut").classList.add("cache");
+    MESSAGERIE_MON_STATUT = statut;
+    majMonStatutAffiche();
+    try {
+      await appelAPI("/api/chat/presence", { method: "PUT", body: JSON.stringify({ statut }) });
+    } catch (e) {
+      // Le prochain sondage (4s plus tard) resynchronisera de toute façon l'affichage.
+    }
+  });
+});
+document.addEventListener("click", (ev) => {
+  const menu = document.getElementById("menu-mon-statut");
+  if (!menu.classList.contains("cache") && !menu.contains(ev.target) && ev.target.id !== "bouton-mon-statut") {
+    menu.classList.add("cache");
+    document.getElementById("bouton-mon-statut").setAttribute("aria-expanded", "false");
+  }
+});
+
+// ---- fenêtres de conversation (plusieurs à la fois, comme MSN) ------------
+
+function rendreCoquilleFenetre(etat) {
+  return `
+    <div class="messagerie-fenetre-entete">
+      <span class="messagerie-pastille messagerie-statut-${etat.statut}"></span>
+      <div class="messagerie-fenetre-titre">
+        <strong>${echapper(etat.pseudo)}</strong>
+        <span class="messagerie-fenetre-statut-texte">${libelleStatutMessagerie(etat.statut)}</span>
+      </div>
+      <button type="button" class="messagerie-fenetre-icone" data-reduire-bouton title="Réduire" aria-label="Réduire">–</button>
+      <button type="button" class="messagerie-fenetre-icone" data-fermer title="Fermer" aria-label="Fermer">✕</button>
+    </div>
+    <div class="messagerie-fenetre-corps" id="messagerie-corps-${etat.membreId}"></div>
+    <div class="messagerie-fenetre-frappe cache" id="messagerie-frappe-${etat.membreId}">${echapper(etat.pseudo)} est en train d'écrire…</div>
+    <form class="messagerie-fenetre-pied" id="messagerie-form-${etat.membreId}">
+      <textarea id="messagerie-champ-${etat.membreId}" maxlength="1000" placeholder="Écrire un message…" rows="1"></textarea>
+      <button type="button" class="messagerie-fenetre-clin-oeil" id="messagerie-clin-oeil-${etat.membreId}" title="Envoyer un clin d'œil">👋</button>
+      <button type="submit" class="messagerie-fenetre-envoyer" title="Envoyer" aria-label="Envoyer">➤</button>
+    </form>`;
+}
+
+function brancherFenetre(etat) {
+  const id = etat.membreId;
+  const div = document.getElementById("messagerie-fenetre-" + id);
+  div.querySelector(".messagerie-fenetre-entete").addEventListener("click", () => basculerReductionFenetre(id));
+  div.querySelector("[data-reduire-bouton]").addEventListener("click", (ev) => { ev.stopPropagation(); basculerReductionFenetre(id); });
+  div.querySelector("[data-fermer]").addEventListener("click", (ev) => { ev.stopPropagation(); fermerFenetreChat(id); });
+
+  const champ = document.getElementById("messagerie-champ-" + id);
+  const form = document.getElementById("messagerie-form-" + id);
+  const boutonClin = document.getElementById("messagerie-clin-oeil-" + id);
+
+  let dernierEnvoiFrappe = 0;
+  champ.addEventListener("input", () => {
+    const maintenant = Date.now();
+    if (maintenant - dernierEnvoiFrappe > 1500) {
+      dernierEnvoiFrappe = maintenant;
+      appelAPI("/api/chat/frappe", { method: "POST", body: JSON.stringify({ avec: id }) }).catch(() => {});
+    }
+  });
+  champ.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" && !ev.shiftKey) {
+      ev.preventDefault();
+      form.requestSubmit();
+    }
+  });
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const contenu = champ.value.trim();
+    if (!contenu) return;
+    champ.value = "";
+    await envoyerMessageFenetre(etat, "texte", contenu);
+  });
+  boutonClin.addEventListener("click", () => envoyerMessageFenetre(etat, "clin_oeil", ""));
+}
+
+function ouvrirFenetreChat(contact) {
+  let etat = MESSAGERIE_FENETRES.find((f) => f.membreId === contact.id);
+  if (etat) {
+    etat.minimisee = false;
+    majReduction(etat);
+    const champ = document.getElementById("messagerie-champ-" + contact.id);
+    if (champ) champ.focus();
+    return;
+  }
+  const maxFenetres = window.innerWidth < 640 ? 1 : MESSAGERIE_MAX_FENETRES;
+  if (MESSAGERIE_FENETRES.length >= maxFenetres) {
+    fermerFenetreChat(MESSAGERIE_FENETRES[0].membreId);
+  }
+  etat = { membreId: contact.id, pseudo: contact.pseudo, avatar: contact.avatar, statut: contact.statut, dernierId: 0, minimisee: false };
+  MESSAGERIE_FENETRES.push(etat);
+  const div = document.createElement("div");
+  div.className = "messagerie-fenetre";
+  div.id = "messagerie-fenetre-" + contact.id;
+  div.innerHTML = rendreCoquilleFenetre(etat);
+  document.getElementById("messagerie-fenetres").appendChild(div);
+  brancherFenetre(etat);
+  document.getElementById("messagerie-liste").classList.add("cache"); // place à la conversation, comme MSN
+  chargerMessagesFenetre(etat, true);
+}
+
+function fermerFenetreChat(membreId) {
+  MESSAGERIE_FENETRES = MESSAGERIE_FENETRES.filter((f) => f.membreId !== membreId);
+  const div = document.getElementById("messagerie-fenetre-" + membreId);
+  if (div) div.remove();
+}
+
+function basculerReductionFenetre(membreId) {
+  const etat = MESSAGERIE_FENETRES.find((f) => f.membreId === membreId);
+  if (!etat) return;
+  etat.minimisee = !etat.minimisee;
+  majReduction(etat);
+}
+
+function majReduction(etat) {
+  const div = document.getElementById("messagerie-fenetre-" + etat.membreId);
+  if (div) div.classList.toggle("messagerie-reduite", etat.minimisee);
+}
+
+function majEnteteFenetre(etat, statut) {
+  etat.statut = statut;
+  const div = document.getElementById("messagerie-fenetre-" + etat.membreId);
+  if (!div) return;
+  const pastille = div.querySelector(".messagerie-fenetre-entete .messagerie-pastille");
+  if (pastille) pastille.className = "messagerie-pastille messagerie-statut-" + statut;
+  const texte = div.querySelector(".messagerie-fenetre-statut-texte");
+  if (texte) texte.textContent = libelleStatutMessagerie(statut);
+}
+
+function formaterHeureMessage(brut) {
+  const iso = String(brut).includes("T") ? brut : String(brut).replace(" ", "T") + "Z";
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "" : d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function texteMessageHTML(contenu) {
+  return echapper(contenu).replace(/\n/g, "<br>");
+}
+
+function bulleMessageHTML(m, monId) {
+  const mien = Number(m.expediteur_id) === Number(monId);
+  if (m.type === "clin_oeil") {
+    return `<div class="messagerie-clin-oeil-ligne">👋 ${mien ? "Vous avez envoyé un clin d'œil" : "a envoyé un clin d'œil"}</div>`;
+  }
+  return `
+    <div class="messagerie-bulle-ligne ${mien ? "messagerie-mien" : ""}">
+      <div class="messagerie-bulle">${texteMessageHTML(m.contenu)}</div>
+      <span class="messagerie-heure">${formaterHeureMessage(m.envoye_le)}</span>
+    </div>`;
+}
+
+function ajouterMessagesFenetre(etat, messages, forcerDefilement) {
+  const corps = document.getElementById("messagerie-corps-" + etat.membreId);
+  if (!corps) return;
+  const etaitEnBas = corps.scrollHeight - corps.scrollTop - corps.clientHeight < 40;
+  messages.forEach((m) => {
+    corps.insertAdjacentHTML("beforeend", bulleMessageHTML(m, SESSION.id));
+    if (typeof m.id === "number" && m.id > etat.dernierId) etat.dernierId = m.id;
+  });
+  if (forcerDefilement || etaitEnBas) corps.scrollTop = corps.scrollHeight;
+}
+
+async function chargerMessagesFenetre(etat, estChargementInitial) {
+  try {
+    const data = await appelAPI(`/api/chat/messages?avec=${etat.membreId}&apres_id=${etat.dernierId}`);
+    const nouveaux = data.messages || [];
+    if (nouveaux.length) {
+      ajouterMessagesFenetre(etat, nouveaux, !!estChargementInitial);
+      if (!estChargementInitial) {
+        const recus = nouveaux.filter((m) => Number(m.expediteur_id) !== Number(SESSION.id));
+        if (recus.length) {
+          jouerSonMessagerie(recus.some((m) => m.type === "clin_oeil") ? "clin_oeil" : "texte");
+          if (recus.some((m) => m.type === "clin_oeil")) secouerElement(document.getElementById("messagerie-fenetre-" + etat.membreId));
+        }
+      }
+    }
+    majEnteteFenetre(etat, data.statut || etat.statut);
+    const zoneFrappe = document.getElementById("messagerie-frappe-" + etat.membreId);
+    if (zoneFrappe) zoneFrappe.classList.toggle("cache", !data.frappe);
+  } catch (e) {
+    // On retentera au prochain sondage.
+  }
+}
+
+async function envoyerMessageFenetre(etat, type, contenu) {
+  try {
+    const r = await appelAPI("/api/chat/messages", { method: "POST", body: JSON.stringify({ avec: etat.membreId, type, contenu }) });
+    etat.dernierId = Math.max(etat.dernierId, r.id);
+    ajouterMessagesFenetre(etat, [{ id: r.id, expediteur_id: SESSION.id, type, contenu, envoye_le: new Date().toISOString() }], true);
+  } catch (e) {
+    ajouterMessagesFenetre(etat, [{ id: "e" + Date.now(), expediteur_id: SESSION.id, type: "texte", contenu: "⚠ Message non envoyé : " + e.message, envoye_le: new Date().toISOString() }], true);
+  }
+}
+
+// ---- démarrage : premier sondage puis toutes les 4 secondes ---------------
+
+function demarrerMessagerie() {
+  chargerContactsMessagerie();
+  setInterval(() => {
+    chargerContactsMessagerie();
+    MESSAGERIE_FENETRES.forEach((etat) => chargerMessagesFenetre(etat, false));
+  }, MESSAGERIE_INTERVALLE_MS);
+}
 
 // ---------------------------------------------------------------------------
 // Habillage des menus déroulants (voir ameliorerSelect dans layout.js) —

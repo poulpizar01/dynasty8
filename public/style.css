@@ -1819,6 +1819,146 @@ section.section.serre {
   .agenda-entete-jour, .agenda-jour { min-width: 92px; }
 }
 
+/* ---------- admin : messagerie interne (widget façon MSN) ---------- */
+
+.messagerie-widget { position: fixed; right: 24px; bottom: 24px; z-index: 60; display: none; }
+.admin-connecte .messagerie-widget { display: block; }
+
+.messagerie-pastille { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.messagerie-statut-disponible { background: var(--success); }
+.messagerie-statut-absent { background: #e0a83f; }
+.messagerie-statut-occupe { background: var(--danger-strong); }
+.messagerie-statut-invisible, .messagerie-statut-hors_ligne { background: var(--text-faint); }
+
+.messagerie-avatar, .messagerie-avatar-img {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; object-fit: cover;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-elevated); color: var(--gold-strong); font-size: 0.72rem; font-weight: 600;
+}
+
+.messagerie-lanceur {
+  position: relative; width: 56px; height: 56px; border-radius: 50%;
+  background: var(--or-grad); border: none; box-shadow: var(--shadow);
+  font-size: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--or-contrast);
+}
+.messagerie-lanceur:hover { transform: translateY(-2px); }
+.messagerie-badge {
+  position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px; padding: 0 5px;
+  border-radius: 999px; background: var(--danger-strong); color: #fff; font-size: 0.68rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg);
+}
+.messagerie-secousse { animation: messagerie-shake 0.5s; }
+@keyframes messagerie-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px) rotate(-1deg); }
+  40% { transform: translateX(6px) rotate(1deg); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+/* liste de contacts ("buddy list") */
+.messagerie-liste {
+  position: absolute; z-index: 2; right: 0; bottom: 68px; width: 320px; max-height: 70vh;
+  background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius);
+  box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+}
+.messagerie-liste-entete { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); }
+.messagerie-mon-statut { display: flex; align-items: center; gap: 10px; position: relative; }
+.messagerie-mon-statut > div { flex: 1; min-width: 0; }
+.messagerie-mon-statut strong { display: block; font-size: 0.9rem; }
+.messagerie-fermer { position: absolute; top: -4px; right: -4px; background: none; border: none; color: var(--text-faint); font-size: 1.1rem; padding: 4px; }
+
+.messagerie-statut-menu { position: relative; }
+.messagerie-statut-bouton {
+  display: flex; align-items: center; gap: 6px; background: none; border: none; padding: 2px 0;
+  font-size: 0.76rem; color: var(--text-faint); cursor: pointer;
+}
+.messagerie-statut-options {
+  position: absolute; top: 100%; left: 0; margin-top: 6px; width: 210px; z-index: 5;
+  background: var(--bg-elevated); border: 1px solid var(--border-light); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; gap: 2px;
+}
+.messagerie-statut-options button {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: none; border: none;
+  color: var(--text); font-size: 0.84rem; text-align: left; border-radius: var(--radius-sm); cursor: pointer;
+}
+.messagerie-statut-options button:hover { background: var(--bg-card-hover); }
+
+.messagerie-recherche {
+  width: 100%; margin-top: 10px; height: 36px; padding: 0 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.84rem;
+}
+
+.messagerie-contacts { flex: 1; overflow-y: auto; padding: 6px; }
+.messagerie-vide { padding: 20px 12px; text-align: center; color: var(--text-faint); font-size: 0.84rem; }
+
+.messagerie-contact {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: var(--radius-sm);
+  background: none; border: none; text-align: left; cursor: pointer;
+}
+.messagerie-contact:hover { background: var(--bg-card-hover); }
+.messagerie-avatar-bloc { position: relative; flex-shrink: 0; }
+.messagerie-avatar-bloc .messagerie-pastille { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border: 2px solid var(--bg-card); }
+.messagerie-contact-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.messagerie-contact-texte strong { font-size: 0.86rem; }
+.messagerie-contact-apercu { font-size: 0.74rem; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.messagerie-contact .messagerie-badge { position: static; border: none; flex-shrink: 0; }
+
+/* fenêtres de conversation (plusieurs à la fois, comme MSN) */
+.messagerie-fenetres { position: absolute; z-index: 1; right: 0; bottom: 68px; display: flex; flex-direction: row-reverse; gap: 12px; align-items: flex-end; }
+.messagerie-fenetre {
+  width: 300px; height: 380px; display: flex; flex-direction: column;
+  background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+}
+.messagerie-fenetre.messagerie-reduite { height: auto; }
+.messagerie-fenetre.messagerie-reduite .messagerie-fenetre-corps,
+.messagerie-fenetre.messagerie-reduite .messagerie-fenetre-frappe,
+.messagerie-fenetre.messagerie-reduite .messagerie-fenetre-pied { display: none; }
+
+.messagerie-fenetre-entete {
+  display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border); cursor: pointer; flex-shrink: 0;
+}
+.messagerie-fenetre-titre { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.messagerie-fenetre-titre strong { font-size: 0.84rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.messagerie-fenetre-statut-texte { font-size: 0.68rem; color: var(--text-faint); }
+.messagerie-fenetre-icone { flex-shrink: 0; background: none; border: none; color: var(--text-faint); font-size: 0.95rem; width: 22px; height: 22px; border-radius: 4px; }
+.messagerie-fenetre-icone:hover { background: rgba(201,165,92,0.18); color: var(--text); }
+
+.messagerie-fenetre-corps { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.messagerie-bulle-ligne { display: flex; flex-direction: column; max-width: 82%; }
+.messagerie-bulle-ligne.messagerie-mien { align-self: flex-end; align-items: flex-end; }
+.messagerie-bulle {
+  padding: 8px 12px; border-radius: 14px; font-size: 0.84rem; line-height: 1.4; background: var(--bg-elevated);
+  border: 1px solid var(--border); color: var(--text); word-break: break-word;
+}
+.messagerie-mien .messagerie-bulle { background: linear-gradient(135deg, rgba(201,165,92,0.34), rgba(201,165,92,0.2)); border-color: var(--d8-gold-400); }
+.messagerie-heure { font-size: 0.64rem; color: var(--text-faint); margin-top: 2px; padding: 0 2px; }
+.messagerie-clin-oeil-ligne { align-self: center; font-size: 0.76rem; font-style: italic; color: var(--gold-strong); }
+
+.messagerie-fenetre-frappe { padding: 2px 12px 4px; font-size: 0.7rem; color: var(--text-faint); font-style: italic; flex-shrink: 0; }
+
+.messagerie-fenetre-pied { display: flex; align-items: flex-end; gap: 6px; padding: 8px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.messagerie-fenetre-pied textarea {
+  flex: 1; resize: none; min-height: 34px; max-height: 80px; padding: 7px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: var(--d8-font-ui); font-size: 0.84rem;
+}
+.messagerie-fenetre-clin-oeil, .messagerie-fenetre-envoyer {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--bg-elevated); color: var(--text); cursor: pointer; font-size: 0.95rem;
+}
+.messagerie-fenetre-envoyer { background: var(--or-grad); color: var(--or-contrast); border: none; }
+.messagerie-fenetre-clin-oeil:hover { background: var(--bg-card-hover); }
+
+@media (max-width: 640px) {
+  .messagerie-widget { right: 14px; bottom: 14px; }
+  .messagerie-liste { position: fixed; inset: 0; width: auto; max-height: none; border-radius: 0; }
+  .messagerie-fenetres { position: fixed; inset: 0; flex-direction: column; align-items: stretch; gap: 0; }
+  .messagerie-fenetre { width: 100%; height: 100%; border-radius: 0; }
+}
+
 .ecran-connexion {
   min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
   background: radial-gradient(ellipse at top, rgba(207,159,86,0.16), transparent 60%), var(--bg);

@@ -182,6 +182,7 @@ export default {
       if (chemin === "/api/membres") return await comptes(request, url, env);
       if (chemin === "/api/equipe") return await equipe(env);
       if (chemin === "/api/agenda") return await agenda(request, url, env);
+      if (chemin.startsWith("/api/chat/")) return await chat(request, url, env);
       return json({ erreur: "Adresse inconnue." }, 404);
     } catch (e) {
       return json({ erreur: "Erreur interne", detail: String((e && e.message) || e) }, 500);
@@ -378,6 +379,7 @@ async function moi(request, env) {
   ).bind(s.id).first();
   return json({
     connecte: true,
+    id: s.id,
     pseudo: s.pseudo,
     grade: s.grade,
     direction: estDirection(s),
@@ -494,6 +496,158 @@ async function agenda(request, url, env) {
   }
 
   return json({ erreur: "Méthode non gérée." }, 405);
+}
+
+// ---- messagerie interne (widget façon MSN) ---------------------------------
+// Conversations privées à deux uniquement (pas de groupes), accessibles à tout
+// membre connecté quel que soit son grade. Comme pour l'agenda, l'identité de
+// l'expéditeur vient TOUJOURS de la session signée, jamais du corps envoyé par
+// le client — impossible d'envoyer un message ou de lire une conversation en
+// se faisant passer pour quelqu'un d'autre.
+//
+// "Temps réel" : ce site tourne sur un Worker Cloudflare classique (pas de
+// Durable Objects ni de WebSocket, qui demanderaient une offre payante et une
+// architecture bien plus lourde). Le widget interroge donc le serveur toutes
+// les quelques secondes ("polling") — invisible pour l'agent, largement assez
+// réactif pour une messagerie d'équipe, et qui fonctionne sur n'importe quel
+// forfait Cloudflare.
+
+// Un membre est considéré "en ligne" si son navigateur a donné signe de vie
+// (n'importe quel appel à une route /api/chat/*) il y a moins de 25 secondes —
+// le widget interroge le serveur toutes les 3 à 8 secondes, donc cette marge
+// laisse largement le temps sans jamais afficher "hors ligne" par erreur.
+async function toucherPresence(env, membreId) {
+  await env.DB.prepare(
+    `INSERT INTO presence (membre_id, statut, vu_le) VALUES (?1, 'disponible', datetime('now'))
+     ON CONFLICT(membre_id) DO UPDATE SET vu_le = datetime('now')`
+  ).bind(membreId).run();
+}
+
+const STATUTS_PRESENCE = ["disponible", "absent", "occupe", "invisible"];
+
+async function chatContacts(env, s) {
+  await toucherPresence(env, s.id);
+  const r = await env.DB.prepare(
+    `SELECT m.id, m.pseudo, m.grade, m.discord_avatar, m.photo,
+       p.statut AS presence_statut,
+       CASE WHEN p.vu_le IS NOT NULL AND p.vu_le > datetime('now', '-25 seconds') THEN 1 ELSE 0 END AS en_ligne,
+       (SELECT contenu FROM messages_chat
+          WHERE (expediteur_id = m.id AND destinataire_id = ?1) OR (expediteur_id = ?1 AND destinataire_id = m.id)
+          ORDER BY id DESC LIMIT 1) AS dernier_contenu,
+       (SELECT type FROM messages_chat
+          WHERE (expediteur_id = m.id AND destinataire_id = ?1) OR (expediteur_id = ?1 AND destinataire_id = m.id)
+          ORDER BY id DESC LIMIT 1) AS dernier_type,
+       (SELECT envoye_le FROM messages_chat
+          WHERE (expediteur_id = m.id AND destinataire_id = ?1) OR (expediteur_id = ?1 AND destinataire_id = m.id)
+          ORDER BY id DESC LIMIT 1) AS dernier_le,
+       (SELECT COUNT(*) FROM messages_chat WHERE expediteur_id = m.id AND destinataire_id = ?1 AND lu = 0) AS non_lus
+     FROM membres m
+     LEFT JOIN presence p ON p.membre_id = m.id
+     WHERE m.id != ?1 AND m.statut = 'valide' AND m.actif = 1
+     ORDER BY (dernier_le IS NULL) ASC, dernier_le DESC, m.pseudo COLLATE NOCASE`
+  ).bind(s.id).all();
+
+  const moi = await env.DB.prepare("SELECT statut FROM presence WHERE membre_id = ?1").bind(s.id).first();
+
+  const contacts = (r.results || []).map((m) => ({
+    id: m.id,
+    pseudo: m.pseudo,
+    grade: m.grade,
+    avatar: m.discord_avatar || m.photo || "",
+    // "invisible" : la personne apparaît hors ligne à tout le monde SAUF à elle-même
+    // (gérée côté client, qui sait déjà que c'est son propre statut choisi).
+    statut: m.presence_statut === "invisible" ? "hors_ligne" : (m.en_ligne ? (m.presence_statut || "disponible") : "hors_ligne"),
+    dernier_message: m.dernier_type === "clin_oeil" ? "👋 Clin d'œil" : (m.dernier_contenu || ""),
+    dernier_message_le: m.dernier_le || null,
+    non_lus: m.non_lus || 0,
+  }));
+  return json({ statut: (moi && moi.statut) || "disponible", contacts });
+}
+
+async function chatPresence(request, env, s) {
+  const b = await request.json().catch(() => null);
+  if (!b || !STATUTS_PRESENCE.includes(b.statut)) return json({ erreur: "Statut invalide." }, 400);
+  await env.DB.prepare(
+    `INSERT INTO presence (membre_id, statut, vu_le) VALUES (?1, ?2, datetime('now'))
+     ON CONFLICT(membre_id) DO UPDATE SET statut = ?2, vu_le = datetime('now')`
+  ).bind(s.id, b.statut).run();
+  return json({ ok: true });
+}
+
+async function chatFrappe(request, env, s) {
+  const b = await request.json().catch(() => null);
+  const avecId = Number(b && b.avec);
+  if (!avecId) return json({ erreur: "Destinataire manquant." }, 400);
+  await env.DB.prepare(
+    `INSERT INTO frappe_chat (expediteur_id, destinataire_id, jusqu_a) VALUES (?1, ?2, datetime('now', '+4 seconds'))
+     ON CONFLICT(expediteur_id, destinataire_id) DO UPDATE SET jusqu_a = datetime('now', '+4 seconds')`
+  ).bind(s.id, avecId).run();
+  return json({ ok: true });
+}
+
+async function chatMessages(request, url, env, s) {
+  const avecId = Number(url.searchParams.get("avec"));
+  if (!avecId) return json({ erreur: "Destinataire manquant." }, 400);
+  const apresId = Number(url.searchParams.get("apres_id")) || 0;
+
+  await toucherPresence(env, s.id);
+  // Le fait d'aller chercher les messages de cette conversation vaut "lecture" :
+  // on marque tout ce qu'on a reçu de cette personne comme lu.
+  await env.DB.prepare(
+    "UPDATE messages_chat SET lu = 1 WHERE expediteur_id = ?1 AND destinataire_id = ?2 AND lu = 0"
+  ).bind(avecId, s.id).run();
+
+  const r = await env.DB.prepare(
+    `SELECT id, expediteur_id, destinataire_id, type, contenu, envoye_le FROM messages_chat
+     WHERE ((expediteur_id = ?1 AND destinataire_id = ?2) OR (expediteur_id = ?2 AND destinataire_id = ?1)) AND id > ?3
+     ORDER BY id ASC LIMIT 200`
+  ).bind(s.id, avecId, apresId).all();
+
+  const pres = await env.DB.prepare(
+    `SELECT statut, CASE WHEN vu_le > datetime('now', '-25 seconds') THEN 1 ELSE 0 END AS en_ligne
+       FROM presence WHERE membre_id = ?1`
+  ).bind(avecId).first();
+  const statut = !pres ? "hors_ligne" : (pres.statut === "invisible" ? "hors_ligne" : (pres.en_ligne ? (pres.statut || "disponible") : "hors_ligne"));
+
+  const frappe = await env.DB.prepare(
+    "SELECT 1 FROM frappe_chat WHERE expediteur_id = ?1 AND destinataire_id = ?2 AND jusqu_a > datetime('now')"
+  ).bind(avecId, s.id).first();
+
+  return json({ messages: r.results || [], statut, frappe: !!frappe });
+}
+
+async function chatEnvoyer(request, env, s) {
+  const b = await request.json().catch(() => null);
+  const destinataire = Number(b && b.avec);
+  if (!destinataire) return json({ erreur: "Destinataire invalide." }, 400);
+  if (destinataire === s.id) return json({ erreur: "Impossible de vous envoyer un message à vous-même." }, 400);
+  const type = b.type === "clin_oeil" ? "clin_oeil" : "texte";
+  const contenu = type === "clin_oeil" ? "" : txt(b.contenu, 1000).trim();
+  if (type === "texte" && !contenu) return json({ erreur: "Le message ne peut pas être vide." }, 400);
+
+  const cible = await env.DB.prepare(
+    "SELECT id FROM membres WHERE id = ?1 AND statut = 'valide' AND actif = 1"
+  ).bind(destinataire).first();
+  if (!cible) return json({ erreur: "Ce membre est introuvable." }, 404);
+
+  const r = await env.DB.prepare(
+    "INSERT INTO messages_chat (expediteur_id, destinataire_id, type, contenu, envoye_le) VALUES (?1, ?2, ?3, ?4, datetime('now'))"
+  ).bind(s.id, destinataire, type, contenu).run();
+  await toucherPresence(env, s.id);
+  return json({ id: r.meta.last_row_id });
+}
+
+async function chat(request, url, env) {
+  const s = await session(request, env);
+  if (!s) return json({ erreur: "Non connecté." }, 401);
+  const route = url.pathname.slice("/api/chat".length); // "/contacts" | "/messages" | "/presence" | "/frappe"
+  const m = request.method;
+  if (route === "/contacts" && m === "GET") return chatContacts(env, s);
+  if (route === "/messages" && m === "GET") return chatMessages(request, url, env, s);
+  if (route === "/messages" && m === "POST") return chatEnvoyer(request, env, s);
+  if (route === "/presence" && m === "PUT") return chatPresence(request, env, s);
+  if (route === "/frappe" && m === "POST") return chatFrappe(request, env, s);
+  return json({ erreur: "Adresse inconnue." }, 404);
 }
 
 // ---- équipe (page publique /equipe.html) ----------------------------------

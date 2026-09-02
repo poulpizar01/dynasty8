@@ -75,3 +75,29 @@ CREATE TABLE IF NOT EXISTS evenements_agenda (
 );
 
 CREATE INDEX IF NOT EXISTS idx_agenda_membre_jour ON evenements_agenda(membre_id, jour);
+
+-- Messagerie interne (widget façon MSN) — conversations privées à deux uniquement.
+CREATE TABLE IF NOT EXISTS messages_chat (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  expediteur_id INTEGER NOT NULL REFERENCES membres(id) ON DELETE CASCADE,
+  destinataire_id INTEGER NOT NULL REFERENCES membres(id) ON DELETE CASCADE,
+  type TEXT NOT NULL DEFAULT 'texte',   -- 'texte' | 'clin_oeil'
+  contenu TEXT NOT NULL DEFAULT '',
+  lu INTEGER NOT NULL DEFAULT 0,
+  envoye_le TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_messages_chat_exp ON messages_chat(expediteur_id, destinataire_id);
+CREATE INDEX IF NOT EXISTS idx_messages_chat_dest ON messages_chat(destinataire_id, expediteur_id);
+
+CREATE TABLE IF NOT EXISTS presence (
+  membre_id INTEGER PRIMARY KEY REFERENCES membres(id) ON DELETE CASCADE,
+  statut TEXT NOT NULL DEFAULT 'disponible',  -- 'disponible' | 'absent' | 'occupe' | 'invisible'
+  vu_le TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS frappe_chat (
+  expediteur_id INTEGER NOT NULL REFERENCES membres(id) ON DELETE CASCADE,
+  destinataire_id INTEGER NOT NULL REFERENCES membres(id) ON DELETE CASCADE,
+  jusqu_a TEXT NOT NULL,
+  PRIMARY KEY (expediteur_id, destinataire_id)
+);

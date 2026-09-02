@@ -472,6 +472,46 @@
   </div>
 </div>
 
+<!-- ============ Messagerie interne (façon MSN) ============
+     Persiste par-dessus tous les onglets une fois connecté (voir demarrerEspaceAdmin
+     dans admin.js) : ce n'est pas un onglet qu'il faut aller chercher, mais une
+     petite bulle toujours accessible en bas à droite, comme une vraie messagerie. -->
+<div class="messagerie-widget" id="messagerie-widget">
+
+  <div class="messagerie-liste cache" id="messagerie-liste">
+    <div class="messagerie-liste-entete">
+      <div class="messagerie-mon-statut">
+        <span class="messagerie-avatar" id="messagerie-mon-avatar"></span>
+        <div>
+          <strong id="messagerie-mon-pseudo"></strong>
+          <div class="messagerie-statut-menu">
+            <button type="button" class="messagerie-statut-bouton" id="bouton-mon-statut" aria-haspopup="true" aria-expanded="false">
+              <span class="messagerie-pastille" id="mon-statut-pastille"></span>
+              <span id="mon-statut-texte">Disponible</span> ▾
+            </button>
+            <div class="messagerie-statut-options cache" id="menu-mon-statut">
+              <button type="button" data-statut="disponible"><span class="messagerie-pastille messagerie-statut-disponible"></span> Disponible</button>
+              <button type="button" data-statut="absent"><span class="messagerie-pastille messagerie-statut-absent"></span> Absent</button>
+              <button type="button" data-statut="occupe"><span class="messagerie-pastille messagerie-statut-occupe"></span> Ne pas déranger</button>
+              <button type="button" data-statut="invisible"><span class="messagerie-pastille messagerie-statut-invisible"></span> Apparaître hors ligne</button>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="messagerie-fermer" id="messagerie-fermer-liste" aria-label="Fermer la messagerie">✕</button>
+      </div>
+      <input type="search" class="messagerie-recherche" id="messagerie-recherche" placeholder="🔎 Rechercher un contact…">
+    </div>
+    <div class="messagerie-contacts" id="messagerie-contacts"></div>
+  </div>
+
+  <div class="messagerie-fenetres" id="messagerie-fenetres"></div>
+
+  <button type="button" class="messagerie-lanceur" id="messagerie-bouton-liste" aria-label="Ouvrir la messagerie">
+    💬
+    <span class="messagerie-badge cache" id="messagerie-badge-total">0</span>
+  </button>
+</div>
+
 <script src="/layout.js"></script>
 <script src="/admin.js"></script>
 </body>
