@@ -891,8 +891,65 @@ async function statsAnomalies(env, url, s) {
   return json({ anomalies: filtrees });
 }
 
+// Récapitulatif par agent pour une semaine donnée (§5, §6.2 : l'écran "Récap
+// Direction") — quota, primes et total à verser, calculés avec le moteur
+// déjà validé (src/stats-calc.js) à partir des lignes reçues du bot. Le
+// référentiel stats_agents (identité RP + grade) est FACULTATIF : un agent
+// qui n'y est pas encore déclaré apparaît quand même, avec son pseudo brut
+// et le grade par défaut "Agent" (seul le grade "Stagiaire" change le calcul
+// des primes — tout le reste utilise le même barème pour l'instant).
+async function statsRecap(env, url, s) {
+  if (!statsPeutVoirTous(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const semaine = (url.searchParams.get("semaine") || "").trim().toUpperCase();
+  if (!semaine) return json({ erreur: "Le paramètre « semaine » est obligatoire (ex : S36-26)." }, 400);
+
+  const { lignes } = await lireLignesLocales(env);
+  const identitesNormalisees = new Set(
+    lignes.filter((l) => l.semaine === semaine && l.identiteNormalisee).map((l) => l.identiteNormalisee)
+  );
+
+  const [agentsR, baremesR, tauxR, configR] = await Promise.all([
+    env.DB.prepare("SELECT * FROM stats_agents").all(),
+    env.DB.prepare("SELECT * FROM stats_baremes_primes").all(),
+    env.DB.prepare("SELECT * FROM stats_taux_commission").all(),
+    env.DB.prepare("SELECT valeur FROM stats_config WHERE cle = 'formateur_compte_dans_quota'").first(),
+  ]);
+  const agentsParPseudo = new Map((agentsR.results || []).map((a) => [a.discord_pseudo_normalise, a]));
+  const baremeVentes = (baremesR.results || []).filter((b) => b.type === "vente");
+  const baremeLocations = (baremesR.results || []).filter((b) => b.type === "location");
+  const tauxParGrade = new Map((tauxR.results || []).map((t) => [t.grade, t]));
+  const formateurComptesDansQuota = !!configR && configR.valeur === "1";
+
+  const agents = Array.from(identitesNormalisees).map((pseudoNorm) => {
+    const fiche = agentsParPseudo.get(pseudoNorm);
+    const grade = fiche ? fiche.grade : "Agent";
+    const t = tauxParGrade.get(grade) || { taux: 0.48, salaire_fixe: null };
+    const nbAchats = statsCalc.compterAchats(lignes, "identiteNormalisee", pseudoNorm, semaine);
+    const nbLocations = statsCalc.compterLocations(lignes, "identiteNormalisee", pseudoNorm, semaine);
+    const formateurNbAchats = statsCalc.compterAchats(lignes, "formateurNormalise", pseudoNorm, semaine);
+    const formateurNbLocations = statsCalc.compterLocations(lignes, "formateurNormalise", pseudoNorm, semaine);
+    const facture = statsCalc.sommeFacture(lignes, pseudoNorm, semaine);
+    const finances = statsCalc.calculerFinances({
+      grade, nbAchats, nbLocations, facture, formateurNbAchats, formateurNbLocations,
+      formateurComptesDansQuota, baremeVentes, baremeLocations, tauxCommission: t.taux, salaireFixe: t.salaire_fixe,
+    });
+    return {
+      identite: fiche ? fiche.discord_pseudo : pseudoNorm,
+      identiteRp: fiche ? fiche.identite_rp : "",
+      grade,
+      gradeConnu: !!fiche,
+      nbAchats, nbLocations, ...finances,
+    };
+  });
+
+  const ordreGrade = (g) => { const i = statsCalc.GRADES_STATS.indexOf(g); return i === -1 ? statsCalc.GRADES_STATS.length : i; };
+  agents.sort((a, b) => ordreGrade(a.grade) - ordreGrade(b.grade) || b.totalGagne - a.totalGagne);
+
+  return json({ semaine, agents });
+}
+
 async function statistiques(request, url, env) {
-  const route = url.pathname.slice("/api/stats".length); // "/semaines" | "/anomalies" | "/ventes" | "/ventes/:id"
+  const route = url.pathname.slice("/api/stats".length); // "/semaines" | "/anomalies" | "/recap" | "/ventes" | "/ventes/:id"
   const m = request.method;
 
   // Le bot envoie ses ventes avec "Authorization: Bearer <clé secrète>",
@@ -906,6 +963,7 @@ async function statistiques(request, url, env) {
   if (!s) return json({ erreur: "Non connecté." }, 401);
   if (route === "/semaines" && m === "GET") return statsSemaines(env, s);
   if (route === "/anomalies" && m === "GET") return statsAnomalies(env, url, s);
+  if (route === "/recap" && m === "GET") return statsRecap(env, url, s);
   if (route === "/ventes" && m === "POST") {
     if (!statsPeutVoirSoi(s)) return json({ erreur: "Non connecté." }, 401);
     return statsEnregistrerVente(request, env, s.id);

@@ -174,25 +174,89 @@ async function chargerStatistiques() {
     const reponse = await appelAPI("/api/stats/semaines");
     const vide = document.getElementById("statistiques-vide");
     const resultat = document.getElementById("statistiques-resultat");
+    const recap = document.getElementById("statistiques-recap");
     if (!reponse.semaines || !reponse.semaines.length) {
+      vide.classList.remove("cache");
+      resultat.classList.add("cache");
+      recap.classList.add("cache");
+      return;
+    }
+    vide.classList.add("cache");
+    resultat.classList.remove("cache");
+    recap.classList.remove("cache");
+    document.getElementById("corps-table-statistiques").innerHTML = reponse.semaines.map((s) => {
+      const periode = s.debut && s.fin ? `${formaterDateCourte(s.debut)} → ${formaterDateCourte(s.fin)}` : "—";
+      return `<tr><td><strong>${s.code}</strong></td><td>${periode}</td><td>${s.lignes}</td>` +
+        `<td><button type="button" class="bouton-lien" data-voir-recap="${s.code}">Voir le récap par agent →</button></td></tr>`;
+    }).join("");
+
+    // Le sélecteur de semaine du récap par agent reprend la même liste (déjà
+    // triée du plus récent au plus ancien par l'API).
+    const select = document.getElementById("select-semaine-recap");
+    const semaineChoisieAvant = select.value;
+    select.innerHTML = reponse.semaines.map((s) => `<option value="${s.code}">${s.code}</option>`).join("");
+    select.value = reponse.semaines.some((s) => s.code === semaineChoisieAvant)
+      ? semaineChoisieAvant
+      : reponse.semaines[0].code;
+    chargerRecap(select.value);
+  } catch (e) {
+    afficherMessage("zone-message-statistiques", "Impossible de charger les statistiques : " + e.message, "erreur");
+  }
+}
+
+document.getElementById("corps-table-statistiques").addEventListener("click", (e) => {
+  const bouton = e.target.closest("[data-voir-recap]");
+  if (!bouton) return;
+  document.getElementById("select-semaine-recap").value = bouton.dataset.voirRecap;
+  chargerRecap(bouton.dataset.voirRecap);
+  document.getElementById("statistiques-recap").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+document.getElementById("select-semaine-recap").addEventListener("change", (e) => chargerRecap(e.target.value));
+
+async function chargerRecap(semaine) {
+  if (!semaine) return;
+  afficherMessage("zone-message-recap", "", null);
+  try {
+    const reponse = await appelAPI(`/api/stats/recap?semaine=${encodeURIComponent(semaine)}`);
+    const vide = document.getElementById("recap-vide");
+    const resultat = document.getElementById("recap-resultat");
+    if (!reponse.agents || !reponse.agents.length) {
       vide.classList.remove("cache");
       resultat.classList.add("cache");
       return;
     }
     vide.classList.add("cache");
     resultat.classList.remove("cache");
-    document.getElementById("corps-table-statistiques").innerHTML = reponse.semaines.map((s) => {
-      const periode = s.debut && s.fin ? `${formaterDateCourte(s.debut)} → ${formaterDateCourte(s.fin)}` : "—";
-      return `<tr><td><strong>${s.code}</strong></td><td>${periode}</td><td>${s.lignes}</td></tr>`;
+    document.getElementById("corps-table-recap").innerHTML = reponse.agents.map((a) => {
+      const grade = echapper(a.grade) + (a.gradeConnu ? "" :
+        ' <span class="puce puce-or" title="Cet agent n\'est pas encore déclaré dans le référentiel — grade par défaut appliqué.">par défaut</span>');
+      return `<tr>
+        <td><strong>${echapper(a.identite)}</strong>${a.identiteRp ? `<br><span style="font-size:0.82rem;color:var(--text-faint);">${echapper(a.identiteRp)}</span>` : ""}</td>
+        <td>${grade}</td>
+        <td>${a.nbAchats}</td>
+        <td>${a.nbLocations}</td>
+        <td>${a.quotaRealise}</td>
+        <td>${formaterArgentStats(a.primeVente)}</td>
+        <td>${formaterArgentStats(a.primeLocations)}</td>
+        <td><strong>${formaterArgentStats(a.totalAVerser)}</strong></td>
+      </tr>`;
     }).join("");
   } catch (e) {
-    afficherMessage("zone-message-statistiques", "Impossible de charger les statistiques : " + e.message, "erreur");
+    afficherMessage("zone-message-recap", "Impossible de charger le récapitulatif : " + e.message, "erreur");
   }
 }
 
 function formaterDateCourte(isoAAAAMMJJ) {
   const [a, m, j] = String(isoAAAAMMJJ).split("-");
   return `${j}/${m}/${a}`;
+}
+
+// Même logique d'espacement des milliers que formaterPrix() (layout.js), mais
+// sans le suffixe "HT" : les primes ne sont pas des prix du catalogue.
+function formaterArgentStats(valeur) {
+  const n = Math.round(Number(valeur) || 0);
+  const chiffres = Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return (n < 0 ? "-" : "") + chiffres + " $";
 }
 
 // ---------------------------------------------------------------------------

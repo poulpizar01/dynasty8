@@ -253,10 +253,38 @@
       <div id="statistiques-resultat" class="cache" style="overflow-x:auto;">
         <table class="table-admin">
           <thead>
-            <tr><th>Semaine</th><th>Période</th><th>Ventes/locations enregistrées</th></tr>
+            <tr><th>Semaine</th><th>Période</th><th>Ventes/locations enregistrées</th><th></th></tr>
           </thead>
           <tbody id="corps-table-statistiques"></tbody>
         </table>
+      </div>
+
+      <!-- Récapitulatif par agent (§6.2) : quota, primes et total à verser
+           pour une semaine choisie — calculé à partir des mêmes lignes que
+           le tableau ci-dessus. -->
+      <div id="statistiques-recap" class="cache" style="margin-top:28px;">
+        <div class="entete-admin">
+          <div>
+            <h3 style="margin-bottom:2px;">Récapitulatif par agent</h3>
+            <p style="margin:0;font-size:0.88rem;">Primes à verser manuellement, calculées automatiquement à partir des ventes/locations reçues.</p>
+          </div>
+          <select id="select-semaine-recap"></select>
+        </div>
+        <div id="zone-message-recap"></div>
+        <div id="recap-vide" class="etat-vide cache">
+          <p>Aucune vente/location enregistrée pour cette semaine.</p>
+        </div>
+        <div id="recap-resultat" class="cache" style="overflow-x:auto;">
+          <table class="table-admin">
+            <thead>
+              <tr>
+                <th>Agent</th><th>Grade</th><th>Achats</th><th>Locations</th><th>Quota réalisé</th>
+                <th>Prime vente</th><th>Prime locations</th><th>Total à verser</th>
+              </tr>
+            </thead>
+            <tbody id="corps-table-recap"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
