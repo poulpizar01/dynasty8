@@ -1328,8 +1328,8 @@ document.getElementById("bouton-supprimer-bien").addEventListener("click", async
 // un bot Discord) dans une modale, le navigateur le découpe lui-même en
 // colonnes et en lignes pour un aperçu immédiat, puis n'envoie au serveur QUE
 // le résultat déjà structuré (colonnes[] + lignes[][]) — jamais le texte brut.
-// « Paramètres » et « DOT » sont pour l'instant de simples espaces réservés :
-// ils réutiliseront le même mécanisme dès que leur contenu sera précisé.
+// « Paramètres » configure la rémunération (voir plus bas dans ce fichier :
+// chargerRemuneration).
 // ---------------------------------------------------------------------------
 
 document.querySelectorAll(".compta-sous-onglet").forEach((btn) => {
@@ -1340,6 +1340,147 @@ document.querySelectorAll(".compta-sous-onglet").forEach((btn) => {
     document.getElementById("compta-panneau-parametres").classList.toggle("cache", nom !== "parametres");
     document.getElementById("compta-panneau-dot").classList.toggle("cache", nom !== "dot");
     if (nom === "dot") chargerDot();
+    if (nom === "parametres") chargerRemuneration();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Comptabilité -> Paramètres : rémunération (salaire fixe, primes par palier,
+// droits par grade). Modifie directement stats_taux_commission et
+// stats_baremes_primes — les mêmes tables déjà utilisées par le récap de
+// l'onglet Statistiques et par la déclaration DOT (voir calculerRecapSemaine
+// côté serveur) : rien à synchroniser, un changement ici s'applique
+// automatiquement au prochain calcul, sans redéploiement.
+// ---------------------------------------------------------------------------
+
+function switchRemunerationHtml(attribut, cle, actif) {
+  return `<label class="d8-switch"><input type="checkbox" ${attribut}="${echapper(cle)}" ${actif ? "checked" : ""}><span class="d8-switch-piste"></span></label>`;
+}
+
+async function chargerRemuneration() {
+  afficherMessage("zone-message-parametres", "", null);
+  try {
+    const r = await appelAPI("/api/stats/remuneration");
+    document.getElementById("corps-table-remuneration-grades").innerHTML = r.grades.map((g) => `
+      <tr>
+        <td><span class="puce" style="background:${couleurGrade(g.grade)}26;color:${couleurGrade(g.grade)};">${echapper(g.grade)}</span></td>
+        <td style="text-align:center;">${switchRemunerationHtml("data-salaire-actif", g.grade, g.salaireActif)}</td>
+        <td style="text-align:right;"><input type="number" class="table-input" min="0" step="1000" style="text-align:right;max-width:160px;" data-salaire-montant="${echapper(g.grade)}" value="${g.salaireFixe}"></td>
+        <td style="text-align:center;">${switchRemunerationHtml("data-prime-vente-active", g.grade, g.primeVenteActive)}</td>
+        <td style="text-align:center;">${switchRemunerationHtml("data-prime-location-active", g.grade, g.primeLocationActive)}</td>
+      </tr>`).join("");
+    cablerRemunerationGrades();
+
+    rendreBaremesPrimes("vente", r.baremesVentes);
+    rendreBaremesPrimes("location", r.baremesLocations);
+  } catch (e) {
+    document.getElementById("corps-table-remuneration-grades").innerHTML = `<tr><td colspan="5">Erreur de chargement.</td></tr>`;
+    afficherMessage("zone-message-parametres", "Impossible de charger les réglages de rémunération : " + e.message, "erreur");
+  }
+}
+
+function cablerRemunerationGrades() {
+  const corps = document.getElementById("corps-table-remuneration-grades");
+  corps.querySelectorAll("[data-salaire-actif]").forEach((el) => {
+    el.addEventListener("change", () => modifierGradeRemuneration(el.dataset.salaireActif, { salaireActif: el.checked }));
+  });
+  corps.querySelectorAll("[data-prime-vente-active]").forEach((el) => {
+    el.addEventListener("change", () => modifierGradeRemuneration(el.dataset.primeVenteActive, { primeVenteActive: el.checked }));
+  });
+  corps.querySelectorAll("[data-prime-location-active]").forEach((el) => {
+    el.addEventListener("change", () => modifierGradeRemuneration(el.dataset.primeLocationActive, { primeLocationActive: el.checked }));
+  });
+  corps.querySelectorAll("[data-salaire-montant]").forEach((el) => {
+    el.addEventListener("change", () => {
+      const val = el.value === "" ? 0 : Number(el.value);
+      if (!isFinite(val) || val < 0) {
+        afficherMessage("zone-message-parametres", "Le montant du salaire doit être un nombre positif.", "erreur");
+        chargerRemuneration();
+        return;
+      }
+      modifierGradeRemuneration(el.dataset.salaireMontant, { salaireFixe: val });
+    });
+  });
+}
+
+async function modifierGradeRemuneration(grade, patch) {
+  try {
+    await appelAPI(`/api/stats/remuneration/grades/${encodeURIComponent(grade)}`, { method: "PATCH", body: JSON.stringify(patch) });
+    afficherMessage("zone-message-parametres", "Enregistré ✓", "succes");
+  } catch (e) {
+    afficherMessage("zone-message-parametres", "Impossible d'enregistrer : " + e.message, "erreur");
+    chargerRemuneration();
+  }
+}
+
+function rendreBaremesPrimes(type, paliers) {
+  const corps = document.getElementById(`corps-table-baremes-${type}`);
+  if (!paliers.length) {
+    corps.innerHTML = `<tr><td colspan="3">Aucun palier — ajoutez-en un ci-dessous.</td></tr>`;
+    return;
+  }
+  corps.innerHTML = paliers.map((p) => `
+    <tr>
+      <td><input type="number" class="table-input" min="1" step="1" style="max-width:110px;" data-palier-seuil="${p.id}" value="${p.seuil}"></td>
+      <td style="text-align:right;"><input type="number" class="table-input" min="0" step="1000" style="max-width:140px;text-align:right;" data-palier-montant="${p.id}" value="${p.montant}"></td>
+      <td><button type="button" class="actions-icone actions-icone--danger" data-palier-supprimer="${p.id}" title="Supprimer ce palier" aria-label="Supprimer ce palier">🗑️</button></td>
+    </tr>`).join("");
+  corps.querySelectorAll("[data-palier-seuil]").forEach((el) => {
+    el.addEventListener("change", () => modifierPalierPrime(el.dataset.palierSeuil, { seuil: Number(el.value) }));
+  });
+  corps.querySelectorAll("[data-palier-montant]").forEach((el) => {
+    el.addEventListener("change", () => modifierPalierPrime(el.dataset.palierMontant, { montant: Number(el.value) }));
+  });
+  corps.querySelectorAll("[data-palier-supprimer]").forEach((btn) => {
+    btn.addEventListener("click", () => supprimerPalierPrime(btn.dataset.palierSupprimer));
+  });
+}
+
+async function modifierPalierPrime(id, patch) {
+  try {
+    await appelAPI(`/api/stats/baremes/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    afficherMessage("zone-message-parametres", "Enregistré ✓", "succes");
+  } catch (e) {
+    afficherMessage("zone-message-parametres", "Impossible d'enregistrer : " + e.message, "erreur");
+  } finally {
+    chargerRemuneration();
+  }
+}
+
+async function supprimerPalierPrime(id) {
+  const ok = await confirmerAction("Ce palier de prime sera définitivement supprimé.", "Supprimer ce palier ?");
+  if (!ok) return;
+  try {
+    await appelAPI(`/api/stats/baremes/${id}`, { method: "DELETE" });
+    chargerRemuneration();
+  } catch (e) {
+    afficherMessage("zone-message-parametres", "Impossible de supprimer : " + e.message, "erreur");
+  }
+}
+
+document.querySelectorAll(".palier-ajout").forEach((bloc) => {
+  const type = bloc.dataset.type;
+  bloc.querySelector(".palier-ajouter").addEventListener("click", async () => {
+    const seuilEl = bloc.querySelector(".palier-nouveau-seuil");
+    const montantEl = bloc.querySelector(".palier-nouveau-montant");
+    const seuil = Number(seuilEl.value);
+    const montant = Number(montantEl.value);
+    if (!seuilEl.value || !Number.isFinite(seuil) || !Number.isInteger(seuil) || seuil <= 0) {
+      afficherMessage("zone-message-parametres", "Le seuil (nombre à atteindre) doit être un nombre entier positif.", "erreur");
+      return;
+    }
+    if (montantEl.value === "" || !Number.isFinite(montant) || montant < 0) {
+      afficherMessage("zone-message-parametres", "Le montant de la prime doit être un nombre positif.", "erreur");
+      return;
+    }
+    try {
+      await appelAPI("/api/stats/baremes", { method: "POST", body: JSON.stringify({ type, seuil, montant }) });
+      seuilEl.value = "";
+      montantEl.value = "";
+      chargerRemuneration();
+    } catch (e) {
+      afficherMessage("zone-message-parametres", "Impossible d'ajouter ce palier : " + e.message, "erreur");
+    }
   });
 });
 

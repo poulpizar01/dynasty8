@@ -278,8 +278,13 @@ export function sommeFacture(lignes, pseudoNormalise, semaine) {
 // testable directement avec le tableau d'acceptation §9 sans avoir besoin des
 // lignes brutes du Sheet. ----------------------------------------------------
 
+// Éligibilité (salaireActif, primeVenteActive, primeLocationActive) réglée
+// PAR GRADE depuis l'écran Comptabilité -> Paramètres (voir stats_taux_commission
+// côté serveur) — remplace l'ancienne règle "Stagiaire = 0 prime, codée en
+// dur" et l'ancienne règle "salaire fixe REMPLACE les primes" : les trois
+// interrupteurs sont désormais indépendants et se cumulent librement (rien
+// n'empêche la Direction de donner à un grade le salaire ET les primes).
 export function calculerFinances({
-  grade,
   nbAchats,
   nbLocations,
   facture,
@@ -289,22 +294,24 @@ export function calculerFinances({
   baremeVentes,
   baremeLocations,
   tauxCommission,
-  salaireFixe = null,
+  salaireFixe = 0,
+  salaireActif = false,
+  primeVenteActive = true,
+  primeLocationActive = true,
 }) {
-  const estStagiaire = normaliserTexte(grade) === "stagiaire";
-
   const nbAchatsEffectif = nbAchats + (formateurComptesDansQuota ? formateurNbAchats : 0);
   const nbLocationsEffectif = nbLocations + (formateurComptesDansQuota ? formateurNbLocations : 0);
   const quotaRealise = nbAchatsEffectif + nbLocationsEffectif;
 
   const primeVenteBrute = montantPalier(baremeVentes, nbAchatsEffectif);
   const primeLocationsBrute = montantPalier(baremeLocations, nbLocationsEffectif);
-  const primeVente = estStagiaire ? 0 : primeVenteBrute;
-  const primeLocations = estStagiaire ? 0 : primeLocationsBrute;
+  const primeVente = primeVenteActive ? primeVenteBrute : 0;
+  const primeLocations = primeLocationActive ? primeLocationsBrute : 0;
   const primeTotale = primeVente + primeLocations;
 
   const commission = Math.round(facture * tauxCommission);
-  const totalAVerser = salaireFixe != null ? salaireFixe : primeTotale;
+  const salaireVerse = salaireActif ? (salaireFixe || 0) : 0;
+  const totalAVerser = salaireVerse + primeTotale;
   const totalGagne = commission + primeTotale;
 
   return {
@@ -313,9 +320,9 @@ export function calculerFinances({
     primeLocations,
     primeTotale,
     commission,
+    salaireVerse,
     totalAVerser,
     totalGagne,
-    estStagiaire,
     paliers: {
       vente: infoPalier(baremeVentes, nbAchatsEffectif),
       location: infoPalier(baremeLocations, nbLocationsEffectif),

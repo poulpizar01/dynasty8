@@ -1225,15 +1225,19 @@ async function calculerRecapSemaine(env, semaine) {
   const agents = Array.from(identitesNormalisees).map((pseudoNorm) => {
     const fiche = agentsParPseudo.get(pseudoNorm);
     const grade = fiche ? fiche.grade : "Agent";
-    const t = tauxParGrade.get(grade) || { taux: 0.48, salaire_fixe: null };
+    const t = tauxParGrade.get(grade) || { taux: 0.48, salaire_fixe: null, salaire_actif: 0, prime_vente_active: 1, prime_location_active: 1 };
     const nbAchats = statsCalc.compterAchats(lignes, "identiteNormalisee", pseudoNorm, semaine);
     const nbLocations = statsCalc.compterLocations(lignes, "identiteNormalisee", pseudoNorm, semaine);
     const formateurNbAchats = statsCalc.compterAchats(lignes, "formateurNormalise", pseudoNorm, semaine);
     const formateurNbLocations = statsCalc.compterLocations(lignes, "formateurNormalise", pseudoNorm, semaine);
     const facture = statsCalc.sommeFacture(lignes, pseudoNorm, semaine);
     const finances = statsCalc.calculerFinances({
-      grade, nbAchats, nbLocations, facture, formateurNbAchats, formateurNbLocations,
-      formateurComptesDansQuota, baremeVentes, baremeLocations, tauxCommission: t.taux, salaireFixe: t.salaire_fixe,
+      nbAchats, nbLocations, facture, formateurNbAchats, formateurNbLocations,
+      formateurComptesDansQuota, baremeVentes, baremeLocations, tauxCommission: t.taux,
+      salaireFixe: t.salaire_fixe || 0,
+      salaireActif: !!t.salaire_actif,
+      primeVenteActive: t.prime_vente_active == null ? true : !!t.prime_vente_active,
+      primeLocationActive: t.prime_location_active == null ? true : !!t.prime_location_active,
     });
     return {
       identite: fiche ? fiche.discord_pseudo : pseudoNorm,
@@ -1344,6 +1348,128 @@ async function statsSupprimerAgent(env, s, id) {
   return json({ ok: true });
 }
 
+// ---- Comptabilité -> Paramètres : rémunération -----------------------------
+// Cet écran ne fait qu'ajouter une interface pour modifier deux tables qui
+// existaient déjà et qui alimentent DÉJÀ le récap Statistiques et la
+// déclaration DOT (voir calculerRecapSemaine ci-dessus) : stats_taux_commission
+// (salaire fixe + 3 interrupteurs par grade) et stats_baremes_primes (paliers
+// de primes vente/location). Aucun autre écran n'a besoin d'être touché —
+// dès qu'une valeur change ici, le calcul en tient compte à la prochaine
+// consultation, sans redéploiement.
+
+async function statsRemunerationLire(env, s) {
+  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const [tauxR, baremesR] = await Promise.all([
+    env.DB.prepare("SELECT * FROM stats_taux_commission").all(),
+    env.DB.prepare("SELECT * FROM stats_baremes_primes ORDER BY type ASC, seuil ASC").all(),
+  ]);
+  const tauxParGrade = new Map((tauxR.results || []).map((t) => [t.grade, t]));
+  const grades = statsCalc.GRADES_STATS.map((grade) => {
+    const t = tauxParGrade.get(grade) || {};
+    return {
+      grade,
+      salaireFixe: t.salaire_fixe || 0,
+      salaireActif: !!t.salaire_actif,
+      primeVenteActive: t.prime_vente_active == null ? true : !!t.prime_vente_active,
+      primeLocationActive: t.prime_location_active == null ? true : !!t.prime_location_active,
+    };
+  });
+  const baremes = baremesR.results || [];
+  return json({
+    grades,
+    baremesVentes: baremes.filter((b) => b.type === "vente").map((b) => ({ id: b.id, seuil: b.seuil, montant: b.montant })),
+    baremesLocations: baremes.filter((b) => b.type === "location").map((b) => ({ id: b.id, seuil: b.seuil, montant: b.montant })),
+  });
+}
+
+async function statsRemunerationModifierGrade(request, env, s, gradeBrut) {
+  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  let grade;
+  try { grade = decodeURIComponent(gradeBrut); } catch (e) { return json({ erreur: "Grade invalide." }, 400); }
+  if (!statsCalc.GRADES_STATS.includes(grade)) return json({ erreur: "Grade invalide." }, 400);
+  const b = await request.json().catch(() => null);
+  if (!b || typeof b !== "object") return json({ erreur: "Requête illisible." }, 400);
+
+  const champs = [];
+  const binds = [];
+  if (b.salaireFixe !== undefined) {
+    const n = b.salaireFixe === null || b.salaireFixe === "" ? 0 : Number(b.salaireFixe);
+    if (!isFinite(n) || n < 0) return json({ erreur: "Le montant du salaire doit être un nombre positif." }, 400);
+    binds.push(Math.round(n)); champs.push(`salaire_fixe = ?${binds.length}`);
+  }
+  if (b.salaireActif !== undefined) { binds.push(b.salaireActif ? 1 : 0); champs.push(`salaire_actif = ?${binds.length}`); }
+  if (b.primeVenteActive !== undefined) { binds.push(b.primeVenteActive ? 1 : 0); champs.push(`prime_vente_active = ?${binds.length}`); }
+  if (b.primeLocationActive !== undefined) { binds.push(b.primeLocationActive ? 1 : 0); champs.push(`prime_location_active = ?${binds.length}`); }
+  if (!champs.length) return json({ erreur: "Rien à modifier." }, 400);
+  binds.push(grade);
+  await env.DB.prepare(`UPDATE stats_taux_commission SET ${champs.join(", ")} WHERE grade = ?${binds.length}`).bind(...binds).run();
+  return json({ ok: true });
+}
+
+function validerPalierPrime(b) {
+  if (!b || typeof b !== "object") return "Requête invalide.";
+  if (!["vente", "location"].includes(b.type)) return "Le type doit être « vente » ou « location ».";
+  const seuil = Number(b.seuil);
+  if (!Number.isFinite(seuil) || !Number.isInteger(seuil) || seuil <= 0) return "Le seuil (nombre à atteindre) doit être un nombre entier positif.";
+  const montant = Number(b.montant);
+  if (!Number.isFinite(montant) || montant < 0) return "Le montant de la prime doit être un nombre positif.";
+  return null;
+}
+
+async function statsBaremeCreer(request, env, s) {
+  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const b = await request.json().catch(() => null);
+  const erreur = validerPalierPrime(b);
+  if (erreur) return json({ erreur }, 400);
+  const existe = await env.DB.prepare("SELECT id FROM stats_baremes_primes WHERE type = ?1 AND seuil = ?2")
+    .bind(b.type, Math.round(Number(b.seuil))).first();
+  if (existe) return json({ erreur: "Un palier existe déjà pour ce seuil — modifiez-le plutôt." }, 409);
+  const r = await env.DB.prepare("INSERT INTO stats_baremes_primes (type, seuil, montant) VALUES (?1, ?2, ?3)")
+    .bind(b.type, Math.round(Number(b.seuil)), Math.round(Number(b.montant))).run();
+  return json({ id: r.meta.last_row_id });
+}
+
+async function statsBaremeModifier(request, env, s, id) {
+  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  if (!id || !/^\d+$/.test(id)) return json({ erreur: "Identifiant invalide." }, 400);
+  const idNum = Number(id);
+  const cible = await env.DB.prepare("SELECT id, type FROM stats_baremes_primes WHERE id = ?1").bind(idNum).first();
+  if (!cible) return json({ erreur: "Introuvable." }, 404);
+  const b = await request.json().catch(() => null);
+  if (!b || typeof b !== "object") return json({ erreur: "Requête illisible." }, 400);
+
+  const champs = [];
+  const binds = [];
+  let seuilFinal = null;
+  if (b.seuil !== undefined) {
+    const seuil = Number(b.seuil);
+    if (!Number.isFinite(seuil) || !Number.isInteger(seuil) || seuil <= 0) return json({ erreur: "Le seuil doit être un nombre entier positif." }, 400);
+    seuilFinal = seuil;
+  }
+  if (seuilFinal != null) {
+    const conflit = await env.DB.prepare("SELECT id FROM stats_baremes_primes WHERE type = ?1 AND seuil = ?2 AND id != ?3")
+      .bind(cible.type, seuilFinal, idNum).first();
+    if (conflit) return json({ erreur: "Un autre palier utilise déjà ce seuil." }, 409);
+    binds.push(seuilFinal); champs.push(`seuil = ?${binds.length}`);
+  }
+  if (b.montant !== undefined) {
+    const montant = Number(b.montant);
+    if (!Number.isFinite(montant) || montant < 0) return json({ erreur: "Le montant doit être un nombre positif." }, 400);
+    binds.push(Math.round(montant)); champs.push(`montant = ?${binds.length}`);
+  }
+  if (!champs.length) return json({ erreur: "Rien à modifier." }, 400);
+  binds.push(idNum);
+  await env.DB.prepare(`UPDATE stats_baremes_primes SET ${champs.join(", ")} WHERE id = ?${binds.length}`).bind(...binds).run();
+  return json({ ok: true });
+}
+
+async function statsBaremeSupprimer(env, s, id) {
+  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  if (!id || !/^\d+$/.test(id)) return json({ erreur: "Identifiant invalide." }, 400);
+  await env.DB.prepare("DELETE FROM stats_baremes_primes WHERE id = ?1").bind(Number(id)).run();
+  return json({ ok: true });
+}
+
 async function statistiques(request, url, env) {
   const route = url.pathname.slice("/api/stats".length); // "/semaines" | "/anomalies" | "/recap" | "/ventes" | "/ventes/:id" | "/agents" | "/agents/:id"
   const m = request.method;
@@ -1372,6 +1498,13 @@ async function statistiques(request, url, env) {
   const mAgent = route.match(/^\/agents\/(\d+)$/);
   if (mAgent && m === "PATCH") return statsModifierAgent(request, env, s, mAgent[1]);
   if (mAgent && m === "DELETE") return statsSupprimerAgent(env, s, mAgent[1]);
+  if (route === "/remuneration" && m === "GET") return statsRemunerationLire(env, s);
+  const mGradeRemuneration = route.match(/^\/remuneration\/grades\/([^/]+)$/);
+  if (mGradeRemuneration && m === "PATCH") return statsRemunerationModifierGrade(request, env, s, mGradeRemuneration[1]);
+  if (route === "/baremes" && m === "POST") return statsBaremeCreer(request, env, s);
+  const mBareme = route.match(/^\/baremes\/(\d+)$/);
+  if (mBareme && m === "PATCH") return statsBaremeModifier(request, env, s, mBareme[1]);
+  if (mBareme && m === "DELETE") return statsBaremeSupprimer(env, s, mBareme[1]);
   return json({ erreur: "Adresse inconnue." }, 404);
 }
 

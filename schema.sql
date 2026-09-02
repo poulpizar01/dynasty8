@@ -150,19 +150,25 @@ INSERT INTO stats_baremes_primes (type, seuil, montant) VALUES
   ('location', 20, 10000), ('location', 40, 30000), ('location', 60, 50000), ('location', 80, 60000), ('location', 100, 70000);
 
 -- §5.5 / §5.8 : taux de commission par grade (initialisé à 48% partout, cf.
--- fiche) et salaire fixe hebdomadaire optionnel (NULL par défaut — Patron/Co
--- Patron touchent alors les primes normales du barème tant qu'il n'est pas
--- renseigné dans l'écran Paramètres, décision explicitement laissée à plus
--- tard par la Direction).
+-- fiche), salaire fixe hebdomadaire optionnel (NULL par défaut), et 3
+-- interrupteurs par grade réglables depuis l'écran Comptabilité -> Paramètres :
+-- salaire_actif (verse ou non le salaire fixe), prime_vente_active et
+-- prime_location_active (droit ou non aux primes de palier). Les 3 sont
+-- indépendants et cumulables — rien n'empêche un grade de toucher le salaire
+-- ET les primes en même temps. Stagiaire démarre sans aucune prime (aucun
+-- changement de comportement par rapport à l'ancienne règle codée en dur).
 CREATE TABLE IF NOT EXISTS stats_taux_commission (
   grade TEXT PRIMARY KEY,
   taux REAL NOT NULL DEFAULT 0.48,
-  salaire_fixe INTEGER
+  salaire_fixe INTEGER,
+  salaire_actif INTEGER NOT NULL DEFAULT 0,
+  prime_vente_active INTEGER NOT NULL DEFAULT 1,
+  prime_location_active INTEGER NOT NULL DEFAULT 1
 );
-INSERT INTO stats_taux_commission (grade, taux, salaire_fixe) VALUES
-  ('Patron', 0.48, NULL), ('Co Patron', 0.48, NULL), ('Manager', 0.48, NULL),
-  ('Référent Immobilier', 0.48, NULL), ('Agent Expert', 0.48, NULL), ('Agent', 0.48, NULL),
-  ('Agent Novice', 0.48, NULL), ('Stagiaire', 0.48, NULL);
+INSERT INTO stats_taux_commission (grade, taux, salaire_fixe, salaire_actif, prime_vente_active, prime_location_active) VALUES
+  ('Patron', 0.48, NULL, 0, 1, 1), ('Co Patron', 0.48, NULL, 0, 1, 1), ('Manager', 0.48, NULL, 0, 1, 1),
+  ('Référent Immobilier', 0.48, NULL, 0, 1, 1), ('Agent Expert', 0.48, NULL, 0, 1, 1), ('Agent', 0.48, NULL, 0, 1, 1),
+  ('Agent Novice', 0.48, NULL, 0, 1, 1), ('Stagiaire', 0.48, NULL, 0, 0, 0);
 
 -- Petit réglage général (§5.7 : formateur_compte_dans_quota : booléen).
 CREATE TABLE IF NOT EXISTS stats_config (

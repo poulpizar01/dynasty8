@@ -223,9 +223,69 @@
         </div>
       </div>
 
-      <!-- Sous-onglet : Paramètres (à construire — détail à venir) -->
+      <!-- Sous-onglet : Paramètres — configuration de la rémunération (salaire
+           fixe, primes vente/location par palier, droits par grade). Modifie
+           directement stats_taux_commission et stats_baremes_primes, déjà
+           utilisées par Statistiques et DOT (voir calculerRecapSemaine côté
+           serveur) : aucune donnée séparée, juste l'écran pour les régler. -->
       <div id="compta-panneau-parametres" class="cache">
-        <div class="etat-vide"><p>Cette section n'est pas encore configurée. Dites-moi ce qu'elle doit contenir et je la construirai.</p></div>
+        <div class="entete-admin" style="margin-top:20px;">
+          <div>
+            <h3 class="comptes-sous-titre" style="margin:0;">Rémunération</h3>
+            <p class="champ-aide" style="margin:4px 0 0;">Salaire fixe, primes de vente/location et droits par grade — utilisés automatiquement dans le récap de l'onglet Statistiques et dans la déclaration DOT.</p>
+          </div>
+        </div>
+        <div id="zone-message-parametres"></div>
+
+        <h4 class="comptes-sous-titre" style="margin:26px 0 4px;">Par grade</h4>
+        <p class="champ-aide" style="margin:0 0 12px;">Les 3 interrupteurs sont indépendants : un grade peut toucher le salaire, les primes, les deux, ou aucun des deux.</p>
+        <div style="overflow-x:auto;">
+          <table class="table-admin" id="table-remuneration-grades">
+            <thead>
+              <tr>
+                <th>Grade</th>
+                <th style="text-align:center;">Salaire fixe</th>
+                <th style="text-align:right;">Montant / semaine</th>
+                <th style="text-align:center;">Primes vente</th>
+                <th style="text-align:center;">Primes location</th>
+              </tr>
+            </thead>
+            <tbody id="corps-table-remuneration-grades"><tr><td colspan="5">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+
+        <div style="display:flex; gap:28px; flex-wrap:wrap; margin-top:30px;">
+          <div style="flex:1; min-width:280px;">
+            <h4 class="comptes-sous-titre" style="margin:0 0 4px;">Paliers — Primes de vente</h4>
+            <p class="champ-aide" style="margin:0 0 10px;">Nombre de ventes atteint dans la semaine → prime versée (le palier le plus haut atteint s'applique).</p>
+            <div style="overflow-x:auto;">
+              <table class="table-admin" id="table-baremes-vente">
+                <thead><tr><th>Ventes atteintes</th><th style="text-align:right;">Prime</th><th></th></tr></thead>
+                <tbody id="corps-table-baremes-vente"><tr><td colspan="3">Chargement…</td></tr></tbody>
+              </table>
+            </div>
+            <div class="palier-ajout" data-type="vente" style="display:flex;gap:8px;align-items:end;margin-top:12px;">
+              <div class="champ" style="margin:0;flex:1;"><label>Seuil</label><input type="number" min="1" step="1" class="palier-nouveau-seuil" placeholder="ex. 20"></div>
+              <div class="champ" style="margin:0;flex:1;"><label>Prime</label><input type="number" min="0" step="1000" class="palier-nouveau-montant" placeholder="ex. 10000"></div>
+              <button type="button" class="btn btn-fantome btn-petit palier-ajouter" style="margin-bottom:18px;">+ Ajouter</button>
+            </div>
+          </div>
+          <div style="flex:1; min-width:280px;">
+            <h4 class="comptes-sous-titre" style="margin:0 0 4px;">Paliers — Primes de location</h4>
+            <p class="champ-aide" style="margin:0 0 10px;">Nombre de locations atteint dans la semaine → prime versée (le palier le plus haut atteint s'applique).</p>
+            <div style="overflow-x:auto;">
+              <table class="table-admin" id="table-baremes-location">
+                <thead><tr><th>Locations atteintes</th><th style="text-align:right;">Prime</th><th></th></tr></thead>
+                <tbody id="corps-table-baremes-location"><tr><td colspan="3">Chargement…</td></tr></tbody>
+              </table>
+            </div>
+            <div class="palier-ajout" data-type="location" style="display:flex;gap:8px;align-items:end;margin-top:12px;">
+              <div class="champ" style="margin:0;flex:1;"><label>Seuil</label><input type="number" min="1" step="1" class="palier-nouveau-seuil" placeholder="ex. 20"></div>
+              <div class="champ" style="margin:0;flex:1;"><label>Prime</label><input type="number" min="0" step="1000" class="palier-nouveau-montant" placeholder="ex. 10000"></div>
+              <button type="button" class="btn btn-fantome btn-petit palier-ajouter" style="margin-bottom:18px;">+ Ajouter</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Sous-onglet : DOT (§6.3) — la déclaration hebdomadaire versée à la
