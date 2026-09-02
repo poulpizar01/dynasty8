@@ -1573,13 +1573,54 @@ function analyserTexteTablette(texte) {
   const decouper = (ligne) => (ligne.includes("\t") ? ligne.split("\t") : ligne.trim().split(/ {2,}/)).map((c) => c.trim());
   const colonnes = decouper(lignesBrutes[0]).filter((c) => c !== "");
   if (!colonnes.length) return null;
-  const lignes = lignesBrutes.slice(1).map((ligne) => {
-    const cellules = decouper(ligne);
+  let lignes = lignesBrutes.slice(1).map((ligne) => decouper(ligne));
+  // Même correctif que côté serveur (voir corrigerLigneTotaleDecalee dans
+  // src/index.js) : la ligne récap "TOTAL" collée depuis le bot/tableur ne
+  // contient jamais de case pour "Rang", ce qui décale tout le reste vers la
+  // gauche. On la corrige ICI, avant de compléter les cases manquantes et
+  // d'afficher l'aperçu, pour que ce qu'on prévisualise soit déjà ce qui sera
+  // enregistré (le serveur applique le même correctif de son côté, mais
+  // l'aperçu affiché avant clic sur "Enregistrer" ne passe pas par le serveur).
+  lignes = corrigerLigneTotaleDecaleeTablette(colonnes, lignes);
+  lignes = lignes.map((cellules) => {
     const rangee = [];
     for (let i = 0; i < colonnes.length; i++) rangee.push(cellules[i] === undefined ? "" : cellules[i]);
     return rangee;
   });
   return { colonnes, lignes };
+}
+
+// Cherche, parmi les titres de colonnes (déjà mis en minuscules/sans
+// espaces), le premier qui correspond à l'un des noms possibles — copie
+// exacte de indexColonneTablette côté serveur (src/index.js).
+function indexColonneTabletteClient(colonnesNormalisees, aliases) {
+  for (const nom of aliases) {
+    const i = colonnesNormalisees.indexOf(nom);
+    if (i !== -1) return i;
+  }
+  return -1;
+}
+
+// Copie exacte de corrigerLigneTotaleDecalee côté serveur (src/index.js) :
+// voir les commentaires là-bas pour le détail du problème corrigé. Gardée
+// synchronisée avec le serveur pour que l'aperçu affiché avant d'enregistrer
+// corresponde exactement à ce qui sera effectivement sauvegardé.
+function corrigerLigneTotaleDecaleeTablette(colonnes, lignes) {
+  const colonnesNormalisees = colonnes.map((c) => String(c).trim().toLowerCase());
+  const indexRang = indexColonneTabletteClient(colonnesNormalisees, ["rang", "grade"]);
+  if (indexRang <= 0 || indexRang >= colonnes.length - 1) return lignes;
+  return lignes.map((ligne) => {
+    if (
+      Array.isArray(ligne) &&
+      String(ligne[0] || "").trim().toLowerCase() === "total" &&
+      ligne.length < colonnes.length
+    ) {
+      const corrigee = ligne.slice();
+      corrigee.splice(indexRang, 0, "-");
+      return corrigee;
+    }
+    return ligne;
+  });
 }
 
 function comptaLigneEstTotal(cellules) {
