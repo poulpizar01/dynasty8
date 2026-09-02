@@ -3,9 +3,18 @@
   "private": true,
   "version": "1.0.0",
   "description": "Site de l'agence immobilière Dynasty 8 (serveur RP FlashbackFA)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
+    "start": "node server.js",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
