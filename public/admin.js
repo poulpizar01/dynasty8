@@ -308,7 +308,7 @@ function rendreTableBiens(liste) {
       <td>${ETIQUETTES_CATEGORIE[b.categorie] || b.categorie}</td>
       <td>${echapper(b.sous_categorie || "—")}${b.coherence ? ` <span class="champ-aide" style="display:inline;">· ${echapper(b.coherence)}</span>` : ""}</td>
       <td>${b.dispo_vente ? formaterPrix(b.prix) : ""}${b.dispo_vente && b.dispo_location ? " · " : ""}${b.dispo_location ? formaterPrix(b.prix_location) + " /sem." : ""}</td>
-      <td>${b.vendu ? '<span class="puce puce-or">Vendu</span>' : (b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>')}</td>
+      <td>${b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>'}</td>
       <td><div class="actions-ligne">
         <button class="actions-icone" data-editer="${b.id}" title="Modifier" aria-label="Modifier">✏️</button>
         <button class="actions-icone actions-icone--danger" data-supprimer="${b.id}" title="Supprimer" aria-label="Supprimer">🗑️</button>
@@ -326,7 +326,7 @@ function rendreGrilleBiens(liste) {
       <div class="carte-admin-bien-corps">
         <div class="carte-admin-bien-titre">${echapper(b.titre)}</div>
         <div class="carte-admin-bien-meta">${ETIQUETTES_CATEGORIE[b.categorie] || b.categorie}${b.sous_categorie ? " · " + echapper(b.sous_categorie) : ""}</div>
-        <div>${b.vendu ? '<span class="puce puce-or">Vendu</span>' : (b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>')}${b.coup_de_coeur ? ' <span class="puce puce-or">Coup de cœur</span>' : ""}</div>
+        <div>${b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>'}${b.coup_de_coeur ? ' <span class="puce puce-or">Coup de cœur</span>' : ""}</div>
         <div class="carte-admin-bien-pied">
           <span class="carte-admin-bien-prix">${b.dispo_vente ? formaterPrix(b.prix) : (b.dispo_location ? formaterPrix(b.prix_location) + " /sem." : "—")}</span>
           <div class="carte-admin-bien-actions">
