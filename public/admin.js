@@ -160,7 +160,7 @@ function basculerOnglet(nom) {
   if (nom === "comptes") chargerTableMembres();
   if (nom === "agenda") chargerAgenda(true);
   if (nom === "comptabilite") chargerTablette();
-  if (nom === "statistiques") chargerStatistiques();
+  if (nom === "statistiques") { chargerStatistiques(); chargerAgentsStats(); }
 }
 
 // ---------------------------------------------------------------------------
@@ -258,6 +258,131 @@ function formaterArgentStats(valeur) {
   const chiffres = Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   return (n < 0 ? "-" : "") + chiffres + " $";
 }
+
+// ---------------------------------------------------------------------------
+// « Gérer les agents » (Statistiques) — référentiel pseudo Discord <->
+// identité RP <-> grade (table stats_agents). Ne concerne que les grades
+// commerciaux (les mêmes que le moteur de calcul des primes connaît — voir
+// GRADES_STATS dans src/stats-calc.js) : Développeur web, DRH et Secrétaire
+// de Direction n'ont pas de quota/prime, donc pas de sens ici.
+// ---------------------------------------------------------------------------
+
+const NOMS_GRADES_STATS = GRADES
+  .filter((g) => !["Développeur web", "DRH", "Secrétaire de Direction"].includes(g.nom))
+  .map((g) => g.nom);
+const OPTIONS_GRADES_STATS_HTML = NOMS_GRADES_STATS.map((n) => `<option value="${echapper(n)}">${echapper(n)}</option>`).join("");
+document.getElementById("agent-grade").innerHTML = OPTIONS_GRADES_STATS_HTML;
+
+let CACHE_AGENTS_STATS = [];
+
+async function chargerAgentsStats() {
+  afficherMessage("zone-message-agents", "", null);
+  try {
+    const reponse = await appelAPI("/api/stats/agents");
+    CACHE_AGENTS_STATS = reponse.agents || [];
+    const vide = document.getElementById("agents-vide");
+    const resultat = document.getElementById("agents-resultat");
+    if (!CACHE_AGENTS_STATS.length) {
+      vide.classList.remove("cache");
+      resultat.classList.add("cache");
+      return;
+    }
+    vide.classList.add("cache");
+    resultat.classList.remove("cache");
+    nettoyerSelectsPortee("agents-stats");
+    document.getElementById("corps-table-agents").innerHTML = CACHE_AGENTS_STATS.map((a) => `
+      <tr data-ligne="${a.id}">
+        <td><input type="text" class="table-input" value="${echapper(a.discord_pseudo)}" data-agent-pseudo="${a.id}" maxlength="100"></td>
+        <td><input type="text" class="table-input" value="${echapper(a.identite_rp)}" data-agent-rp="${a.id}" maxlength="100" placeholder="—"></td>
+        <td><select class="table-select" data-agent-grade="${a.id}" style="border-color:${couleurGrade(a.grade)};">${OPTIONS_GRADES_STATS_HTML}</select></td>
+        <td><button type="button" class="actions-icone actions-icone--danger" data-agent-supprimer="${a.id}" title="Supprimer" aria-label="Supprimer">🗑️</button></td>
+      </tr>`).join("");
+    document.getElementById("corps-table-agents").querySelectorAll("[data-agent-grade]").forEach((sel) => {
+      sel.value = CACHE_AGENTS_STATS.find((a) => a.id === Number(sel.dataset.agentGrade)).grade;
+      sel.style.borderColor = couleurGrade(sel.value);
+      sel.addEventListener("change", () => {
+        sel.style.borderColor = couleurGrade(sel.value);
+        modifierAgentStats(Number(sel.dataset.agentGrade), { grade: sel.value });
+      });
+      ameliorerSelect(sel, couleurGrade, "agents-stats");
+    });
+    document.getElementById("corps-table-agents").querySelectorAll("[data-agent-pseudo]").forEach((champ) => {
+      champ.addEventListener("change", () => {
+        const pseudo = champ.value.trim();
+        if (!pseudo) { champ.value = CACHE_AGENTS_STATS.find((a) => a.id === Number(champ.dataset.agentPseudo)).discord_pseudo; return; }
+        modifierAgentStats(Number(champ.dataset.agentPseudo), { discordPseudo: pseudo });
+      });
+    });
+    document.getElementById("corps-table-agents").querySelectorAll("[data-agent-rp]").forEach((champ) => {
+      champ.addEventListener("change", () => {
+        modifierAgentStats(Number(champ.dataset.agentRp), { identiteRp: champ.value.trim() });
+      });
+    });
+    document.getElementById("corps-table-agents").querySelectorAll("[data-agent-supprimer]").forEach((btn) => {
+      btn.addEventListener("click", () => supprimerAgentStats(Number(btn.dataset.agentSupprimer)));
+    });
+  } catch (e) {
+    afficherMessage("zone-message-agents", "Impossible de charger les agents : " + e.message, "erreur");
+  }
+}
+
+async function modifierAgentStats(id, changements) {
+  try {
+    await appelAPI(`/api/stats/agents/${id}`, { method: "PATCH", body: JSON.stringify(changements) });
+    afficherMessage("zone-message-agents", "Agent mis à jour ✓", "succes");
+    chargerAgentsStats();
+    document.getElementById("select-semaine-recap").value && chargerRecap(document.getElementById("select-semaine-recap").value);
+  } catch (e) {
+    afficherMessage("zone-message-agents", e.message, "erreur");
+    chargerAgentsStats();
+  }
+}
+
+async function supprimerAgentStats(id) {
+  const ok = await confirmerAction(
+    "Cet agent redeviendra « inconnu » dans le récap (pseudo brut, grade par défaut) tant qu'il n'est pas ajouté de nouveau.",
+    "Supprimer cet agent du référentiel ?"
+  );
+  if (!ok) return;
+  try {
+    await appelAPI(`/api/stats/agents/${id}`, { method: "DELETE" });
+    chargerAgentsStats();
+    document.getElementById("select-semaine-recap").value && chargerRecap(document.getElementById("select-semaine-recap").value);
+  } catch (e) {
+    afficherMessage("zone-message-agents", e.message, "erreur");
+  }
+}
+
+function ouvrirModaleAgent() {
+  document.getElementById("agent-discord-pseudo").value = "";
+  document.getElementById("agent-identite-rp").value = "";
+  document.getElementById("agent-grade").value = "Agent";
+  afficherMessage("zone-message-modale-agent", "", null);
+  document.getElementById("modale-agent").classList.remove("cache");
+  document.getElementById("agent-discord-pseudo").focus();
+}
+function fermerModaleAgent() {
+  document.getElementById("modale-agent").classList.add("cache");
+}
+document.getElementById("bouton-nouvel-agent").addEventListener("click", ouvrirModaleAgent);
+document.getElementById("fermer-modale-agent").addEventListener("click", fermerModaleAgent);
+document.getElementById("modale-agent").addEventListener("click", (ev) => { if (ev.target.id === "modale-agent") fermerModaleAgent(); });
+
+document.getElementById("formulaire-agent").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  afficherMessage("zone-message-modale-agent", "", null);
+  const discordPseudo = document.getElementById("agent-discord-pseudo").value.trim();
+  const identiteRp = document.getElementById("agent-identite-rp").value.trim();
+  const grade = document.getElementById("agent-grade").value;
+  try {
+    await appelAPI("/api/stats/agents", { method: "POST", body: JSON.stringify({ discordPseudo, identiteRp, grade }) });
+    fermerModaleAgent();
+    chargerAgentsStats();
+    document.getElementById("select-semaine-recap").value && chargerRecap(document.getElementById("select-semaine-recap").value);
+  } catch (e) {
+    afficherMessage("zone-message-modale-agent", e.message, "erreur");
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Onglet « Mon profil » — chaque membre édite sa propre fiche publique

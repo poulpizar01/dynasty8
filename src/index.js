@@ -948,8 +948,95 @@ async function statsRecap(env, url, s) {
   return json({ semaine, agents });
 }
 
+// §4 : gestion du référentiel des agents (Identité Discord <-> Identité RP <->
+// Grade) depuis l'écran admin — Direction uniquement. C'est ce référentiel qui
+// permet à statsRecap ci-dessus d'afficher le vrai nom RP et le vrai grade
+// plutôt que le pseudo brut et le grade par défaut. Avant l'ajout de cet
+// écran, ce référentiel ne pouvait être rempli que par un import SQL manuel.
+
+async function statsListerAgents(env, s) {
+  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const r = await env.DB.prepare(
+    "SELECT id, discord_pseudo, identite_rp, grade FROM stats_agents ORDER BY discord_pseudo COLLATE NOCASE"
+  ).all();
+  const ordreGrade = (g) => { const i = statsCalc.GRADES_STATS.indexOf(g); return i === -1 ? statsCalc.GRADES_STATS.length : i; };
+  const agents = (r.results || []).slice()
+    .sort((a, b) => ordreGrade(a.grade) - ordreGrade(b.grade) || a.discord_pseudo.localeCompare(b.discord_pseudo));
+  return json({ agents });
+}
+
+function validerAgent(b) {
+  if (!b || typeof b !== "object") return "Requête invalide.";
+  if (!b.discordPseudo || !String(b.discordPseudo).trim()) return "Le pseudo Discord est obligatoire.";
+  if (String(b.discordPseudo).trim().length > 100) return "Le pseudo Discord est trop long (100 caractères max).";
+  if (!b.grade || !statsCalc.GRADES_STATS.includes(b.grade)) return "Grade invalide.";
+  if (b.identiteRp != null && String(b.identiteRp).length > 100) return "L'identité RP est trop longue (100 caractères max).";
+  return null;
+}
+
+async function statsCreerAgent(request, env, s) {
+  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const b = await request.json().catch(() => null);
+  const erreur = validerAgent(b);
+  if (erreur) return json({ erreur }, 400);
+  const pseudo = String(b.discordPseudo).trim();
+  const normalise = pseudo.toLowerCase();
+  const existe = await env.DB.prepare("SELECT id FROM stats_agents WHERE discord_pseudo_normalise = ?1").bind(normalise).first();
+  if (existe) return json({ erreur: "Un agent avec ce pseudo Discord existe déjà — modifiez-le plutôt depuis le tableau." }, 409);
+  const r = await env.DB.prepare(
+    `INSERT INTO stats_agents (discord_pseudo, discord_pseudo_normalise, identite_rp, grade)
+     VALUES (?1, ?2, ?3, ?4)`
+  ).bind(pseudo, normalise, String(b.identiteRp || "").trim(), b.grade).run();
+  return json({ id: r.meta.last_row_id });
+}
+
+async function statsModifierAgent(request, env, s, id) {
+  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  if (!id || !/^\d+$/.test(id)) return json({ erreur: "Identifiant invalide." }, 400);
+  const idNum = Number(id);
+  const cible = await env.DB.prepare("SELECT id FROM stats_agents WHERE id = ?1").bind(idNum).first();
+  if (!cible) return json({ erreur: "Introuvable." }, 404);
+  const b = await request.json().catch(() => null);
+  if (!b || typeof b !== "object") return json({ erreur: "Requête illisible." }, 400);
+
+  const champs = [];
+  const binds = [idNum];
+  if (b.discordPseudo !== undefined) {
+    const pseudo = String(b.discordPseudo || "").trim();
+    if (!pseudo) return json({ erreur: "Le pseudo Discord est obligatoire." }, 400);
+    if (pseudo.length > 100) return json({ erreur: "Le pseudo Discord est trop long (100 caractères max)." }, 400);
+    const normalise = pseudo.toLowerCase();
+    const conflit = await env.DB.prepare(
+      "SELECT id FROM stats_agents WHERE discord_pseudo_normalise = ?1 AND id != ?2"
+    ).bind(normalise, idNum).first();
+    if (conflit) return json({ erreur: "Un autre agent utilise déjà ce pseudo Discord." }, 409);
+    binds.push(pseudo); champs.push(`discord_pseudo = ?${binds.length}`);
+    binds.push(normalise); champs.push(`discord_pseudo_normalise = ?${binds.length}`);
+  }
+  if (b.identiteRp !== undefined) {
+    const rp = String(b.identiteRp || "").trim();
+    if (rp.length > 100) return json({ erreur: "L'identité RP est trop longue (100 caractères max)." }, 400);
+    binds.push(rp); champs.push(`identite_rp = ?${binds.length}`);
+  }
+  if (b.grade !== undefined) {
+    if (!statsCalc.GRADES_STATS.includes(b.grade)) return json({ erreur: "Grade invalide." }, 400);
+    binds.push(b.grade); champs.push(`grade = ?${binds.length}`);
+  }
+  if (!champs.length) return json({ erreur: "Rien à modifier." }, 400);
+  champs.push("maj = datetime('now')");
+  await env.DB.prepare(`UPDATE stats_agents SET ${champs.join(", ")} WHERE id = ?1`).bind(...binds).run();
+  return json({ ok: true });
+}
+
+async function statsSupprimerAgent(env, s, id) {
+  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  if (!id || !/^\d+$/.test(id)) return json({ erreur: "Identifiant invalide." }, 400);
+  await env.DB.prepare("DELETE FROM stats_agents WHERE id = ?1").bind(Number(id)).run();
+  return json({ ok: true });
+}
+
 async function statistiques(request, url, env) {
-  const route = url.pathname.slice("/api/stats".length); // "/semaines" | "/anomalies" | "/recap" | "/ventes" | "/ventes/:id"
+  const route = url.pathname.slice("/api/stats".length); // "/semaines" | "/anomalies" | "/recap" | "/ventes" | "/ventes/:id" | "/agents" | "/agents/:id"
   const m = request.method;
 
   // Le bot envoie ses ventes avec "Authorization: Bearer <clé secrète>",
@@ -964,6 +1051,8 @@ async function statistiques(request, url, env) {
   if (route === "/semaines" && m === "GET") return statsSemaines(env, s);
   if (route === "/anomalies" && m === "GET") return statsAnomalies(env, url, s);
   if (route === "/recap" && m === "GET") return statsRecap(env, url, s);
+  if (route === "/agents" && m === "GET") return statsListerAgents(env, s);
+  if (route === "/agents" && m === "POST") return statsCreerAgent(request, env, s);
   if (route === "/ventes" && m === "POST") {
     if (!statsPeutVoirSoi(s)) return json({ erreur: "Non connecté." }, 401);
     return statsEnregistrerVente(request, env, s.id);
@@ -971,6 +1060,9 @@ async function statistiques(request, url, env) {
   if (route === "/ventes" && m === "GET") return statsListerVentes(env, url, s);
   const mSupp = route.match(/^\/ventes\/(\d+)$/);
   if (mSupp && m === "DELETE") return statsSupprimerVente(env, s, mSupp[1]);
+  const mAgent = route.match(/^\/agents\/(\d+)$/);
+  if (mAgent && m === "PATCH") return statsModifierAgent(request, env, s, mAgent[1]);
+  if (mAgent && m === "DELETE") return statsSupprimerAgent(env, s, mAgent[1]);
   return json({ erreur: "Adresse inconnue." }, 404);
 }
 

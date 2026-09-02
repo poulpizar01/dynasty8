@@ -286,6 +286,33 @@
           </table>
         </div>
       </div>
+
+      <!-- Référentiel des agents (§4) : associe pseudo Discord, identité RP
+           et grade — c'est cette liste qui permet au récap ci-dessus
+           d'afficher un vrai nom RP plutôt que le pseudo Discord brut.
+           Modifiable directement dans le tableau, comme l'écran
+           « Comptes & accès » ci-dessous. -->
+      <div id="statistiques-agents" style="margin-top:36px;">
+        <div class="entete-admin">
+          <div>
+            <h3 style="margin-bottom:2px;">Gérer les agents</h3>
+            <p style="margin:0;font-size:0.88rem;">Associez chaque pseudo Discord à son identité RP et son grade.</p>
+          </div>
+          <button type="button" class="btn btn-or" id="bouton-nouvel-agent">+ Ajouter un agent</button>
+        </div>
+        <div id="zone-message-agents"></div>
+        <div id="agents-vide" class="etat-vide cache">
+          <p>Aucun agent déclaré pour le moment. Utilisez « + Ajouter un agent » — sinon, dans le récap ci-dessus, chacun apparaît avec son pseudo brut et un grade par défaut.</p>
+        </div>
+        <div id="agents-resultat" class="cache" style="overflow-x:auto;">
+          <table class="table-admin">
+            <thead>
+              <tr><th>Pseudo Discord</th><th>Identité RP</th><th>Grade</th><th></th></tr>
+            </thead>
+            <tbody id="corps-table-agents"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- Onglet Comptes & accès (Direction uniquement) -->
@@ -479,6 +506,35 @@
         <select id="membre-grade"></select>
       </div>
       <button type="submit" class="btn btn-or" style="width:100%;margin-top:18px;">Créer le compte</button>
+    </form>
+  </div>
+</div>
+
+<!-- Modale « Nouvel agent » (Statistiques) : ajoute une ligne au référentiel
+     stats_agents. Pas de modale équivalente pour modifier un agent existant :
+     ça se fait directement dans le tableau, comme pour « Comptes & accès ». -->
+<div class="modale-fond cache" id="modale-agent">
+  <div class="modale" style="max-width:440px;">
+    <div class="modale-entete">
+      <h3>Ajouter un agent</h3>
+      <button id="fermer-modale-agent">✕</button>
+    </div>
+    <div id="zone-message-modale-agent"></div>
+    <p class="champ-aide">Le pseudo Discord doit correspondre exactement à celui envoyé par le bot avec les ventes/locations (l'orthographe et les majuscules n'ont pas d'importance, seul le reste doit être identique), sinon cet agent n'apparaîtra pas correctement dans le récap.</p>
+    <form id="formulaire-agent">
+      <div class="champ">
+        <label for="agent-discord-pseudo">Pseudo Discord</label>
+        <input type="text" id="agent-discord-pseudo" required maxlength="100" placeholder="ex : m4z3._" autocomplete="off">
+      </div>
+      <div class="champ">
+        <label for="agent-identite-rp">Identité RP</label>
+        <input type="text" id="agent-identite-rp" maxlength="100" placeholder="ex : Lola Finley" autocomplete="off">
+      </div>
+      <div class="champ">
+        <label for="agent-grade">Grade</label>
+        <select id="agent-grade"></select>
+      </div>
+      <button type="submit" class="btn btn-or" style="width:100%;margin-top:18px;">Ajouter</button>
     </form>
   </div>
 </div>
