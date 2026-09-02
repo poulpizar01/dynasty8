@@ -756,8 +756,20 @@ const COMPTA_DOT_TYPES = ["depense", "retrait"];
 // colonne "Total" plutôt que de resommer nous-mêmes toutes les lignes — ça
 // évite de compter deux fois si ce relevé contient déjà sa propre ligne de
 // total. À défaut d'une telle ligne, on additionne nous-mêmes la colonne.
+// Le CA Brut vient de la colonne « Total entreprise » du relevé Tablettes
+// (confirmé par Paul — c'est le nom réel de la colonne sur le relevé
+// Dynasty 8, différent du "Total" générique qu'on avait supposé au départ).
+// On garde "total" tout seul en repli, au cas où un futur relevé n'ait pas
+// cette colonne "entreprise" (ex : un relevé différent collé par erreur).
+const COMPTA_COLONNES_CA_BRUT = ["total entreprise", "total"];
+
 function caBrutDepuisTablette(colonnes, lignes) {
-  const indexTotal = colonnes.findIndex((c) => String(c).trim().toLowerCase() === "total");
+  const colonnesNormalisees = colonnes.map((c) => String(c).trim().toLowerCase());
+  let indexTotal = -1;
+  for (const nom of COMPTA_COLONNES_CA_BRUT) {
+    indexTotal = colonnesNormalisees.indexOf(nom);
+    if (indexTotal !== -1) break;
+  }
   if (indexTotal === -1) return null;
   const versNombre = (v) => {
     const n = parseFloat(String(v == null ? "" : v).replace(/[^\d,.-]/g, "").replace(",", "."));
