@@ -679,8 +679,9 @@ function validerImportCompta(b) {
     .slice(0, COMPTA_MAX_COLONNES)
     .filter((c) => c !== "");
   if (!colonnes.length) return { erreur: "Aucune colonne détectée : la première ligne collée doit contenir les titres des colonnes." };
-  const lignesBrutes = (Array.isArray(b.lignes) ? b.lignes : []).slice(0, COMPTA_MAX_LIGNES);
+  let lignesBrutes = (Array.isArray(b.lignes) ? b.lignes : []).slice(0, COMPTA_MAX_LIGNES);
   if (!lignesBrutes.length) return { erreur: "Aucune ligne de données détectée sous les titres de colonnes." };
+  lignesBrutes = corrigerLigneTotaleDecalee(colonnes, lignesBrutes);
   const lignes = lignesBrutes.map((ligne) => {
     const cellules = Array.isArray(ligne) ? ligne : [];
     const rangees = [];
@@ -763,18 +764,56 @@ const COMPTA_DOT_TYPES = ["depense", "retrait"];
 // cette colonne "entreprise" (ex : un relevé différent collé par erreur).
 const COMPTA_COLONNES_CA_BRUT = ["total entreprise", "total"];
 
+// Convertit une case de relevé Tablettes ("118 200", "1 400 000$"...) en
+// nombre. Réutilisé partout où on lit une valeur chiffrée d'un import.
+function versNombreTablette(v) {
+  const n = parseFloat(String(v == null ? "" : v).replace(/[^\d,.-]/g, "").replace(",", "."));
+  return isFinite(n) ? n : 0;
+}
+
+// Cherche, parmi les titres de colonnes (déjà mis en minuscules/sans
+// espaces), le premier qui correspond à l'un des noms possibles — les
+// relevés collés par Paul n'utilisent pas toujours exactement le même mot
+// (ex : "Facture" vs "Factures").
+function indexColonneTablette(colonnesNormalisees, aliases) {
+  for (const nom of aliases) {
+    const i = colonnesNormalisees.indexOf(nom);
+    if (i !== -1) return i;
+  }
+  return -1;
+}
+
+// La ligne récap "TOTAL" du bas, telle que collée depuis le bot/tableur, ne
+// contient jamais de valeur pour la colonne "Rang" (un grade ne se
+// totalise pas) — elle saute carrément cette case au lieu d'y laisser une
+// case vide, ce qui décale tout le reste de la ligne d'une colonne vers la
+// gauche à l'affichage (les colonnes qui suivent, comme "Heures de service",
+// n'ont pas ce problème : il leur manque juste leur propre case à la toute
+// fin, ce que le remplissage habituel gère déjà tout seul). On remet la
+// colonne "Rang" à sa place avec un "-", uniquement pour la ligne "TOTAL" et
+// seulement si elle est trop courte pour le nombre de colonnes attendu.
+function corrigerLigneTotaleDecalee(colonnes, lignes) {
+  const colonnesNormalisees = colonnes.map((c) => String(c).trim().toLowerCase());
+  const indexRang = indexColonneTablette(colonnesNormalisees, ["rang", "grade"]);
+  if (indexRang <= 0 || indexRang >= colonnes.length - 1) return lignes;
+  return lignes.map((ligne) => {
+    if (
+      Array.isArray(ligne) &&
+      String(ligne[0] || "").trim().toLowerCase() === "total" &&
+      ligne.length < colonnes.length
+    ) {
+      const corrigee = ligne.slice();
+      corrigee.splice(indexRang, 0, "-");
+      return corrigee;
+    }
+    return ligne;
+  });
+}
+
 function caBrutDepuisTablette(colonnes, lignes) {
   const colonnesNormalisees = colonnes.map((c) => String(c).trim().toLowerCase());
-  let indexTotal = -1;
-  for (const nom of COMPTA_COLONNES_CA_BRUT) {
-    indexTotal = colonnesNormalisees.indexOf(nom);
-    if (indexTotal !== -1) break;
-  }
+  const indexTotal = indexColonneTablette(colonnesNormalisees, COMPTA_COLONNES_CA_BRUT);
   if (indexTotal === -1) return null;
-  const versNombre = (v) => {
-    const n = parseFloat(String(v == null ? "" : v).replace(/[^\d,.-]/g, "").replace(",", "."));
-    return isFinite(n) ? n : 0;
-  };
   // On additionne toujours nous-mêmes chaque ligne d'employé — jamais la
   // ligne récap "TOTAL" du bas (pour ne pas la compter en double), et jamais
   // en faisant confiance au total déjà calculé par la tablette/le bot : si
@@ -783,7 +822,7 @@ function caBrutDepuisTablette(colonnes, lignes) {
   return Math.round(
     lignes
       .filter((l) => String(l[0] || "").trim().toLowerCase() !== "total")
-      .reduce((somme, l) => somme + versNombre(l[indexTotal]), 0)
+      .reduce((somme, l) => somme + versNombreTablette(l[indexTotal]), 0)
   );
 }
 
@@ -840,6 +879,77 @@ async function comptaDotReinitialiserEcritures(env, url, s) {
   if (!COMPTA_DOT_TYPES.includes(type)) return json({ erreur: "Le paramètre « type » doit être « depense » ou « retrait »." }, 400);
   await env.DB.prepare("DELETE FROM compta_dot_ecritures WHERE type = ?1").bind(type).run();
   return json({ ok: true });
+}
+
+// Alias possibles des colonnes utiles du relevé Tablettes, en minuscules —
+// les relevés collés par Paul n'utilisent pas toujours exactement le même
+// mot (ex : "Facture" vs "Factures").
+const COMPTA_ALIAS_NOM = ["nom", "nom de l'employé", "nom du salarié", "employé", "employe"];
+const COMPTA_ALIAS_RUN = ["run", "runs"];
+const COMPTA_ALIAS_FACTURE = ["facture", "factures"];
+const COMPTA_ALIAS_VENTE = ["vente", "ventes"];
+
+// Le tableau des salariés (§6.3, "prêt à copier-coller") doit rester
+// cohérent avec le CA Brut : RUN/FACTURE/VENTE viennent du même relevé
+// Tablettes (jamais de la Statistiques, qui est une source différente), en
+// retrouvant chaque salarié par son nom RP. Si un salarié de la liste
+// n'apparaît pas dans le relevé Tablettes, ses trois colonnes restent à 0 —
+// demande explicite de Paul, pour ne jamais mélanger deux sources.
+async function comptaDotSalaries(env, url, s) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const semaine = (url.searchParams.get("semaine") || "").trim().toUpperCase();
+  if (!semaine) return json({ erreur: "Le paramètre « semaine » est obligatoire (ex : S36-26)." }, 400);
+
+  const [agents, tabletteR] = await Promise.all([
+    calculerRecapSemaine(env, semaine),
+    env.DB.prepare(
+      "SELECT colonnes, lignes FROM comptabilite_imports WHERE type = 'tablettes' ORDER BY importe_le DESC, id DESC LIMIT 1"
+    ).first(),
+  ]);
+
+  let colonnes = [];
+  let lignesEmployes = [];
+  if (tabletteR) {
+    colonnes = JSON.parse(tabletteR.colonnes);
+    const lignes = JSON.parse(tabletteR.lignes);
+    lignesEmployes = lignes.filter((l) => String(l[0] || "").trim().toLowerCase() !== "total");
+  }
+  const colonnesNormalisees = colonnes.map((c) => String(c).trim().toLowerCase());
+  const iNom = indexColonneTablette(colonnesNormalisees, COMPTA_ALIAS_NOM);
+  const iRun = indexColonneTablette(colonnesNormalisees, COMPTA_ALIAS_RUN);
+  const iFacture = indexColonneTablette(colonnesNormalisees, COMPTA_ALIAS_FACTURE);
+  const iVente = indexColonneTablette(colonnesNormalisees, COMPTA_ALIAS_VENTE);
+  const normaliser = (v) => String(v == null ? "" : v).trim().toLowerCase();
+
+  const resultat = agents.map((a) => {
+    let run = 0, facture = 0, vente = 0, trouveDansTablette = false;
+    if (iNom !== -1) {
+      const ligne = lignesEmployes.find((l) => {
+        const nomTablette = normaliser(l[iNom]);
+        return nomTablette !== "" && (nomTablette === normaliser(a.identiteRp) || nomTablette === normaliser(a.identite));
+      });
+      if (ligne) {
+        trouveDansTablette = true;
+        if (iRun !== -1) run = Math.round(versNombreTablette(ligne[iRun]));
+        if (iFacture !== -1) facture = Math.round(versNombreTablette(ligne[iFacture]));
+        if (iVente !== -1) vente = Math.round(versNombreTablette(ligne[iVente]));
+      }
+    }
+    return {
+      identite: a.identite,
+      identiteRp: a.identiteRp,
+      grade: a.grade,
+      run,
+      facture,
+      vente,
+      caTotalRealise: run + facture + vente,
+      trouveDansTablette,
+      salaireFixe: a.salaireFixe,
+      primeTotale: a.primeTotale,
+    };
+  });
+
+  return json({ agents: resultat, tabletteTrouvee: colonnes.length > 0 });
 }
 
 async function comptaDotResume(env, url, s) {
@@ -926,6 +1036,7 @@ async function comptabilite(request, url, env) {
   const route = url.pathname.slice("/api/comptabilite".length); // "/tablettes" | "/dot/ecritures" | "/dot/ecritures/:id" | "/dot/resume"
 
   if (route === "/dot/resume" && request.method === "GET") return comptaDotResume(env, url, s);
+  if (route === "/dot/salaries" && request.method === "GET") return comptaDotSalaries(env, url, s);
   if (route === "/dot/ecritures" && request.method === "GET") return comptaDotListerEcritures(env, s);
   if (route === "/dot/ecritures" && request.method === "POST") return comptaDotCreerEcriture(request, env, s);
   if (route === "/dot/ecritures" && request.method === "DELETE") return comptaDotReinitialiserEcritures(env, url, s);

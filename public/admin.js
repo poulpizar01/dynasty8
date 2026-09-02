@@ -1507,32 +1507,29 @@ document.getElementById("formulaire-ecriture-dot").addEventListener("submit", as
   }
 });
 
-// Tableau par salarié : réutilise directement /api/stats/recap (même moteur
-// que l'onglet Statistiques) — RUN et VENTE n'existent pas côté site (agence
-// immobilière, pas de "runs" ni de ventes séparées de la facture) donc
-// affichés à 0$, comme sur le document officiel de la DOT dans ce cas.
+// Tableau par salarié : la liste des salariés (et Salaire/Prime) vient
+// toujours de Statistiques, mais RUN/FACTURE/VENTE viennent maintenant du
+// même relevé Tablettes que le CA Brut plus haut (retrouvés par nom) — pour
+// rester cohérent avec une seule et même source. Si un salarié n'apparaît
+// pas dans le relevé Tablettes, ces trois colonnes restent à 0$.
 async function chargerDotSalaries() {
   const semaine = document.getElementById("select-semaine-dot").value;
   const corps = document.getElementById("corps-table-dot-salaries");
   if (!semaine) { corps.innerHTML = `<tr><td colspan="8" class="champ-aide">Choisissez une semaine.</td></tr>`; return; }
   try {
-    const r = await appelAPI(`/api/stats/recap?semaine=${encodeURIComponent(semaine)}`);
+    const r = await appelAPI(`/api/comptabilite/dot/salaries?semaine=${encodeURIComponent(semaine)}`);
     const agents = r.agents || [];
     corps.innerHTML = agents.length
-      ? agents.map((a) => {
-          const run = 0, vente = 0;
-          const caTotalRealise = run + a.facture + vente;
-          return `<tr>
+      ? agents.map((a) => `<tr>
             <td>${echapper(a.identiteRp || a.identite)}</td>
             <td>${echapper(a.grade)}</td>
-            <td>${formaterArgentStats(run)}</td>
+            <td>${formaterArgentStats(a.run)}</td>
             <td>${formaterArgentStats(a.facture)}</td>
-            <td>${formaterArgentStats(vente)}</td>
-            <td><strong>${formaterArgentStats(caTotalRealise)}</strong></td>
+            <td>${formaterArgentStats(a.vente)}</td>
+            <td><strong>${formaterArgentStats(a.caTotalRealise)}</strong></td>
             <td>${formaterArgentStats(a.salaireFixe)}</td>
             <td>${formaterArgentStats(a.primeTotale)}</td>
-          </tr>`;
-        }).join("")
+          </tr>`).join("")
       : `<tr><td colspan="8" class="champ-aide">Aucune vente/location cette semaine-là.</td></tr>`;
   } catch (e) {
     corps.innerHTML = `<tr><td colspan="8" class="champ-aide">Erreur : ${echapper(e.message)}</td></tr>`;
