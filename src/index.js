@@ -183,6 +183,7 @@ export default {
       if (chemin === "/api/equipe") return await equipe(env);
       if (chemin === "/api/agenda") return await agenda(request, url, env);
       if (chemin.startsWith("/api/chat/")) return await chat(request, url, env);
+      if (chemin.startsWith("/api/comptabilite/")) return await comptabilite(request, url, env);
       return json({ erreur: "Adresse inconnue." }, 404);
     } catch (e) {
       return json({ erreur: "Erreur interne", detail: String((e && e.message) || e) }, 500);
@@ -648,6 +649,81 @@ async function chat(request, url, env) {
   if (route === "/presence" && m === "PUT") return chatPresence(request, env, s);
   if (route === "/frappe" && m === "POST") return chatFrappe(request, env, s);
   return json({ erreur: "Adresse inconnue." }, 404);
+}
+
+// ---- comptabilité (réservé à la Direction) ---------------------------------
+// Un membre de la Direction colle un tableau (copié depuis un tableur ou un
+// bot Discord) dans un panneau ; le navigateur le découpe lui-même en colonnes
+// et en lignes (voir analyserTexteTablette côté client) et n'envoie ici QUE le
+// résultat déjà structuré. Le serveur revalide ce résultat avant de l'enregistrer
+// (jamais confiance aveugle en ce qu'envoie le navigateur), garde chaque import
+// dans l'historique (rien n'est écrasé), et ne renvoie que le plus récent par
+// type. Seul le type "tablettes" est utilisé pour l'instant ; "parametres" et
+// "dot" pourront réutiliser exactement le même mécanisme plus tard.
+
+const COMPTA_TYPES = ["tablettes"];
+const COMPTA_MAX_COLONNES = 20;
+const COMPTA_MAX_LIGNES = 500;
+const COMPTA_MAX_LONGUEUR_CELLULE = 300;
+
+function validerImportCompta(b) {
+  const colonnes = (Array.isArray(b.colonnes) ? b.colonnes : [])
+    .map((c) => String(c == null ? "" : c).trim())
+    .slice(0, COMPTA_MAX_COLONNES)
+    .filter((c) => c !== "");
+  if (!colonnes.length) return { erreur: "Aucune colonne détectée : la première ligne collée doit contenir les titres des colonnes." };
+  const lignesBrutes = (Array.isArray(b.lignes) ? b.lignes : []).slice(0, COMPTA_MAX_LIGNES);
+  if (!lignesBrutes.length) return { erreur: "Aucune ligne de données détectée sous les titres de colonnes." };
+  const lignes = lignesBrutes.map((ligne) => {
+    const cellules = Array.isArray(ligne) ? ligne : [];
+    const rangees = [];
+    for (let i = 0; i < colonnes.length; i++) {
+      rangees.push(String(cellules[i] == null ? "" : cellules[i]).slice(0, COMPTA_MAX_LONGUEUR_CELLULE));
+    }
+    return rangees;
+  });
+  return { colonnes, lignes };
+}
+
+async function comptaImporter(request, env, s, type) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  let b;
+  try { b = await request.json(); } catch (e) { return json({ erreur: "Données invalides." }, 400); }
+  const { colonnes, lignes, erreur } = validerImportCompta(b || {});
+  if (erreur) return json({ erreur }, 400);
+  await env.DB.prepare(
+    `INSERT INTO comptabilite_imports (type, colonnes, lignes, importe_par) VALUES (?1, ?2, ?3, ?4)`
+  ).bind(type, JSON.stringify(colonnes), JSON.stringify(lignes), s.id).run();
+  return json({ ok: true });
+}
+
+async function comptaDernier(env, s, type) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const r = await env.DB.prepare(
+    `SELECT ci.colonnes, ci.lignes, ci.importe_le, m.pseudo AS importe_par_pseudo
+     FROM comptabilite_imports ci LEFT JOIN membres m ON m.id = ci.importe_par
+     WHERE ci.type = ?1 ORDER BY ci.importe_le DESC, ci.id DESC LIMIT 1`
+  ).bind(type).first();
+  if (!r) return json({ import: null });
+  return json({
+    import: {
+      colonnes: JSON.parse(r.colonnes),
+      lignes: JSON.parse(r.lignes),
+      importe_le: r.importe_le,
+      importe_par: r.importe_par_pseudo || null,
+    },
+  });
+}
+
+async function comptabilite(request, url, env) {
+  const s = await session(request, env);
+  if (!s) return json({ erreur: "Non connecté." }, 401);
+  const route = url.pathname.slice("/api/comptabilite".length); // "/tablettes"
+  const type = route.replace(/^\//, "");
+  if (!COMPTA_TYPES.includes(type)) return json({ erreur: "Adresse inconnue." }, 404);
+  if (request.method === "GET") return comptaDernier(env, s, type);
+  if (request.method === "POST") return comptaImporter(request, env, s, type);
+  return json({ erreur: "Méthode non prise en charge." }, 405);
 }
 
 // ---- équipe (page publique /equipe.html) ----------------------------------

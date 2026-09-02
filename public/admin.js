@@ -128,6 +128,7 @@ function demarrerEspaceAdmin() {
   document.getElementById("onglet-annonces").classList.toggle("cache", !SESSION.peutGererAnnonces);
   if (SESSION.direction) {
     document.getElementById("onglet-comptes").classList.remove("cache");
+    document.getElementById("onglet-comptabilite").classList.remove("cache");
   }
   // Le lien Webmap est réservé au Patron, au Co Patron, et au Développeur web
   // (qui a exactement les mêmes accès que le Patron, y compris ici).
@@ -149,12 +150,14 @@ function basculerOnglet(nom) {
   document.getElementById("panneau-agenda").classList.toggle("cache", nom !== "agenda");
   document.getElementById("panneau-profil").classList.toggle("cache", nom !== "profil");
   document.getElementById("panneau-comptes").classList.toggle("cache", nom !== "comptes");
+  document.getElementById("panneau-comptabilite").classList.toggle("cache", nom !== "comptabilite");
   // L'agenda a besoin de toute la largeur disponible (voir style.css) : le
   // reste des onglets garde la mise en page habituelle, limitée en largeur.
   document.getElementById("admin-contenu").classList.toggle("admin-contenu--pleine", nom === "agenda");
   if (nom === "profil") chargerMonProfil();
   if (nom === "comptes") chargerTableMembres();
   if (nom === "agenda") chargerAgenda(true);
+  if (nom === "comptabilite") chargerTablette();
 }
 
 // ---------------------------------------------------------------------------
@@ -1088,6 +1091,161 @@ document.getElementById("bouton-supprimer-bien").addEventListener("click", async
     chargerTableBiens();
   } catch (e) {
     afficherMessage("zone-message-modale-bien", e.message, "erreur");
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Comptabilité — réservé à la Direction
+// Sous-onglet « Tablettes » : on colle un tableau (copié depuis un tableur ou
+// un bot Discord) dans une modale, le navigateur le découpe lui-même en
+// colonnes et en lignes pour un aperçu immédiat, puis n'envoie au serveur QUE
+// le résultat déjà structuré (colonnes[] + lignes[][]) — jamais le texte brut.
+// « Paramètres » et « DOT » sont pour l'instant de simples espaces réservés :
+// ils réutiliseront le même mécanisme dès que leur contenu sera précisé.
+// ---------------------------------------------------------------------------
+
+document.querySelectorAll(".compta-sous-onglet").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".compta-sous-onglet").forEach((b) => b.classList.toggle("actif", b === btn));
+    const nom = btn.dataset.comptaOnglet;
+    document.getElementById("compta-panneau-tablettes").classList.toggle("cache", nom !== "tablettes");
+    document.getElementById("compta-panneau-parametres").classList.toggle("cache", nom !== "parametres");
+    document.getElementById("compta-panneau-dot").classList.toggle("cache", nom !== "dot");
+  });
+});
+
+// Découpe un texte collé en colonnes + lignes. On essaie d'abord les
+// tabulations (\t) : c'est ce que produit un copier-coller de cellules
+// depuis Excel / Google Sheets, y compris les cellules vides — c'est donc la
+// méthode la plus fiable. À défaut, on se rabat sur des blocs d'au moins 2
+// espaces comme séparateur (utile pour un texte tapé ou copié depuis
+// Discord), sachant que dans ce cas une cellule vide au milieu d'une ligne
+// (ex : « Rang » sur une ligne TOTAL) ne peut pas être détectée automatiquement
+// — d'où le conseil, dans la modale, d'y mettre un tiret avant de coller.
+function analyserTexteTablette(texte) {
+  const lignesBrutes = String(texte || "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .filter((l) => l.trim() !== "");
+  if (!lignesBrutes.length) return null;
+  const decouper = (ligne) => (ligne.includes("\t") ? ligne.split("\t") : ligne.trim().split(/ {2,}/)).map((c) => c.trim());
+  const colonnes = decouper(lignesBrutes[0]).filter((c) => c !== "");
+  if (!colonnes.length) return null;
+  const lignes = lignesBrutes.slice(1).map((ligne) => {
+    const cellules = decouper(ligne);
+    const rangee = [];
+    for (let i = 0; i < colonnes.length; i++) rangee.push(cellules[i] === undefined ? "" : cellules[i]);
+    return rangee;
+  });
+  return { colonnes, lignes };
+}
+
+function comptaLigneEstTotal(cellules) {
+  const premier = (cellules[0] || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return premier === "total" || premier === "totaux";
+}
+
+function comptaColonneEstNumerique(lignes, index) {
+  const valeurs = lignes.map((l) => (l[index] || "").trim()).filter((v) => v !== "" && v !== "-");
+  return valeurs.length > 0 && valeurs.every((v) => /^-?[\d\s.,]+$/.test(v));
+}
+
+function rendreTableCompta(colonnes, lignes) {
+  const numerique = colonnes.map((_, i) => comptaColonneEstNumerique(lignes, i));
+  const thead = `<thead><tr>${colonnes
+    .map((c, i) => `<th${numerique[i] ? ' style="text-align:right;"' : ""}>${echapper(c)}</th>`)
+    .join("")}</tr></thead>`;
+  const tbody = `<tbody>${lignes
+    .map((ligne) => {
+      const total = comptaLigneEstTotal(ligne);
+      const cellules = colonnes
+        .map((_, i) => `<td${numerique[i] ? ' style="text-align:right;"' : ""}>${echapper(ligne[i] || "")}</td>`)
+        .join("");
+      return `<tr${total ? ' class="ligne-total"' : ""}>${cellules}</tr>`;
+    })
+    .join("")}</tbody>`;
+  return thead + tbody;
+}
+
+function formaterDateHeureCompta(brut) {
+  const iso = String(brut).includes("T") ? brut : String(brut).replace(" ", "T") + "Z";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return (
+    d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) +
+    " à " +
+    d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+  );
+}
+
+async function chargerTablette() {
+  afficherMessage("zone-message-tablette", "", null);
+  try {
+    const reponse = await appelAPI("/api/comptabilite/tablettes");
+    const vide = document.getElementById("compta-tablette-vide");
+    const resultat = document.getElementById("compta-tablette-resultat");
+    if (!reponse.import) {
+      vide.classList.remove("cache");
+      resultat.classList.add("cache");
+      return;
+    }
+    vide.classList.add("cache");
+    resultat.classList.remove("cache");
+    document.getElementById("compta-tablette-info").textContent =
+      `Importé par ${reponse.import.importe_par || "un membre"} le ${formaterDateHeureCompta(reponse.import.importe_le)}.`;
+    document.getElementById("table-tablette").innerHTML = rendreTableCompta(reponse.import.colonnes, reponse.import.lignes);
+  } catch (e) {
+    afficherMessage("zone-message-tablette", "Impossible de charger les données : " + e.message, "erreur");
+  }
+}
+
+function majApercuImportTablette() {
+  const texte = document.getElementById("import-tablette-texte").value;
+  const analyse = analyserTexteTablette(texte);
+  const zoneApercu = document.getElementById("apercu-import-tablette");
+  const bouton = document.getElementById("bouton-enregistrer-import-tablette");
+  if (!analyse || !analyse.lignes.length) {
+    zoneApercu.classList.add("cache");
+    bouton.disabled = true;
+    return;
+  }
+  document.getElementById("table-apercu-import").innerHTML = rendreTableCompta(analyse.colonnes, analyse.lignes);
+  zoneApercu.classList.remove("cache");
+  bouton.disabled = false;
+}
+
+function ouvrirModaleImportTablette() {
+  document.getElementById("import-tablette-texte").value = "";
+  document.getElementById("apercu-import-tablette").classList.add("cache");
+  document.getElementById("bouton-enregistrer-import-tablette").disabled = true;
+  afficherMessage("zone-message-modale-import", "", null);
+  document.getElementById("modale-import-tablette").classList.remove("cache");
+  document.getElementById("import-tablette-texte").focus();
+}
+function fermerModaleImportTablette() {
+  document.getElementById("modale-import-tablette").classList.add("cache");
+}
+
+document.getElementById("bouton-importer-tablette").addEventListener("click", ouvrirModaleImportTablette);
+document.getElementById("fermer-modale-import-tablette").addEventListener("click", fermerModaleImportTablette);
+document.getElementById("bouton-annuler-import-tablette").addEventListener("click", fermerModaleImportTablette);
+document.getElementById("import-tablette-texte").addEventListener("input", majApercuImportTablette);
+
+document.getElementById("bouton-enregistrer-import-tablette").addEventListener("click", async () => {
+  const analyse = analyserTexteTablette(document.getElementById("import-tablette-texte").value);
+  if (!analyse || !analyse.lignes.length) {
+    afficherMessage("zone-message-modale-import", "Collez d'abord vos données.", "erreur");
+    return;
+  }
+  try {
+    await appelAPI("/api/comptabilite/tablettes", {
+      method: "POST",
+      body: JSON.stringify({ colonnes: analyse.colonnes, lignes: analyse.lignes }),
+    });
+    fermerModaleImportTablette();
+    chargerTablette();
+  } catch (e) {
+    afficherMessage("zone-message-modale-import", "Impossible d'enregistrer : " + e.message, "erreur");
   }
 });
 

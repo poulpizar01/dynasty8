@@ -51,6 +51,7 @@
     <button class="lien-onglet actif" data-onglet="annonces" id="onglet-annonces">🏠 Annonces</button>
     <button class="lien-onglet" data-onglet="agenda">🗓️ Mon agenda</button>
     <button class="lien-onglet" data-onglet="profil">🪪 Mon profil</button>
+    <button class="lien-onglet cache" data-onglet="comptabilite" id="onglet-comptabilite">🧮 Comptabilité</button>
     <button class="lien-onglet cache" data-onglet="comptes" id="onglet-comptes">🔐 Comptes &amp; accès</button>
     <a href="https://webmap.dynasty8.fbfa.fr/" target="_blank" rel="noopener" class="lien-onglet cache" id="lien-webmap">🗺️ Webmap Dynasty8</a>
 
@@ -179,6 +180,53 @@
           </div>
           <button type="submit" class="btn btn-or" id="bouton-enregistrer-profil">Enregistrer mon profil</button>
         </form>
+      </div>
+    </section>
+
+    <!-- Onglet Comptabilité (Direction uniquement) -->
+    <section id="panneau-comptabilite" class="cache">
+      <div class="entete-admin">
+        <div>
+          <h2 style="margin-bottom:2px;">Comptabilité</h2>
+          <p style="margin:0;font-size:0.88rem;">Suivi des chiffres de l'entreprise — réservé à la Direction.</p>
+        </div>
+      </div>
+
+      <div class="compta-sous-onglets" role="tablist">
+        <button type="button" class="compta-sous-onglet actif" data-compta-onglet="tablettes">📋 Tablettes</button>
+        <button type="button" class="compta-sous-onglet" data-compta-onglet="parametres">⚙️ Paramètres</button>
+        <button type="button" class="compta-sous-onglet" data-compta-onglet="dot">🧾 DOT</button>
+      </div>
+
+      <!-- Sous-onglet : Tablettes -->
+      <div id="compta-panneau-tablettes">
+        <div class="entete-admin" style="margin-top:20px;">
+          <div>
+            <h3 class="comptes-sous-titre" style="margin:0;">Tablettes</h3>
+            <p class="champ-aide" style="margin:4px 0 0;">Collez un relevé (facturier, runs, ventes...) copié depuis un tableur ou un bot Discord, pour obtenir un tableau propre et lisible.</p>
+          </div>
+          <button type="button" class="btn btn-or" id="bouton-importer-tablette">📋 Importer</button>
+        </div>
+        <div id="zone-message-tablette"></div>
+        <div id="compta-tablette-vide" class="etat-vide">
+          <p>Aucune donnée importée pour le moment. Cliquez sur « Importer » pour coller votre premier relevé.</p>
+        </div>
+        <div id="compta-tablette-resultat" class="cache">
+          <p class="champ-aide" id="compta-tablette-info" style="margin:0 0 10px;"></p>
+          <div style="overflow-x:auto;">
+            <table class="table-admin" id="table-tablette"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sous-onglet : Paramètres (à construire — détail à venir) -->
+      <div id="compta-panneau-parametres" class="cache">
+        <div class="etat-vide"><p>Cette section n'est pas encore configurée. Dites-moi ce qu'elle doit contenir et je la construirai.</p></div>
+      </div>
+
+      <!-- Sous-onglet : DOT (à construire — détail à venir) -->
+      <div id="compta-panneau-dot" class="cache">
+        <div class="etat-vide"><p>Cette section n'est pas encore configurée. Dites-moi ce qu'elle doit contenir et je la construirai.</p></div>
       </div>
     </section>
 
@@ -455,6 +503,37 @@
         <button type="button" class="btn btn-danger cache" id="bouton-supprimer-evenement">Supprimer</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Modale d'import — Comptabilité / Tablettes -->
+<div class="modale-fond cache" id="modale-import-tablette">
+  <div class="modale" style="max-width:760px;">
+    <div class="modale-entete">
+      <h3>Importer un relevé — Tablettes</h3>
+      <button id="fermer-modale-import-tablette">✕</button>
+    </div>
+    <div id="zone-message-modale-import"></div>
+    <div class="champ">
+      <label for="import-tablette-texte">Collez vos données ici</label>
+      <p class="champ-aide" style="margin-top:-4px;">
+        Le plus fiable : copiez les cellules directement depuis Excel, Google Sheets ou un tableau similaire, puis collez-les ici (Ctrl+V) — la première ligne doit contenir les titres des colonnes.
+        Si vous tapez ou collez un texte à espaces (par exemple depuis Discord) et qu'une ligne comme « TOTAL » n'a pas de valeur pour une colonne, mettez un tiret « - » à cet endroit avant de coller, sinon les colonnes suivantes risquent de se décaler — vérifiez toujours l'aperçu ci-dessous avant d'enregistrer.
+      </p>
+      <textarea id="import-tablette-texte" rows="10" style="font-family:monospace;font-size:0.82rem;" placeholder="Nom    Rang    Factures    Runs    Ventes    Total entreprise    Part employé    Heures de service
+Javier Silva    Co-patron    0    0    0    0    0    0h52min
+TOTAL    -    0    0    0    0    0    -"></textarea>
+    </div>
+    <div id="apercu-import-tablette" class="cache">
+      <p class="champ-aide" style="margin:14px 0 8px;">Aperçu — vérifiez que chaque valeur est dans la bonne colonne avant d'enregistrer :</p>
+      <div style="overflow-x:auto;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">
+        <table class="table-admin" id="table-apercu-import"></table>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-or" id="bouton-enregistrer-import-tablette" style="flex:1;" disabled>Enregistrer ce tableau</button>
+      <button type="button" class="btn btn-fantome" id="bouton-annuler-import-tablette">Annuler</button>
+    </div>
   </div>
 </div>
 

@@ -101,3 +101,15 @@ CREATE TABLE IF NOT EXISTS frappe_chat (
   jusqu_a TEXT NOT NULL,
   PRIMARY KEY (expediteur_id, destinataire_id)
 );
+
+-- Comptabilité (réservée à la Direction) : chaque import collé (ex: onglet
+-- "Tablettes") est conservé, seul le plus récent par "type" est affiché.
+CREATE TABLE IF NOT EXISTS comptabilite_imports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL DEFAULT 'tablettes',
+  colonnes TEXT NOT NULL,   -- tableau JSON des titres de colonnes
+  lignes TEXT NOT NULL,     -- tableau JSON de lignes (chacune : tableau de cellules)
+  importe_par INTEGER REFERENCES membres(id) ON DELETE SET NULL,
+  importe_le TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_compta_imports_type_date ON comptabilite_imports(type, importe_le DESC);

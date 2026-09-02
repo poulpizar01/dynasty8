@@ -2023,6 +2023,16 @@ section.section.serre {
 .table-biens-vignette img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .table-admin td.cellule-vignette { width: 60px; }
 .table-admin tr.ligne-coup-de-coeur td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
+.table-admin tr.ligne-total td { font-weight: 700; color: var(--gold-strong); border-top: 2px solid var(--d8-gold-400); }
+
+/* ---------- admin : Comptabilité (sous-onglets + tableaux importés) ---------- */
+.compta-sous-onglets { display: flex; gap: 8px; margin: 18px 0 4px; flex-wrap: wrap; }
+.compta-sous-onglet {
+  padding: 8px 18px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--bg-elevated); color: var(--text-faint); font-size: 0.86rem; font-weight: 500;
+}
+.compta-sous-onglet:hover { color: var(--text); border-color: var(--border-light); }
+.compta-sous-onglet.actif { background: var(--or-grad); color: var(--or-contrast); border-color: transparent; font-weight: 600; }
 
 .actions-icone {
   width: 34px; height: 34px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; justify-content: center;
