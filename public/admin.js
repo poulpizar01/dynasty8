@@ -1335,7 +1335,188 @@ document.querySelectorAll(".compta-sous-onglet").forEach((btn) => {
     document.getElementById("compta-panneau-tablettes").classList.toggle("cache", nom !== "tablettes");
     document.getElementById("compta-panneau-parametres").classList.toggle("cache", nom !== "parametres");
     document.getElementById("compta-panneau-dot").classList.toggle("cache", nom !== "dot");
+    if (nom === "dot") chargerDot();
   });
+});
+
+// ---------------------------------------------------------------------------
+// Comptabilité -> DOT (§6.3) — la déclaration hebdomadaire versée à la DOT.
+// Trois blocs qui se rechargent ensemble à chaque changement de semaine ou
+// d'écriture : le résumé chiffré, le journal dépense/retraits (modifiable
+// à la main), et le tableau par salarié (calculé, prêt à copier).
+// ---------------------------------------------------------------------------
+
+let CACHE_ECRITURES_DOT = [];
+
+async function chargerDot() {
+  const select = document.getElementById("select-semaine-dot");
+  if (!select.dataset.rempli) {
+    try {
+      const reponse = await appelAPI("/api/stats/semaines");
+      select.innerHTML = (reponse.semaines || []).map((s) => `<option value="${s.code}">${s.code}</option>`).join("");
+      select.dataset.rempli = "1";
+    } catch (e) { /* la liste des semaines n'a pas pu charger — le résumé s'affichera quand même sans les primes */ }
+  }
+  await Promise.all([chargerDotResume(), chargerDotEcritures(), chargerDotSalaries()]);
+}
+
+document.getElementById("select-semaine-dot").addEventListener("change", () => {
+  chargerDotResume();
+  chargerDotSalaries();
+});
+
+function ligneResumeDot(libelle, valeur, gras) {
+  return `<tr><td>${libelle}</td><td style="text-align:right;">${gras ? `<strong>${valeur}</strong>` : valeur}</td></tr>`;
+}
+
+async function chargerDotResume() {
+  afficherMessage("zone-message-dot", "", null);
+  const semaine = document.getElementById("select-semaine-dot").value;
+  try {
+    const r = await appelAPI("/api/comptabilite/dot/resume" + (semaine ? `?semaine=${encodeURIComponent(semaine)}` : ""));
+    document.getElementById("dot-resume-vide").classList.toggle("cache", r.montantTotalPrimes != null);
+    const val = (v) => (v == null ? "—" : formaterArgentStats(v));
+    document.getElementById("corps-table-dot-resume").innerHTML = [
+      ligneResumeDot("CA Brut" + (r.caBrutTrouve ? "" : " <span class=\"champ-aide\">(aucun relevé Tablettes importé)</span>"), val(r.caBrut)),
+      ligneResumeDot("Dépense déductible", val(r.depenseDeductible)),
+      ligneResumeDot("Bénéfice imposable", val(r.beneficeImposable)),
+      ligneResumeDot("Taux d'imposition", r.tauxImposition == null ? "—" : Math.round(r.tauxImposition * 100) + " %"),
+      ligneResumeDot("Montant des impôts", val(r.montantImpots)),
+      ligneResumeDot("Bénéfice après impôts", val(r.beneficeApresImpots), true),
+      ligneResumeDot("Montant total des primes" + (semaine ? "" : " <span class=\"champ-aide\">(choisissez une semaine)</span>"), val(r.montantTotalPrimes)),
+      ligneResumeDot("Bénéfice après primes", val(r.beneficeApresPrimes)),
+      ligneResumeDot("Retraits", val(r.retraits)),
+      ligneResumeDot("Bénéfice net", val(r.beneficeNet), true),
+    ].join("");
+    document.getElementById("dot-plafonds").innerHTML = r.plafonds
+      ? `Plafonds de la tranche : salaire max. ${formaterArgentStats(r.plafonds.salaireMaxEmploye)} (employé) / ${formaterArgentStats(r.plafonds.salaireMaxPatron)} (patron) — prime max. ${formaterArgentStats(r.plafonds.primeMaxEmploye)} (employé) / ${formaterArgentStats(r.plafonds.primeMaxPatron)} (patron).`
+      : "";
+  } catch (e) {
+    afficherMessage("zone-message-dot", "Impossible de charger le résumé DOT : " + e.message, "erreur");
+  }
+}
+
+async function chargerDotEcritures() {
+  try {
+    const r = await appelAPI("/api/comptabilite/dot/ecritures");
+    CACHE_ECRITURES_DOT = r.ecritures || [];
+    const rendre = (type, idCorps) => {
+      const lignes = CACHE_ECRITURES_DOT.filter((e) => e.type === type);
+      document.getElementById(idCorps).innerHTML = lignes.length
+        ? lignes.map((e) => `
+          <tr>
+            <td>${echapper(e.date_ecriture) || "—"}</td>
+            <td>${echapper(e.justificatif)}</td>
+            <td>${formaterArgentStats(e.montant)}</td>
+            <td><button type="button" class="actions-icone actions-icone--danger" data-ecriture-supprimer="${e.id}" title="Supprimer" aria-label="Supprimer">🗑️</button></td>
+          </tr>`).join("")
+        : `<tr><td colspan="4" class="champ-aide">Aucune ligne pour le moment.</td></tr>`;
+    };
+    rendre("depense", "corps-table-dot-depenses");
+    rendre("retrait", "corps-table-dot-retraits");
+    document.querySelectorAll("[data-ecriture-supprimer]").forEach((btn) => {
+      btn.addEventListener("click", () => supprimerEcritureDot(Number(btn.dataset.ecritureSupprimer)));
+    });
+  } catch (e) {
+    afficherMessage("zone-message-dot", "Impossible de charger les écritures : " + e.message, "erreur");
+  }
+}
+
+async function supprimerEcritureDot(id) {
+  const ok = await confirmerAction("Cette ligne sera retirée du calcul du bénéfice imposable.", "Supprimer cette écriture ?");
+  if (!ok) return;
+  try {
+    await appelAPI(`/api/comptabilite/dot/ecritures/${id}`, { method: "DELETE" });
+    await Promise.all([chargerDotEcritures(), chargerDotResume()]);
+  } catch (e) {
+    afficherMessage("zone-message-dot", e.message, "erreur");
+  }
+}
+
+function ouvrirModaleEcritureDot(type) {
+  document.getElementById("ecriture-dot-type").value = type;
+  document.getElementById("titre-modale-ecriture-dot").textContent = type === "depense" ? "Nouvelle dépense déductible" : "Nouveau retrait";
+  document.getElementById("ecriture-dot-date").value = "";
+  document.getElementById("ecriture-dot-justificatif").value = "";
+  document.getElementById("ecriture-dot-montant").value = "";
+  afficherMessage("zone-message-modale-ecriture-dot", "", null);
+  document.getElementById("modale-ecriture-dot").classList.remove("cache");
+  document.getElementById("ecriture-dot-justificatif").focus();
+}
+function fermerModaleEcritureDot() {
+  document.getElementById("modale-ecriture-dot").classList.add("cache");
+}
+document.getElementById("bouton-nouvelle-depense").addEventListener("click", () => ouvrirModaleEcritureDot("depense"));
+document.getElementById("bouton-nouveau-retrait").addEventListener("click", () => ouvrirModaleEcritureDot("retrait"));
+document.getElementById("fermer-modale-ecriture-dot").addEventListener("click", fermerModaleEcritureDot);
+document.getElementById("modale-ecriture-dot").addEventListener("click", (ev) => { if (ev.target.id === "modale-ecriture-dot") fermerModaleEcritureDot(); });
+
+document.getElementById("formulaire-ecriture-dot").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  afficherMessage("zone-message-modale-ecriture-dot", "", null);
+  const type = document.getElementById("ecriture-dot-type").value;
+  const date = document.getElementById("ecriture-dot-date").value.trim();
+  const justificatif = document.getElementById("ecriture-dot-justificatif").value.trim();
+  const montant = document.getElementById("ecriture-dot-montant").value;
+  try {
+    await appelAPI("/api/comptabilite/dot/ecritures", { method: "POST", body: JSON.stringify({ type, date, justificatif, montant }) });
+    fermerModaleEcritureDot();
+    await Promise.all([chargerDotEcritures(), chargerDotResume()]);
+  } catch (e) {
+    afficherMessage("zone-message-modale-ecriture-dot", e.message, "erreur");
+  }
+});
+
+// Tableau par salarié : réutilise directement /api/stats/recap (même moteur
+// que l'onglet Statistiques) — RUN et VENTE n'existent pas côté site (agence
+// immobilière, pas de "runs" ni de ventes séparées de la facture) donc
+// affichés à 0$, comme sur le document officiel de la DOT dans ce cas.
+async function chargerDotSalaries() {
+  const semaine = document.getElementById("select-semaine-dot").value;
+  const corps = document.getElementById("corps-table-dot-salaries");
+  if (!semaine) { corps.innerHTML = `<tr><td colspan="8" class="champ-aide">Choisissez une semaine.</td></tr>`; return; }
+  try {
+    const r = await appelAPI(`/api/stats/recap?semaine=${encodeURIComponent(semaine)}`);
+    const agents = r.agents || [];
+    corps.innerHTML = agents.length
+      ? agents.map((a) => {
+          const run = 0, vente = 0;
+          const caTotalRealise = run + a.facture + vente;
+          return `<tr>
+            <td>${echapper(a.identiteRp || a.identite)}</td>
+            <td>${echapper(a.grade)}</td>
+            <td>${formaterArgentStats(run)}</td>
+            <td>${formaterArgentStats(a.facture)}</td>
+            <td>${formaterArgentStats(vente)}</td>
+            <td><strong>${formaterArgentStats(caTotalRealise)}</strong></td>
+            <td>${formaterArgentStats(a.salaireFixe)}</td>
+            <td>${formaterArgentStats(a.primeTotale)}</td>
+          </tr>`;
+        }).join("")
+      : `<tr><td colspan="8" class="champ-aide">Aucune vente/location cette semaine-là.</td></tr>`;
+  } catch (e) {
+    corps.innerHTML = `<tr><td colspan="8" class="champ-aide">Erreur : ${echapper(e.message)}</td></tr>`;
+  }
+}
+
+// « Copier le tableau » : copie au format tableur (colonnes séparées par des
+// tabulations) — se colle proprement dans Excel/Google Sheets. Les montants
+// sont copiés comme des nombres calculés, pas comme des formules : si une
+// formule Excel/Sheets est nécessaire (ex: la colonne CA TOTAL REALISE),
+// redemandez un fichier prêt à coller, il peut être généré à la demande.
+document.getElementById("bouton-copier-salaries").addEventListener("click", async () => {
+  const entetes = ["Nom du salarié", "Grade", "RUN", "FACTURE", "VENTE", "CA TOTAL REALISE", "Salaire", "Prime"];
+  const lignes = [entetes.join("\t")];
+  document.querySelectorAll("#corps-table-dot-salaries tr").forEach((tr) => {
+    const cellules = Array.from(tr.querySelectorAll("td")).map((td) => td.textContent.trim());
+    if (cellules.length === 8) lignes.push(cellules.join("\t"));
+  });
+  try {
+    await navigator.clipboard.writeText(lignes.join("\n"));
+    afficherMessage("zone-message-dot", "Tableau copié ✓ Vous pouvez le coller dans Excel/Google Sheets.", "succes");
+  } catch (e) {
+    afficherMessage("zone-message-dot", "Impossible de copier automatiquement — sélectionnez le tableau à la main (Ctrl+C).", "erreur");
+  }
 });
 
 // Découpe un texte collé en colonnes + lignes. On essaie d'abord les

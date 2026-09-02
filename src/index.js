@@ -739,10 +739,153 @@ async function comptaReset(env, s, type) {
   return json({ ok: true });
 }
 
+// ---- Comptabilité -> DOT (§6.3) --------------------------------------------
+// La déclaration hebdomadaire versée à la "DOT" (organisme fiscal du serveur
+// RP) : CA Brut (colonne "Total" de l'onglet Tablettes) - Dépenses déductibles
+// (saisies à la main ci-dessous) = Bénéfice, sur lequel on applique le barème
+// officiel (dot_bareme_imposition) pour obtenir les impôts, puis on retire les
+// primes de la semaine (déjà calculées par Statistiques) et les retraits pour
+// obtenir le bénéfice net. Voir aussi le tableau par salarié (statsRecap) :
+// FACTURE/Prime en sont directement issus, RUN et VENTE valent toujours 0$
+// chez Dynasty 8 (agence immobilière, pas de "runs" ni de ventes séparées).
+
+const COMPTA_DOT_TYPES = ["depense", "retrait"];
+
+// Cherche une ligne "Total" (nom d'employé = "Total", telle qu'elle apparaît
+// dans un vrai relevé Tablettes) et reprend directement sa valeur dans la
+// colonne "Total" plutôt que de resommer nous-mêmes toutes les lignes — ça
+// évite de compter deux fois si ce relevé contient déjà sa propre ligne de
+// total. À défaut d'une telle ligne, on additionne nous-mêmes la colonne.
+function caBrutDepuisTablette(colonnes, lignes) {
+  const indexTotal = colonnes.findIndex((c) => String(c).trim().toLowerCase() === "total");
+  if (indexTotal === -1) return null;
+  const versNombre = (v) => {
+    const n = parseFloat(String(v == null ? "" : v).replace(/[^\d,.-]/g, "").replace(",", "."));
+    return isFinite(n) ? n : 0;
+  };
+  const ligneTotal = lignes.find((l) => String(l[0] || "").trim().toLowerCase() === "total");
+  if (ligneTotal) return Math.round(versNombre(ligneTotal[indexTotal]));
+  return Math.round(lignes.reduce((somme, l) => somme + versNombre(l[indexTotal]), 0));
+}
+
+// Le barème est fixé par la DOT (identique pour toutes les entreprises du
+// serveur) : on cherche simplement la tranche où tombe le bénéfice.
+function trancheImposition(bareme, benefice) {
+  const b = Math.max(0, Math.round(benefice));
+  return bareme.find((t) => b >= t.seuil_min && b <= t.seuil_max) || bareme[bareme.length - 1] || null;
+}
+
+async function comptaDotListerEcritures(env, s) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const r = await env.DB.prepare(
+    "SELECT id, type, date_ecriture, justificatif, montant FROM compta_dot_ecritures ORDER BY id DESC"
+  ).all();
+  return json({ ecritures: r.results || [] });
+}
+
+function validerEcritureDot(b) {
+  if (!b || typeof b !== "object") return "Requête invalide.";
+  if (!COMPTA_DOT_TYPES.includes(b.type)) return "Le type doit être « depense » ou « retrait ».";
+  if (!b.justificatif || !String(b.justificatif).trim()) return "Le justificatif est obligatoire.";
+  if (String(b.justificatif).length > 200) return "Le justificatif est trop long (200 caractères max).";
+  if (b.date && !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(String(b.date).trim())) return "La date doit être au format JJ/MM/AAAA.";
+  if (b.montant == null || b.montant === "" || !isFinite(Number(b.montant))) return "Le montant doit être un nombre.";
+  return null;
+}
+
+async function comptaDotCreerEcriture(request, env, s) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const b = await request.json().catch(() => null);
+  const erreur = validerEcritureDot(b);
+  if (erreur) return json({ erreur }, 400);
+  const r = await env.DB.prepare(
+    `INSERT INTO compta_dot_ecritures (type, date_ecriture, justificatif, montant, cree_par)
+     VALUES (?1, ?2, ?3, ?4, ?5)`
+  ).bind(b.type, String(b.date || "").trim(), String(b.justificatif).trim(), Math.round(Number(b.montant)), s.id).run();
+  return json({ id: r.meta.last_row_id });
+}
+
+async function comptaDotSupprimerEcriture(env, s, id) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  if (!id || !/^\d+$/.test(id)) return json({ erreur: "Identifiant invalide." }, 400);
+  await env.DB.prepare("DELETE FROM compta_dot_ecritures WHERE id = ?1").bind(Number(id)).run();
+  return json({ ok: true });
+}
+
+async function comptaDotResume(env, url, s) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const semaine = (url.searchParams.get("semaine") || "").trim().toUpperCase();
+
+  const [tabletteR, ecrituresR, baremeR] = await Promise.all([
+    env.DB.prepare(
+      "SELECT colonnes, lignes FROM comptabilite_imports WHERE type = 'tablettes' ORDER BY importe_le DESC, id DESC LIMIT 1"
+    ).first(),
+    env.DB.prepare("SELECT type, montant FROM compta_dot_ecritures").all(),
+    env.DB.prepare("SELECT * FROM dot_bareme_imposition ORDER BY seuil_min ASC").all(),
+  ]);
+
+  let caBrut = null;
+  if (tabletteR) {
+    const colonnes = JSON.parse(tabletteR.colonnes);
+    if (colonnes.length) caBrut = caBrutDepuisTablette(colonnes, JSON.parse(tabletteR.lignes));
+  }
+
+  const ecritures = ecrituresR.results || [];
+  const depenseDeductible = ecritures.filter((e) => e.type === "depense").reduce((s2, e) => s2 + e.montant, 0);
+  const retraits = ecritures.filter((e) => e.type === "retrait").reduce((s2, e) => s2 + e.montant, 0);
+
+  const beneficeImposable = caBrut == null ? null : caBrut - depenseDeductible;
+  const bareme = baremeR.results || [];
+  const tranche = beneficeImposable == null ? null : trancheImposition(bareme, beneficeImposable);
+  const montantImpots = beneficeImposable == null || !tranche ? null : Math.round(beneficeImposable * tranche.taux);
+  const beneficeApresImpots = beneficeImposable == null || montantImpots == null ? null : beneficeImposable - montantImpots;
+
+  let montantTotalPrimes = null;
+  if (semaine) {
+    const agents = await calculerRecapSemaine(env, semaine);
+    montantTotalPrimes = agents.reduce((s2, a) => s2 + a.totalAVerser, 0);
+  }
+
+  const beneficeApresPrimes = beneficeApresImpots == null || montantTotalPrimes == null ? null : beneficeApresImpots - montantTotalPrimes;
+  // "Bénéfice net" tel que décrit par la Direction : bénéfice après impôts,
+  // moins les retraits (les primes restent affichées séparément juste au-dessus
+  // — sur le document officiel de la DOT, "Bénéfice après primes" est une
+  // ligne à part, avant les retraits, qui vivent dans un tableau séparé).
+  const beneficeNet = beneficeApresImpots == null ? null : beneficeApresImpots - retraits;
+
+  return json({
+    semaine: semaine || null,
+    caBrut,
+    caBrutTrouve: caBrut != null,
+    depenseDeductible,
+    beneficeImposable,
+    tauxImposition: tranche ? tranche.taux : null,
+    montantImpots,
+    beneficeApresImpots,
+    montantTotalPrimes,
+    beneficeApresPrimes,
+    retraits,
+    beneficeNet,
+    plafonds: tranche ? {
+      salaireMaxEmploye: tranche.salaire_max_employe,
+      salaireMaxPatron: tranche.salaire_max_patron,
+      primeMaxEmploye: tranche.prime_max_employe,
+      primeMaxPatron: tranche.prime_max_patron,
+    } : null,
+  });
+}
+
 async function comptabilite(request, url, env) {
   const s = await session(request, env);
   if (!s) return json({ erreur: "Non connecté." }, 401);
-  const route = url.pathname.slice("/api/comptabilite".length); // "/tablettes"
+  const route = url.pathname.slice("/api/comptabilite".length); // "/tablettes" | "/dot/ecritures" | "/dot/ecritures/:id" | "/dot/resume"
+
+  if (route === "/dot/resume" && request.method === "GET") return comptaDotResume(env, url, s);
+  if (route === "/dot/ecritures" && request.method === "GET") return comptaDotListerEcritures(env, s);
+  if (route === "/dot/ecritures" && request.method === "POST") return comptaDotCreerEcriture(request, env, s);
+  const mEcriture = route.match(/^\/dot\/ecritures\/(\d+)$/);
+  if (mEcriture && request.method === "DELETE") return comptaDotSupprimerEcriture(env, s, mEcriture[1]);
+
   const type = route.replace(/^\//, "");
   if (!COMPTA_TYPES.includes(type)) return json({ erreur: "Adresse inconnue." }, 404);
   if (request.method === "GET") return comptaDernier(env, s, type);
@@ -898,11 +1041,10 @@ async function statsAnomalies(env, url, s) {
 // qui n'y est pas encore déclaré apparaît quand même, avec son pseudo brut
 // et le grade par défaut "Agent" (seul le grade "Stagiaire" change le calcul
 // des primes — tout le reste utilise le même barème pour l'instant).
-async function statsRecap(env, url, s) {
-  if (!statsPeutVoirTous(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-  const semaine = (url.searchParams.get("semaine") || "").trim().toUpperCase();
-  if (!semaine) return json({ erreur: "Le paramètre « semaine » est obligatoire (ex : S36-26)." }, 400);
-
+// Calcule le récap d'une semaine (utilisé par statsRecap ci-dessous ET par
+// comptaDotResume, qui a besoin du "Montant total des primes" de la même
+// semaine pour la déclaration DOT — un seul moteur de calcul, jamais dupliqué).
+async function calculerRecapSemaine(env, semaine) {
   const { lignes } = await lireLignesLocales(env);
   const identitesNormalisees = new Set(
     lignes.filter((l) => l.semaine === semaine && l.identiteNormalisee).map((l) => l.identiteNormalisee)
@@ -938,13 +1080,20 @@ async function statsRecap(env, url, s) {
       identiteRp: fiche ? fiche.identite_rp : "",
       grade,
       gradeConnu: !!fiche,
-      nbAchats, nbLocations, ...finances,
+      nbAchats, nbLocations, facture, salaireFixe: t.salaire_fixe || 0, ...finances,
     };
   });
 
   const ordreGrade = (g) => { const i = statsCalc.GRADES_STATS.indexOf(g); return i === -1 ? statsCalc.GRADES_STATS.length : i; };
   agents.sort((a, b) => ordreGrade(a.grade) - ordreGrade(b.grade) || b.totalGagne - a.totalGagne);
+  return agents;
+}
 
+async function statsRecap(env, url, s) {
+  if (!statsPeutVoirTous(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const semaine = (url.searchParams.get("semaine") || "").trim().toUpperCase();
+  if (!semaine) return json({ erreur: "Le paramètre « semaine » est obligatoire (ex : S36-26)." }, 400);
+  const agents = await calculerRecapSemaine(env, semaine);
   return json({ semaine, agents });
 }
 

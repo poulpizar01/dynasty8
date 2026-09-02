@@ -228,9 +228,77 @@
         <div class="etat-vide"><p>Cette section n'est pas encore configurée. Dites-moi ce qu'elle doit contenir et je la construirai.</p></div>
       </div>
 
-      <!-- Sous-onglet : DOT (à construire — détail à venir) -->
+      <!-- Sous-onglet : DOT (§6.3) — la déclaration hebdomadaire versée à la
+           DOT (organisme fiscal du serveur RP). Calculée automatiquement à
+           partir du CA Brut (colonne « Total » de l'onglet Tablettes), des
+           dépenses/retraits saisis ci-dessous, et des primes de la semaine
+           choisie (déjà calculées par l'onglet Statistiques). -->
       <div id="compta-panneau-dot" class="cache">
-        <div class="etat-vide"><p>Cette section n'est pas encore configurée. Dites-moi ce qu'elle doit contenir et je la construirai.</p></div>
+        <div class="entete-admin" style="margin-top:20px;">
+          <div>
+            <h3 class="comptes-sous-titre" style="margin:0;">Déclaration DOT</h3>
+            <p class="champ-aide" style="margin:4px 0 0;">Calculée à partir de l'onglet Tablettes et des primes de la semaine choisie.</p>
+          </div>
+          <select id="select-semaine-dot"></select>
+        </div>
+        <div id="zone-message-dot"></div>
+
+        <div id="dot-resume-vide" class="etat-vide cache">
+          <p>Aucune vente/location enregistrée pour cette semaine — le total des primes ne peut pas être calculé (le reste s'affiche quand même ci-dessous).</p>
+        </div>
+        <div style="overflow-x:auto;margin:16px 0 8px;">
+          <table class="table-admin">
+            <tbody id="corps-table-dot-resume"></tbody>
+          </table>
+        </div>
+        <p class="champ-aide" id="dot-plafonds"></p>
+
+        <div class="entete-admin" style="margin-top:32px;">
+          <div>
+            <h3 style="margin-bottom:2px;">Dépense déductible &amp; retraits</h3>
+            <p style="margin:0;font-size:0.88rem;">Ajoutez-les ici au fil de l'eau — ils entrent directement dans le calcul ci-dessus.</p>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-fantome" id="bouton-nouvelle-depense">+ Dépense déductible</button>
+            <button type="button" class="btn btn-fantome" id="bouton-nouveau-retrait">+ Retrait</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:14px;">
+          <div>
+            <h4 style="margin:0 0 8px;font-size:0.92rem;">Dépense déductible</h4>
+            <div style="overflow-x:auto;">
+              <table class="table-admin">
+                <thead><tr><th>Date</th><th>Justificatif</th><th>Montant</th><th></th></tr></thead>
+                <tbody id="corps-table-dot-depenses"></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h4 style="margin:0 0 8px;font-size:0.92rem;">Tableau des retraits</h4>
+            <div style="overflow-x:auto;">
+              <table class="table-admin">
+                <thead><tr><th>Date</th><th>Justificatif</th><th>Montant</th><th></th></tr></thead>
+                <tbody id="corps-table-dot-retraits"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="entete-admin" style="margin-top:36px;">
+          <div>
+            <h3 style="margin-bottom:2px;">Tableau des salariés</h3>
+            <p style="margin:0;font-size:0.88rem;">Prêt à copier-coller dans le document de la DOT (RUN et VENTE valent toujours 0$ chez Dynasty 8).</p>
+          </div>
+          <button type="button" class="btn btn-fantome" id="bouton-copier-salaries">📋 Copier le tableau</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="table-admin">
+            <thead>
+              <tr><th>Nom du salarié</th><th>Grade</th><th>RUN</th><th>FACTURE</th><th>VENTE</th><th>CA TOTAL REALISE</th><th>Salaire</th><th>Prime</th></tr>
+            </thead>
+            <tbody id="corps-table-dot-salaries"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -648,6 +716,34 @@ TOTAL    -    0    0    0    0    0    -"></textarea>
       <button type="button" class="btn btn-or" id="bouton-enregistrer-import-tablette" style="flex:1;" disabled>Enregistrer ce tableau</button>
       <button type="button" class="btn btn-fantome" id="bouton-annuler-import-tablette">Annuler</button>
     </div>
+  </div>
+</div>
+
+<!-- Modale « Dépense déductible / Retrait » (Comptabilité -> DOT) — réutilisée
+     pour les deux types (le champ caché "type" fait la différence). -->
+<div class="modale-fond cache" id="modale-ecriture-dot">
+  <div class="modale" style="max-width:420px;">
+    <div class="modale-entete">
+      <h3 id="titre-modale-ecriture-dot">Nouvelle dépense déductible</h3>
+      <button id="fermer-modale-ecriture-dot">✕</button>
+    </div>
+    <div id="zone-message-modale-ecriture-dot"></div>
+    <form id="formulaire-ecriture-dot">
+      <input type="hidden" id="ecriture-dot-type">
+      <div class="champ">
+        <label for="ecriture-dot-date">Date</label>
+        <input type="text" id="ecriture-dot-date" placeholder="JJ/MM/AAAA" maxlength="10" autocomplete="off">
+      </div>
+      <div class="champ">
+        <label for="ecriture-dot-justificatif">Justificatif</label>
+        <input type="text" id="ecriture-dot-justificatif" required maxlength="200" placeholder="ex : Essence" autocomplete="off">
+      </div>
+      <div class="champ">
+        <label for="ecriture-dot-montant">Montant ($)</label>
+        <input type="number" id="ecriture-dot-montant" required min="0" step="1" autocomplete="off">
+      </div>
+      <button type="submit" class="btn btn-or" style="width:100%;margin-top:18px;">Ajouter</button>
+    </form>
   </div>
 </div>
 
