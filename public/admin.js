@@ -97,10 +97,10 @@ async function demarrer() {
     afficherMessage("zone-message", "Ce compte est désactivé. Contactez la Direction si vous pensez qu'il s'agit d'une erreur.", "erreur");
   } else if (etat === "config") {
     afficherMessage("zone-message", "La connexion Discord n'est pas encore configurée sur le serveur.", "erreur");
+  } else if (etat && etat.startsWith("bd_")) {
+    afficherMessage("zone-message", "Le service est momentanément indisponible (base de données surchargée). Réessayez dans quelques minutes.", "erreur");
   } else if (etat) {
-    // DIAGNOSTIC TEMPORAIRE : on affiche le code précis (ex: "etat_sans-cookie",
-    // "jeton_401_..." ) pour identifier la cause exacte de l'échec de connexion.
-    afficherMessage("zone-message", "La connexion via Discord a échoué. Réessayez. (code : " + etat + ")", "erreur");
+    afficherMessage("zone-message", "La connexion via Discord a échoué. Réessayez.", "erreur");
   }
 }
 
