@@ -536,10 +536,17 @@ async function agenda(request, url, env) {
 // (n'importe quel appel à une route /api/chat/*) il y a moins de 25 secondes —
 // le widget interroge le serveur toutes les 3 à 8 secondes, donc cette marge
 // laisse largement le temps sans jamais afficher "hors ligne" par erreur.
+// "RETURNING membre_id" explicite : "presence" n'a pas de colonne "id" (sa
+// clé est "membre_id") — sans ce RETURNING déjà présent, l'adaptateur
+// Postgres (avecRetourId(), dans src/db-pg.js) ajoute automatiquement
+// "RETURNING id" à toute requête INSERT qui n'en a pas, ce qui casserait la
+// requête ici (colonne inexistante) — même piège déjà corrigé pour
+// roxwood_config.
 async function toucherPresence(env, membreId) {
   await env.DB.prepare(
     `INSERT INTO presence (membre_id, statut, vu_le) VALUES (?1, 'disponible', datetime('now'))
-     ON CONFLICT(membre_id) DO UPDATE SET vu_le = datetime('now')`
+     ON CONFLICT(membre_id) DO UPDATE SET vu_le = datetime('now')
+     RETURNING membre_id`
   ).bind(membreId).run();
 }
 
@@ -589,7 +596,8 @@ async function chatPresence(request, env, s) {
   if (!b || !STATUTS_PRESENCE.includes(b.statut)) return json({ erreur: "Statut invalide." }, 400);
   await env.DB.prepare(
     `INSERT INTO presence (membre_id, statut, vu_le) VALUES (?1, ?2, datetime('now'))
-     ON CONFLICT(membre_id) DO UPDATE SET statut = ?2, vu_le = datetime('now')`
+     ON CONFLICT(membre_id) DO UPDATE SET statut = ?2, vu_le = datetime('now')
+     RETURNING membre_id`
   ).bind(s.id, b.statut).run();
   return json({ ok: true });
 }
@@ -600,7 +608,8 @@ async function chatFrappe(request, env, s) {
   if (!avecId) return json({ erreur: "Destinataire manquant." }, 400);
   await env.DB.prepare(
     `INSERT INTO frappe_chat (expediteur_id, destinataire_id, jusqu_a) VALUES (?1, ?2, datetime('now', '+4 seconds'))
-     ON CONFLICT(expediteur_id, destinataire_id) DO UPDATE SET jusqu_a = datetime('now', '+4 seconds')`
+     ON CONFLICT(expediteur_id, destinataire_id) DO UPDATE SET jusqu_a = datetime('now', '+4 seconds')
+     RETURNING expediteur_id`
   ).bind(s.id, avecId).run();
   return json({ ok: true });
 }
@@ -1161,10 +1170,18 @@ function ligneVenteIdentique(existante, v) {
   );
 }
 
-async function statsEnregistrerVente(request, env, membreId) {
+async function statsEnregistrerVente(request, env, s) {
+  const membreId = s ? s.id : null;
   const b = await request.json().catch(() => null);
   const erreur = validerLigneVente(b);
   if (erreur) return json({ erreur }, 400);
+
+  // Un compte non-Direction ne peut enregistrer une vente que pour lui-même
+  // (jamais au nom d'un autre agent) — la Direction reste libre de saisir/
+  // corriger pour n'importe qui, comme pour la suppression d'une ligne.
+  if (s && !estDirection(s) && statsCalc.normaliserPseudo(b && b.identite) !== statsCalc.normaliserPseudo(s.pseudo)) {
+    return json({ erreur: "Vous ne pouvez enregistrer une vente que pour vous-même." }, 403);
+  }
 
   // Valeurs normalisées une seule fois (utilisées pour la comparaison ET l'insertion).
   const v = {
@@ -1246,7 +1263,14 @@ async function statsListerVentes(env, url, s) {
   if (!statsPeutVoirSoi(s)) return json({ erreur: "Non connecté." }, 401);
   const { lignes } = await lireLignesLocales(env);
   const semaine = url.searchParams.get("semaine");
-  const filtrees = semaine ? lignes.filter((l) => l.semaine === semaine) : lignes;
+  let filtrees = semaine ? lignes.filter((l) => l.semaine === semaine) : lignes;
+  // stats.voir_soi = "ses propres chiffres" : un compte non-Direction ne voit
+  // que ses propres lignes (jamais celles des autres agents, ni les données
+  // client associées). Seule la Direction (stats.voir_tous) voit tout.
+  if (!statsPeutVoirTous(s)) {
+    const moi = statsCalc.normaliserPseudo(s.pseudo);
+    filtrees = filtrees.filter((l) => l.identiteNormalisee === moi);
+  }
   return json({ lignes: filtrees.slice().reverse() }); // plus récent en premier
 }
 
@@ -1636,7 +1660,7 @@ async function statistiques(request, url, env) {
   // sans cookie de session — traité à part, avant l'exigence de connexion.
   if (route === "/ventes" && m === "POST" && request.headers.has("Authorization")) {
     if (!verifierCleBot(request, env)) return json({ erreur: "Clé du bot invalide." }, 401);
-    return statsEnregistrerVente(request, env, null); // null = importé/envoyé par le bot, pas par un compte du site
+    return statsEnregistrerVente(request, env, null); // s = null = importé/envoyé par le bot, pas par un compte du site
   }
 
   const s = await session(request, env);
@@ -1649,7 +1673,7 @@ async function statistiques(request, url, env) {
   if (route === "/agents" && m === "POST") return statsCreerAgent(request, env, s);
   if (route === "/ventes" && m === "POST") {
     if (!statsPeutVoirSoi(s)) return json({ erreur: "Non connecté." }, 401);
-    return statsEnregistrerVente(request, env, s.id);
+    return statsEnregistrerVente(request, env, s);
   }
   if (route === "/ventes" && m === "GET") return statsListerVentes(env, url, s);
   const mSupp = route.match(/^\/ventes\/(\d+)$/);
