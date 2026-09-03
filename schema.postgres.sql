@@ -245,3 +245,20 @@ CREATE TABLE IF NOT EXISTS compta_dot_ecritures (
   cree_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
 );
 CREATE INDEX IF NOT EXISTS idx_compta_dot_ecritures_type ON compta_dot_ecritures(type);
+
+-- Marquage réversible des ventes EXACT dupliquées (voir rapport local
+-- doublons-ventes-detail-2026-09-03.md, hors dépôt). Ne touche jamais
+-- stats_logs_ventes : marquer = insérer une ligne ici, annuler = la
+-- supprimer. Exclue des calculs agrégés (paie, récap, statistiques) mais
+-- reste sans effet sur l'historique brut/audit (Statistiques -> Ventes).
+CREATE TABLE IF NOT EXISTS stats_ventes_doublons_marques (
+  id SERIAL PRIMARY KEY,
+  ligne_doublon_id INTEGER NOT NULL UNIQUE REFERENCES stats_logs_ventes(id) ON DELETE RESTRICT,
+  ligne_originale_id INTEGER NOT NULL REFERENCES stats_logs_ventes(id) ON DELETE RESTRICT,
+  classification TEXT NOT NULL,
+  justification TEXT NOT NULL,
+  marque_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')),
+  marque_par TEXT NOT NULL,
+  CHECK (ligne_doublon_id <> ligne_originale_id)
+);
+CREATE INDEX IF NOT EXISTS idx_doublons_marques_originale ON stats_ventes_doublons_marques(ligne_originale_id);

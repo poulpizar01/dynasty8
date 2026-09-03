@@ -1093,6 +1093,19 @@ async function lireLignesLocales(env) {
   return { lignes, anomalies };
 }
 
+// Variante de lireLignesLocales utilisée par TOUS les calculs agrégés (paie,
+// récap, statistiques) : exclut les ventes marquées comme doublons EXACT
+// (table stats_ventes_doublons_marques, jamais stats_logs_ventes elle-même).
+// Ne jamais utiliser cette fonction pour l'historique brut/audit (écran
+// Statistiques -> Ventes, qui doit continuer à tout afficher sans exception)
+// — lireLignesLocales() reste inchangée pour cet usage-là.
+async function lireLignesPourCalculs(env) {
+  const { lignes, anomalies } = await lireLignesLocales(env);
+  const r = await env.DB.prepare(`SELECT ligne_doublon_id FROM stats_ventes_doublons_marques`).all();
+  const exclues = new Set((r.results || []).map((row) => row.ligne_doublon_id));
+  return { lignes: lignes.filter((l) => !exclues.has(l.id)), anomalies };
+}
+
 function validerLigneVente(b) {
   if (!b || typeof b !== "object") return "Requête invalide.";
   if (!b.identite || !String(b.identite).trim()) return "L'agent (Identité) est obligatoire.";
@@ -1243,7 +1256,7 @@ async function statsSupprimerVente(env, s, id) {
 
 async function statsSemaines(env, s) {
   if (!statsPeutVoirSoi(s)) return json({ erreur: "Non connecté." }, 401);
-  const { lignes } = await lireLignesLocales(env);
+  const { lignes } = await lireLignesPourCalculs(env);
   const compteurs = new Map();
   lignes.forEach((l) => {
     if (!l.semaine) return; // absente en colonne P -> exclue de tous les récaps (§7)
@@ -1270,7 +1283,7 @@ async function statsSemaines(env, s) {
 
 async function statsAnomalies(env, url, s) {
   if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-  const { anomalies } = await lireLignesLocales(env);
+  const { anomalies } = await lireLignesPourCalculs(env);
   const semaine = url.searchParams.get("semaine");
   const filtrees = semaine ? anomalies.filter((a) => a.semaine === semaine) : anomalies;
   return json({ anomalies: filtrees });
@@ -1287,7 +1300,7 @@ async function statsAnomalies(env, url, s) {
 // comptaDotResume, qui a besoin du "Montant total des primes" de la même
 // semaine pour la déclaration DOT — un seul moteur de calcul, jamais dupliqué).
 async function calculerRecapSemaine(env, semaine) {
-  const { lignes } = await lireLignesLocales(env);
+  const { lignes } = await lireLignesPourCalculs(env);
   const identitesNormalisees = new Set(
     lignes.filter((l) => l.semaine === semaine && l.identiteNormalisee).map((l) => l.identiteNormalisee)
   );
