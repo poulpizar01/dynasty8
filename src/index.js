@@ -2054,10 +2054,12 @@ async function roxwoodWebhook(request, env) {
   try {
     donnees = JSON.parse(corpsBrut);
   } catch (e) {
+    console.error("[roxwood] Rejeté : corps JSON invalide.");
     return json({ erreur: "Corps JSON invalide." }, 400);
   }
   const { guildId, eventType, payload } = donnees || {};
   if (!eventType || !EVENEMENTS_ROXWOOD[eventType]) {
+    console.error(`[roxwood] Rejeté : eventType manquant ou inconnu (reçu : ${JSON.stringify(eventType)}).`);
     return json({ erreur: "« eventType » manquant ou inconnu." }, 400);
   }
 
@@ -2066,6 +2068,7 @@ async function roxwoodWebhook(request, env) {
   // même si le bot n'envoie pas ce champ pour eux.
   const label = eventType === "custom" ? String(donnees.label || "").trim() : "";
   if (eventType === "custom" && !label) {
+    console.error("[roxwood] Rejeté : type « custom » sans label.");
     return json({ erreur: "« label » manquant pour un webhook personnalisé." }, 400);
   }
 
@@ -2074,12 +2077,18 @@ async function roxwoodWebhook(request, env) {
   ).bind(eventType, label).first();
   if (!config || !config.webhook_secret) {
     const cible = label ? `« ${eventType} / ${label} »` : `« ${eventType} »`;
+    // DIAGNOSTIC : n'affiche jamais le secret, seulement le type/label reçus
+    // et ceux déjà connus en base, pour repérer une différence de label
+    // (espace, casse, tiret...) sans exposer aucune donnée sensible.
+    const connus = await env.DB.prepare("SELECT type_evenement, label FROM roxwood_config").all();
+    console.error(`[roxwood] Rejeté (401) : aucun secret configuré côté site pour ${cible}. Reçu tel quel -> type=${JSON.stringify(eventType)} label=${JSON.stringify(label)}. Configurés en base -> ${JSON.stringify((connus.results || []).map(r => ({ type: r.type_evenement, label: r.label })))}`);
     return json({ erreur: `Aucun secret configuré côté site pour ${cible} (Paramètres -> Roxwood Network).` }, 401);
   }
 
   const signatureRecue = request.headers.get("X-Signature-256") || "";
   const signatureAttendue = await signerHex(config.webhook_secret, corpsBrut);
   if (!signatureRecue || !egal(signatureRecue, signatureAttendue)) {
+    console.error(`[roxwood] Rejeté (401) : signature invalide pour ${label ? `${eventType}/${label}` : eventType}. Header X-Signature-256 reçu (${signatureRecue.length} car.) : ${signatureRecue ? "présent" : "ABSENT"}.`);
     return json({ erreur: "Signature invalide." }, 401);
   }
 
@@ -2087,6 +2096,7 @@ async function roxwoodWebhook(request, env) {
     "INSERT INTO roxwood_evenements (guild_id, type_evenement, label, charge_utile) VALUES (?1, ?2, ?3, ?4)"
   ).bind(guildId || null, eventType, label, JSON.stringify(payload ?? null)).run();
 
+  console.log(`[roxwood] Accepté : ${label ? `${eventType}/${label}` : eventType} (guild ${guildId || "?"}).`);
   return json({ ok: true });
 }
 
