@@ -104,6 +104,11 @@ function construireEnv() {
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
     DISCORD_REDIRECT_URI: process.env.DISCORD_REDIRECT_URI,
     STATS_BOT_SECRET: process.env.STATS_BOT_SECRET,
+    // Transmet le réglage "cookies en HTTP simple" (voir poserCookie() dans
+    // src/index.js) -- sans cette ligne, la variable .env COOKIES_HTTP=1 est
+    // ignorée : le cookie de connexion reste marqué "Secure" et le navigateur
+    // continue de le refuser en HTTP tout court.
+    COOKIES_HTTP: process.env.COOKIES_HTTP,
   };
 }
 
