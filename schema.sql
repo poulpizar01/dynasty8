@@ -202,11 +202,15 @@ CREATE TABLE IF NOT EXISTS stats_logs_ventes (
   loc INTEGER,                                 -- durée/quantité si Location
   achat INTEGER NOT NULL DEFAULT 0,             -- montant de la facture
   semaine TEXT NOT NULL DEFAULT '',             -- ex "S36-26" — fait autorité
-  cree_par INTEGER REFERENCES membres(id) ON DELETE SET NULL, -- NULL = import de l'historique
+  cree_par INTEGER REFERENCES membres(id) ON DELETE SET NULL, -- NULL = import de l'historique / envoyé par le bot
+  event_id TEXT,                                -- identifiant unique généré par le bot, pour éviter les doublons en cas de renvoi après erreur réseau. NULL pour les lignes saisies manuellement ou importées avant l'existence de ce mécanisme.
   cree_le TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_stats_logs_ventes_semaine ON stats_logs_ventes(semaine);
 CREATE INDEX IF NOT EXISTS idx_stats_logs_ventes_identite ON stats_logs_ventes(identite);
+-- Unique seulement quand event_id n'est pas NULL : plusieurs lignes anciennes/manuelles
+-- peuvent toutes avoir event_id = NULL sans se bloquer entre elles.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_stats_logs_ventes_event_id ON stats_logs_ventes(event_id) WHERE event_id IS NOT NULL;
 
 -- Comptabilité -> DOT (§6.3 : la déclaration d'impôts hebdomadaire versée à la
 -- "DOT", l'organisme fiscal du serveur RP). Barème officiel (paliers de

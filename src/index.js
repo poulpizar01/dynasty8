@@ -1121,36 +1121,109 @@ function verifierCleBot(request, env) {
   return !!correspond && correspond[1] === secret;
 }
 
+// Compare une ligne déjà enregistrée (lue en base) aux valeurs normalisées
+// d'une nouvelle requête portant le même eventId, pour décider si c'est bien
+// un simple renvoi identique (après coupure réseau) ou des données différentes.
+function ligneVenteIdentique(existante, v) {
+  return (
+    existante.numero_vente === v.numeroVente &&
+    existante.date_vente === v.dateVente &&
+    existante.identite === v.identite &&
+    existante.formateur === v.formateur &&
+    existante.identite_client === v.identiteClient &&
+    existante.numero_tel === v.numeroTel &&
+    existante.interieur === v.interieur &&
+    existante.garage === v.garage &&
+    existante.garage_indispo === v.garageIndispo &&
+    existante.garage_refus === v.garageRefus &&
+    existante.entreprise_identite === v.entrepriseIdentite &&
+    existante.id_entreprise === v.idEntreprise &&
+    existante.type === v.type &&
+    (existante.loc == null ? null : Number(existante.loc)) === v.loc &&
+    Number(existante.achat) === v.achat &&
+    existante.semaine === v.semaine
+  );
+}
+
 async function statsEnregistrerVente(request, env, membreId) {
   const b = await request.json().catch(() => null);
   const erreur = validerLigneVente(b);
   if (erreur) return json({ erreur }, 400);
-  await env.DB.prepare(
-    `INSERT INTO stats_logs_ventes
-      (numero_vente, date_vente, identite, formateur, identite_client, numero_tel,
-       interieur, garage, garage_indispo, garage_refus, entreprise_identite, id_entreprise,
-       type, loc, achat, semaine, cree_par)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)`
-  ).bind(
-    String(b.numeroVente || "").trim(),
-    String(b.dateVente || "").trim(),
-    String(b.identite).trim(),
-    String(b.formateur || "").trim(),
-    String(b.identiteClient || "").trim(),
-    String(b.numeroTel || "").trim(),
-    String(b.interieur || "").trim(),
-    String(b.garage || "").trim(),
-    String(b.garageIndispo || "").trim(),
-    String(b.garageRefus || "").trim(),
-    String(b.entrepriseIdentite || "").trim(),
-    String(b.idEntreprise || "").trim(),
-    b.type,
-    b.type === "Location" && b.loc !== "" && b.loc != null ? Math.trunc(Number(b.loc)) : null,
-    b.achat != null && b.achat !== "" ? Math.round(Number(b.achat)) : 0,
-    String(b.semaine).trim().toUpperCase(),
-    membreId
-  ).run();
-  return json({ ok: true });
+
+  // Valeurs normalisées une seule fois (utilisées pour la comparaison ET l'insertion).
+  const v = {
+    numeroVente: String(b.numeroVente || "").trim(),
+    dateVente: String(b.dateVente || "").trim(),
+    identite: String(b.identite).trim(),
+    formateur: String(b.formateur || "").trim(),
+    identiteClient: String(b.identiteClient || "").trim(),
+    numeroTel: String(b.numeroTel || "").trim(),
+    interieur: String(b.interieur || "").trim(),
+    garage: String(b.garage || "").trim(),
+    garageIndispo: String(b.garageIndispo || "").trim(),
+    garageRefus: String(b.garageRefus || "").trim(),
+    entrepriseIdentite: String(b.entrepriseIdentite || "").trim(),
+    idEntreprise: String(b.idEntreprise || "").trim(),
+    type: b.type,
+    loc: b.type === "Location" && b.loc !== "" && b.loc != null ? Math.trunc(Number(b.loc)) : null,
+    achat: b.achat != null && b.achat !== "" ? Math.round(Number(b.achat)) : 0,
+    semaine: String(b.semaine).trim().toUpperCase(),
+  };
+
+  // Idempotence : uniquement exigée côté bot (membreId === null, voir plus
+  // haut). Une saisie manuelle depuis le site n'a pas ce souci de renvoi
+  // réseau, donc pas besoin d'eventId dans ce cas.
+  let eventId = null;
+  if (membreId === null) {
+    eventId = b.eventId != null ? String(b.eventId).trim() : "";
+    if (!eventId) return json({ erreur: "eventId est obligatoire." }, 400);
+    if (eventId.length > 200) return json({ erreur: "eventId dépasse 200 caractères." }, 400);
+
+    const existante = await env.DB.prepare(
+      `SELECT numero_vente, date_vente, identite, formateur, identite_client, numero_tel,
+              interieur, garage, garage_indispo, garage_refus, entreprise_identite, id_entreprise,
+              type, loc, achat, semaine
+         FROM stats_logs_ventes WHERE event_id = ?1`
+    ).bind(eventId).first();
+
+    if (existante) {
+      if (ligneVenteIdentique(existante, v)) return json({ ok: true, dejaTraite: true });
+      return json({ erreur: "Cet eventId a déjà été utilisé avec des données différentes." }, 409);
+    }
+  }
+
+  try {
+    await env.DB.prepare(
+      `INSERT INTO stats_logs_ventes
+        (numero_vente, date_vente, identite, formateur, identite_client, numero_tel,
+         interieur, garage, garage_indispo, garage_refus, entreprise_identite, id_entreprise,
+         type, loc, achat, semaine, cree_par, event_id)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`
+    ).bind(
+      v.numeroVente, v.dateVente, v.identite, v.formateur, v.identiteClient, v.numeroTel,
+      v.interieur, v.garage, v.garageIndispo, v.garageRefus, v.entrepriseIdentite, v.idEntreprise,
+      v.type, v.loc, v.achat, v.semaine, membreId, eventId
+    ).run();
+    return json({ ok: true });
+  } catch (e) {
+    // Deux requêtes portant le même eventId arrivées quasi en même temps
+    // (rare, mais possible) : celle qui perd la course tombe ici à cause de
+    // la contrainte UNIQUE sur event_id. On revérifie simplement ce qui a
+    // été enregistré, plutôt que de renvoyer une erreur 500 au bot.
+    if (eventId) {
+      const concurrente = await env.DB.prepare(
+        `SELECT numero_vente, date_vente, identite, formateur, identite_client, numero_tel,
+                interieur, garage, garage_indispo, garage_refus, entreprise_identite, id_entreprise,
+                type, loc, achat, semaine
+           FROM stats_logs_ventes WHERE event_id = ?1`
+      ).bind(eventId).first();
+      if (concurrente) {
+        if (ligneVenteIdentique(concurrente, v)) return json({ ok: true, dejaTraite: true });
+        return json({ erreur: "Cet eventId a déjà été utilisé avec des données différentes." }, 409);
+      }
+    }
+    throw e;
+  }
 }
 
 async function statsListerVentes(env, url, s) {

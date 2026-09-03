@@ -192,10 +192,20 @@ CREATE TABLE IF NOT EXISTS stats_logs_ventes (
   achat INTEGER NOT NULL DEFAULT 0,
   semaine TEXT NOT NULL DEFAULT '',
   cree_par INTEGER REFERENCES membres(id) ON DELETE SET NULL,
+  event_id TEXT,
   cree_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
 );
 CREATE INDEX IF NOT EXISTS idx_stats_logs_ventes_semaine ON stats_logs_ventes(semaine);
 CREATE INDEX IF NOT EXISTS idx_stats_logs_ventes_identite ON stats_logs_ventes(identite);
+-- Ajoute la colonne si la table existait déjà avant ce champ (site déjà en
+-- service) : sans danger, ne touche à aucune ligne existante. Doit passer
+-- AVANT l'index ci-dessous, sinon celui-ci échoue sur une base où la table
+-- existait déjà sans cette colonne.
+ALTER TABLE stats_logs_ventes ADD COLUMN IF NOT EXISTS event_id TEXT;
+-- Empêche le bot d'enregistrer deux fois la même vente s'il renvoie sa requête
+-- après une coupure réseau. Partiel (WHERE event_id IS NOT NULL) pour ne jamais
+-- gêner les lignes anciennes/saisies à la main, qui n'ont pas d'event_id.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_stats_logs_ventes_event_id ON stats_logs_ventes(event_id) WHERE event_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS dot_bareme_imposition (
   id SERIAL PRIMARY KEY,
