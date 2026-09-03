@@ -965,6 +965,81 @@ section.section.serre {
   .vitrine-exception-texte { padding: 40px 28px; }
 }
 
+/* ---------- bandeau "entreprise partenaire" (accueil) ---------- */
+/* Même famille visuelle que le bandeau "Standing" juste au-dessus
+   (.vitrine-exception) : panneau sombre, image à droite avec dégradé de
+   fondu, texte + CTA à gauche. Classes séparées (plutôt que réutiliser
+   .vitrine-exception telles quelles) pour que ce bandeau reste facile à
+   retrouver et à modifier seul si un jour il y a plusieurs partenaires. */
+
+.partenaire-bandeau {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  border-radius: var(--radius);
+  background: #05070f;
+  border: 1px solid rgba(207, 159, 86, 0.25);
+  box-shadow: 0 30px 70px -34px rgba(0, 0, 0, 0.55);
+}
+
+.partenaire-bandeau-texte {
+  padding: 56px 48px;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.partenaire-bandeau-etiquette {
+  display: inline-block;
+  color: var(--gold);
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 2px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.partenaire-bandeau-texte h2 { color: var(--text); max-width: 420px; }
+.partenaire-bandeau-texte p { color: var(--text-muted); max-width: 440px; margin: 16px 0 28px; }
+.partenaire-bandeau-texte .btn { align-self: flex-start; }
+
+.partenaire-bandeau-image { position: relative; min-height: 300px; background: #05070f; display: flex; align-items: center; }
+.partenaire-bandeau-image img {
+  width: 100%; height: auto; object-fit: contain; display: block;
+}
+/* Fondu qui reprend la couleur du panneau côté texte, pour que la photo se
+   fonde dans le bandeau plutôt que de s'arrêter net (identique à l'effet du
+   bandeau "Standing" ci-dessus). */
+.partenaire-bandeau-image::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(270deg, #05070f, transparent 22%);
+}
+
+@media (max-width: 820px) {
+  .partenaire-bandeau { grid-template-columns: minmax(0, 1fr); }
+  .partenaire-bandeau-image { min-height: 140px; padding: 24px; order: -1; }
+  .partenaire-bandeau-image::before { background: linear-gradient(180deg, transparent 55%, #05070f); }
+  .partenaire-bandeau-texte { padding: 40px 28px; min-width: 0; }
+}
+
+@media (max-width: 480px) {
+  .partenaire-bandeau-texte .btn {
+    white-space: normal;
+    height: auto;
+    min-height: 52px;
+    padding: 14px 24px;
+    text-align: center;
+    line-height: 1.4;
+  }
+}
+
 /* ---------- cartes de biens ---------- */
 
 .grille-biens {
