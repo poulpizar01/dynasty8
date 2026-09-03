@@ -1110,9 +1110,9 @@ function validerLigneVente(b) {
 
 // Le bot (qui lit les ventes RP et les transmet au site) n'a pas de compte
 // Discord/session sur le site : il s'identifie avec une clé secrète fixe,
-// réglée une seule fois via `npx wrangler secret put STATS_BOT_SECRET`, à
-// donner uniquement à la personne qui héberge/programme le bot — jamais
-// affichée ni stockée ailleurs que dans les secrets Cloudflare.
+// réglée une seule fois dans les Variables du service Railway, à donner
+// uniquement à la personne qui héberge/programme le bot — jamais affichée
+// ni stockée ailleurs que dans les Variables Railway.
 function verifierCleBot(request, env) {
   const secret = env.STATS_BOT_SECRET;
   if (!secret) return false;

@@ -24,6 +24,20 @@ export function creerPool(connectionString) {
         ? false // réseau privé Railway : pas besoin de TLS entre services
         : { rejectUnauthorized: false },
     });
+
+    // Sans ce filet, une connexion inactive du pool qui se coupe (coupure
+    // réseau ponctuelle, maintenance de la base...) fait planter tout le
+    // processus Node (erreur "error" non écoutée sur le pool). Ici, on se
+    // contente de journaliser (sans jamais inclure connectionString, qui
+    // contient le mot de passe) : le pool retire lui-même la connexion
+    // cassée et en ouvrira une nouvelle au prochain besoin — aucune
+    // reconnexion manuelle ni boucle à gérer ici, et les erreurs de requête
+    // (mauvais SQL, contrainte violée...) ne passent jamais par cet
+    // événement : elles restent rejetées sur leur propre promesse, gérées
+    // par l'appelant comme avant.
+    pool.on("error", (err) => {
+      console.error("Connexion PostgreSQL inactive perdue (pool) :", err.message);
+    });
   }
   return pool;
 }
