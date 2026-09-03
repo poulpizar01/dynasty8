@@ -5,3 +5,7 @@ node_modules/
 
 # Export brut intermédiaire (SQLite) — le fichier utile est donnees-cloudflare.postgres.sql
 export-cloudflare.sql
+
+# Pack VPS (deploy/vps) : secrets réels et sauvegardes, jamais dans Git
+deploy/vps/.env
+deploy/vps/backups/

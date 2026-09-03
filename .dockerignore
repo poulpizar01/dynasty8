@@ -1,0 +1,11 @@
+node_modules
+.git
+.wrangler
+.dev.vars
+.dev.vars.example
+*.log
+.trash
+export-cloudflare.sql
+deploy/vps/.env
+deploy/vps/backups
+rapports

@@ -1,0 +1,7 @@
+# Remplacer par le vrai nom de domaine avant le premier lancement.
+# Caddy obtient et renouvelle automatiquement le certificat HTTPS (Let's
+# Encrypt) pour ce domaine — rien d'autre à configurer.
+votre-domaine.exemple {
+	reverse_proxy app:3000
+	encode gzip
+}
