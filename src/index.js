@@ -2019,6 +2019,11 @@ const EVENEMENTS_ROXWOOD = {
   "monitoring.sale": "Vente run",
   "absence.updated": "Absences",
   "order.updated": "Commandes",
+  // Contrairement aux 7 types ci-dessus (un seul secret possible), "custom"
+  // autorise PLUSIEURS abonnements simultanés distingués par un "label"
+  // libre (ex: deux synchros Google Sheets différentes). Voir roxwood_config
+  // (colonne label) et la doc en tête de ce bloc.
+  "custom": "Personnalisé (contenu au choix)",
 };
 
 // Signature hexadécimale HMAC-SHA256 (Web Crypto — fonctionne aussi bien sous
@@ -2056,11 +2061,20 @@ async function roxwoodWebhook(request, env) {
     return json({ erreur: "« eventType » manquant ou inconnu." }, 400);
   }
 
+  // Seul le type "custom" transporte un label (plusieurs abonnements
+  // possibles) — les 7 types fixes utilisent toujours label = '' côté base,
+  // même si le bot n'envoie pas ce champ pour eux.
+  const label = eventType === "custom" ? String(donnees.label || "").trim() : "";
+  if (eventType === "custom" && !label) {
+    return json({ erreur: "« label » manquant pour un webhook personnalisé." }, 400);
+  }
+
   const config = await env.DB.prepare(
-    "SELECT webhook_secret FROM roxwood_config WHERE type_evenement = ?1"
-  ).bind(eventType).first();
+    "SELECT webhook_secret FROM roxwood_config WHERE type_evenement = ?1 AND label = ?2"
+  ).bind(eventType, label).first();
   if (!config || !config.webhook_secret) {
-    return json({ erreur: `Aucun secret configuré côté site pour « ${eventType} » (Paramètres -> Roxwood Network).` }, 401);
+    const cible = label ? `« ${eventType} / ${label} »` : `« ${eventType} »`;
+    return json({ erreur: `Aucun secret configuré côté site pour ${cible} (Paramètres -> Roxwood Network).` }, 401);
   }
 
   const signatureRecue = request.headers.get("X-Signature-256") || "";
@@ -2070,8 +2084,8 @@ async function roxwoodWebhook(request, env) {
   }
 
   await env.DB.prepare(
-    "INSERT INTO roxwood_evenements (guild_id, type_evenement, charge_utile) VALUES (?1, ?2, ?3)"
-  ).bind(guildId || null, eventType, JSON.stringify(payload ?? null)).run();
+    "INSERT INTO roxwood_evenements (guild_id, type_evenement, label, charge_utile) VALUES (?1, ?2, ?3, ?4)"
+  ).bind(guildId || null, eventType, label, JSON.stringify(payload ?? null)).run();
 
   return json({ ok: true });
 }
@@ -2085,40 +2099,73 @@ async function roxwood(request, url, env) {
 
   if (route === "/config" && request.method === "GET") {
     const r = await env.DB.prepare(
-      "SELECT type_evenement, mis_a_jour_le, mis_a_jour_par FROM roxwood_config"
+      "SELECT type_evenement, label, mis_a_jour_le, mis_a_jour_par FROM roxwood_config"
     ).all();
+    const lignes = r.results || [];
     const parType = {};
-    for (const row of r.results || []) parType[row.type_evenement] = row;
-    const types = Object.entries(EVENEMENTS_ROXWOOD).map(([type, libelle]) => ({
-      type,
-      libelle,
-      configure: !!parType[type],
-      misAJourLe: parType[type]?.mis_a_jour_le || null,
-      misAJourPar: parType[type]?.mis_a_jour_par || null,
-    }));
-    return json({ types });
+    for (const row of lignes) {
+      if (row.type_evenement === "custom") continue; // traité séparément (plusieurs par type)
+      parType[row.type_evenement] = row;
+    }
+    const types = Object.entries(EVENEMENTS_ROXWOOD)
+      .filter(([type]) => type !== "custom")
+      .map(([type, libelle]) => ({
+        type,
+        libelle,
+        configure: !!parType[type],
+        misAJourLe: parType[type]?.mis_a_jour_le || null,
+        misAJourPar: parType[type]?.mis_a_jour_par || null,
+      }));
+    // "custom" : autant de lignes que d'abonnements configurés, un par label.
+    const personnalises = lignes
+      .filter((row) => row.type_evenement === "custom")
+      .map((row) => ({
+        label: row.label,
+        misAJourLe: row.mis_a_jour_le,
+        misAJourPar: row.mis_a_jour_par,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, "fr"));
+    return json({ types, personnalises });
   }
 
   if (route === "/config" && request.method === "PUT") {
     const b = await request.json().catch(() => null);
     const type = b && String(b.type || "").trim();
     const secret = b && String(b.secret || "").trim();
+    // Seul "custom" utilise un label (plusieurs abonnements possibles) ; les
+    // 7 types fixes restent stockés avec label = '' (une seule config chacun).
+    const label = type === "custom" ? String((b && b.label) || "").trim() : "";
     if (!type || !EVENEMENTS_ROXWOOD[type]) return json({ erreur: "Type d'événement inconnu." }, 400);
+    if (type === "custom" && !label) {
+      return json({ erreur: "Indiquez le libellé de ce webhook personnalisé (celui choisi côté Discord)." }, 400);
+    }
     if (!secret || secret.length < 16) {
       return json({ erreur: "Collez le secret tel quel depuis Discord (au moins 16 caractères)." }, 400);
     }
+    // "RETURNING type_evenement" explicite : roxwood_config n'a pas de
+    // colonne "id" (sa clé est le couple type_evenement/label) — sans ce
+    // RETURNING déjà présent, l'adaptateur Postgres (avecRetourId(), dans
+    // src/db-pg.js) ajoute automatiquement "RETURNING id" à toute requête
+    // INSERT qui n'en a pas, ce qui casserait la requête ici (colonne
+    // inexistante). Bug préexistant à la version 1 (avant l'ajout du type
+    // "custom"), repéré et corrigé pendant les tests de cette mise à jour.
     await env.DB.prepare(
-      `INSERT INTO roxwood_config (type_evenement, webhook_secret, mis_a_jour_le, mis_a_jour_par)
-       VALUES (?1, ?2, datetime('now'), ?3)
-       ON CONFLICT (type_evenement) DO UPDATE SET webhook_secret = ?2, mis_a_jour_le = datetime('now'), mis_a_jour_par = ?3`
-    ).bind(type, secret, s.pseudo).run();
+      `INSERT INTO roxwood_config (type_evenement, label, webhook_secret, mis_a_jour_le, mis_a_jour_par)
+       VALUES (?1, ?2, ?3, datetime('now'), ?4)
+       ON CONFLICT (type_evenement, label) DO UPDATE SET webhook_secret = ?3, mis_a_jour_le = datetime('now'), mis_a_jour_par = ?4
+       RETURNING type_evenement`
+    ).bind(type, label, secret, s.pseudo).run();
     return json({ ok: true });
   }
 
   if (route === "/config" && request.method === "DELETE") {
     const type = url.searchParams.get("type") || "";
+    const label = type === "custom" ? String(url.searchParams.get("label") || "").trim() : "";
     if (!EVENEMENTS_ROXWOOD[type]) return json({ erreur: "Type d'événement inconnu." }, 400);
-    await env.DB.prepare("DELETE FROM roxwood_config WHERE type_evenement = ?1").bind(type).run();
+    if (type === "custom" && !label) return json({ erreur: "Libellé manquant." }, 400);
+    await env.DB.prepare(
+      "DELETE FROM roxwood_config WHERE type_evenement = ?1 AND label = ?2"
+    ).bind(type, label).run();
     return json({ ok: true });
   }
 
@@ -2127,17 +2174,18 @@ async function roxwood(request, url, env) {
     const limite = Math.min(Math.max(Number(url.searchParams.get("limite")) || 50, 1), 200);
     const r = type
       ? await env.DB.prepare(
-          `SELECT id, guild_id, type_evenement, charge_utile, recu_le FROM roxwood_evenements
+          `SELECT id, guild_id, type_evenement, label, charge_utile, recu_le FROM roxwood_evenements
            WHERE type_evenement = ?1 ORDER BY recu_le DESC, id DESC LIMIT ?2`
         ).bind(type, limite).all()
       : await env.DB.prepare(
-          `SELECT id, guild_id, type_evenement, charge_utile, recu_le FROM roxwood_evenements
+          `SELECT id, guild_id, type_evenement, label, charge_utile, recu_le FROM roxwood_evenements
            ORDER BY recu_le DESC, id DESC LIMIT ?1`
         ).bind(limite).all();
     const evenements = (r.results || []).map((ev) => ({
       id: ev.id,
       guildId: ev.guild_id,
       type: ev.type_evenement,
+      label: ev.label || "",
       libelle: EVENEMENTS_ROXWOOD[ev.type_evenement] || ev.type_evenement,
       payload: JSON.parse(ev.charge_utile || "null"),
       recuLe: ev.recu_le,

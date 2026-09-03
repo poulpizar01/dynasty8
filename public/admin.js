@@ -2599,10 +2599,22 @@ async function chargerParametresRoxwood() {
     const filtre = document.getElementById("roxwood-filtre-type");
     const valeurActuelle = filtre.value;
     filtre.innerHTML = '<option value="">Tous les types</option>' +
-      r.types.map((t) => `<option value="${echapper(t.type)}">${echapper(t.libelle)}</option>`).join("");
+      r.types.map((t) => `<option value="${echapper(t.type)}">${echapper(t.libelle)}</option>`).join("") +
+      '<option value="custom">Personnalisé (contenu au choix)</option>';
     filtre.value = valeurActuelle;
+
+    document.getElementById("corps-table-roxwood-custom").innerHTML = r.personnalises.length
+      ? r.personnalises.map((c) => `
+          <tr data-label-roxwood-custom="${echapper(c.label)}">
+            <td>${echapper(c.label)}</td>
+            <td class="champ-aide" style="margin:0;">${c.misAJourPar ? `${echapper(c.misAJourPar)} — ${formaterDateRoxwood(c.misAJourLe)}` : ""}</td>
+            <td style="white-space:nowrap;"><button type="button" class="btn btn-danger btn-petit" data-retirer-roxwood-custom="${echapper(c.label)}">Retirer</button></td>
+          </tr>`).join("")
+      : `<tr><td colspan="3" class="champ-aide" style="margin:0;">Aucun webhook personnalisé configuré pour le moment.</td></tr>`;
+    cablerBoutonsRoxwoodCustom();
   } catch (e) {
     document.getElementById("corps-table-roxwood-config").innerHTML = `<tr><td colspan="4">Erreur de chargement.</td></tr>`;
+    document.getElementById("corps-table-roxwood-custom").innerHTML = `<tr><td colspan="3">Erreur de chargement.</td></tr>`;
     afficherMessage("zone-message-roxwood", "Impossible de charger la configuration : " + e.message, "erreur");
   }
   chargerJournalRoxwood();
@@ -2641,6 +2653,42 @@ function cablerBoutonsRoxwoodConfig() {
   });
 }
 
+function cablerBoutonsRoxwoodCustom() {
+  const corps = document.getElementById("corps-table-roxwood-custom");
+  corps.querySelectorAll("[data-retirer-roxwood-custom]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const label = btn.dataset.retirerRoxwoodCustom;
+      const ok = await confirmerAction(`Le bot ne pourra plus envoyer le webhook personnalisé « ${label} » au site tant qu'un nouveau secret n'aura pas été collé ici. Continuer ?`, "Retirer ce webhook ?");
+      if (!ok) return;
+      try {
+        await appelAPI(`/api/roxwood/config?type=custom&label=${encodeURIComponent(label)}`, { method: "DELETE" });
+        afficherMessage("zone-message-roxwood", "Webhook personnalisé retiré ✓", "succes");
+        chargerParametresRoxwood();
+      } catch (e) {
+        afficherMessage("zone-message-roxwood", "Impossible de retirer : " + e.message, "erreur");
+      }
+    });
+  });
+}
+
+document.getElementById("bouton-ajouter-roxwood-custom")?.addEventListener("click", async () => {
+  const champLabel = document.getElementById("roxwood-custom-nouveau-label");
+  const champSecret = document.getElementById("roxwood-custom-nouveau-secret");
+  const label = champLabel.value.trim();
+  const secret = champSecret.value.trim();
+  if (!label) { afficherMessage("zone-message-roxwood", "Indiquez le libellé choisi côté Discord pour ce webhook.", "erreur"); return; }
+  if (!secret) { afficherMessage("zone-message-roxwood", "Collez d'abord le secret copié depuis Discord.", "erreur"); return; }
+  try {
+    await appelAPI("/api/roxwood/config", { method: "PUT", body: JSON.stringify({ type: "custom", label, secret }) });
+    afficherMessage("zone-message-roxwood", "Webhook personnalisé enregistré ✓", "succes");
+    champLabel.value = "";
+    champSecret.value = "";
+    chargerParametresRoxwood();
+  } catch (e) {
+    afficherMessage("zone-message-roxwood", "Impossible d'enregistrer : " + e.message, "erreur");
+  }
+});
+
 document.getElementById("bouton-rafraichir-roxwood")?.addEventListener("click", () => chargerJournalRoxwood());
 document.getElementById("roxwood-filtre-type")?.addEventListener("change", () => chargerJournalRoxwood());
 
@@ -2667,7 +2715,7 @@ async function chargerJournalRoxwood() {
     zone.innerHTML = r.evenements.map((ev) => `
       <details class="roxwood-evenement">
         <summary>
-          <span class="puce puce-or">${echapper(ev.libelle)}</span>
+          <span class="puce puce-or">${echapper(ev.libelle)}${ev.label ? " — " + echapper(ev.label) : ""}</span>
           <span class="champ-aide" style="margin:0;">${formaterDateRoxwood(ev.recuLe)}</span>
         </summary>
         <pre class="roxwood-payload">${echapper(JSON.stringify(ev.payload, null, 2))}</pre>

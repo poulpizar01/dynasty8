@@ -521,6 +521,30 @@
         </table>
       </div>
 
+      <h3 class="comptes-sous-titre" style="margin-top:34px;">🔧 Webhooks personnalisés (type « Personnalisé »)</h3>
+      <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">
+        Contrairement aux types ci-dessus (un seul secret chacun), le type <strong>Personnalisé</strong> accepte <strong>plusieurs webhooks à la fois</strong> — par exemple deux synchros Google Sheets différentes vers deux destinations distinctes. Créez-en un par un côté Discord (<strong>Monitoring</strong> → <strong>Ajouter un webhook</strong> → <strong>Personnalisé</strong>), en donnant à chacun un libellé qui vous permette de le reconnaître, puis enregistrez-le ci-dessous avec le même libellé.
+      </p>
+      <div style="overflow-x:auto;">
+        <table class="table-admin">
+          <thead>
+            <tr><th>Libellé</th><th>Mis à jour</th><th></th></tr>
+          </thead>
+          <tbody id="corps-table-roxwood-custom"><tr><td colspan="3">Chargement…</td></tr></tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:8px;align-items:end;margin-top:12px;flex-wrap:wrap;max-width:680px;">
+        <div class="champ" style="margin:0;flex:1;min-width:180px;">
+          <label>Libellé (le même que côté Discord)</label>
+          <input type="text" id="roxwood-custom-nouveau-label" placeholder="ex. Google Sheets — Stock">
+        </div>
+        <div class="champ" style="margin:0;flex:2;min-width:220px;">
+          <label>Secret</label>
+          <input type="password" id="roxwood-custom-nouveau-secret" placeholder="Collez le secret affiché par Discord">
+        </div>
+        <button type="button" class="btn btn-fantome btn-petit" id="bouton-ajouter-roxwood-custom" style="margin-bottom:18px;">+ Ajouter</button>
+      </div>
+
       <h3 class="comptes-sous-titre" style="margin-top:34px;">📋 Journal des événements reçus</h3>
       <p class="champ-aide" style="margin:0 0 12px;">Les événements les plus récents reçus du bot, en premier.</p>
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">

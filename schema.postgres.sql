@@ -275,19 +275,50 @@ CREATE INDEX IF NOT EXISTS idx_doublons_marques_originale ON stats_ventes_doublo
 -- d'environnement. Les événements reçus sont conservés tels quels dans
 -- roxwood_evenements, en simple journal de consultation — rien ici
 -- n'alimente automatiquement stats_logs_ventes ni la comptabilité.
+-- Le type "custom" est particulier : contrairement aux 7 autres (un seul
+-- secret possible par type), il autorise PLUSIEURS abonnements simultanés
+-- pour le même bot (ex: deux synchros Google Sheets différentes vers deux
+-- webhooks distincts). On les distingue par un "label" libre choisi côté
+-- Discord lors de la création de l'abonnement webhook "Personnalisé". Pour
+-- les 7 types fixes, label vaut toujours '' (chaîne vide) : un seul secret
+-- par type_evenement, comme avant.
 CREATE TABLE IF NOT EXISTS roxwood_config (
-  type_evenement TEXT PRIMARY KEY,
+  type_evenement TEXT NOT NULL,
+  label TEXT NOT NULL DEFAULT '',
   webhook_secret TEXT NOT NULL,
   mis_a_jour_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')),
-  mis_a_jour_par TEXT
+  mis_a_jour_par TEXT,
+  PRIMARY KEY (type_evenement, label)
 );
+
+-- Migration idempotente pour une base déjà déployée avec l'ancien schéma
+-- (clé primaire = type_evenement seul, pas de colonne label).
+ALTER TABLE roxwood_config ADD COLUMN IF NOT EXISTS label TEXT NOT NULL DEFAULT '';
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints tc
+    JOIN information_schema.key_column_usage kcu
+      ON kcu.constraint_name = tc.constraint_name
+     AND kcu.table_name = tc.table_name
+    WHERE tc.table_name = 'roxwood_config'
+      AND tc.constraint_type = 'PRIMARY KEY'
+      AND kcu.column_name = 'label'
+  ) THEN
+    ALTER TABLE roxwood_config DROP CONSTRAINT IF EXISTS roxwood_config_pkey;
+    ALTER TABLE roxwood_config ADD CONSTRAINT roxwood_config_pkey PRIMARY KEY (type_evenement, label);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS roxwood_evenements (
   id SERIAL PRIMARY KEY,
   guild_id TEXT,
   type_evenement TEXT NOT NULL,
+  label TEXT NOT NULL DEFAULT '',
   charge_utile TEXT NOT NULL,
   recu_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
 );
+ALTER TABLE roxwood_evenements ADD COLUMN IF NOT EXISTS label TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS idx_roxwood_evenements_recu_le ON roxwood_evenements(recu_le DESC);
 CREATE INDEX IF NOT EXISTS idx_roxwood_evenements_type ON roxwood_evenements(type_evenement);
