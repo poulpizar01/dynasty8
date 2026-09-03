@@ -23,6 +23,7 @@
 
 import { enc, b64url, unb64url } from "./util-crypto.js";
 import * as statsCalc from "./stats-calc.js";
+import { extraireTransactionRoxwood } from "./roxwood-agrege.js";
 
 const COOKIE = "d8_session";
 const COOKIE_ETAT_OAUTH = "d8_oauth_state"; // protection anti-CSRF pendant l'aller-retour vers Discord
@@ -1350,6 +1351,66 @@ async function calculerRecapSemaine(env, semaine) {
   return agents;
 }
 
+// ---- Vue d'ensemble globale (NOUVEAU) : additionne le CA immobilier ------
+// existant (inchangé, mêmes lignes/exclusions que partout ailleurs sur le
+// site — voir lireLignesPourCalculs()) et le CA Roxwood (produits/factures/
+// commandes livrées, voir roxwood-agrege.js), sur une période libre. Ne
+// touche JAMAIS aux primes/commissions/DOT par agent : ce sont des totaux
+// d'affichage uniquement, calculés à part.
+function parseDateVenteJJMMAAAA(brut) {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(brut || "").trim());
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+async function statsVueEnsemble(env, url, s) {
+  if (!statsPeutVoirTous(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const debut = (url.searchParams.get("debut") || "").trim();
+  const fin = (url.searchParams.get("fin") || "").trim();
+  const bDebut = borneJourUtc(debut);
+  const bFinExclusive = borneJourUtc(fin, 1);
+  if (!bDebut || !bFinExclusive || bDebut > bFinExclusive) {
+    return json({ erreur: "Paramètres « debut » et « fin » invalides (format AAAA-MM-JJ attendu, debut <= fin)." }, 400);
+  }
+
+  // ---- Côté immobilier (inchangé, mêmes lignes que la paie/le récap) -----
+  const { lignes } = await lireLignesPourCalculs(env);
+  let immoNbVentes = 0, immoNbLocations = 0, immoCa = 0;
+  for (const l of lignes) {
+    const d = parseDateVenteJJMMAAAA(l.date);
+    if (!d || d < bDebut || d >= bFinExclusive) continue;
+    if (l.type === "Vente") immoNbVentes++;
+    else if (l.type === "Location") immoNbLocations++;
+    else continue;
+    immoCa += Number(l.montant) || 0;
+  }
+
+  // ---- Côté Roxwood (agrégat SQL déjà pré-calculé, voir roxwoodStats()) --
+  const isoTransactions = (d) => d.toISOString();
+  const isoInterne = (d) => d.toISOString().replace("T", " ").replace(/\.\d+Z$/, "");
+  const agg = await env.DB.prepare(
+    `SELECT COUNT(*) AS nb, COALESCE(SUM(montant), 0) AS total
+       FROM roxwood_transactions
+      WHERE date_transaction >= ?1 AND date_transaction < ?2`
+  ).bind(isoTransactions(bDebut), isoTransactions(bFinExclusive)).first();
+  const echecs = await env.DB.prepare(
+    `SELECT COUNT(*) AS nb
+       FROM roxwood_evenements
+      WHERE etat_extraction = 'echec' AND recu_le >= ?1 AND recu_le < ?2`
+  ).bind(isoInterne(bDebut), isoInterne(bFinExclusive)).first();
+  const roxwoodNbVentes = Number(agg?.nb || 0);
+  const roxwoodCa = Number(agg?.total || 0);
+
+  return json({
+    debut,
+    fin,
+    immobilier: { nbVentes: immoNbVentes, nbLocations: immoNbLocations, ca: immoCa },
+    roxwood: { nbVentes: roxwoodNbVentes, ca: roxwoodCa, nonTraites: Number(echecs?.nb || 0) },
+    combine: { nbVentes: immoNbVentes + roxwoodNbVentes, nbLocations: immoNbLocations, ca: immoCa + roxwoodCa },
+  });
+}
+
 async function statsRecap(env, url, s) {
   if (!statsPeutVoirTous(s)) return json({ erreur: "Réservé à la Direction." }, 403);
   const semaine = (url.searchParams.get("semaine") || "").trim().toUpperCase();
@@ -1583,6 +1644,7 @@ async function statistiques(request, url, env) {
   if (route === "/semaines" && m === "GET") return statsSemaines(env, s);
   if (route === "/anomalies" && m === "GET") return statsAnomalies(env, url, s);
   if (route === "/recap" && m === "GET") return statsRecap(env, url, s);
+  if (route === "/vue-ensemble" && m === "GET") return statsVueEnsemble(env, url, s);
   if (route === "/agents" && m === "GET") return statsListerAgents(env, s);
   if (route === "/agents" && m === "POST") return statsCreerAgent(request, env, s);
   if (route === "/ventes" && m === "POST") {
@@ -2092,9 +2154,36 @@ async function roxwoodWebhook(request, env) {
     return json({ erreur: "Signature invalide." }, 401);
   }
 
-  await env.DB.prepare(
+  const insertion = await env.DB.prepare(
     "INSERT INTO roxwood_evenements (guild_id, type_evenement, label, charge_utile) VALUES (?1, ?2, ?3, ?4)"
   ).bind(guildId || null, eventType, label, JSON.stringify(payload ?? null)).run();
+  const evenementId = insertion.meta.last_row_id;
+
+  // Extraction dérivée pour la vue d'ensemble globale de Statistiques (voir
+  // src/roxwood-agrege.js pour le détail) : ne touche jamais à la ligne
+  // roxwood_evenements qu'on vient d'insérer ci-dessus (source brute
+  // inchangée), seulement une table séparée + un état de suivi.
+  const resultat = extraireTransactionRoxwood({ guildId, type: eventType, payload, sentAt: donnees.sentAt });
+  if (resultat === undefined) {
+    // Type concerné (vente/facture/commande) mais champs manquants ou
+    // invalides -> compté "non traités" (Paramètres -> Roxwood Network).
+    await env.DB.prepare("UPDATE roxwood_evenements SET etat_extraction = 'echec' WHERE id = ?1").bind(evenementId).run();
+  } else if (resultat && resultat.supprimer) {
+    // Commande pas (encore) livrée, ou annulée après l'avoir été : jamais/
+    // plus une vente -> pas d'erreur, juste rien (ou plus rien) à compter.
+    await env.DB.prepare("UPDATE roxwood_evenements SET etat_extraction = 'ignore' WHERE id = ?1").bind(evenementId).run();
+    await env.DB.prepare("DELETE FROM roxwood_transactions WHERE cle_dedup = ?1").bind(resultat.cleDedup).run();
+  } else if (resultat) {
+    await env.DB.prepare("UPDATE roxwood_evenements SET etat_extraction = 'ok' WHERE id = ?1").bind(evenementId).run();
+    await env.DB.prepare(
+      `INSERT INTO roxwood_transactions (guild_id, type, montant, bien, source, cle_dedup, date_transaction, roxwood_evenement_id)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+       ON CONFLICT (cle_dedup) DO UPDATE SET
+         montant = ?3, bien = ?4, date_transaction = ?7, roxwood_evenement_id = ?8
+       RETURNING id`
+    ).bind(guildId || null, resultat.type, resultat.montant, resultat.bien, resultat.source, resultat.cleDedup, resultat.dateTransaction, evenementId).run();
+  }
+  // resultat === null : pas un type de transaction (shift/recrutement/coffre/absences/custom), rien à faire.
 
   console.log(`[roxwood] Accepté : ${label ? `${eventType}/${label}` : eventType} (guild ${guildId || "?"}).`);
   return json({ ok: true });
@@ -2203,5 +2292,55 @@ async function roxwood(request, url, env) {
     return json({ evenements });
   }
 
+  if (route === "/stats" && request.method === "GET") return roxwoodStats(env, url);
+
   return json({ erreur: "Adresse inconnue." }, 404);
+}
+
+// ---- Vue d'ensemble globale (nouvelle) : CA Roxwood filtrable par période -
+// Toujours en UTC (comme le reste du site : cree_le/recu_le sont stockés en
+// UTC) — une période "jour" côté client doit donc être calculée en UTC pour
+// rester cohérente avec ces filtres (voir admin.js, calculerBornesPeriode()).
+function borneJourUtc(dateAaaaMmJj, decalageJours = 0) {
+  const d = new Date(dateAaaaMmJj + "T00:00:00.000Z");
+  if (isNaN(d.getTime())) return null;
+  d.setUTCDate(d.getUTCDate() + decalageJours);
+  return d;
+}
+
+async function roxwoodStats(env, url) {
+  const debut = (url.searchParams.get("debut") || "").trim();
+  const fin = (url.searchParams.get("fin") || "").trim();
+  const bDebut = borneJourUtc(debut);
+  const bFinExclusive = borneJourUtc(fin, 1); // "fin" est incluse -> borne exclusive = lendemain
+  if (!bDebut || !bFinExclusive || bDebut > bFinExclusive) {
+    return json({ erreur: "Paramètres « debut » et « fin » invalides (format AAAA-MM-JJ attendu, debut <= fin)." }, 400);
+  }
+
+  // Deux formats de date coexistent sur le site (héritage SQLite) : les
+  // horodatages "internes" (recu_le, cree_le...) en "AAAA-MM-JJ HH:MM:SS",
+  // et date_transaction ici, qui reprend tel quel le "sentAt" ISO envoyé par
+  // le bot ("AAAA-MM-JJTHH:MM:SS.sssZ") — d'où les deux formats de bornes.
+  const isoTransactions = (d) => d.toISOString();
+  const isoInterne = (d) => d.toISOString().replace("T", " ").replace(/\.\d+Z$/, "");
+
+  const agg = await env.DB.prepare(
+    `SELECT COUNT(*) AS nb, COALESCE(SUM(montant), 0) AS total
+       FROM roxwood_transactions
+      WHERE date_transaction >= ?1 AND date_transaction < ?2`
+  ).bind(isoTransactions(bDebut), isoTransactions(bFinExclusive)).first();
+
+  const echecs = await env.DB.prepare(
+    `SELECT COUNT(*) AS nb
+       FROM roxwood_evenements
+      WHERE etat_extraction = 'echec' AND recu_le >= ?1 AND recu_le < ?2`
+  ).bind(isoInterne(bDebut), isoInterne(bFinExclusive)).first();
+
+  return json({
+    debut,
+    fin,
+    nbVentes: Number(agg?.nb || 0),
+    montantTotal: Number(agg?.total || 0),
+    nonTraites: Number(echecs?.nb || 0),
+  });
 }

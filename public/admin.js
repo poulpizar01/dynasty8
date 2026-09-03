@@ -164,7 +164,7 @@ function basculerOnglet(nom) {
   if (nom === "comptes") chargerTableMembres();
   if (nom === "agenda") chargerAgenda(true);
   if (nom === "comptabilite") chargerTablette();
-  if (nom === "statistiques") { chargerStatistiques(); chargerAgentsStats(); }
+  if (nom === "statistiques") { chargerStatistiques(); chargerAgentsStats(); chargerVueEnsemble(); }
   if (nom === "parametres") chargerParametresRoxwood();
 }
 
@@ -173,6 +173,88 @@ function basculerOnglet(nom) {
 // via le bot (POST /api/stats/ventes avec sa clé secrète) ; cet écran se
 // contente d'afficher, semaine par semaine, ce qui a déjà été reçu.
 // ---------------------------------------------------------------------------
+// ---- Vue d'ensemble (NOUVEAU) : CA immobilier + Roxwood combinés sur une
+// période choisie. Ne touche JAMAIS aux primes/commissions/DOT par agent,
+// calculées séparément plus bas (Récapitulatif par agent), comme avant.
+// Toujours en UTC, comme les filtres calculés côté serveur.
+function formaterMontantVE(valeur) {
+  const n = Math.round(Number(valeur) || 0);
+  const chiffres = Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return (n < 0 ? "-" : "") + chiffres + "$";
+}
+
+function dateAaaaMmJjUtc(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+/** Bornes [debut, fin] (incluses, AAAA-MM-JJ) pour un préréglage de période, en UTC. */
+function calculerBornesPeriode(preset) {
+  const maintenant = new Date();
+  const auj = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth(), maintenant.getUTCDate()));
+  if (preset === "jour") return { debut: auj, fin: auj };
+  if (preset === "semaine") {
+    // Lundi de la semaine ISO courante (même convention que les codes "S36-26" utilisés ailleurs sur le site).
+    const jourSemaine = auj.getUTCDay() || 7; // dimanche (0) -> 7
+    const lundi = new Date(auj);
+    lundi.setUTCDate(auj.getUTCDate() - (jourSemaine - 1));
+    const dimanche = new Date(lundi);
+    dimanche.setUTCDate(lundi.getUTCDate() + 6);
+    return { debut: lundi, fin: dimanche };
+  }
+  if (preset === "mois") {
+    return {
+      debut: new Date(Date.UTC(auj.getUTCFullYear(), auj.getUTCMonth(), 1)),
+      fin: new Date(Date.UTC(auj.getUTCFullYear(), auj.getUTCMonth() + 1, 0)),
+    };
+  }
+  if (preset === "annee") {
+    return {
+      debut: new Date(Date.UTC(auj.getUTCFullYear(), 0, 1)),
+      fin: new Date(Date.UTC(auj.getUTCFullYear(), 11, 31)),
+    };
+  }
+  return null; // "custom" -> l'utilisateur choisit lui-même debut/fin
+}
+
+async function chargerVueEnsemble() {
+  const preset = document.getElementById("ve-periode-preset").value;
+  const champDebut = document.getElementById("ve-debut");
+  const champFin = document.getElementById("ve-fin");
+  let debut, fin;
+  if (preset === "custom") {
+    champDebut.classList.remove("cache");
+    champFin.classList.remove("cache");
+    debut = champDebut.value;
+    fin = champFin.value;
+    if (!debut || !fin) return; // attend que les deux dates soient choisies
+  } else {
+    champDebut.classList.add("cache");
+    champFin.classList.add("cache");
+    const bornes = calculerBornesPeriode(preset);
+    debut = dateAaaaMmJjUtc(bornes.debut);
+    fin = dateAaaaMmJjUtc(bornes.fin);
+  }
+
+  afficherMessage("zone-message-vue-ensemble", "", null);
+  try {
+    const r = await appelAPI(`/api/stats/vue-ensemble?debut=${debut}&fin=${fin}`);
+    document.getElementById("ve-immo-ca").textContent = formaterMontantVE(r.immobilier.ca);
+    document.getElementById("ve-immo-detail").textContent = `${r.immobilier.nbVentes} vente(s), ${r.immobilier.nbLocations} location(s)`;
+    document.getElementById("ve-roxwood-ca").textContent = formaterMontantVE(r.roxwood.ca);
+    document.getElementById("ve-roxwood-detail").textContent = r.roxwood.nonTraites > 0
+      ? `${r.roxwood.nbVentes} vente(s) — ${r.roxwood.nonTraites} non traité(s)`
+      : `${r.roxwood.nbVentes} vente(s)`;
+    document.getElementById("ve-total-ca").textContent = formaterMontantVE(r.combine.ca);
+    document.getElementById("ve-total-detail").textContent = `${r.combine.nbVentes} vente(s), ${r.combine.nbLocations} location(s)`;
+  } catch (e) {
+    afficherMessage("zone-message-vue-ensemble", "Impossible de charger la vue d'ensemble : " + e.message, "erreur");
+  }
+}
+
+document.getElementById("ve-periode-preset")?.addEventListener("change", chargerVueEnsemble);
+document.getElementById("ve-debut")?.addEventListener("change", chargerVueEnsemble);
+document.getElementById("ve-fin")?.addEventListener("change", chargerVueEnsemble);
+
 async function chargerStatistiques() {
   afficherMessage("zone-message-statistiques", "", null);
   try {

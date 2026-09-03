@@ -322,3 +322,34 @@ CREATE TABLE IF NOT EXISTS roxwood_evenements (
 ALTER TABLE roxwood_evenements ADD COLUMN IF NOT EXISTS label TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS idx_roxwood_evenements_recu_le ON roxwood_evenements(recu_le DESC);
 CREATE INDEX IF NOT EXISTS idx_roxwood_evenements_type ON roxwood_evenements(type_evenement);
+
+-- ---- Agrégation des ventes Roxwood (produits/factures/commandes livrées) --
+-- Sert UNIQUEMENT une nouvelle vue d'ensemble globale dans Statistiques
+-- (CA immobilier existant + CA Roxwood additionnés). N'alimente JAMAIS les
+-- primes/commissions/quotas par agent ni la déclaration DOT : Roxwood n'a ni
+-- notion d'agent immobilier (ses ventes sont attribuées à des pseudos
+-- Discord d'une autre activité) ni de location — voir la doc en tête de
+-- src/roxwood-agrege.js pour le détail du raisonnement. roxwood_evenements
+-- (la source brute) n'est jamais modifié par cette table : ceci est une
+-- extraction dérivée, recalculable à tout moment.
+CREATE TABLE IF NOT EXISTS roxwood_transactions (
+  id SERIAL PRIMARY KEY,
+  guild_id TEXT,
+  type TEXT NOT NULL DEFAULT 'Vente',
+  montant INTEGER NOT NULL DEFAULT 0,
+  bien TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL,
+  cle_dedup TEXT NOT NULL,
+  date_transaction TEXT,
+  roxwood_evenement_id INTEGER REFERENCES roxwood_evenements(id) ON DELETE SET NULL,
+  cree_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_roxwood_transactions_dedup ON roxwood_transactions(cle_dedup);
+CREATE INDEX IF NOT EXISTS idx_roxwood_transactions_date ON roxwood_transactions(date_transaction);
+
+-- État d'extraction par événement source (uniquement pour monitoring.sale,
+-- monitoring.invoice, order.updated — NULL pour tous les autres types) :
+--   'ok'     -> une ligne a été créée/mise à jour dans roxwood_transactions
+--   'ignore' -> commande pas (encore) livrée : normal, pas une erreur
+--   'echec'  -> événement mal formé, compté "non traités" dans Paramètres
+ALTER TABLE roxwood_evenements ADD COLUMN IF NOT EXISTS etat_extraction TEXT;

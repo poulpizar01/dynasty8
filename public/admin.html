@@ -388,6 +388,47 @@
         </div>
       </div>
       <div id="zone-message-statistiques"></div>
+
+      <!-- Vue d'ensemble (NOUVEAU) : additionne le CA immobilier existant
+           (inchangé) et le CA Roxwood (ventes produits/factures/commandes
+           livrées, Paramètres -> Roxwood Network) sur une période choisie.
+           N'a AUCUN effet sur les primes/commissions/DOT par agent
+           ci-dessous, calculées séparément comme avant. -->
+      <div id="statistiques-vue-ensemble" style="margin-bottom:32px;">
+        <div class="entete-admin">
+          <div>
+            <h3 style="margin-bottom:2px;">Vue d'ensemble</h3>
+            <p style="margin:0;font-size:0.88rem;">Chiffre d'affaires combiné — immobilier + activité Roxwood.</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <select id="ve-periode-preset" class="table-input">
+              <option value="jour">Aujourd'hui</option>
+              <option value="semaine" selected>Cette semaine</option>
+              <option value="mois">Ce mois</option>
+              <option value="annee">Cette année</option>
+              <option value="custom">Plage personnalisée</option>
+            </select>
+            <input type="date" id="ve-debut" class="table-input cache" style="max-width:150px;">
+            <input type="date" id="ve-fin" class="table-input cache" style="max-width:150px;">
+          </div>
+        </div>
+        <div id="zone-message-vue-ensemble"></div>
+        <div class="admin-stats" style="grid-template-columns:repeat(3,1fr);" id="ve-cartes">
+          <div class="stat-carte">
+            <span class="stat-icone stat-icone--or">🏠</span>
+            <div><div class="stat-valeur" id="ve-immo-ca">—</div><div class="stat-libelle">Immobilier</div><div class="stat-sous-libelle" id="ve-immo-detail"></div></div>
+          </div>
+          <div class="stat-carte">
+            <span class="stat-icone stat-icone--mauve">🤖</span>
+            <div><div class="stat-valeur" id="ve-roxwood-ca">—</div><div class="stat-libelle">Roxwood</div><div class="stat-sous-libelle" id="ve-roxwood-detail"></div></div>
+          </div>
+          <div class="stat-carte">
+            <span class="stat-icone stat-icone--vert">Σ</span>
+            <div><div class="stat-valeur" id="ve-total-ca">—</div><div class="stat-libelle">Total combiné</div><div class="stat-sous-libelle" id="ve-total-detail"></div></div>
+          </div>
+        </div>
+      </div>
+
       <div id="statistiques-vide" class="etat-vide cache">
         <p>Aucune vente reçue pour le moment. Les données arriveront automatiquement dès que le bot sera connecté.</p>
       </div>
