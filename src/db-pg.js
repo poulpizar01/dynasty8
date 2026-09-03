@@ -16,13 +16,32 @@ const { Pool } = pg;
 
 let pool = null;
 
+// Décide si la connexion PostgreSQL doit passer par TLS.
+// - PGSSL=disable (ou false/off) force l'absence de TLS, quelle que soit
+//   l'adresse : utile pour un PostgreSQL voisin dans le même docker-compose
+//   (VPS), qui n'a aucun certificat configuré.
+// - PGSSL=require (ou true/on) force le TLS (certificat non vérifié, comme
+//   avant), quelle que soit l'adresse.
+// - Sans réglage explicite : détection automatique. Un hôte "interne" (le
+//   réseau privé Railway railway.internal, un conteneur voisin nommé
+//   "postgres" en docker-compose, ou localhost/127.0.0.1 en local) n'a pas
+//   besoin de TLS ; toute autre adresse (base distante, "vraie" URL
+//   publique) le garde activé.
+export function calculerSSL(connectionString) {
+  const force = (process.env.PGSSL || "").trim().toLowerCase();
+  if (["disable", "false", "off"].includes(force)) return false;
+  if (["require", "true", "on"].includes(force)) return { rejectUnauthorized: false };
+
+  if (!connectionString) return { rejectUnauthorized: false };
+  const hoteInterne = /@(?:[^/]*\.railway\.internal|postgres|localhost|127\.0\.0\.1)(?::|\/)/i.test(connectionString);
+  return hoteInterne ? false : { rejectUnauthorized: false };
+}
+
 export function creerPool(connectionString) {
   if (!pool) {
     pool = new Pool({
       connectionString,
-      ssl: connectionString && connectionString.includes("railway.internal")
-        ? false // réseau privé Railway : pas besoin de TLS entre services
-        : { rejectUnauthorized: false },
+      ssl: calculerSSL(connectionString),
     });
 
     // Sans ce filet, une connexion inactive du pool qui se coupe (coupure
