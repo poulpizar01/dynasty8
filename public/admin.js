@@ -187,10 +187,29 @@ function dateAaaaMmJjUtc(date) {
   return date.toISOString().slice(0, 10);
 }
 
-/** Bornes [debut, fin] (incluses, AAAA-MM-JJ) pour un préréglage de période, en UTC. */
+/**
+ * Date du jour EN HEURE DE PARIS (pas celle du navigateur de l'utilisateur,
+ * qui peut être ailleurs). On utilise Intl pour lire l'année/mois/jour tels
+ * qu'ils sont actuellement à Paris, puis on les remet dans un Date "en UTC"
+ * (minuit UTC de ce jour-là) : comme tout le reste de cette fonction ne fait
+ * que de l'arithmétique de calendrier (jour de la semaine, +/- des jours,
+ * premier/dernier jour du mois...), ça donne le bon résultat quel que soit
+ * le fuseau horaire de l'utilisateur.
+ */
+function aujourdhuiParisCommeDateUtc() {
+  const parties = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Paris",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const valeur = (type) => Number(parties.find((p) => p.type === type).value);
+  return new Date(Date.UTC(valeur("year"), valeur("month") - 1, valeur("day")));
+}
+
+/** Bornes [debut, fin] (incluses, AAAA-MM-JJ) pour un préréglage de période, calculées sur le calendrier de Paris. */
 function calculerBornesPeriode(preset) {
-  const maintenant = new Date();
-  const auj = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth(), maintenant.getUTCDate()));
+  const auj = aujourdhuiParisCommeDateUtc();
   if (preset === "jour") return { debut: auj, fin: auj };
   if (preset === "semaine") {
     // Lundi de la semaine ISO courante (même convention que les codes "S36-26" utilisés ailleurs sur le site).

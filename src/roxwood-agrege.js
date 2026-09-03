@@ -124,3 +124,72 @@ export function extraireTransactionRoxwood(evenement) {
   if (type === "order.updated") return extraireCommande(guildId, payload, sentAt);
   return null; // pas un type de transaction (shift, recruitment, safe, absence.updated, custom...)
 }
+
+// ============================================================================
+// Cas particulier : un webhook "custom" qui EST une ligne de vente/location
+// immobilière (ex: synchro Google Sheet "STATS VENTES") — reconnu par la
+// FORME du contenu (présence de "Semaine" / "Vente / Loc" / "Achat"), pas par
+// le libellé choisi côté Discord (fragile, l'utilisateur peut le renommer).
+// Contrairement au reste de ce fichier, ceci ne produit PAS une ligne
+// roxwood_transactions : ça va directement dans stats_logs_ventes (même
+// table, mêmes colonnes que la saisie manuelle et l'autre bot de stats), pour
+// que le Récapitulatif par agent (primes, DOT) l'utilise automatiquement,
+// sans aucun changement de ce côté-là.
+// ============================================================================
+
+/** Renvoie une copie de l'objet avec les clés "trim()ées" (le Sheet peut envoyer "Identité " avec un espace en trop). */
+function clesTrim(objet) {
+  const out = {};
+  for (const [cle, valeur] of Object.entries(objet || {})) out[cle.trim()] = valeur;
+  return out;
+}
+
+/**
+ * Détecte + met en forme une ligne immobilière reçue via un webhook "custom".
+ * Renvoie null si ce n'est manifestement pas ce type de contenu (pas nos
+ * trois colonnes-clés) — laisse alors l'appelant tenter l'extraction normale
+ * (extraireTransactionRoxwood). Ne valide PAS les valeurs elles-mêmes (fait
+ * par validerLigneVente(), déjà utilisé par la saisie manuelle) : ça reste le
+ * travail de l'appelant, pour ne jamais dupliquer les règles de validation.
+ */
+export function extraireLigneImmobiliereRoxwood(payload, contexte) {
+  const p = clesTrim(payload);
+  if (!("Semaine" in p) || !("Vente / Loc" in p) || !("Achat" in p)) return null;
+
+  const numeroVente = p["Numéro de vente"] != null ? String(p["Numéro de vente"]).trim() : "";
+  const prefixe = `roxwood-custom:${(contexte && contexte.guildId) || ""}:${(contexte && contexte.label) || ""}:`;
+  // "Numéro de vente" est notre clé naturelle (censée être unique par ligne
+  // du Sheet). Si jamais elle est vide, on retombe sur une empreinte du
+  // contenu de la ligne entière -- moins solide (deux lignes strictement
+  // identiques par ailleurs entreraient en collision) mais évite qu'une
+  // absence de numéro fasse écraser toutes les lignes les unes sur les autres
+  // (elles partageraient sinon toutes le même eventId vide).
+  const cleDedupBrute = numeroVente
+    ? `${prefixe}num:${numeroVente}`
+    : `${prefixe}contenu:${[p["Date de vente"], p["Identité"], p["Vente / Loc"], p["Achat"], p["Semaine"], p["Interieur"], p["Garage"]].map((v) => String(v ?? "")).join("|")}`;
+  // eventId est limité à 200 caractères côté validation (validerLigneVente) --
+  // toujours vrai avec "num:", mais la variante "contenu:" peut dépasser si
+  // les champs texte sont longs.
+  const cleDedup = cleDedupBrute.slice(0, 200);
+
+  return {
+    numeroVente,
+    dateVente: p["Date de vente"],
+    identite: p["Identité"],
+    formateur: p["Formateur"],
+    identiteClient: p["Identité client"],
+    numeroTel: p["Numéro de tel"],
+    interieur: p["Interieur"],
+    garage: p["Garage"],
+    garageIndispo: p["Garage Indispo"],
+    garageRefus: p["Garage Refus"],
+    entrepriseIdentite: p["Entreprise Identité"],
+    idEntreprise: p["Id Entreprise"],
+    type: p["Vente / Loc"],
+    loc: p["Loc"],
+    achat: p["Achat"],
+    semaine: p["Semaine"],
+    eventId: cleDedup,
+  };
+}
+

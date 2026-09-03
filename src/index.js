@@ -23,7 +23,7 @@
 
 import { enc, b64url, unb64url } from "./util-crypto.js";
 import * as statsCalc from "./stats-calc.js";
-import { extraireTransactionRoxwood } from "./roxwood-agrege.js";
+import { extraireTransactionRoxwood, extraireLigneImmobiliereRoxwood } from "./roxwood-agrege.js";
 
 const COOKIE = "d8_session";
 const COOKIE_ETAT_OAUTH = "d8_oauth_state"; // protection anti-CSRF pendant l'aller-retour vers Discord
@@ -2159,6 +2159,29 @@ async function roxwoodWebhook(request, env) {
   ).bind(guildId || null, eventType, label, JSON.stringify(payload ?? null)).run();
   const evenementId = insertion.meta.last_row_id;
 
+  // Cas particulier prioritaire : un webhook "custom" dont le CONTENU est une
+  // vraie ligne de vente/location immobilière (ex: synchro Google Sheet
+  // "STATS VENTES", reconnue à sa forme -- voir extraireLigneImmobiliereRoxwood
+  // dans roxwood-agrege.js). Va directement dans stats_logs_ventes (même
+  // table que la saisie manuelle et l'autre bot de stats), pour que le
+  // Récapitulatif par agent (primes, DOT) la prenne en compte automatiquement
+  // -- rien à changer de ce côté-là, il lit déjà cette table.
+  if (eventType === "custom") {
+    const ligneImmo = extraireLigneImmobiliereRoxwood(payload, { guildId, label });
+    if (ligneImmo) {
+      const reponseVente = await statsEnregistrerVente({ json: async () => ligneImmo }, env, null);
+      const succes = reponseVente.status >= 200 && reponseVente.status < 300;
+      await env.DB.prepare("UPDATE roxwood_evenements SET etat_extraction = ?2 WHERE id = ?1")
+        .bind(evenementId, succes ? "ok" : "echec").run();
+      if (!succes) {
+        const detail = await reponseVente.clone().json().catch(() => null);
+        console.error(`[roxwood] Ligne immobilière (custom/${label}) rejetée par stats_logs_ventes : ${detail?.erreur || reponseVente.status}`);
+      }
+      console.log(`[roxwood] Accepté : ${label ? `${eventType}/${label}` : eventType} (guild ${guildId || "?"}) -> ligne immobilière ${succes ? "enregistrée" : "REJETÉE (voir logs ci-dessus)"}.`);
+      return json({ ok: true });
+    }
+  }
+
   // Extraction dérivée pour la vue d'ensemble globale de Statistiques (voir
   // src/roxwood-agrege.js pour le détail) : ne touche jamais à la ligne
   // roxwood_evenements qu'on vient d'insérer ci-dessus (source brute
@@ -2298,14 +2321,35 @@ async function roxwood(request, url, env) {
 }
 
 // ---- Vue d'ensemble globale (nouvelle) : CA Roxwood filtrable par période -
-// Toujours en UTC (comme le reste du site : cree_le/recu_le sont stockés en
-// UTC) — une période "jour" côté client doit donc être calculée en UTC pour
-// rester cohérente avec ces filtres (voir admin.js, calculerBornesPeriode()).
-function borneJourUtc(dateAaaaMmJj, decalageJours = 0) {
-  const d = new Date(dateAaaaMmJj + "T00:00:00.000Z");
-  if (isNaN(d.getTime())) return null;
+// Les journées se comptent en heure de Paris (minuit à minuit, heure locale
+// du serveur RP) -- pas en UTC -- pour que "aujourd'hui"/"cette semaine"
+// coïncide avec la vraie journée vécue par les joueurs. Gère automatiquement
+// le changement heure d'été/hiver (CET/CEST), sans dépendance externe.
+function decalerDateAaaaMmJj(aaaaMmJj, decalageJours) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(aaaaMmJj || "");
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
   d.setUTCDate(d.getUTCDate() + decalageJours);
-  return d;
+  return d.toISOString().slice(0, 10);
+}
+
+function parisMinuitEnUtc(aaaaMmJj) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(aaaaMmJj || "");
+  if (!m) return null;
+  // Devine "minuit UTC ce jour-là", puis corrige par le décalage réel de
+  // Paris à cet instant précis (1h l'hiver/CET, 2h l'été/CEST) -- recalculé
+  // à chaque appel plutôt que sur une plage, pour rester juste de part et
+  // d'autre d'un changement d'heure.
+  const guess = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  const heureParisAMinuitUtc = Number(
+    new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Paris", hour: "2-digit", hour12: false }).format(guess)
+  ) % 24;
+  return new Date(guess.getTime() - heureParisAMinuitUtc * 3600000);
+}
+
+function borneJourUtc(dateAaaaMmJj, decalageJours = 0) {
+  const decale = decalageJours ? decalerDateAaaaMmJj(dateAaaaMmJj, decalageJours) : dateAaaaMmJj;
+  return decale ? parisMinuitEnUtc(decale) : null;
 }
 
 async function roxwoodStats(env, url) {
