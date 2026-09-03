@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --live-reload",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
@@ -18,5 +18,9 @@
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "workerd@1.20260831.1": true
   }
 }
