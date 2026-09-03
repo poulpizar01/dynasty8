@@ -1,134 +1,423 @@
-# Dynasty 8 — nouveau site
+# Dynasty 8 — Plateforme immobilière RP FlashbackFA
 
-Bienvenue ! Ce dossier contient le nouveau site complet de l'agence immobilière **Dynasty 8** (serveur RP FlashbackFA). Ce document t'explique, étape par étape, comment le mettre en ligne. Prends ton temps, chaque étape est détaillée.
+**Dynasty 8** est la plateforme web de l'agence immobilière RP du serveur **FlashbackFA**. Le projet réunit un site public destiné aux joueurs et un espace agents complet pour gérer le catalogue, l'équipe, les statistiques, la comptabilité et les outils internes de l'agence.
 
-## Ce que contient le projet
+> **Projet fictif / RolePlay** — les biens, prix, transactions, salaires et données présentés dans l'application appartiennent à l'univers GTA RP et n'ont aucune valeur réelle. Ce projet communautaire n'est pas affilié à Rockstar Games ni à Take-Two Interactive.
 
-- **Un site public** (`public/*.html`) : Accueil, Habitation, Garages, Produits exclusifs, Services, Équipe, FAQ, et une fiche détaillée par annonce.
-- **Un espace agents protégé** (`public/admin.html`) : accessible via le bouton « Espace agents » en haut du site. Il permet d'ajouter, modifier ou supprimer les annonces sans toucher au code, et de créer des accès pour les autres membres de l'équipe.
-- **Un « Worker »** (`src/index.js`) : c'est le petit programme qui tourne côté serveur. Un Worker est un bout de code qui s'exécute automatiquement sur les serveurs de Cloudflare (l'hébergeur) à chaque fois qu'un visiteur ou l'espace agents demande une information (ex : « donne-moi la liste des annonces »).
-- **Une base de données D1** déjà créée sur ton compte Cloudflare, nommée `dynasty8`. C'est l'endroit où sont stockées les annonces et les comptes agents. D1 est le nom du service de base de données de Cloudflare.
+## Site actuel
 
-Le contenu (annonces, équipe, FAQ) est actuellement du **contenu de démonstration**, à remplacer par tes vraies informations. La section « Personnaliser le contenu » plus bas indique exactement où.
+- **Instance publique :** https://dynasty8.poulpizar.workers.dev/
+- **Espace agents :** https://dynasty8.poulpizar.workers.dev/admin.html
+- **Serveur RP :** FlashbackFA
+- **Développement :** Roxwood Network
 
----
-
-## Étape 1 — Mettre le code sur GitHub
-
-GitHub est simplement l'endroit où va vivre ton code : un peu comme un Google Drive spécialisé pour le code, avec un historique de toutes les versions. Cloudflare (l'hébergeur) ira ensuite piocher le code directement dans ce GitHub à chaque mise à jour.
-
-1. Va sur [github.com](https://github.com) et connecte-toi (ou crée un compte gratuit).
-2. Clique sur le bouton **+** en haut à droite → **New repository**.
-3. Nomme-le `dynasty8` (visibilité **Private** recommandée, pour que le code ne soit pas public).
-4. Clique sur **Create repository**.
-5. Sur la page qui s'affiche, clique sur le lien **« uploading an existing file »**.
-6. Ouvre le dossier `dynasty8` sur ton ordinateur (celui que je t'ai envoyé), sélectionne **tout son contenu** (fichiers ET dossiers `src` et `public`), et fais un glisser-déposer dans la zone GitHub.
-7. En bas de page, clique sur **Commit changes**.
-
-Ton code est maintenant sur GitHub. (Si tu es à l'aise avec la ligne de commande, tu peux aussi utiliser `git init`, `git add .`, `git commit`, `git remote add origin ...` et `git push` — mais l'upload par glisser-déposer fonctionne tout aussi bien.)
+L'URL `workers.dev` correspond à l'instance Cloudflare historique. Le dépôt contient également toute l'architecture nécessaire pour fonctionner sous **Node.js + PostgreSQL**, notamment sur Railway ou sur un VPS Docker.
 
 ---
 
-## Étape 2 — Connecter Cloudflare à ce GitHub
+## Fonctionnalités publiques
 
-1. Va sur [dash.cloudflare.com](https://dash.cloudflare.com) et connecte-toi avec ton compte (celui qui contient déjà tes projets `roxwood-network` et `prisme-espace`).
-2. Dans le menu de gauche, clique sur **Workers & Pages**.
-3. Clique sur **Create** (ou **Create application**), puis sur l'onglet **Workers**.
-4. Choisis **Import a repository** (ou « Connect to Git »).
-5. Autorise Cloudflare à accéder à ton compte GitHub si demandé, puis sélectionne le dépôt `dynasty8`.
-6. Cloudflare détecte automatiquement le fichier `wrangler.toml` du projet : laisse les réglages proposés tels quels (nom du projet : `dynasty8`).
-7. Clique sur **Save and Deploy**.
+### Accueil
 
-Cloudflare va construire et publier le site. Au bout de 30 secondes à 1 minute, tu obtiens une adresse provisoire du type `https://dynasty8.<ton-compte>.workers.dev`. **Le site ne fonctionnera pas encore complètement à ce stade** : il manque une clé secrète (étape 3).
+- présentation premium de Dynasty 8 ;
+- statistiques dynamiques du catalogue ;
+- vitrine des biens mis en avant ;
+- sélection **Nos coups de cœur** avec filtres et carrousel ;
+- accès rapide aux principales catégories ;
+- guide de fonctionnement de l'agence ;
+- intégration de la WebMap FlashbackFA.
 
----
+### Catalogue immobilier
 
-## Étape 3 — Ajouter la clé secrète de connexion
+Le catalogue est alimenté depuis la base de données et comprend notamment :
 
-Le site a besoin d'une clé secrète pour signer les connexions à l'espace agents (un peu comme le sceau qui rend un bracelet de festival infalsifiable). Sans elle, personne ne peut se connecter.
+- **habitations** ;
+- intérieurs **meublés / non meublés** ;
+- **garages** ;
+- **biens exclusifs** ;
+- fiches détaillées pour chaque bien ;
+- prix de vente et/ou de location ;
+- photos multiples ;
+- mise en avant de biens favoris ;
+- recherche et filtres selon les pages.
 
-1. Toujours sur le tableau de bord Cloudflare, ouvre ton nouveau projet `dynasty8` (**Workers & Pages → dynasty8**).
-2. Va dans l'onglet **Settings**, puis **Variables and Secrets**.
-3. Clique sur **Add**.
-   - Nom (Variable name) : `SESSION_SECRET`
-   - Type : **Secret** (surtout pas « Text », pour qu'elle reste invisible)
-   - Valeur : une chaîne aléatoire longue et unique (demande-la moi directement en message si tu veux que je t'en génère une — **jamais dans ce fichier ni dans aucun fichier du dépôt**, uniquement collée à la main dans ce champ Cloudflare).
-4. Clique sur **Save**, puis **Deploy** si le site te propose de redéployer (sinon, un nouveau déploiement se lance automatiquement).
+### Cohérences RP
 
-⚠️ Cette clé doit rester confidentielle : ne la mets jamais dans le code, dans ce README, ni dans un message public. Si tu penses qu'elle a fuité, reviens sur cette page et remplace-la par une nouvelle valeur (génère-en une nouvelle en me le demandant, ou avec n'importe quel générateur de mot de passe long).
+Une section dédiée permet de consulter les règles et informations de cohérence pour différentes zones :
 
----
+- Habitation ;
+- Garage ;
+- Cayo Perico ;
+- Roxwood.
 
-## Étape 4 — Créer ton compte « Direction »
+Ces pages sont reliées à la WebMap afin d'aider les joueurs à localiser les secteurs concernés.
 
-1. Ouvre l'adresse de ton site (celle en `.workers.dev` obtenue à l'étape 2), puis ajoute `/admin.html` à la fin. Exemple : `https://dynasty8.xxxx.workers.dev/admin.html`.
-2. Comme c'est la première visite, le site te propose de créer le tout premier compte. Entre ton pseudo et clique sur **Créer mon accès**.
-3. Un **code d'accès** s'affiche (ex : `DYN-4F2A-9K1B-77XQ`). **Note-le immédiatement dans un endroit sûr** (gestionnaire de mots de passe, note personnelle). Il ne sera plus jamais réaffiché — c'est ta seule façon de te connecter.
-4. Clique sur **J'ai noté mon code, continuer**, puis connecte-toi avec ce code.
+### VIP PLUS
 
-Tu es maintenant dans l'espace agents, avec le grade **Direction** (droits complets, y compris la gestion de l'équipe).
+Le site possède une page dédiée au système **VIP PLUS** de FlashbackFA et à son utilisation dans le cadre des biens immobiliers concernés.
 
----
+### Agence
 
-## Étape 5 — Personnaliser le contenu
+Le site comprend également :
 
-Le site est prêt à fonctionner mais contient du contenu d'exemple. Voici où le modifier (directement sur GitHub : ouvre le fichier concerné, clique sur l'icône crayon ✏️ pour l'éditer, puis **Commit changes** — Cloudflare republiera automatiquement le site en moins d'une minute) :
-
-| Ce que tu veux changer | Fichier | Repère à chercher |
-|---|---|---|
-| Les annonces (biens à vendre/louer) | — | Se fait depuis l'espace agents (`/admin.html`), pas dans le code |
-| Le lien d'invitation Discord | `public/layout.js` | `LIEN_DISCORD` (tout en haut du fichier) |
-| La vidéo de présentation YouTube | `public/index.html` | `idVideo` (remplace `"PLACEHOLDER"` par l'identifiant de ta vidéo, la partie après `v=` dans son lien YouTube) |
-| Les membres de l'équipe affichés publiquement | `public/equipe.html` | le tableau `EQUIPE` |
-| Les questions de la FAQ | `public/faq.html` | le tableau `FAQ` |
-| Les 4 adresses mises en avant sur l'accueil | `public/index.html` | la section « Les adresses les plus demandées », cartes `carte-zone` |
-| Les services proposés | `public/services.html` | les blocs `carte-service` |
-
-### Catégories et sous-catégories des annonces
-
-Chaque annonce appartient à l'une de ces deux catégories :
-
-- **Habitation** — avec une sous-catégorie obligatoire parmi : Eclipse Tower, Tinsel Tower, Villa, Del Perro Heights, Richards Majestic, Weazel Plaza, San Andreas, Alta Street, Maison, Entrepôt, Flat, Bureau, Headquarter, Caravane, Appartement, Duplex, Autre.
-- **Garage** — pas de sous-catégorie, reste simple.
-
-Pour changer cette liste (ajouter/renommer une sous-catégorie), modifie-la à trois endroits identiques : `SOUS_CATEGORIES_HABITATION` dans `src/index.js` (validation côté serveur), `SOUS_CATEGORIES_HABITATION` dans `public/layout.js` (utilisée par l'espace agents), et les boutons `<button class="filtre" data-sous-categorie="...">` dans `public/habitation.html`.
-
-### Ajouter des photos à une annonce
-
-Depuis l'espace agents, dans le formulaire d'une annonce (bouton « + Nouvelle annonce ») : clique sur « 📁 Parcourir mes fichiers » pour choisir directement une ou plusieurs photos depuis ton ordinateur — chacune est automatiquement redimensionnée et compressée avant l'enregistrement (aucun lien externe à coller, pour éviter qu'une photo ne disparaisse si son hébergeur d'origine la supprime). 5 photos maximum par annonce ; la première ajoutée est la photo principale (affichée sur les cartes du site). Une croix ✕ sur chaque vignette permet de la retirer avant d'enregistrer.
+- les services proposés par Dynasty 8 ;
+- la page **Notre équipe** ;
+- les profils publics des agents ;
+- une FAQ ;
+- les informations de confidentialité ;
+- les liens Discord et WebMap utiles.
 
 ---
 
-## Étape 6 — Le nom de domaine dynasty8.fbfa.fr
+## Espace agents
 
-Pour que le site réponde sur `dynasty8.fbfa.fr` plutôt que sur l'adresse `.workers.dev`, il faut relier ce nom de domaine à ton projet Cloudflare :
+L'espace `/admin.html` est réservé aux membres Dynasty 8.
 
-1. Dans **Workers & Pages → dynasty8 → Settings → Domains & Routes**, clique sur **Add** puis **Custom domain**.
-2. Entre `dynasty8.fbfa.fr` et valide.
+### Authentification Discord
 
-Deux cas de figure :
-- **Si le domaine `fbfa.fr` est géré dans ce même compte Cloudflare** (ce qui est probable, puisque tes autres projets comme `roxwood-network` semblent faire partie du même réseau) : Cloudflare configure tout automatiquement en quelques secondes.
-- **Si `fbfa.fr` est géré ailleurs** (chez une autre personne ou un autre service) : Cloudflare t'indiquera un enregistrement DNS à ajouter (un « CNAME », qui est simplement une redirection technique indiquant « dynasty8.fbfa.fr doit pointer vers ce Worker »). Il faudra alors transmettre cette information à la personne qui gère le domaine `fbfa.fr`.
+La connexion se fait avec **Discord OAuth2** :
+
+1. l'utilisateur se connecte avec son compte Discord ;
+2. son compte est reconnu ou placé en attente ;
+3. la Direction peut valider la demande et attribuer le bon grade ;
+4. les droits affichés dans l'espace agents dépendent ensuite du grade du membre.
+
+Il n'y a donc plus de système principal basé sur un simple code d'accès manuel comme dans les premières versions du projet.
+
+### Gestion des annonces
+
+Les agents autorisés peuvent :
+
+- créer un bien ;
+- modifier un bien ;
+- masquer ou republier une annonce ;
+- supprimer une annonce selon leurs droits ;
+- gérer les catégories et informations du bien ;
+- ajouter plusieurs photos ;
+- choisir les disponibilités vente/location ;
+- rechercher et filtrer le catalogue ;
+- basculer entre une vue liste et une vue grille.
+
+### Agenda privé
+
+Chaque membre dispose d'un **agenda personnel** :
+
+- visible uniquement par son propre compte ;
+- navigation semaine par semaine ;
+- création, modification et suppression d'événements ;
+- accès rapide à la semaine actuelle.
+
+### Profil agent
+
+Chaque membre peut gérer les informations affichées publiquement sur la page équipe :
+
+- photo ;
+- intitulé du poste ;
+- spécialité ;
+- biographie.
+
+### Comptabilité — Direction
+
+L'espace Direction comprend plusieurs outils internes.
+
+#### Tablettes
+
+Import et mise en forme de relevés provenant d'un tableur ou d'un bot Discord afin d'obtenir des tableaux propres et exploitables.
+
+#### Paramètres de rémunération
+
+Configuration de la rémunération par grade, notamment :
+
+- salaires fixes ;
+- commissions ;
+- paliers de primes sur les ventes ;
+- paliers de primes sur les locations ;
+- droits associés aux grades.
+
+#### Déclaration DOT
+
+Outil de préparation de la déclaration hebdomadaire avec :
+
+- chiffre d'affaires ;
+- dépenses déductibles ;
+- retraits ;
+- primes ;
+- tableau des salariés ;
+- données prêtes à copier dans les documents RP de la DOT.
+
+### Statistiques et rémunérations
+
+Le site peut recevoir automatiquement les ventes et locations depuis un **bot externe** via l'API prévue à cet effet.
+
+L'espace Statistiques permet ensuite d'obtenir :
+
+- un récapitulatif semaine par semaine ;
+- les volumes de ventes et locations ;
+- un récapitulatif par agent ;
+- le quota réalisé ;
+- les primes vente/location ;
+- le total à verser ;
+- le référentiel des agents et de leurs identités RP.
+
+Les événements envoyés par le bot possèdent un identifiant unique afin d'éviter qu'une même vente soit comptabilisée deux fois lors d'un renvoi réseau.
+
+### Comptes & accès — Direction
+
+La Direction peut :
+
+- valider les demandes Discord ;
+- créer ou administrer des comptes ;
+- attribuer les grades ;
+- activer ou désactiver un accès ;
+- consulter la dernière visite ;
+- gérer les permissions liées aux rôles internes.
 
 ---
 
-## Mettre à jour le site plus tard
+## Architecture du projet
 
-Une fois tout en place, il te suffit de modifier un fichier sur GitHub (ou de pousser de nouveaux fichiers) : Cloudflare republie automatiquement le site à chaque modification, en général en moins d'une minute. Aucune autre manipulation n'est nécessaire.
+Le projet a été conçu pour conserver le même cœur applicatif entre plusieurs environnements d'hébergement.
+
+```text
+Navigateur
+   │
+   ├── fichiers publics : public/
+   │
+   └── /api/*
+          │
+          ▼
+      src/index.js
+          │
+          ├── Cloudflare Workers + D1
+          │
+          └── Node.js / Express + PostgreSQL
+                     │
+                     └── src/db-pg.js
+```
+
+### Front-end
+
+Le site public et l'espace agents sont construits en **HTML, CSS et JavaScript natif**.
+
+Principaux fichiers :
+
+```text
+public/
+├── index.html          # Accueil
+├── habitation.html     # Catalogue habitations
+├── interieurs.html     # Hub intérieurs
+├── garages.html        # Garages
+├── exclusifs.html      # Biens exclusifs
+├── bien.html           # Fiche d'un bien
+├── coherences.html     # Hub cohérences
+├── coherence.html      # Fiche de cohérence
+├── vip.html            # VIP PLUS
+├── services.html       # Services
+├── equipe.html         # Équipe
+├── faq.html            # FAQ
+├── admin.html          # Interface agents
+├── admin.js            # Logique de l'espace agents
+├── biens.js            # Catalogue / fiches de biens
+├── layout.js           # Navigation, footer et outils communs
+└── style.css           # Design global
+```
+
+### Back-end partagé
+
+`src/index.js` contient l'API principale en utilisant les objets web standards `Request` / `Response`.
+
+Ce choix permet au même code métier de fonctionner :
+
+- directement dans **Cloudflare Workers** ;
+- derrière le serveur **Express** de `server.js`.
+
+### Mode Cloudflare
+
+Le fichier `wrangler.toml` configure :
+
+- le Worker `dynasty8` ;
+- les fichiers statiques du dossier `public/` ;
+- le passage prioritaire des routes `/api/*` dans le Worker ;
+- la base **Cloudflare D1** liée sous le binding `DB`.
+
+Commandes :
+
+```bash
+npm install
+npm run dev
+npm run deploy
+```
+
+Le mode Cloudflare reste conservé dans le dépôt afin de garder l'ancienne infrastructure exploitable pendant les migrations.
+
+### Mode Node.js + PostgreSQL
+
+Le serveur `server.js` permet d'exécuter l'application sur un hébergement Node.js classique.
+
+Il :
+
+- sert les fichiers de `public/` avec Express ;
+- transmet `/api/*` au même back-end `src/index.js` ;
+- utilise PostgreSQL via `src/db-pg.js` ;
+- applique automatiquement `schema.postgres.sql` au démarrage ;
+- conserve la compatibilité avec les requêtes initialement écrites pour D1/SQLite.
+
+Prérequis :
+
+- **Node.js 22+** ;
+- une base **PostgreSQL** ;
+- les variables d'environnement nécessaires.
+
+Installation :
+
+```bash
+npm install
+npm start
+```
+
+### Déploiement VPS
+
+Un pack de déploiement est disponible dans :
+
+```text
+deploy/vps/
+```
+
+Il contient :
+
+- un `Dockerfile` pour l'application ;
+- `compose.yaml` ;
+- PostgreSQL avec volume persistant ;
+- Caddy pour le reverse proxy et HTTPS ;
+- un modèle `.env.example` ;
+- des scripts de sauvegarde et restauration PostgreSQL.
+
+La procédure détaillée se trouve dans [`deploy/vps/README-VPS.md`](deploy/vps/README-VPS.md).
 
 ---
 
-## En cas de problème
+## Variables d'environnement
 
-- **« Base de données non reliée » affiché sur le site** : la base D1 n'est pas correctement associée au projet. Vérifie dans **Settings → Bindings** que `DB` pointe bien vers la base `dynasty8`.
-- **Impossible de se connecter à l'espace agents / erreur "SESSION_SECRET n'est pas configuré"** : reviens à l'étape 3, la clé secrète n'a pas été enregistrée.
-- **« Code invalide »** : vérifie que tu as bien copié le code en entier, sans espace avant/après. Un agent qui a perdu son code doit en demander un nouveau à la Direction (bouton « Régénérer le code » dans l'espace agents).
-- **Page blanche ou message d'erreur inattendu** : ouvre les outils de développement de ton navigateur (touche `F12`), onglet « Console », et regarde le message d'erreur affiché en rouge — il donne généralement une bonne piste. Tu peux me copier ce message si tu as besoin d'aide.
+Selon le mode utilisé, l'application peut nécessiter les variables suivantes :
+
+```env
+DATABASE_URL=postgresql://...
+SESSION_SECRET=...
+DISCORD_CLIENT_ID=...
+DISCORD_CLIENT_SECRET=...
+DISCORD_REDIRECT_URI=...
+STATS_BOT_SECRET=...
+```
+
+Option PostgreSQL disponible pour certains environnements :
+
+```env
+PGSSL=disable
+```
+
+ou
+
+```env
+PGSSL=require
+```
+
+`SESSION_SECRET`, les identifiants Discord, les mots de passe de base de données et `STATS_BOT_SECRET` sont des **secrets** : ils ne doivent jamais être ajoutés au dépôt Git.
 
 ---
 
-## Sécurité — à retenir
+## Base de données et migrations
 
-- Ne partage **jamais** ton code d'accès personnel, ni la clé `SESSION_SECRET`.
-- Chaque agent doit avoir son propre compte (créé depuis l'espace agents par la Direction) plutôt que de partager un seul code entre plusieurs personnes.
-- Le dossier `public/` est entièrement visible par tout le monde (c'est un site web normal) : n'y mets jamais d'information confidentielle en dur dans le code.
+Le dépôt conserve deux familles de schémas :
+
+- `schema.sql` pour Cloudflare D1 / SQLite ;
+- `schema.postgres.sql` pour PostgreSQL.
+
+Plusieurs migrations fonctionnelles sont également conservées dans le dépôt, notamment pour :
+
+- Discord OAuth ;
+- profils d'équipe ;
+- agenda ;
+- comptabilité ;
+- rémunération ;
+- statistiques ;
+- ventes / locations ;
+- DOT ;
+- VIP PLUS.
+
+Le serveur Node applique automatiquement le schéma PostgreSQL au démarrage avec des opérations non destructives prévues pour être rejouables.
+
+---
+
+## API bot — statistiques
+
+Une API protégée par `STATS_BOT_SECRET` permet à un bot externe d'envoyer les ventes et locations effectuées en jeu.
+
+Points importants :
+
+- authentification par secret côté serveur ;
+- réception automatisée des données ;
+- stockage de l'historique ;
+- calculs hebdomadaires ;
+- rapprochement avec les agents ;
+- mécanisme d'idempotence via `eventId` pour éviter les doublons lors d'un retry réseau.
+
+La documentation spécifique au bot est disponible dans le dossier `notes/`.
+
+---
+
+## Sécurité
+
+Quelques règles essentielles :
+
+- ne jamais commiter de fichier `.env` contenant de vraies valeurs ;
+- ne jamais exposer `SESSION_SECRET` ;
+- ne jamais exposer `DISCORD_CLIENT_SECRET` ;
+- ne jamais exposer `STATS_BOT_SECRET` ;
+- utiliser un compte Discord distinct par membre ;
+- attribuer uniquement les droits nécessaires à chaque grade ;
+- conserver PostgreSQL inaccessible directement depuis Internet sur un déploiement VPS ;
+- effectuer des sauvegardes régulières de la base avant toute migration importante.
+
+---
+
+## Structure principale
+
+```text
+Dynasty8/
+├── public/                    # Site et interface agents
+├── src/
+│   ├── index.js               # API / logique applicative principale
+│   └── db-pg.js               # Adaptateur PostgreSQL
+├── deploy/vps/                # Pack Docker Compose pour VPS
+├── notes/                     # Documentation technique complémentaire
+├── scripts/                   # Scripts d'administration / contrôle
+├── tests/                     # Tests automatisés
+├── server.js                  # Serveur Node.js / Express
+├── schema.sql                 # Schéma Cloudflare D1
+├── schema.postgres.sql        # Schéma PostgreSQL
+├── wrangler.toml              # Configuration Cloudflare Workers
+├── package.json
+└── README.md
+```
+
+---
+
+## Développement
+
+Avant une modification importante :
+
+1. travailler depuis une branche ou disposer d'un commit de sauvegarde ;
+2. vérifier que les changements n'altèrent pas les calculs de statistiques ou de rémunération ;
+3. tester l'authentification et les permissions si l'espace agents est concerné ;
+4. tester les migrations sur une copie de la base avant toute opération sensible ;
+5. ne jamais utiliser les données de production comme terrain d'essai.
+
+Le dépôt contient des tests automatisés pour plusieurs comportements critiques, notamment la compatibilité PostgreSQL, la robustesse de connexion et la prévention des doublons statistiques.
+
+---
+
+## État du projet
+
+Le projet est **actif** et continue d'évoluer. L'ancienne architecture Cloudflare est conservée, tandis que la version Node.js/PostgreSQL permet désormais une migration vers une infrastructure plus classique et maîtrisable.
+
+La priorité est de conserver une seule logique applicative tout en pouvant changer d'hébergeur sans réécrire tout le site.
