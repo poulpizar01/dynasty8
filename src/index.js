@@ -125,8 +125,16 @@ function cookies(req) {
   return out;
 }
 
-function poserCookie(nom, valeur, secondes) {
-  return `${nom}=${encodeURIComponent(valeur)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${secondes}`;
+// Le cookie est marqué "Secure" par défaut (obligatoire en HTTPS -- le
+// navigateur le refuse sinon). Si le site tourne encore en HTTP tout court
+// (pas de nom de domaine / pas de certificat configuré, ex : test via
+// l'adresse IP brute), régler COOKIES_HTTP=1 dans les Variables du service
+// permet temporairement de se connecter quand même -- à retirer dès qu'un
+// vrai domaine + HTTPS est en place (voir Caddyfile), sinon les cookies de
+// connexion circulent en clair sur le réseau.
+function poserCookie(nom, valeur, secondes, env) {
+  const insecure = env && env.COOKIES_HTTP === "1";
+  return `${nom}=${encodeURIComponent(valeur)}; Path=/; HttpOnly; ${insecure ? "" : "Secure; "}SameSite=Lax; Max-Age=${secondes}`;
 }
 
 function json(d, s = 200) {
@@ -165,7 +173,7 @@ export default {
       // "Error 1101"), au lieu d'afficher un message clair.
       if (chemin === "/api/auth/discord") return await discordAutoriser(request, env);
       if (chemin === "/api/auth/discord/callback") return await discordCallback(request, url, env);
-      if (chemin === "/api/deconnexion") return deconnexion();
+      if (chemin === "/api/deconnexion") return deconnexion(env);
       if (chemin === "/api/moi") return await moi(request, env);
       if (chemin === "/api/biens") return await biens(request, url, env);
       if (chemin === "/api/membres") return await comptes(request, url, env);
@@ -203,7 +211,7 @@ async function discordAutoriser(request, env) {
   });
   return redirection(
     "https://discord.com/api/oauth2/authorize?" + params.toString(),
-    [poserCookie(COOKIE_ETAT_OAUTH, etat, 600)]
+    [poserCookie(COOKIE_ETAT_OAUTH, etat, 600, env)]
   );
 }
 
@@ -227,7 +235,7 @@ function urlAvatarDiscord(discordId, avatarHash) {
 
 async function discordCallback(request, url, env) {
   const echec = (raison) =>
-    redirection("/admin.html?d8=" + encodeURIComponent(raison), [poserCookie(COOKIE_ETAT_OAUTH, "", 0)]);
+    redirection("/admin.html?d8=" + encodeURIComponent(raison), [poserCookie(COOKIE_ETAT_OAUTH, "", 0, env)]);
 
   if (!env.DISCORD_CLIENT_ID || !env.DISCORD_CLIENT_SECRET || !env.DISCORD_REDIRECT_URI) {
     return echec("config");
@@ -323,8 +331,8 @@ async function discordCallback(request, url, env) {
       exp: maintenant() + DUREE,
     });
     return redirection("/admin.html", [
-      poserCookie(COOKIE, jeton, DUREE),
-      poserCookie(COOKIE_ETAT_OAUTH, "", 0),
+      poserCookie(COOKIE, jeton, DUREE, env),
+      poserCookie(COOKIE_ETAT_OAUTH, "", 0, env),
     ]);
   } catch (e) {
     // DIAGNOSTIC TEMPORAIRE : montre le message d'erreur réel de la base de
@@ -333,12 +341,12 @@ async function discordCallback(request, url, env) {
   }
 }
 
-function deconnexion() {
+function deconnexion(env) {
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Set-Cookie": poserCookie(COOKIE, "", 0),
+      "Set-Cookie": poserCookie(COOKIE, "", 0, env),
     },
   });
 }
