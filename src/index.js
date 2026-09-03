@@ -234,8 +234,14 @@ function urlAvatarDiscord(discordId, avatarHash) {
 }
 
 async function discordCallback(request, url, env) {
-  const echec = (raison) =>
-    redirection("/admin.html?d8=" + encodeURIComponent(raison), [poserCookie(COOKIE_ETAT_OAUTH, "", 0, env)]);
+  // DIAGNOSTIC : note la raison exacte de l'échec dans les journaux du
+  // serveur (jamais de secret ici, seulement le code "raison" déjà nettoyé
+  // plus bas) -- consultable avec `docker compose logs app` sur le VPS,
+  // sans avoir besoin d'aller chercher l'adresse "?d8=..." dans le navigateur.
+  const echec = (raison) => {
+    console.error(`[discord-login] Échec de connexion : ${raison}`);
+    return redirection("/admin.html?d8=" + encodeURIComponent(raison), [poserCookie(COOKIE_ETAT_OAUTH, "", 0, env)]);
+  };
 
   if (!env.DISCORD_CLIENT_ID || !env.DISCORD_CLIENT_SECRET || !env.DISCORD_REDIRECT_URI) {
     return echec("config");
