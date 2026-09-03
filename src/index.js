@@ -173,6 +173,8 @@ export default {
       if (chemin.startsWith("/api/chat/")) return await chat(request, url, env);
       if (chemin.startsWith("/api/comptabilite/")) return await comptabilite(request, url, env);
       if (chemin.startsWith("/api/stats/")) return await statistiques(request, url, env);
+      if (chemin === "/api/webhooks/roxwood") return await roxwoodWebhook(request, env);
+      if (chemin.startsWith("/api/roxwood/")) return await roxwood(request, url, env);
       return json({ erreur: "Adresse inconnue." }, 404);
     } catch (e) {
       return json({ erreur: "Erreur interne", detail: String((e && e.message) || e) }, 500);
@@ -1984,4 +1986,164 @@ async function comptes(request, url, env) {
   }
 
   return json({ erreur: "Méthode non gérée." }, 405);
+}
+
+
+// =============================================================================
+// Intégration bot Discord "Roxwood Network" (recrutement/service client/
+// absences/monitoring FiveM, voir sa doc pour le détail) — configurée à la
+// main dans l'onglet Paramètres, sans aucune automatisation cachée :
+//
+//   - /api/webhooks/roxwood : appelé directement par le bot (aucune session,
+//     aucun cookie) à chaque événement. Vérifié par une signature
+//     HMAC-SHA256 (header X-Signature-256), avec LE secret du type
+//     d'événement concerné — le bot génère un secret DIFFÉRENT à chaque
+//     abonnement webhook créé dans son panneau Discord "Monitoring", même
+//     si l'URL de destination est la même à chaque fois.
+//   - /api/roxwood/* : sert l'écran Paramètres -> Roxwood Network, réservé à
+//     la Direction comme le reste des réglages sensibles du site.
+//
+// Rien ici n'écrit jamais dans stats_logs_ventes ni dans une table de
+// comptabilité : les événements reçus sont seulement conservés tels quels
+// dans roxwood_evenements, consultables comme un journal dans Paramètres.
+// =============================================================================
+
+// Source de vérité des 7 types d'événements que le bot peut envoyer (copiée
+// de WEBHOOK_EVENT_LABELS dans son code source, src/services/webhookDispatcher.ts)
+// — à mettre à jour ici si une future version du bot en ajoute un nouveau.
+const EVENEMENTS_ROXWOOD = {
+  "monitoring.shift": "Prise de service",
+  "monitoring.recruitment": "Recrutement (Monitoring)",
+  "monitoring.safe": "Coffre",
+  "monitoring.invoice": "Facture",
+  "monitoring.sale": "Vente run",
+  "absence.updated": "Absences",
+  "order.updated": "Commandes",
+};
+
+// Signature hexadécimale HMAC-SHA256 (Web Crypto — fonctionne aussi bien sous
+// Cloudflare Workers que sous Node.js, comme le reste de ce fichier ; voir
+// signer() plus haut, qui fait la même chose mais renvoie du base64url au
+// lieu de l'hexadécimal attendu ici par le bot).
+async function signerHex(secret, texte) {
+  const cle = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const octets = new Uint8Array(await crypto.subtle.sign("HMAC", cle, enc.encode(texte)));
+  return [...octets].map((o) => o.toString(16).padStart(2, "0")).join("");
+}
+
+async function roxwoodWebhook(request, env) {
+  if (request.method !== "POST") return json({ erreur: "Méthode non autorisée." }, 405);
+
+  // Les octets EXACTS envoyés par le bot, avant tout JSON.parse : la
+  // signature ne correspondrait plus si on la recalculait sur un texte
+  // re-sérialisé (voir la doc du bot, section "Sécurité des webhooks sortants").
+  const corpsBrut = await request.text();
+
+  let donnees;
+  try {
+    donnees = JSON.parse(corpsBrut);
+  } catch (e) {
+    return json({ erreur: "Corps JSON invalide." }, 400);
+  }
+  const { guildId, eventType, payload } = donnees || {};
+  if (!eventType || !EVENEMENTS_ROXWOOD[eventType]) {
+    return json({ erreur: "« eventType » manquant ou inconnu." }, 400);
+  }
+
+  const config = await env.DB.prepare(
+    "SELECT webhook_secret FROM roxwood_config WHERE type_evenement = ?1"
+  ).bind(eventType).first();
+  if (!config || !config.webhook_secret) {
+    return json({ erreur: `Aucun secret configuré côté site pour « ${eventType} » (Paramètres -> Roxwood Network).` }, 401);
+  }
+
+  const signatureRecue = request.headers.get("X-Signature-256") || "";
+  const signatureAttendue = await signerHex(config.webhook_secret, corpsBrut);
+  if (!signatureRecue || !egal(signatureRecue, signatureAttendue)) {
+    return json({ erreur: "Signature invalide." }, 401);
+  }
+
+  await env.DB.prepare(
+    "INSERT INTO roxwood_evenements (guild_id, type_evenement, charge_utile) VALUES (?1, ?2, ?3)"
+  ).bind(guildId || null, eventType, JSON.stringify(payload ?? null)).run();
+
+  return json({ ok: true });
+}
+
+async function roxwood(request, url, env) {
+  const s = await session(request, env);
+  if (!s) return json({ erreur: "Non connecté." }, 401);
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+
+  const route = url.pathname.slice("/api/roxwood".length); // "/config" | "/evenements"
+
+  if (route === "/config" && request.method === "GET") {
+    const r = await env.DB.prepare(
+      "SELECT type_evenement, mis_a_jour_le, mis_a_jour_par FROM roxwood_config"
+    ).all();
+    const parType = {};
+    for (const row of r.results || []) parType[row.type_evenement] = row;
+    const types = Object.entries(EVENEMENTS_ROXWOOD).map(([type, libelle]) => ({
+      type,
+      libelle,
+      configure: !!parType[type],
+      misAJourLe: parType[type]?.mis_a_jour_le || null,
+      misAJourPar: parType[type]?.mis_a_jour_par || null,
+    }));
+    return json({ types });
+  }
+
+  if (route === "/config" && request.method === "PUT") {
+    const b = await request.json().catch(() => null);
+    const type = b && String(b.type || "").trim();
+    const secret = b && String(b.secret || "").trim();
+    if (!type || !EVENEMENTS_ROXWOOD[type]) return json({ erreur: "Type d'événement inconnu." }, 400);
+    if (!secret || secret.length < 16) {
+      return json({ erreur: "Collez le secret tel quel depuis Discord (au moins 16 caractères)." }, 400);
+    }
+    await env.DB.prepare(
+      `INSERT INTO roxwood_config (type_evenement, webhook_secret, mis_a_jour_le, mis_a_jour_par)
+       VALUES (?1, ?2, datetime('now'), ?3)
+       ON CONFLICT (type_evenement) DO UPDATE SET webhook_secret = ?2, mis_a_jour_le = datetime('now'), mis_a_jour_par = ?3`
+    ).bind(type, secret, s.pseudo).run();
+    return json({ ok: true });
+  }
+
+  if (route === "/config" && request.method === "DELETE") {
+    const type = url.searchParams.get("type") || "";
+    if (!EVENEMENTS_ROXWOOD[type]) return json({ erreur: "Type d'événement inconnu." }, 400);
+    await env.DB.prepare("DELETE FROM roxwood_config WHERE type_evenement = ?1").bind(type).run();
+    return json({ ok: true });
+  }
+
+  if (route === "/evenements" && request.method === "GET") {
+    const type = (url.searchParams.get("type") || "").trim();
+    const limite = Math.min(Math.max(Number(url.searchParams.get("limite")) || 50, 1), 200);
+    const r = type
+      ? await env.DB.prepare(
+          `SELECT id, guild_id, type_evenement, charge_utile, recu_le FROM roxwood_evenements
+           WHERE type_evenement = ?1 ORDER BY recu_le DESC, id DESC LIMIT ?2`
+        ).bind(type, limite).all()
+      : await env.DB.prepare(
+          `SELECT id, guild_id, type_evenement, charge_utile, recu_le FROM roxwood_evenements
+           ORDER BY recu_le DESC, id DESC LIMIT ?1`
+        ).bind(limite).all();
+    const evenements = (r.results || []).map((ev) => ({
+      id: ev.id,
+      guildId: ev.guild_id,
+      type: ev.type_evenement,
+      libelle: EVENEMENTS_ROXWOOD[ev.type_evenement] || ev.type_evenement,
+      payload: JSON.parse(ev.charge_utile || "null"),
+      recuLe: ev.recu_le,
+    }));
+    return json({ evenements });
+  }
+
+  return json({ erreur: "Adresse inconnue." }, 404);
 }

@@ -132,6 +132,7 @@ function demarrerEspaceAdmin() {
     document.getElementById("onglet-comptes").classList.remove("cache");
     document.getElementById("onglet-comptabilite").classList.remove("cache");
     document.getElementById("onglet-statistiques").classList.remove("cache");
+    document.getElementById("onglet-parametres").classList.remove("cache");
   }
   // Le lien Webmap est réservé au Patron, au Co Patron, et au Développeur web
   // (qui a exactement les mêmes accès que le Patron, y compris ici).
@@ -155,6 +156,7 @@ function basculerOnglet(nom) {
   document.getElementById("panneau-comptes").classList.toggle("cache", nom !== "comptes");
   document.getElementById("panneau-comptabilite").classList.toggle("cache", nom !== "comptabilite");
   document.getElementById("panneau-statistiques").classList.toggle("cache", nom !== "statistiques");
+  document.getElementById("panneau-parametres").classList.toggle("cache", nom !== "parametres");
   // L'agenda a besoin de toute la largeur disponible (voir style.css) : le
   // reste des onglets garde la mise en page habituelle, limitée en largeur.
   document.getElementById("admin-contenu").classList.toggle("admin-contenu--pleine", nom === "agenda");
@@ -163,6 +165,7 @@ function basculerOnglet(nom) {
   if (nom === "agenda") chargerAgenda(true);
   if (nom === "comptabilite") chargerTablette();
   if (nom === "statistiques") { chargerStatistiques(); chargerAgentsStats(); }
+  if (nom === "parametres") chargerParametresRoxwood();
 }
 
 // ---------------------------------------------------------------------------
@@ -2546,3 +2549,131 @@ function demarrerMessagerie() {
   .forEach((id) => ameliorerSelect(document.getElementById(id), id === "membre-grade" ? couleurGrade : null));
 
 demarrer();
+
+
+// =============================================================================
+// Paramètres -> Roxwood Network (bot Discord) : un secret webhook par type
+// d'événement (voir EVENEMENTS_ROXWOOD / roxwood() côté serveur, dans
+// src/index.js), saisi à la main, plus un journal de consultation des
+// événements reçus. Rien ici n'alimente Statistiques ou Comptabilité.
+// =============================================================================
+
+function initialiserUrlWebhookRoxwood() {
+  const input = document.getElementById("roxwood-url-webhook");
+  if (!input) return;
+  input.value = window.location.origin + "/api/webhooks/roxwood";
+  const avertissement = document.getElementById("roxwood-avertissement-url");
+  if (avertissement) {
+    avertissement.textContent = /^\d+\.\d+\.\d+\.\d+$/.test(window.location.hostname)
+      ? "⚠️ Le site n'a pas encore de nom de domaine : cette adresse fonctionne, mais changera le jour où vous en aurez un — pensez à la remettre à jour côté bot à ce moment-là."
+      : "";
+  }
+}
+
+document.getElementById("bouton-copier-url-roxwood")?.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(document.getElementById("roxwood-url-webhook").value);
+    afficherMessage("zone-message-roxwood", "Adresse copiée ✓", "succes");
+  } catch (e) {
+    afficherMessage("zone-message-roxwood", "Impossible de copier automatiquement — sélectionnez le texte à la main.", "erreur");
+  }
+});
+
+async function chargerParametresRoxwood() {
+  initialiserUrlWebhookRoxwood();
+  afficherMessage("zone-message-roxwood", "", null);
+  try {
+    const r = await appelAPI("/api/roxwood/config");
+    document.getElementById("corps-table-roxwood-config").innerHTML = r.types.map((t) => `
+      <tr data-type-roxwood="${echapper(t.type)}">
+        <td>${echapper(t.libelle)}</td>
+        <td>${t.configure ? `<span class="puce puce-ok">✓ Configuré</span>` : `<span class="puce puce-off">Non configuré</span>`}</td>
+        <td><input type="password" class="table-input" placeholder="${t.configure ? "•••••••••••••••• (laisser vide pour ne pas changer)" : "Coller le secret ici"}" data-secret-roxwood style="min-width:220px;"></td>
+        <td style="white-space:nowrap;">
+          <button type="button" class="btn btn-fantome btn-petit" data-enregistrer-roxwood="${echapper(t.type)}">Enregistrer</button>
+          ${t.configure ? `<button type="button" class="btn btn-danger btn-petit" data-retirer-roxwood="${echapper(t.type)}">Retirer</button>` : ""}
+        </td>
+      </tr>`).join("");
+    cablerBoutonsRoxwoodConfig();
+
+    const filtre = document.getElementById("roxwood-filtre-type");
+    const valeurActuelle = filtre.value;
+    filtre.innerHTML = '<option value="">Tous les types</option>' +
+      r.types.map((t) => `<option value="${echapper(t.type)}">${echapper(t.libelle)}</option>`).join("");
+    filtre.value = valeurActuelle;
+  } catch (e) {
+    document.getElementById("corps-table-roxwood-config").innerHTML = `<tr><td colspan="4">Erreur de chargement.</td></tr>`;
+    afficherMessage("zone-message-roxwood", "Impossible de charger la configuration : " + e.message, "erreur");
+  }
+  chargerJournalRoxwood();
+}
+
+function cablerBoutonsRoxwoodConfig() {
+  const corps = document.getElementById("corps-table-roxwood-config");
+  corps.querySelectorAll("[data-enregistrer-roxwood]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const type = btn.dataset.enregistrerRoxwood;
+      const ligne = corps.querySelector(`tr[data-type-roxwood="${CSS.escape(type)}"]`);
+      const secret = ligne.querySelector("[data-secret-roxwood]").value.trim();
+      if (!secret) { afficherMessage("zone-message-roxwood", "Collez d'abord le secret copié depuis Discord.", "erreur"); return; }
+      try {
+        await appelAPI("/api/roxwood/config", { method: "PUT", body: JSON.stringify({ type, secret }) });
+        afficherMessage("zone-message-roxwood", "Secret enregistré ✓", "succes");
+        chargerParametresRoxwood();
+      } catch (e) {
+        afficherMessage("zone-message-roxwood", "Impossible d'enregistrer : " + e.message, "erreur");
+      }
+    });
+  });
+  corps.querySelectorAll("[data-retirer-roxwood]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const type = btn.dataset.retirerRoxwood;
+      const ok = await confirmerAction("Le bot ne pourra plus envoyer ce type d'événement au site tant qu'un nouveau secret n'aura pas été collé ici. Continuer ?", "Retirer ce secret ?");
+      if (!ok) return;
+      try {
+        await appelAPI(`/api/roxwood/config?type=${encodeURIComponent(type)}`, { method: "DELETE" });
+        afficherMessage("zone-message-roxwood", "Secret retiré ✓", "succes");
+        chargerParametresRoxwood();
+      } catch (e) {
+        afficherMessage("zone-message-roxwood", "Impossible de retirer : " + e.message, "erreur");
+      }
+    });
+  });
+}
+
+document.getElementById("bouton-rafraichir-roxwood")?.addEventListener("click", () => chargerJournalRoxwood());
+document.getElementById("roxwood-filtre-type")?.addEventListener("change", () => chargerJournalRoxwood());
+
+function formaterDateRoxwood(iso) {
+  if (!iso) return "";
+  const d = new Date(iso.includes("T") || iso.includes("Z") ? iso : iso.replace(" ", "T") + "Z");
+  if (isNaN(d.getTime())) return echapper(iso);
+  return d.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "medium" });
+}
+
+async function chargerJournalRoxwood() {
+  const zone = document.getElementById("roxwood-journal-liste");
+  const vide = document.getElementById("roxwood-journal-vide");
+  if (!zone || !vide) return;
+  const type = document.getElementById("roxwood-filtre-type")?.value || "";
+  try {
+    const r = await appelAPI(`/api/roxwood/evenements?limite=50${type ? "&type=" + encodeURIComponent(type) : ""}`);
+    if (!r.evenements.length) {
+      zone.innerHTML = "";
+      vide.classList.remove("cache");
+      return;
+    }
+    vide.classList.add("cache");
+    zone.innerHTML = r.evenements.map((ev) => `
+      <details class="roxwood-evenement">
+        <summary>
+          <span class="puce puce-or">${echapper(ev.libelle)}</span>
+          <span class="champ-aide" style="margin:0;">${formaterDateRoxwood(ev.recuLe)}</span>
+        </summary>
+        <pre class="roxwood-payload">${echapper(JSON.stringify(ev.payload, null, 2))}</pre>
+      </details>`).join("");
+  } catch (e) {
+    zone.innerHTML = "";
+    afficherMessage("zone-message-roxwood", "Impossible de charger le journal : " + e.message, "erreur");
+  }
+}

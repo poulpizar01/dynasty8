@@ -54,6 +54,7 @@
     <button class="lien-onglet cache" data-onglet="comptabilite" id="onglet-comptabilite">🧮 Comptabilité</button>
     <button class="lien-onglet cache" data-onglet="statistiques" id="onglet-statistiques">📈 Statistiques</button>
     <button class="lien-onglet cache" data-onglet="comptes" id="onglet-comptes">🔐 Comptes &amp; accès</button>
+    <button class="lien-onglet cache" data-onglet="parametres" id="onglet-parametres">⚙️ Paramètres</button>
     <a href="https://webmap.dynasty8.fbfa.fr/" target="_blank" rel="noopener" class="lien-onglet cache" id="lien-webmap">🗺️ Webmap Dynasty8</a>
 
     <div class="admin-bas">
@@ -481,6 +482,57 @@
           <tbody id="corps-table-membres"></tbody>
         </table>
       </div>
+    </section>
+
+    <!-- Onglet Paramètres : réglages techniques du site, réservé à la Direction.
+         Section "Roxwood Network" = intégration du bot Discord (webhooks
+         entrants signés HMAC, un secret par type d'événement, saisi à la
+         main ici — voir roxwood()/roxwoodWebhook() dans src/index.js). -->
+    <section id="panneau-parametres" class="cache">
+      <div class="entete-admin">
+        <div>
+          <h2 style="margin-bottom:2px;">Paramètres</h2>
+          <p style="margin:0;font-size:0.88rem;">Réglages techniques du site — réservé à la Direction.</p>
+        </div>
+      </div>
+
+      <h3 class="comptes-sous-titre">🤖 Roxwood Network (bot Discord)</h3>
+      <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">
+        Le bot Discord Roxwood Network (recrutement, service client, absences, logs FiveM) peut envoyer automatiquement ses événements au site. Pour chaque type que vous voulez recevoir : dans Discord, panneau d'administration du bot → <strong>Monitoring</strong> → <strong>Ajouter un webhook</strong>, choisissez le type, collez l'adresse ci-dessous comme URL de destination, puis copiez le secret affiché (affiché <strong>une seule fois</strong> par Discord !) et collez-le dans la case correspondante.
+      </p>
+
+      <div class="champ" style="max-width:560px;">
+        <label>Adresse à donner au bot (la même pour tous les types)</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="roxwood-url-webhook" readonly>
+          <button type="button" class="btn btn-fantome" id="bouton-copier-url-roxwood">📋 Copier</button>
+        </div>
+        <p class="champ-aide" id="roxwood-avertissement-url"></p>
+      </div>
+
+      <div id="zone-message-roxwood" style="margin-top:16px;"></div>
+
+      <div style="overflow-x:auto;margin-top:10px;">
+        <table class="table-admin">
+          <thead>
+            <tr><th>Type d'événement</th><th>Statut</th><th>Secret</th><th></th></tr>
+          </thead>
+          <tbody id="corps-table-roxwood-config"><tr><td colspan="4">Chargement…</td></tr></tbody>
+        </table>
+      </div>
+
+      <h3 class="comptes-sous-titre" style="margin-top:34px;">📋 Journal des événements reçus</h3>
+      <p class="champ-aide" style="margin:0 0 12px;">Les événements les plus récents reçus du bot, en premier.</p>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+        <select id="roxwood-filtre-type" class="table-input" style="max-width:260px;">
+          <option value="">Tous les types</option>
+        </select>
+        <button type="button" class="btn btn-fantome btn-petit" id="bouton-rafraichir-roxwood">🔄 Rafraîchir</button>
+      </div>
+      <div id="roxwood-journal-vide" class="etat-vide cache">
+        <p>Aucun événement reçu pour le moment.</p>
+      </div>
+      <div id="roxwood-journal-liste"></div>
     </section>
   </main>
 </div>

@@ -2109,6 +2109,23 @@ section.section.serre {
 .puce-off { background: rgba(232,83,74,0.16); color: var(--danger-strong); }
 .puce-or { background: rgba(207,159,86,0.18); color: var(--gold-strong); }
 
+/* Paramètres -> Roxwood Network : journal des événements reçus (une carte
+   repliable par événement, voir chargerJournalRoxwood() dans admin.js). */
+.roxwood-evenement {
+  border: 1px solid var(--border-light); border-radius: var(--radius); background: var(--bg-card);
+  padding: 12px 16px; margin-bottom: 10px;
+}
+.roxwood-evenement summary {
+  cursor: pointer; display: flex; align-items: center; gap: 12px; list-style: none;
+}
+.roxwood-evenement summary::-webkit-details-marker { display: none; }
+.roxwood-evenement summary::before { content: "▸"; color: var(--text-faint); transition: transform 0.15s; }
+.roxwood-evenement[open] summary::before { transform: rotate(90deg); }
+.roxwood-payload {
+  margin: 12px 0 0; padding: 12px; background: var(--bg-muted, rgba(0,0,0,0.03)); border-radius: 8px;
+  font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+}
+
 .bouton-lien {
   background: none; border: none; padding: 0; margin: 0; cursor: pointer;
   font: inherit; font-size: 0.85rem; color: var(--accent-strong, var(--accent)); text-decoration: none;

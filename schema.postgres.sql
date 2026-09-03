@@ -262,3 +262,32 @@ CREATE TABLE IF NOT EXISTS stats_ventes_doublons_marques (
   CHECK (ligne_doublon_id <> ligne_originale_id)
 );
 CREATE INDEX IF NOT EXISTS idx_doublons_marques_originale ON stats_ventes_doublons_marques(ligne_originale_id);
+
+
+-- ---- Intégration bot Discord "Roxwood Network" -----------------------------
+-- Le bot Roxwood Network (recrutement/service client/absences/monitoring
+-- FiveM, tourne sur son propre serveur) peut envoyer des événements en direct
+-- par webhook signé HMAC-SHA256 (voir /api/webhooks/roxwood dans
+-- src/index.js). Chaque type d'événement a SON PROPRE secret côté bot (généré
+-- une fois par abonnement webhook, panneau Discord "Monitoring" -> "Ajouter
+-- un webhook") : on stocke donc un secret par type_evenement, saisi à la main
+-- dans Paramètres -> Roxwood Network, jamais dans le code ni une variable
+-- d'environnement. Les événements reçus sont conservés tels quels dans
+-- roxwood_evenements, en simple journal de consultation — rien ici
+-- n'alimente automatiquement stats_logs_ventes ni la comptabilité.
+CREATE TABLE IF NOT EXISTS roxwood_config (
+  type_evenement TEXT PRIMARY KEY,
+  webhook_secret TEXT NOT NULL,
+  mis_a_jour_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')),
+  mis_a_jour_par TEXT
+);
+
+CREATE TABLE IF NOT EXISTS roxwood_evenements (
+  id SERIAL PRIMARY KEY,
+  guild_id TEXT,
+  type_evenement TEXT NOT NULL,
+  charge_utile TEXT NOT NULL,
+  recu_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
+);
+CREATE INDEX IF NOT EXISTS idx_roxwood_evenements_recu_le ON roxwood_evenements(recu_le DESC);
+CREATE INDEX IF NOT EXISTS idx_roxwood_evenements_type ON roxwood_evenements(type_evenement);
