@@ -186,6 +186,11 @@ export default {
       if (chemin.startsWith("/api/roxwood/")) return await roxwood(request, url, env);
       return json({ erreur: "Adresse inconnue." }, 404);
     } catch (e) {
+      // DIAGNOSTIC : journalise l'erreur complète côté serveur (jamais de
+      // secret ici -- juste l'erreur JS elle-même) -- consultable avec
+      // `docker compose logs app` sur le VPS, sans avoir besoin des outils de
+      // développement du navigateur.
+      console.error(`[erreur-api] ${chemin} :`, e);
       return json({ erreur: "Erreur interne", detail: String((e && e.message) || e) }, 500);
     }
   },
@@ -602,6 +607,7 @@ async function chatContacts(env, s) {
     dernier_message_le: m.dernier_le || null,
     non_lus: m.non_lus || 0,
   }));
+  console.error(`[chat] contacts pour membre ${s.id} : ${contacts.length} trouvé(s).`);
   return json({ statut: (moi && moi.statut) || "disponible", contacts });
 }
 
@@ -682,7 +688,13 @@ async function chatEnvoyer(request, env, s) {
 
 async function chat(request, url, env) {
   const s = await session(request, env);
-  if (!s) return json({ erreur: "Non connecté." }, 401);
+  // DIAGNOSTIC : la messagerie affichait un widget vide sans explication --
+  // ce journal (consultable via `docker compose logs app`) rend visible tout
+  // refus "normal" (pas une exception) qui ne serait sinon jamais tracé.
+  if (!s) {
+    console.error(`[chat] 401 Non connecté sur ${url.pathname}`);
+    return json({ erreur: "Non connecté." }, 401);
+  }
   const route = url.pathname.slice("/api/chat".length); // "/contacts" | "/messages" | "/presence" | "/frappe"
   const m = request.method;
   if (route === "/contacts" && m === "GET") return chatContacts(env, s);
@@ -690,6 +702,7 @@ async function chat(request, url, env) {
   if (route === "/messages" && m === "POST") return chatEnvoyer(request, env, s);
   if (route === "/presence" && m === "PUT") return chatPresence(request, env, s);
   if (route === "/frappe" && m === "POST") return chatFrappe(request, env, s);
+  console.error(`[chat] 404 Adresse inconnue : ${m} ${url.pathname}`);
   return json({ erreur: "Adresse inconnue." }, 404);
 }
 
@@ -1432,10 +1445,17 @@ async function statsVueEnsemble(env, url, s) {
        FROM roxwood_transactions
       WHERE date_transaction >= ?1 AND date_transaction < ?2`
   ).bind(isoTransactions(bDebut), isoTransactions(bFinExclusive)).first();
+  // "non traites" ne doit compter QUE les echecs des 3 types qui nourrissent
+  // reellement roxwood_transactions (donc roxwoodNbVentes/roxwoodCa
+  // ci-dessus) -- pas les echecs d'un webhook "custom" (ex: synchro
+  // immobiliere), qui est une fonctionnalite totalement separee (voir
+  // extraireLigneImmobiliereRoxwood) et ne doit jamais gonfler ce compteur.
   const echecs = await env.DB.prepare(
     `SELECT COUNT(*) AS nb
        FROM roxwood_evenements
-      WHERE etat_extraction = 'echec' AND recu_le >= ?1 AND recu_le < ?2`
+      WHERE etat_extraction = 'echec'
+        AND type_evenement IN ('monitoring.sale', 'monitoring.invoice', 'order.updated')
+        AND recu_le >= ?1 AND recu_le < ?2`
   ).bind(isoInterne(bDebut), isoInterne(bFinExclusive)).first();
   const roxwoodNbVentes = Number(agg?.nb || 0);
   const roxwoodCa = Number(agg?.total || 0);
@@ -2412,10 +2432,17 @@ async function roxwoodStats(env, url) {
       WHERE date_transaction >= ?1 AND date_transaction < ?2`
   ).bind(isoTransactions(bDebut), isoTransactions(bFinExclusive)).first();
 
+  // "non traites" ne doit compter QUE les echecs des 3 types qui nourrissent
+  // reellement roxwood_transactions (donc roxwoodNbVentes/roxwoodCa
+  // ci-dessus) -- pas les echecs d'un webhook "custom" (ex: synchro
+  // immobiliere), qui est une fonctionnalite totalement separee (voir
+  // extraireLigneImmobiliereRoxwood) et ne doit jamais gonfler ce compteur.
   const echecs = await env.DB.prepare(
     `SELECT COUNT(*) AS nb
        FROM roxwood_evenements
-      WHERE etat_extraction = 'echec' AND recu_le >= ?1 AND recu_le < ?2`
+      WHERE etat_extraction = 'echec'
+        AND type_evenement IN ('monitoring.sale', 'monitoring.invoice', 'order.updated')
+        AND recu_le >= ?1 AND recu_le < ?2`
   ).bind(isoInterne(bDebut), isoInterne(bFinExclusive)).first();
 
   return json({
