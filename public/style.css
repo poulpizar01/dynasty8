@@ -2070,6 +2070,7 @@ section.section.serre {
 .stat-icone--vert { background: rgba(28, 156, 80, 0.18); }
 .stat-icone--ambre { background: rgba(228, 199, 126, 0.22); }
 .stat-icone--mauve { background: rgba(151, 138, 224, 0.2); }
+.stat-icone img { width: 30px; height: 30px; object-fit: contain; }
 .stat-valeur { font-family: var(--d8-font-ui); font-size: 1.3rem; font-weight: 500; color: var(--text); line-height: 1.2; }
 .stat-libelle { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--gold-strong); font-weight: 500; margin-top: 2px; }
 .stat-sous-libelle { font-size: 0.78rem; color: var(--text-faint); }
