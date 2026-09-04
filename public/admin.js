@@ -340,6 +340,12 @@ async function chargerRecap(semaine) {
     document.getElementById("corps-table-recap").innerHTML = reponse.agents.map((a) => {
       const grade = echapper(a.grade) + (a.gradeConnu ? "" :
         ' <span class="puce puce-or" title="Cet agent n\'est pas encore déclaré dans le référentiel — grade par défaut appliqué.">par défaut</span>');
+      // Suppression possible uniquement pour un agent réellement déclaré
+      // dans le référentiel (a.id) — un pseudo apparu via une vente/location
+      // mais jamais ajouté dans « Gérer les agents » n'a rien à supprimer.
+      const actions = a.id != null
+        ? `<button type="button" class="actions-icone actions-icone--danger" data-recap-supprimer="${a.id}" title="Supprimer cet agent" aria-label="Supprimer cet agent">🗑️</button>`
+        : "";
       return `<tr>
         <td><strong>${echapper(a.identite)}</strong>${a.identiteRp ? `<br><span style="font-size:0.82rem;color:var(--text-faint);">${echapper(a.identiteRp)}</span>` : ""}</td>
         <td>${grade}</td>
@@ -349,8 +355,12 @@ async function chargerRecap(semaine) {
         <td>${formaterArgentStats(a.primeVente)}</td>
         <td>${formaterArgentStats(a.primeLocations)}</td>
         <td><strong>${formaterArgentStats(a.totalAVerser)}</strong></td>
+        <td>${actions}</td>
       </tr>`;
     }).join("");
+    document.getElementById("corps-table-recap").querySelectorAll("[data-recap-supprimer]").forEach((btn) => {
+      btn.addEventListener("click", () => supprimerAgentStats(Number(btn.dataset.recapSupprimer)));
+    });
   } catch (e) {
     afficherMessage("zone-message-recap", "Impossible de charger le récapitulatif : " + e.message, "erreur");
   }

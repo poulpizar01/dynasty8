@@ -1371,7 +1371,16 @@ async function calculerRecapSemaine(env, semaine) {
   const tauxParGrade = new Map((tauxR.results || []).map((t) => [t.grade, t]));
   const formateurComptesDansQuota = !!configR && configR.valeur === "1";
 
-  const agents = Array.from(identitesNormalisees).map((pseudoNorm) => {
+  // Le récap affiche TOUTE l'équipe déclarée (référentiel stats_agents,
+  // agents actifs uniquement -- un agent désactivé/parti ne réapparaît plus
+  // ici), même sans la moindre vente/location cette semaine-là (0 partout) --
+  // pas seulement ceux qui ont vendu, comme avant. On y ajoute aussi les
+  // pseudos qui ont vendu/loué cette semaine sans être (encore) déclarés dans
+  // stats_agents (fiche facultative, voir plus haut).
+  const pseudosActifsReferentiel = (agentsR.results || []).filter((a) => a.actif).map((a) => a.discord_pseudo_normalise);
+  const tousPseudos = new Set([...pseudosActifsReferentiel, ...identitesNormalisees]);
+
+  const agents = Array.from(tousPseudos).map((pseudoNorm) => {
     const fiche = agentsParPseudo.get(pseudoNorm);
     const grade = fiche ? fiche.grade : "Agent";
     const t = tauxParGrade.get(grade) || { taux: 0.48, salaire_fixe: null, salaire_actif: 0, prime_vente_active: 1, prime_location_active: 1 };
@@ -1389,6 +1398,7 @@ async function calculerRecapSemaine(env, semaine) {
       primeLocationActive: t.prime_location_active == null ? true : !!t.prime_location_active,
     });
     return {
+      id: fiche ? fiche.id : null,
       identite: fiche ? fiche.discord_pseudo : pseudoNorm,
       identiteRp: fiche ? fiche.identite_rp : "",
       grade,
