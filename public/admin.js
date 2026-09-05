@@ -598,7 +598,8 @@ document.getElementById("formulaire-profil").addEventListener("submit", async (e
 // d'afficher joliment une grille de 7 jours × 24 heures et de gérer les clics.
 // ---------------------------------------------------------------------------
 
-let AGENDA_DECALAGE_SEMAINE = 0; // 0 = semaine en cours, +1 = semaine suivante, -1 = précédente...
+let AGENDA_VUE = "semaine"; // "mois" | "semaine" | "jour"
+let AGENDA_REF = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })(); // n'importe quel jour de la période affichée
 let CACHE_EVENEMENTS = [];
 const AGENDA_HEURE_HAUTEUR = 48; // hauteur en pixels d'une heure dans la grille
 const AGENDA_NOMS_JOURS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -618,16 +619,42 @@ function lundiDeLaSemaine(date) {
   return d;
 }
 
-function joursAffichesAgenda() {
-  const lundi = lundiDeLaSemaine(new Date());
-  lundi.setDate(lundi.getDate() + AGENDA_DECALAGE_SEMAINE * 7);
-  const jours = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(lundi);
-    d.setDate(lundi.getDate() + i);
-    jours.push(d);
+function capitaliser(t) { return t ? t.charAt(0).toUpperCase() + t.slice(1) : t; }
+function nomCourtJour(d) { return capitaliser(d.toLocaleDateString("fr-FR", { weekday: "short" }).replace(".", "")); }
+
+// Bornes de la période affichée selon la vue (jour, semaine, ou grille du mois
+// = du lundi de la semaine du 1er au dimanche de la semaine du dernier jour).
+function periodeAgenda() {
+  const ref = new Date(AGENDA_REF); ref.setHours(0, 0, 0, 0);
+  if (AGENDA_VUE === "jour") return { debut: new Date(ref), fin: new Date(ref) };
+  if (AGENDA_VUE === "semaine") {
+    const lundi = lundiDeLaSemaine(ref);
+    const dim = new Date(lundi); dim.setDate(lundi.getDate() + 6);
+    return { debut: lundi, fin: dim };
   }
+  const premier = new Date(ref.getFullYear(), ref.getMonth(), 1);
+  const dernier = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
+  const debut = lundiDeLaSemaine(premier);
+  const fin = lundiDeLaSemaine(dernier); fin.setDate(fin.getDate() + 6);
+  return { debut, fin };
+}
+
+// Jours affichés en vue jour (1) ou semaine (7), pour la grille horaire.
+function joursAffiches() {
+  if (AGENDA_VUE === "jour") { const d = new Date(AGENDA_REF); d.setHours(0, 0, 0, 0); return [d]; }
+  const lundi = lundiDeLaSemaine(AGENDA_REF);
+  const jours = [];
+  for (let i = 0; i < 7; i++) { const d = new Date(lundi); d.setDate(lundi.getDate() + i); jours.push(d); }
   return jours;
+}
+
+// Décale la date de référence d'une unité de la vue active.
+function decalerAgenda(sens) {
+  const d = new Date(AGENDA_REF);
+  if (AGENDA_VUE === "jour") d.setDate(d.getDate() + sens);
+  else if (AGENDA_VUE === "semaine") d.setDate(d.getDate() + 7 * sens);
+  else d.setMonth(d.getMonth() + sens);
+  AGENDA_REF = d;
 }
 
 function estAujourdhui(date) {
@@ -645,10 +672,18 @@ function heureActuelleHHMM() {
   return String(n.getHours()).padStart(2, "0") + ":" + String(n.getMinutes()).padStart(2, "0");
 }
 
-function majEnteteAgenda(jours) {
-  const debut = jours[0].toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
-  const fin = jours[6].toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
-  document.getElementById("agenda-plage-dates").textContent = `Du ${debut} au ${fin}`;
+function majEnteteAgenda() {
+  const span = document.getElementById("agenda-plage-dates");
+  const { debut, fin } = periodeAgenda();
+  if (AGENDA_VUE === "jour") {
+    span.textContent = capitaliser(AGENDA_REF.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
+  } else if (AGENDA_VUE === "semaine") {
+    const d = debut.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+    const f = fin.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+    span.textContent = `Du ${d} au ${f}`;
+  } else {
+    span.textContent = capitaliser(AGENDA_REF.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }));
+  }
 }
 
 function defilerVersMaintenant() {
@@ -663,7 +698,7 @@ function rendreGrilleAgenda(jours) {
 
   const entete = jours.map((d, i) => `
     <div class="agenda-entete-jour ${estAujourdhui(d) ? "agenda-aujourdhui" : ""}">
-      <span class="agenda-entete-jour-nom">${AGENDA_NOMS_JOURS[i]}</span>
+      <span class="agenda-entete-jour-nom">${nomCourtJour(d)}</span>
       <span class="agenda-entete-jour-date">${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}</span>
     </div>`).join("");
 
@@ -725,45 +760,102 @@ function rendreGrilleAgenda(jours) {
   });
 }
 
+function rendreMoisAgenda() {
+  const grille = document.getElementById("agenda-grille");
+  const { debut, fin } = periodeAgenda();
+  const moisCourant = AGENDA_REF.getMonth();
+  const jours = []; const d = new Date(debut);
+  while (d <= fin) { jours.push(new Date(d)); d.setDate(d.getDate() + 1); }
+
+  const entete = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
+    .map((n) => `<div class="agenda-mois-entete-jour">${n}</div>`).join("");
+
+  const cases = jours.map((jd) => {
+    const iso = formaterDateISO(jd);
+    const horsMois = jd.getMonth() !== moisCourant;
+    const evs = CACHE_EVENEMENTS.filter((e) => e.jour === iso)
+      .sort((a, b) => minutesDepuisMinuit(a.heure_debut) - minutesDepuisMinuit(b.heure_debut));
+    const chips = evs.slice(0, 4).map((e) => `
+      <div class="agenda-mois-evenement" data-id="${e.id}" tabindex="0" role="button" aria-label="${echapper(e.titre)} à ${e.heure_debut}">
+        <span class="agenda-mois-heure">${e.heure_debut}</span><span class="agenda-mois-evenement-titre">${echapper(e.titre)}</span>
+      </div>`).join("");
+    const plus = evs.length > 4 ? `<div class="agenda-mois-plus">+${evs.length - 4} autre${evs.length - 4 > 1 ? "s" : ""}</div>` : "";
+    return `
+      <div class="agenda-mois-case ${horsMois ? "agenda-mois-hors" : ""} ${estAujourdhui(jd) ? "agenda-mois-aujourdhui" : ""}" data-jour="${iso}" role="button" tabindex="0" aria-label="Ajouter un événement le ${iso}">
+        <span class="agenda-mois-num">${jd.getDate()}</span>
+        <div class="agenda-mois-evenements">${chips}${plus}</div>
+      </div>`;
+  }).join("");
+
+  grille.innerHTML = `<div class="agenda-mois"><div class="agenda-mois-entete">${entete}</div><div class="agenda-mois-corps">${cases}</div></div>`;
+
+  grille.querySelectorAll(".agenda-mois-evenement").forEach((el) => {
+    const ouvrir = (ev) => {
+      ev.stopPropagation();
+      const e = CACHE_EVENEMENTS.find((x) => String(x.id) === el.dataset.id);
+      if (!e) return;
+      ouvrirModaleEvenement({ id: e.id, jour: e.jour, heureDebut: e.heure_debut, heureFin: e.heure_fin, titre: e.titre, notes: e.notes });
+    };
+    el.addEventListener("click", ouvrir);
+    el.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); ouvrir(ev); } });
+  });
+  grille.querySelectorAll(".agenda-mois-case").forEach((cell) => {
+    const creer = () => ouvrirModaleEvenement({ jour: cell.dataset.jour });
+    cell.addEventListener("click", creer);
+    cell.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); creer(); } });
+  });
+}
+
 async function chargerAgenda(reinitialiserDefilement) {
-  const jours = joursAffichesAgenda();
-  majEnteteAgenda(jours);
+  majEnteteAgenda();
   afficherMessage("zone-message-agenda", "", null);
+  const { debut, fin } = periodeAgenda();
   try {
-    const debut = formaterDateISO(jours[0]);
-    const fin = formaterDateISO(jours[6]);
-    const data = await appelAPI(`/api/agenda?debut=${debut}&fin=${fin}`);
+    const data = await appelAPI(`/api/agenda?debut=${formaterDateISO(debut)}&fin=${formaterDateISO(fin)}`);
     CACHE_EVENEMENTS = data.evenements || [];
   } catch (e) {
     afficherMessage("zone-message-agenda", "Impossible de charger votre agenda : " + e.message, "erreur");
     CACHE_EVENEMENTS = [];
   }
   const conteneur = document.getElementById("agenda-grille-conteneur");
-  const scrollAvant = conteneur ? conteneur.scrollTop : 0;
-  rendreGrilleAgenda(jours);
-  if (reinitialiserDefilement) {
-    defilerVersMaintenant();
-  } else if (conteneur) {
-    conteneur.scrollTop = scrollAvant;
+  conteneur.classList.toggle("agenda-conteneur-mois", AGENDA_VUE === "mois");
+  if (AGENDA_VUE === "mois") {
+    rendreMoisAgenda();
+    return;
   }
+  const scrollAvant = conteneur ? conteneur.scrollTop : 0;
+  rendreGrilleAgenda(joursAffiches());
+  if (reinitialiserDefilement) defilerVersMaintenant();
+  else if (conteneur) conteneur.scrollTop = scrollAvant;
 }
 
 document.getElementById("agenda-semaine-precedente").addEventListener("click", () => {
-  AGENDA_DECALAGE_SEMAINE--;
+  decalerAgenda(-1);
   chargerAgenda(true);
 });
 document.getElementById("agenda-semaine-suivante").addEventListener("click", () => {
-  AGENDA_DECALAGE_SEMAINE++;
+  decalerAgenda(1);
   chargerAgenda(true);
 });
 document.getElementById("agenda-aujourdhui").addEventListener("click", () => {
-  AGENDA_DECALAGE_SEMAINE = 0;
+  AGENDA_REF = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
   chargerAgenda(true);
 });
+document.querySelectorAll(".agenda-vue-bouton").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (btn.dataset.vue === AGENDA_VUE) return;
+    AGENDA_VUE = btn.dataset.vue;
+    document.querySelectorAll(".agenda-vue-bouton").forEach((b) => b.classList.toggle("actif", b === btn));
+    chargerAgenda(true);
+  });
+});
 document.getElementById("agenda-nouvel-evenement").addEventListener("click", () => {
-  const jours = joursAffichesAgenda();
-  const jourDepart = jours.find((d) => estAujourdhui(d)) || jours[0];
-  ouvrirModaleEvenement({ jour: formaterDateISO(jourDepart) });
+  // Par défaut sur aujourd'hui si la période affichée le contient, sinon sur
+  // son premier jour (ex. un mois passé ou futur).
+  const { debut, fin } = periodeAgenda();
+  const auj = new Date(); auj.setHours(0, 0, 0, 0);
+  const dansPeriode = auj >= debut && auj <= fin;
+  ouvrirModaleEvenement({ jour: formaterDateISO(dansPeriode ? auj : debut) });
 });
 
 // ---- modale « ajouter / modifier un événement » ---------------------------

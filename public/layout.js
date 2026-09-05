@@ -12,7 +12,7 @@ const LIEN_DISCORD = "https://discord.com/invite/zCsPrrR3uw";
 // regroupée sous un sous-menu — `clesEnfants` liste les `cle` de pages qui
 // doivent garder ce lien parent surligné (voir injecterEntete ci-dessous).
 const LIENS_NAV = [
-  { href: "/", texte: "Accueil", cle: "accueil" },
+  { href: "/accueil.html", texte: "Accueil", cle: "accueil" },
   { href: "/interieurs.html", texte: "Catalogue", cle: "catalogue", clesEnfants: ["interieurs", "garages", "exclusifs"], sousMenu: [
       { href: "/habitation.html?meuble=1", texte: "Intérieurs meublés" },
       { href: "/habitation.html?meuble=0", texte: "Intérieurs non meublés" },
@@ -69,7 +69,7 @@ function injecterEntete(cleActive) {
   }).join("");
   monte.innerHTML = `
     <div class="entete-barre">
-      <a href="/" class="logo">
+      <a href="/accueil.html" class="logo">
         <img src="/img/logo-mark.png" alt="Dynasty 8" class="logo-marque">
         <span class="logo-filet" aria-hidden="true"></span>
         <span class="logo-texte">Dynasty 8</span>
@@ -99,7 +99,7 @@ function injecterPied() {
     <div class="conteneur">
       <div class="pied-grille">
         <div>
-          <a href="/" class="logo" style="margin-bottom:14px;">${logoImg("logo-pied")}</a>
+          <a href="/accueil.html" class="logo" style="margin-bottom:14px;">${logoImg("logo-pied")}</a>
           <p>Agence immobilière officielle de Los Santos. Habitations, garages et propriétés d'exception pour tous les résidents du serveur.</p>
         </div>
         <div>

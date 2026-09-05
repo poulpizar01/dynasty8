@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dynasty 8 — Agence immobilière de Los Santos</title>
+<meta name="description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dynasty 8">
+<meta property="og:title" content="Dynasty 8 — Agence immobilière de Los Santos">
+<meta property="og:description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
+<meta property="og:image" content="https://dynasty8.poulpizar.workers.dev/img/og-image.jpg">
+<meta property="og:url" content="https://dynasty8.poulpizar.workers.dev/accueil.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Dynasty 8 — Agence immobilière de Los Santos">
+<meta name="twitter:description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
+<meta name="twitter:image" content="https://dynasty8.poulpizar.workers.dev/img/og-image.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,600;1,300;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/png" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/favicon-180.png">
+</head>
+<body>
+
+<header class="entete" id="site-entete"></header>
+
+<section class="hero hero-accueil">
+  <div class="hero-ville" aria-hidden="true" id="hero-ville">
+    <img src="/img/hero-agence-interieur.jpg" alt="" loading="eager" class="hero-ville-active">
+    <img src="/img/hero-agence-facade.jpg" alt="" loading="lazy" style="object-position: center 62%;">
+  </div>
+  <div class="hero-particules" aria-hidden="true" id="hero-particules"></div>
+  <div class="hero-accueil-grille">
+    <div class="hero-texte">
+      <div class="hero-etiquette">★ L'excellence immobilière à Los Santos</div>
+      <h1>Trouvez le bien qui porte votre nom.</h1>
+      <p class="lead">Dynasty 8 accompagne les résidents de Los Santos dans l'achat, la location et la gestion de leurs habitations, garages et propriétés d'exception depuis leur arrivée en ville.</p>
+      <div class="hero-actions">
+        <a href="/exclusifs.html" class="btn btn-or btn-large">Voir les biens exclusifs</a>
+        <a href="#coups-de-coeur" class="btn btn-fantome btn-large">Nos coups de cœur</a>
+      </div>
+      <div class="hero-stats">
+        <div><strong id="stat-biens">—</strong><span id="stat-biens-libelle">Biens au catalogue</span></div>
+        <div><strong>17</strong><span>Adresses référencées</span></div>
+        <div><strong>24/7</strong><span>Service agents</span></div>
+      </div>
+    </div>
+    <div class="hero-vitrine" id="hero-vitrine">
+      <div class="hero-vitrine-vide">
+        <span style="font-size:1.8rem;">🏠</span>
+        <p>Chargement de la vitrine…</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top: clamp(40px, 6vw, 64px);">
+  <div class="conteneur">
+    <div class="section-entete">
+      <span class="etiquette">Accès rapide</span>
+      <h2>Tout le catalogue, en un clic</h2>
+      <p>Cinq portes d'entrée vers l'ensemble de nos annonces et avantages.</p>
+    </div>
+    <div class="grille-hub grille-hub--5">
+      <a class="carte-hub" href="/interieurs.html">
+        <div class="icone">🏠</div>
+        <h3>Habitations</h3>
+        <p>Appartements et villas, meublés ou non, dans tout Los Santos.</p>
+        <span class="carte-hub-fleche">Voir le catalogue →</span>
+      </a>
+      <a class="carte-hub" href="/garages.html">
+        <div class="icone">🚗</div>
+        <h3>Garages</h3>
+        <p>Places de stationnement et de stockage pour vos véhicules.</p>
+        <span class="carte-hub-fleche">Voir le catalogue →</span>
+      </a>
+      <a class="carte-hub" href="/exclusifs.html">
+        <div class="icone">💎</div>
+        <h3>Exclusifs</h3>
+        <p>Notre sélection de biens d'exception, pour une clientèle exigeante.</p>
+        <span class="carte-hub-fleche">Découvrir →</span>
+      </a>
+      <a class="carte-hub" href="/coherences.html">
+        <div class="icone">🧭</div>
+        <h3>Cohérences</h3>
+        <p>Les zones de jeu et règles RP à connaître avant de choisir un bien.</p>
+        <span class="carte-hub-fleche">Consulter →</span>
+      </a>
+      <a class="carte-hub" href="/vip.html">
+        <div class="icone">⭐</div>
+        <h3>VIP PLUS</h3>
+        <p>Le statut VIP PLUS officiel de FlashbackFA et ses avantages.</p>
+        <span class="carte-hub-fleche">En savoir plus →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="conteneur">
+    <div class="section-entete">
+      <span class="etiquette">Le point de départ</span>
+      <h2>Cohérences & WebMap</h2>
+      <p>Avant de choisir un bien, repérez sa cohérence — la zone de jeu et les règles RP qui vont avec — puis localisez-la sur la WebMap du serveur.</p>
+    </div>
+    <div class="grille-hub">
+      <a class="carte-hub" href="/coherence.html?zone=Habitation">
+        <div class="icone">🏠</div>
+        <h3>Habitation</h3>
+        <p>La justification de résidence de votre personnage à Los Santos.</p>
+        <span class="carte-hub-fleche">Consulter →</span>
+      </a>
+      <a class="carte-hub" href="/coherence.html?zone=Garage">
+        <div class="icone">🚗</div>
+        <h3>Garage</h3>
+        <p>La justification de stationnement et de stockage de vos véhicules.</p>
+        <span class="carte-hub-fleche">Consulter →</span>
+      </a>
+      <a class="carte-hub" href="/coherence.html?zone=Cayo+Perico">
+        <div class="icone">🏝️</div>
+        <h3>Cayo Perico</h3>
+        <p>Les règles propres à l'île de Cayo Perico.</p>
+        <span class="carte-hub-fleche">Consulter →</span>
+      </a>
+      <a class="carte-hub" href="/coherence.html?zone=Roxwood">
+        <div class="icone">🌲</div>
+        <h3>Roxwood</h3>
+        <p>Les règles propres au secteur résidentiel de Roxwood.</p>
+        <span class="carte-hub-fleche">Consulter →</span>
+      </a>
+    </div>
+    <div style="text-align:center;margin-top:32px;">
+      <a href="https://map.flashbackfa.fr/" target="_blank" rel="noopener" class="btn btn-fantome btn-large">Ouvrir la WebMap ↗</a>
+    </div>
+  </div>
+</section>
+
+<section class="section alterne" id="coups-de-coeur">
+  <div class="conteneur">
+    <div class="section-entete">
+      <span class="etiquette">Sélection</span>
+      <h2>Nos coups de cœur</h2>
+      <p>Une sélection de biens mis en avant par nos agents cette semaine.</p>
+    </div>
+
+    <div class="coeur-filtres" id="coeur-filtres" role="group" aria-label="Filtrer les coups de cœur">
+      <button type="button" class="coeur-filtre actif" data-filtre="tous" aria-pressed="true">♥ Tous les coups de cœur</button>
+      <button type="button" class="coeur-filtre" data-filtre="vente-location" aria-pressed="false">🏷️ Vente &amp; Location</button>
+      <button type="button" class="coeur-filtre" data-filtre="garage" aria-pressed="false">🚗 Garages</button>
+      <button type="button" class="coeur-filtre" data-filtre="habitation" aria-pressed="false">🏠 Habitations</button>
+    </div>
+
+    <div class="coeur-rangee">
+      <button type="button" class="coeur-fleche coeur-fleche--precedent cache" id="coeur-precedent" aria-label="Biens précédents">‹</button>
+      <div class="carrousel-scroll" id="grille-coeur"></div>
+      <button type="button" class="coeur-fleche coeur-fleche--suivant cache" id="coeur-suivant" aria-label="Biens suivants">›</button>
+    </div>
+
+    <div class="coeur-atouts">
+      <div class="coeur-atout">
+        <span class="coeur-atout-icone" aria-hidden="true">💎</span>
+        <div><h4>Biens sélectionnés</h4><p>Triés sur le volet par nos agents experts.</p></div>
+      </div>
+      <div class="coeur-atout">
+        <span class="coeur-atout-icone" aria-hidden="true">⭐</span>
+        <div><h4>Opportunités rares</h4><p>Des biens d'exception à ne pas laisser passer.</p></div>
+      </div>
+      <div class="coeur-atout">
+        <span class="coeur-atout-icone" aria-hidden="true">🕓</span>
+        <div><h4>Mises à jour hebdo</h4><p>Chaque semaine, une nouvelle sélection exclusive.</p></div>
+      </div>
+      <div class="coeur-atout">
+        <span class="coeur-atout-icone" aria-hidden="true">🛡️</span>
+        <div><h4>Accompagnement VIP</h4><p>Un suivi personnalisé pour chaque projet.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="conteneur">
+    <div class="vitrine-exception">
+      <div class="vitrine-exception-texte">
+        <span class="vitrine-exception-etiquette">Standing</span>
+        <h2>Un niveau d'exception, pensé pour Los Santos.</h2>
+        <p>Villas avec piscine à débordement, terrasses privées, garages de collection : nos agents dénichent les propriétés les plus recherchées de la ville pour une clientèle exigeante.</p>
+        <a href="/exclusifs.html" class="btn btn-or btn-large">Découvrir les biens exclusifs <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="vitrine-exception-image">
+        <img src="/img/villa-exception.jpg" alt="Villa de standing avec piscine à débordement, vue de nuit" loading="lazy">
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="conteneur">
+    <div class="section-entete">
+      <span class="etiquette">Mode d'emploi</span>
+      <h2>Comment ça marche ?</h2>
+      <p>Comment nous contacter en jeu, et la démarche complète pour trouver, visiter et signer un bien avec Dynasty 8.</p>
+    </div>
+    <div class="cadre-guide">
+      <img src="/img/guide-demarche.jpg" alt="Guide Dynasty 8 : nous contacter via l'application Eyefind, et démarche en 3 étapes pour trouver un bien (choix avec Agatha à l'agence, repérage d'une porte disponible sur place, localisation du secteur via les fiches de cohérence et la WebMap)" loading="lazy" width="1491" height="1055">
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="conteneur">
+    <div class="partenaire-bandeau">
+      <div class="partenaire-bandeau-image">
+        <img src="/img/terra-home-deco.jpg" alt="Terra Home Deco — décoration et aménagement intérieur" loading="lazy" width="500" height="200">
+      </div>
+      <div class="partenaire-bandeau-texte">
+        <span class="partenaire-bandeau-etiquette">Entreprise partenaire</span>
+        <h2>Terra Home Deco</h2>
+        <p>Découvrez notre entreprise partenaire et son univers dédié à la décoration et à l'aménagement.</p>
+        <a href="https://discord.gg/e8Ah54yvuw" target="_blank" rel="noopener noreferrer" class="btn btn-or btn-large">Rejoindre Terra Home Deco sur Discord <span aria-hidden="true">→</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section alterne">
+  <div class="conteneur" style="text-align:center;">
+    <span class="etiquette">Rejoignez-nous</span>
+    <h2 style="margin-top:10px;">Une question ? Un projet immobilier ?</h2>
+    <p style="max-width:520px;margin:0 auto 28px;">Nos agents sont disponibles sur le Discord officiel du serveur pour vous accompagner dans toutes vos démarches.</p>
+    <a href="#" id="lien-discord-cta" class="btn btn-or btn-large">Contacter Dynasty 8 sur Discord</a>
+  </div>
+</section>
+
+<footer class="pied-page" id="site-pied"></footer>
+
+<script src="/layout.js"></script>
+<script src="/biens.js"></script>
+<script>
+  initialiserLayout("accueil");
+
+  // ---- vitrine "Nos coups de cœur" : filtres + carrousel à flèches -------------
+  let COEUR_BIENS = [];
+  let COEUR_FILTRE = "tous";
+  const reduireMouvement = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function biensCoeurFiltres() {
+    return COEUR_BIENS.filter((b) => {
+      if (COEUR_FILTRE === "vente-location") return b.dispo_vente && b.dispo_location;
+      if (COEUR_FILTRE === "garage") return b.categorie === "garage";
+      if (COEUR_FILTRE === "habitation") return b.categorie === "habitation";
+      return true;
+    });
+  }
+
+  function majFlechesCoeur() {
+    const conteneur = document.getElementById("grille-coeur");
+    const precedent = document.getElementById("coeur-precedent");
+    const suivant = document.getElementById("coeur-suivant");
+    if (!conteneur || !precedent || !suivant) return;
+    const peutDefiler = conteneur.scrollWidth > conteneur.clientWidth + 4;
+    precedent.classList.toggle("cache", !peutDefiler);
+    suivant.classList.toggle("cache", !peutDefiler);
+  }
+
+  function rendreCoeur() {
+    const conteneur = document.getElementById("grille-coeur");
+    if (!COEUR_BIENS.length) {
+      conteneur.innerHTML = `<div class="etat-vide">Aucun coup de cœur pour le moment. Ajoutez-en depuis l'espace agents.</div>`;
+      document.getElementById("coeur-filtres").classList.add("cache");
+      majFlechesCoeur();
+      return;
+    }
+    const liste = biensCoeurFiltres();
+    conteneur.innerHTML = liste.length
+      ? liste.map((b) => carteCoeurHTML(b)).join("")
+      : `<div class="etat-vide">Aucun coup de cœur ne correspond à ce filtre pour le moment.</div>`;
+    conteneur.scrollTo({ left: 0 });
+    majFlechesCoeur();
+  }
+
+  document.querySelectorAll(".coeur-filtre").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      COEUR_FILTRE = btn.dataset.filtre;
+      document.querySelectorAll(".coeur-filtre").forEach((b) => {
+        const actif = b === btn;
+        b.classList.toggle("actif", actif);
+        b.setAttribute("aria-pressed", actif ? "true" : "false");
+      });
+      rendreCoeur();
+    });
+  });
+  document.getElementById("coeur-precedent").addEventListener("click", () => {
+    document.getElementById("grille-coeur").scrollBy({ left: -320, behavior: reduireMouvement ? "auto" : "smooth" });
+  });
+  document.getElementById("coeur-suivant").addEventListener("click", () => {
+    document.getElementById("grille-coeur").scrollBy({ left: 320, behavior: reduireMouvement ? "auto" : "smooth" });
+  });
+  window.addEventListener("resize", majFlechesCoeur);
+
+  appelAPI("/api/biens?coup_de_coeur=1")
+    .then((d) => {
+      COEUR_BIENS = d.biens || [];
+      rendreCoeur();
+      const zoneVitrine = document.getElementById("hero-vitrine");
+      if (!zoneVitrine) return;
+      if (COEUR_BIENS.length) {
+        zoneVitrine.innerHTML = carteBienHTML(COEUR_BIENS[0]);
+      } else {
+        zoneVitrine.innerHTML = `
+          <div class="hero-vitrine-vide">
+            <span style="font-size:1.8rem;">🏠</span>
+            <p>Votre premier coup de cœur apparaîtra ici, en vitrine.</p>
+            <a href="/admin.html" class="btn btn-fantome btn-petit">Ajouter un bien</a>
+          </div>`;
+      }
+    })
+    .catch(() => {
+      document.getElementById("grille-coeur").innerHTML = `<div class="etat-vide">Impossible de charger les coups de cœur pour le moment.</div>`;
+      document.getElementById("coeur-filtres").classList.add("cache");
+    });
+
+  appelAPI("/api/biens").then((d) => {
+    const liste = d.biens || [];
+    document.getElementById("stat-biens").textContent = liste.length;
+    document.getElementById("stat-biens-libelle").textContent = liste.length > 1 ? "Biens au catalogue" : "Bien au catalogue";
+  }).catch(() => {});
+
+  // Fond animé du hero : fenêtres qui scintillent au hasard sur la silhouette de ville.
+  const zoneVille = document.getElementById("hero-ville");
+  if (zoneVille) {
+    for (let i = 0; i < 34; i++) {
+      const f = document.createElement("div");
+      f.className = "hero-fenetre";
+      f.style.width = (2 + Math.random() * 2) + "px";
+      f.style.height = (2 + Math.random() * 2) + "px";
+      f.style.left = (4 + Math.random() * 92) + "%";
+      f.style.bottom = (8 + Math.random() * 55) + "%";
+      f.style.animationDuration = (2 + Math.random() * 4) + "s";
+      f.style.animationDelay = (Math.random() * -6) + "s";
+      zoneVille.appendChild(f);
+    }
+  }
+
+  // Fond animé du hero : tempête de particules dorées qui montent lentement.
+  const zoneParticules = document.getElementById("hero-particules");
+  if (zoneParticules) {
+    for (let i = 0; i < 46; i++) {
+      const p = document.createElement("div");
+      p.className = "hero-particule";
+      const taille = 2 + Math.random() * 7;
+      p.style.width = taille + "px";
+      p.style.height = taille + "px";
+      p.style.left = Math.random() * 100 + "%";
+      p.style.bottom = (-10 - Math.random() * 20) + "%";
+      p.style.setProperty("--dx", (Math.random() * 120 - 60).toFixed(0) + "px");
+      const duree = 4 + Math.random() * 5;
+      p.style.animationDuration = duree + "s";
+      p.style.animationDelay = (Math.random() * -duree) + "s";
+      zoneParticules.appendChild(p);
+    }
+  }
+
+  document.getElementById("lien-discord-cta").href = LIEN_DISCORD;
+  document.getElementById("lien-discord-cta").target = "_blank";
+  document.getElementById("lien-discord-cta").rel = "noopener";
+</script>
+</body>
+</html>

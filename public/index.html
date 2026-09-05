@@ -15,356 +15,212 @@
 <meta name="twitter:title" content="Dynasty 8 — Agence immobilière de Los Santos">
 <meta name="twitter:description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
 <meta name="twitter:image" content="https://dynasty8.poulpizar.workers.dev/img/og-image.jpg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,600;1,300;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css">
 <link rel="icon" type="image/png" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/favicon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;1,300;1,500&family=Jost:wght@300;400;500&display=swap">
+<style>
+  :root{--navy-950:#060c1a;--navy-900:#0a1428;--navy-800:#0e1b33;--gold-300:#f2dfa8;--gold-400:#e4c77e;--gold-500:#c9a55c;--gold-600:#a9843f;
+    --cream:#f6efe2;--text:#e3ddd2;--muted:#9aa6be;--serif:"Cormorant Garamond",Georgia,serif;--ui:"Jost","Helvetica Neue",Arial,sans-serif}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--navy-950);color:var(--cream);font-family:var(--ui);font-weight:300;-webkit-font-smoothing:antialiased;overflow:hidden}
+  .scene{position:fixed;inset:0;
+    background:radial-gradient(90% 70% at 50% 45%,#122241 0%,#0a1428 45%,#060c1a 100%)}
+  /* veines dorées très discrètes (marbre) */
+  .scene::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.9;
+    background:radial-gradient(55% 30% at 10% 8%,rgba(201,165,92,.14),transparent 60%),radial-gradient(40% 26% at 90% 20%,rgba(201,165,92,.11),transparent 62%),radial-gradient(45% 24% at 20% 90%,rgba(201,165,92,.09),transparent 60%),radial-gradient(38% 22% at 82% 88%,rgba(201,165,92,.08),transparent 60%)}
+  #fx{position:absolute;inset:0;width:100%;height:100%;display:block}
+  /* cadre double filet or, comme sur le site */
+  .cadre{position:fixed;inset:18px;pointer-events:none;border:1px solid rgba(201,165,92,.45);opacity:0;animation:app 1.6s 1.4s ease forwards}
+  .cadre::before{content:"";position:absolute;inset:8px;border:1px solid rgba(201,165,92,.16)}
+  @media (max-width:640px){.cadre{inset:10px}.cadre::before{display:none}}
+
+  .ui{position:fixed;left:0;right:0;top:63%;display:flex;flex-direction:column;align-items:center;gap:26px;text-align:center;padding:0 24px;pointer-events:none}
+  .ui > *{pointer-events:auto}
+  .tag{margin:0;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--gold-400);font-weight:500;opacity:0;animation:app 1.2s 2.0s ease forwards}
+  .tag::before,.tag::after{content:"";display:inline-block;width:34px;height:1px;vertical-align:middle;margin:0 14px;background:linear-gradient(90deg,transparent,rgba(201,165,92,.7))}
+  .tag::after{background:linear-gradient(90deg,rgba(201,165,92,.7),transparent)}
+  .titre{margin:0;font-family:var(--serif);font-style:italic;font-weight:300;font-size:clamp(1.5rem,3.2vw,2.3rem);line-height:1.1;color:var(--cream);opacity:0;animation:app 1.2s 2.25s ease forwards;text-wrap:balance}
+  .entrer{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:14px;height:58px;padding:0 40px;margin-top:6px;
+    border:1px solid rgba(201,165,92,.65);border-radius:999px;background:rgba(201,165,92,.06);color:var(--gold-300);
+    font-family:var(--ui);font-size:12.5px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;cursor:pointer;text-decoration:none;
+    opacity:0;animation:app 1.2s 2.6s ease forwards;transition:background .35s,color .35s,box-shadow .35s,transform .35s;overflow:hidden}
+  .entrer::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,#7a5c2e 0%,#c9a55c 22%,#f2dfa8 45%,#c9a55c 70%,#8a6a34 100%);opacity:0;transition:opacity .35s}
+  .entrer span{position:relative}
+  .entrer svg{position:relative;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .35s}
+  .entrer:hover,.entrer:focus-visible{color:#1a1408;box-shadow:0 10px 34px rgba(201,165,92,.28);transform:translateY(-1px);outline:none}
+  .entrer:hover::before,.entrer:focus-visible::before{opacity:1}
+  .entrer:hover svg{transform:translateX(4px)}
+  .pied{position:fixed;left:0;right:0;bottom:30px;text-align:center;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);opacity:0;animation:app 1.2s 3s ease forwards}
+  .pied a{color:var(--gold-500);text-decoration:none}
+  body.sortie .ui,body.sortie .pied,body.sortie .cadre{animation:none;opacity:0;transition:opacity .6s}
+  @keyframes app{to{opacity:1}}
+  @media (prefers-reduced-motion:reduce){.tag,.titre,.entrer,.pied,.cadre{animation-duration:.01s;animation-delay:0s}}
+</style>
+
 </head>
 <body>
+<!-- Page d'entrée du site (voir accueil.html pour l'accueil proprement dit).
+     Three.js en local : /vendor/three.module.min.js — logo : /img/logo-full.png. -->
+<div class="scene"><canvas id="fx"></canvas></div>
+<div class="cadre"></div>
 
-<header class="entete" id="site-entete"></header>
+<div class="ui">
+  <p class="tag">Agence immobilière · Los Santos</p>
+  <h1 class="titre">Trouvez le bien qui porte votre nom.</h1>
+  <a class="entrer" id="entrer" href="/accueil.html"><span>Entrer sur le site</span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+</div>
+<p class="pied">Serveur RP FlashbackFA · Univers fictif · <a href="/admin.html">Espace agents</a></p>
 
-<section class="hero hero-accueil">
-  <div class="hero-ville" aria-hidden="true" id="hero-ville">
-    <img src="/img/hero-agence-interieur.jpg" alt="" loading="eager" class="hero-ville-active">
-    <img src="/img/hero-agence-facade.jpg" alt="" loading="lazy" style="object-position: center 62%;">
-  </div>
-  <div class="hero-particules" aria-hidden="true" id="hero-particules"></div>
-  <div class="hero-accueil-grille">
-    <div class="hero-texte">
-      <div class="hero-etiquette">★ L'excellence immobilière à Los Santos</div>
-      <h1>Trouvez le bien qui porte votre nom.</h1>
-      <p class="lead">Dynasty 8 accompagne les résidents de Los Santos dans l'achat, la location et la gestion de leurs habitations, garages et propriétés d'exception depuis leur arrivée en ville.</p>
-      <div class="hero-actions">
-        <a href="/exclusifs.html" class="btn btn-or btn-large">Voir les biens exclusifs</a>
-        <a href="#coups-de-coeur" class="btn btn-fantome btn-large">Nos coups de cœur</a>
-      </div>
-      <div class="hero-stats">
-        <div><strong id="stat-biens">—</strong><span id="stat-biens-libelle">Biens au catalogue</span></div>
-        <div><strong>17</strong><span>Adresses référencées</span></div>
-        <div><strong>24/7</strong><span>Service agents</span></div>
-      </div>
-    </div>
-    <div class="hero-vitrine" id="hero-vitrine">
-      <div class="hero-vitrine-vide">
-        <span style="font-size:1.8rem;">🏠</span>
-        <p>Chargement de la vitrine…</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section" style="padding-top: clamp(40px, 6vw, 64px);">
-  <div class="conteneur">
-    <div class="section-entete">
-      <span class="etiquette">Accès rapide</span>
-      <h2>Tout le catalogue, en un clic</h2>
-      <p>Cinq portes d'entrée vers l'ensemble de nos annonces et avantages.</p>
-    </div>
-    <div class="grille-hub grille-hub--5">
-      <a class="carte-hub" href="/interieurs.html">
-        <div class="icone">🏠</div>
-        <h3>Habitations</h3>
-        <p>Appartements et villas, meublés ou non, dans tout Los Santos.</p>
-        <span class="carte-hub-fleche">Voir le catalogue →</span>
-      </a>
-      <a class="carte-hub" href="/garages.html">
-        <div class="icone">🚗</div>
-        <h3>Garages</h3>
-        <p>Places de stationnement et de stockage pour vos véhicules.</p>
-        <span class="carte-hub-fleche">Voir le catalogue →</span>
-      </a>
-      <a class="carte-hub" href="/exclusifs.html">
-        <div class="icone">💎</div>
-        <h3>Exclusifs</h3>
-        <p>Notre sélection de biens d'exception, pour une clientèle exigeante.</p>
-        <span class="carte-hub-fleche">Découvrir →</span>
-      </a>
-      <a class="carte-hub" href="/coherences.html">
-        <div class="icone">🧭</div>
-        <h3>Cohérences</h3>
-        <p>Les zones de jeu et règles RP à connaître avant de choisir un bien.</p>
-        <span class="carte-hub-fleche">Consulter →</span>
-      </a>
-      <a class="carte-hub" href="/vip.html">
-        <div class="icone">⭐</div>
-        <h3>VIP PLUS</h3>
-        <p>Le statut VIP PLUS officiel de FlashbackFA et ses avantages.</p>
-        <span class="carte-hub-fleche">En savoir plus →</span>
-      </a>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="conteneur">
-    <div class="section-entete">
-      <span class="etiquette">Le point de départ</span>
-      <h2>Cohérences & WebMap</h2>
-      <p>Avant de choisir un bien, repérez sa cohérence — la zone de jeu et les règles RP qui vont avec — puis localisez-la sur la WebMap du serveur.</p>
-    </div>
-    <div class="grille-hub">
-      <a class="carte-hub" href="/coherence.html?zone=Habitation">
-        <div class="icone">🏠</div>
-        <h3>Habitation</h3>
-        <p>La justification de résidence de votre personnage à Los Santos.</p>
-        <span class="carte-hub-fleche">Consulter →</span>
-      </a>
-      <a class="carte-hub" href="/coherence.html?zone=Garage">
-        <div class="icone">🚗</div>
-        <h3>Garage</h3>
-        <p>La justification de stationnement et de stockage de vos véhicules.</p>
-        <span class="carte-hub-fleche">Consulter →</span>
-      </a>
-      <a class="carte-hub" href="/coherence.html?zone=Cayo+Perico">
-        <div class="icone">🏝️</div>
-        <h3>Cayo Perico</h3>
-        <p>Les règles propres à l'île de Cayo Perico.</p>
-        <span class="carte-hub-fleche">Consulter →</span>
-      </a>
-      <a class="carte-hub" href="/coherence.html?zone=Roxwood">
-        <div class="icone">🌲</div>
-        <h3>Roxwood</h3>
-        <p>Les règles propres au secteur résidentiel de Roxwood.</p>
-        <span class="carte-hub-fleche">Consulter →</span>
-      </a>
-    </div>
-    <div style="text-align:center;margin-top:32px;">
-      <a href="https://map.flashbackfa.fr/" target="_blank" rel="noopener" class="btn btn-fantome btn-large">Ouvrir la WebMap ↗</a>
-    </div>
-  </div>
-</section>
-
-<section class="section alterne" id="coups-de-coeur">
-  <div class="conteneur">
-    <div class="section-entete">
-      <span class="etiquette">Sélection</span>
-      <h2>Nos coups de cœur</h2>
-      <p>Une sélection de biens mis en avant par nos agents cette semaine.</p>
-    </div>
-
-    <div class="coeur-filtres" id="coeur-filtres" role="group" aria-label="Filtrer les coups de cœur">
-      <button type="button" class="coeur-filtre actif" data-filtre="tous" aria-pressed="true">♥ Tous les coups de cœur</button>
-      <button type="button" class="coeur-filtre" data-filtre="vente-location" aria-pressed="false">🏷️ Vente &amp; Location</button>
-      <button type="button" class="coeur-filtre" data-filtre="garage" aria-pressed="false">🚗 Garages</button>
-      <button type="button" class="coeur-filtre" data-filtre="habitation" aria-pressed="false">🏠 Habitations</button>
-    </div>
-
-    <div class="coeur-rangee">
-      <button type="button" class="coeur-fleche coeur-fleche--precedent cache" id="coeur-precedent" aria-label="Biens précédents">‹</button>
-      <div class="carrousel-scroll" id="grille-coeur"></div>
-      <button type="button" class="coeur-fleche coeur-fleche--suivant cache" id="coeur-suivant" aria-label="Biens suivants">›</button>
-    </div>
-
-    <div class="coeur-atouts">
-      <div class="coeur-atout">
-        <span class="coeur-atout-icone" aria-hidden="true">💎</span>
-        <div><h4>Biens sélectionnés</h4><p>Triés sur le volet par nos agents experts.</p></div>
-      </div>
-      <div class="coeur-atout">
-        <span class="coeur-atout-icone" aria-hidden="true">⭐</span>
-        <div><h4>Opportunités rares</h4><p>Des biens d'exception à ne pas laisser passer.</p></div>
-      </div>
-      <div class="coeur-atout">
-        <span class="coeur-atout-icone" aria-hidden="true">🕓</span>
-        <div><h4>Mises à jour hebdo</h4><p>Chaque semaine, une nouvelle sélection exclusive.</p></div>
-      </div>
-      <div class="coeur-atout">
-        <span class="coeur-atout-icone" aria-hidden="true">🛡️</span>
-        <div><h4>Accompagnement VIP</h4><p>Un suivi personnalisé pour chaque projet.</p></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="conteneur">
-    <div class="vitrine-exception">
-      <div class="vitrine-exception-texte">
-        <span class="vitrine-exception-etiquette">Standing</span>
-        <h2>Un niveau d'exception, pensé pour Los Santos.</h2>
-        <p>Villas avec piscine à débordement, terrasses privées, garages de collection : nos agents dénichent les propriétés les plus recherchées de la ville pour une clientèle exigeante.</p>
-        <a href="/exclusifs.html" class="btn btn-or btn-large">Découvrir les biens exclusifs <span aria-hidden="true">→</span></a>
-      </div>
-      <div class="vitrine-exception-image">
-        <img src="/img/villa-exception.jpg" alt="Villa de standing avec piscine à débordement, vue de nuit" loading="lazy">
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="conteneur">
-    <div class="section-entete">
-      <span class="etiquette">Mode d'emploi</span>
-      <h2>Comment ça marche ?</h2>
-      <p>Comment nous contacter en jeu, et la démarche complète pour trouver, visiter et signer un bien avec Dynasty 8.</p>
-    </div>
-    <div class="cadre-guide">
-      <img src="/img/guide-demarche.jpg" alt="Guide Dynasty 8 : nous contacter via l'application Eyefind, et démarche en 3 étapes pour trouver un bien (choix avec Agatha à l'agence, repérage d'une porte disponible sur place, localisation du secteur via les fiches de cohérence et la WebMap)" loading="lazy" width="1491" height="1055">
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="conteneur">
-    <div class="partenaire-bandeau">
-      <div class="partenaire-bandeau-image">
-        <img src="/img/terra-home-deco.jpg" alt="Terra Home Deco — décoration et aménagement intérieur" loading="lazy" width="500" height="200">
-      </div>
-      <div class="partenaire-bandeau-texte">
-        <span class="partenaire-bandeau-etiquette">Entreprise partenaire</span>
-        <h2>Terra Home Deco</h2>
-        <p>Découvrez notre entreprise partenaire et son univers dédié à la décoration et à l'aménagement.</p>
-        <a href="https://discord.gg/e8Ah54yvuw" target="_blank" rel="noopener noreferrer" class="btn btn-or btn-large">Rejoindre Terra Home Deco sur Discord <span aria-hidden="true">→</span></a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section alterne">
-  <div class="conteneur" style="text-align:center;">
-    <span class="etiquette">Rejoignez-nous</span>
-    <h2 style="margin-top:10px;">Une question ? Un projet immobilier ?</h2>
-    <p style="max-width:520px;margin:0 auto 28px;">Nos agents sont disponibles sur le Discord officiel du serveur pour vous accompagner dans toutes vos démarches.</p>
-    <a href="#" id="lien-discord-cta" class="btn btn-or btn-large">Contacter Dynasty 8 sur Discord</a>
-  </div>
-</section>
-
-<footer class="pied-page" id="site-pied"></footer>
-
-<script src="/layout.js"></script>
-<script src="/biens.js"></script>
-<script>
-  initialiserLayout("accueil");
-
-  // ---- vitrine "Nos coups de cœur" : filtres + carrousel à flèches -------------
-  let COEUR_BIENS = [];
-  let COEUR_FILTRE = "tous";
-  const reduireMouvement = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  function biensCoeurFiltres() {
-    return COEUR_BIENS.filter((b) => {
-      if (COEUR_FILTRE === "vente-location") return b.dispo_vente && b.dispo_location;
-      if (COEUR_FILTRE === "garage") return b.categorie === "garage";
-      if (COEUR_FILTRE === "habitation") return b.categorie === "habitation";
-      return true;
-    });
-  }
-
-  function majFlechesCoeur() {
-    const conteneur = document.getElementById("grille-coeur");
-    const precedent = document.getElementById("coeur-precedent");
-    const suivant = document.getElementById("coeur-suivant");
-    if (!conteneur || !precedent || !suivant) return;
-    const peutDefiler = conteneur.scrollWidth > conteneur.clientWidth + 4;
-    precedent.classList.toggle("cache", !peutDefiler);
-    suivant.classList.toggle("cache", !peutDefiler);
-  }
-
-  function rendreCoeur() {
-    const conteneur = document.getElementById("grille-coeur");
-    if (!COEUR_BIENS.length) {
-      conteneur.innerHTML = `<div class="etat-vide">Aucun coup de cœur pour le moment. Ajoutez-en depuis l'espace agents.</div>`;
-      document.getElementById("coeur-filtres").classList.add("cache");
-      majFlechesCoeur();
-      return;
-    }
-    const liste = biensCoeurFiltres();
-    conteneur.innerHTML = liste.length
-      ? liste.map((b) => carteCoeurHTML(b)).join("")
-      : `<div class="etat-vide">Aucun coup de cœur ne correspond à ce filtre pour le moment.</div>`;
-    conteneur.scrollTo({ left: 0 });
-    majFlechesCoeur();
-  }
-
-  document.querySelectorAll(".coeur-filtre").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      COEUR_FILTRE = btn.dataset.filtre;
-      document.querySelectorAll(".coeur-filtre").forEach((b) => {
-        const actif = b === btn;
-        b.classList.toggle("actif", actif);
-        b.setAttribute("aria-pressed", actif ? "true" : "false");
-      });
-      rendreCoeur();
-    });
-  });
-  document.getElementById("coeur-precedent").addEventListener("click", () => {
-    document.getElementById("grille-coeur").scrollBy({ left: -320, behavior: reduireMouvement ? "auto" : "smooth" });
-  });
-  document.getElementById("coeur-suivant").addEventListener("click", () => {
-    document.getElementById("grille-coeur").scrollBy({ left: 320, behavior: reduireMouvement ? "auto" : "smooth" });
-  });
-  window.addEventListener("resize", majFlechesCoeur);
-
-  appelAPI("/api/biens?coup_de_coeur=1")
-    .then((d) => {
-      COEUR_BIENS = d.biens || [];
-      rendreCoeur();
-      const zoneVitrine = document.getElementById("hero-vitrine");
-      if (!zoneVitrine) return;
-      if (COEUR_BIENS.length) {
-        zoneVitrine.innerHTML = carteBienHTML(COEUR_BIENS[0]);
-      } else {
-        zoneVitrine.innerHTML = `
-          <div class="hero-vitrine-vide">
-            <span style="font-size:1.8rem;">🏠</span>
-            <p>Votre premier coup de cœur apparaîtra ici, en vitrine.</p>
-            <a href="/admin.html" class="btn btn-fantome btn-petit">Ajouter un bien</a>
-          </div>`;
-      }
-    })
-    .catch(() => {
-      document.getElementById("grille-coeur").innerHTML = `<div class="etat-vide">Impossible de charger les coups de cœur pour le moment.</div>`;
-      document.getElementById("coeur-filtres").classList.add("cache");
-    });
-
-  appelAPI("/api/biens").then((d) => {
-    const liste = d.biens || [];
-    document.getElementById("stat-biens").textContent = liste.length;
-    document.getElementById("stat-biens-libelle").textContent = liste.length > 1 ? "Biens au catalogue" : "Bien au catalogue";
-  }).catch(() => {});
-
-  // Fond animé du hero : fenêtres qui scintillent au hasard sur la silhouette de ville.
-  const zoneVille = document.getElementById("hero-ville");
-  if (zoneVille) {
-    for (let i = 0; i < 34; i++) {
-      const f = document.createElement("div");
-      f.className = "hero-fenetre";
-      f.style.width = (2 + Math.random() * 2) + "px";
-      f.style.height = (2 + Math.random() * 2) + "px";
-      f.style.left = (4 + Math.random() * 92) + "%";
-      f.style.bottom = (8 + Math.random() * 55) + "%";
-      f.style.animationDuration = (2 + Math.random() * 4) + "s";
-      f.style.animationDelay = (Math.random() * -6) + "s";
-      zoneVille.appendChild(f);
-    }
-  }
-
-  // Fond animé du hero : tempête de particules dorées qui montent lentement.
-  const zoneParticules = document.getElementById("hero-particules");
-  if (zoneParticules) {
-    for (let i = 0; i < 46; i++) {
-      const p = document.createElement("div");
-      p.className = "hero-particule";
-      const taille = 2 + Math.random() * 7;
-      p.style.width = taille + "px";
-      p.style.height = taille + "px";
-      p.style.left = Math.random() * 100 + "%";
-      p.style.bottom = (-10 - Math.random() * 20) + "%";
-      p.style.setProperty("--dx", (Math.random() * 120 - 60).toFixed(0) + "px");
-      const duree = 4 + Math.random() * 5;
-      p.style.animationDuration = duree + "s";
-      p.style.animationDelay = (Math.random() * -duree) + "s";
-      zoneParticules.appendChild(p);
-    }
-  }
-
-  document.getElementById("lien-discord-cta").href = LIEN_DISCORD;
-  document.getElementById("lien-discord-cta").target = "_blank";
-  document.getElementById("lien-discord-cta").rel = "noopener";
+<script type="importmap">
+{ "imports": { "three": "/vendor/three.module.min.js" } }
 </script>
+<noscript><style>.tag,.titre,.entrer,.pied,.cadre{opacity:1;animation:none}</style></noscript>
+</body>
+</html>
+<script type="module">
+import * as THREE from 'three';
+(function(){
+  const LOGO = "/img/logo-full.png";
+  const LOGO_ASP = 917/507;
+  const canvas = document.getElementById('fx');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1, 1.5)); renderer.setClearColor(0x000000, 0); renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(38, 1, 0.1, 100); cam.position.z = 10;
+  const monde = new THREE.Group(); scene.add(monde);      // tout ce qui s'incline avec la souris
+
+  // ---------- particules : halo qui converge autour du logo ----------
+  const N = 2200;
+  const start = new Float32Array(N*3), end = new Float32Array(N*3), seed = new Float32Array(N), size = new Float32Array(N);
+  const gauss = ()=>{ let u=0,v=0; while(!u) u=Math.random(); while(!v) v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+  // demi-axes du logo (largeur de référence 5.2) : le halo commence juste au-delà de son bord
+  const LX = 2.6, LY = 2.6/LOGO_ASP;
+  for (let i=0;i<N;i++){
+    const halo = i < N*0.68;
+    let ex, ey, ez;
+    if (halo){
+      // anneau elliptique face caméra, épaisseur gaussienne vers l'extérieur, jamais sur le logo
+      const a = Math.random()*Math.PI*2, sp = 0.18 + Math.abs(gauss())*0.42;
+      ex = Math.cos(a)*(LX*1.12 + sp*1.35); ey = Math.sin(a)*(LY*1.18 + sp*1.1); ez = (Math.random()*2-1)*0.9;
+    } else {
+      // poussière rare et large, en évitant une ellipse autour du logo
+      do { ex = (Math.random()*2-1)*9.5; ey = (Math.random()*2-1)*5.5; }
+      while ((ex*ex)/((LX*1.9)*(LX*1.9)) + (ey*ey)/((LY*2.4)*(LY*2.4)) < 1.0);
+      ez = (Math.random()*2-1)*3.0 - 1.0;
+    }
+    end[i*3]=ex; end[i*3+1]=ey; end[i*3+2]=ez;
+    // départ : éparpillées loin, en sphère
+    const u=Math.random()*Math.PI*2, v=Math.acos(2*Math.random()-1), d=10+Math.random()*10;
+    start[i*3]=Math.sin(v)*Math.cos(u)*d; start[i*3+1]=Math.sin(v)*Math.sin(u)*d*0.7; start[i*3+2]=Math.cos(v)*d;
+    seed[i]=Math.random()*6.283; size[i]= halo ? 0.45+Math.random()*0.75 : 0.3+Math.random()*0.5;
+  }
+  const pg = new THREE.BufferGeometry();
+  pg.setAttribute('position', new THREE.BufferAttribute(end,3));
+  pg.setAttribute('aStart', new THREE.BufferAttribute(start,3));
+  pg.setAttribute('aSeed', new THREE.BufferAttribute(seed,1));
+  pg.setAttribute('aSize', new THREE.BufferAttribute(size,1));
+  const pu = {uTime:{value:0}, uPix:{value:1}, uIn:{value:0}, uOut:{value:0}};
+  const pm = new THREE.ShaderMaterial({uniforms:pu, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    vertexShader:`
+      uniform float uTime,uPix,uIn,uOut; attribute vec3 aStart; attribute float aSeed,aSize; varying float vA;
+      void main(){
+        float k = 1.0 - pow(1.0 - uIn, 3.0);                         // ease-out
+        vec3 p = mix(aStart, position, k);
+        p.y += sin(uTime*0.6 + aSeed*4.0)*0.06;                       // respiration
+        p += normalize(vec3(p.xy, 0.0) + 0.001) * (uOut*uOut*22.0);  // sortie : explosion douce, dans le plan
+        vec4 mv = modelViewMatrix * vec4(p,1.0);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = aSize * uPix * (38.0 / -mv.z);                 // uPix = échelle liée à la hauteur d'écran
+        vA = (0.35 + 0.65*(0.5+0.5*sin(uTime*1.4 + aSeed*3.0))) * k * (1.0 - uOut);
+      }`,
+    fragmentShader:`
+      precision highp float; varying float vA;
+      void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c); if(d>0.5) discard;
+        float g=smoothstep(0.5,0.0,d); vec3 col=mix(vec3(0.72,0.50,0.22),vec3(0.98,0.90,0.66),g);
+        gl_FragColor=vec4(col, g*g*vA); }`
+  });
+  const halo = new THREE.Points(pg, pm); monde.add(halo);
+
+
+  // ---------- lueur derrière le logo ----------
+  const gu = {uTime:{value:0}, uIn:{value:0}, uOut:{value:0}};
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(11,11), new THREE.ShaderMaterial({uniforms:gu, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    vertexShader:`varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`precision highp float; varying vec2 vUv; uniform float uTime,uIn,uOut;
+      void main(){ float d=length((vUv-0.5)*vec2(1.0,1.35)); float g=smoothstep(0.6,0.0,d);
+        float pulse=0.85+0.15*sin(uTime*0.8); float a=g*g*0.30*pulse*uIn*(1.0-uOut);
+        gl_FragColor=vec4(vec3(0.86,0.68,0.36)*a, a); }`}));
+  glow.position.z = -0.4; monde.add(glow);
+
+  // ---------- logo : plan texturé + reflet doré qui balaie ----------
+  const lu = {uTex:{value:null}, uTime:{value:0}, uIn:{value:0}, uOut:{value:0}};
+  const logoMat = new THREE.ShaderMaterial({uniforms:lu, transparent:true, depthWrite:false,
+    vertexShader:`varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`precision highp float; varying vec2 vUv; uniform sampler2D uTex; uniform float uTime,uIn,uOut;
+      void main(){
+        vec4 t = texture2D(uTex, vUv);
+        // balayage lumineux diagonal toutes les ~6 s
+        float sweep = fract(uTime/6.0)*2.2-0.6; float band = exp(-pow((vUv.x + vUv.y*0.35 - sweep)*7.0, 2.0));
+        vec3 col = t.rgb + vec3(0.98,0.90,0.66)*band*0.55*t.a;
+        // apparition : fondu + très léger voile doré au début
+        float a = t.a * smoothstep(0.0,1.0,uIn) * (1.0-uOut);
+        gl_FragColor = vec4(col, a);
+      }`});
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(1,1), logoMat); monde.add(logo);
+  new THREE.TextureLoader().load(LOGO, (tex)=>{ tex.colorSpace=THREE.SRGBColorSpace; tex.minFilter=THREE.LinearMipmapLinearFilter; tex.anisotropy=renderer.capabilities.getMaxAnisotropy(); lu.uTex.value=tex; });
+
+  // ---------- dimensions : le logo occupe ~24 % de la hauteur, jamais plus de 78 % de la largeur ----------
+  function resize(){
+    const w=canvas.clientWidth, h=canvas.clientHeight;
+    renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix();
+    const worldH = 2*Math.tan(THREE.MathUtils.degToRad(cam.fov/2))*cam.position.z, worldW = worldH*cam.aspect;
+    let lh = worldH*0.26, lw = lh*LOGO_ASP;
+    if (lw > worldW*0.78){ lw = worldW*0.78; lh = lw/LOGO_ASP; }
+    logo.scale.set(lw, lh, 1);
+    const s = lw/5.2;                                    // le halo suit la taille du logo
+    halo.scale.set(s,s,s); glow.scale.set(s,s,1);
+    monde.position.y = worldH*0.10;                      // logo légèrement au-dessus du centre
+    pu.uPix.value = (h*renderer.getPixelRatio())/900;   // même rendu visuel en 1080p et en 1440p
+  }
+  addEventListener('resize', resize); resize();
+
+  // ---------- souris : inclinaison de l'ensemble ----------
+  const mouse={x:0,y:0}, ms={x:0,y:0};
+  addEventListener('pointermove', e=>{ mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-((e.clientY/innerHeight)*2-1); }, {passive:true});
+
+  // ---------- timeline ----------
+  const t0 = performance.now(); let sortieT = null;
+  const ENTREE = reduced ? 0.6 : 2.8;
+  function frame(now){
+    requestAnimationFrame(frame);
+    const t=(now-t0)/1000;
+    const tIn = Math.min(1, t/ENTREE);
+    const out = sortieT===null ? 0 : Math.min(1, (now-sortieT)/1100);
+    ms.x+=(mouse.x-ms.x)*0.05; ms.y+=(mouse.y-ms.y)*0.05;
+    monde.rotation.y = ms.x*0.18; monde.rotation.x = -ms.y*0.12;
+    if (!reduced) halo.rotation.z = t*0.04;
+    pu.uTime.value=gu.uTime.value=lu.uTime.value=t;
+    pu.uIn.value=tIn; gu.uIn.value=Math.max(0,(tIn-0.25)/0.75); lu.uIn.value=Math.max(0,(tIn-0.3)/0.7);
+    pu.uOut.value=gu.uOut.value=lu.uOut.value=out;
+    logo.scale.z = 1; logo.position.z = out*1.5;         // le logo s'avance vers nous en sortant
+    renderer.render(scene, cam);
+  }
+  requestAnimationFrame(frame);
+
+  // ---------- « Entrer sur le site » : sortie animée puis navigation ----------
+  const bouton = document.getElementById('entrer');
+  bouton.addEventListener('click', (e)=>{
+    if (sortieT!==null) return;
+    e.preventDefault(); sortieT=performance.now(); document.body.classList.add('sortie');
+    const href = bouton.getAttribute('href');
+    setTimeout(()=>{ window.location.href = href; }, 1150);
+  });
+})();
+</script>
+<noscript><style>.tag,.titre,.entrer,.pied,.cadre{opacity:1;animation:none}</style></noscript>
 </body>
 </html>

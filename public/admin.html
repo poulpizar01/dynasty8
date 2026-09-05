@@ -9,10 +9,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,600;1,300;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
+<!-- Aurore (fond animé de l'espace agents) : Three.js hébergé en local -->
+<script type="importmap">
+{ "imports": { "three": "/vendor/three.module.min.js" } }
+</script>
 <link rel="icon" type="image/png" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/favicon-180.png">
 </head>
-<body>
+<body class="page-agents">
+<canvas id="aurora-bg" aria-hidden="true"></canvas>
 
 <!-- ============ ICÔNES (sprite SVG, trait fin — remplace les emojis de l'espace agents) ============
      Utilisation : <svg class="ico"><use href="#ico-home"></use></svg> -->
@@ -55,14 +60,14 @@
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M20.3 5.3A16.6 16.6 0 0 0 16 4c-.2.4-.4.8-.5 1.2a15 15 0 0 0-6.9 0A9 9 0 0 0 8 4a16.6 16.6 0 0 0-4.3 1.3C1.4 9 .8 12.6 1 16.2A16.7 16.7 0 0 0 6 18.8c.4-.5.8-1.1 1.1-1.7a10.6 10.6 0 0 1-1.7-.8l.4-.3a12 12 0 0 0 10.4 0l.4.3c-.5.3-1.1.6-1.7.8.3.6.7 1.2 1.1 1.7a16.6 16.6 0 0 0 5-2.6c.3-4.2-.7-7.7-2.7-11zM9 14.1c-.9 0-1.7-.9-1.7-1.9 0-1.1.7-2 1.7-2s1.7.9 1.7 2c0 1-.8 1.9-1.7 1.9zm6 0c-.9 0-1.7-.9-1.7-1.9 0-1.1.7-2 1.7-2s1.7.9 1.7 2c0 1-.7 1.9-1.7 1.9z"/></svg>
         Se connecter avec Discord
       </a>
-      <p style="text-align:center;margin-top:18px;"><a href="/" style="font-size:0.85rem;color:var(--text-faint);">← Retour au site</a></p>
+      <p style="text-align:center;margin-top:18px;"><a href="/accueil.html" style="font-size:0.85rem;color:var(--text-faint);">← Retour au site</a></p>
     </div>
 
     <!-- Affiché juste après le retour de Discord, si personne ne validait déjà ce compte -->
     <div id="bloc-attente" class="cache">
       <h3 style="text-align:center;">Demande envoyée ✓</h3>
       <p style="text-align:center;font-size:0.88rem;">Votre compte Discord a bien été reconnu. Un membre de la Direction doit maintenant valider votre accès depuis l'onglet « Comptes & accès ». Revenez un peu plus tard.</p>
-      <a href="/" class="btn btn-fantome" style="width:100%;">Retour au site</a>
+      <a href="/accueil.html" class="btn btn-fantome" style="width:100%;">Retour au site</a>
     </div>
   </div>
 </div>
@@ -70,7 +75,7 @@
 <!-- ============ ESPACE ADMINISTRATION (visible une fois connecté) ============ -->
 <div class="admin-shell">
   <aside class="admin-barre-laterale">
-    <a href="/" target="_blank" class="logo" style="margin-bottom:24px;padding:0 8px;" title="Voir le site public">
+    <a href="/accueil.html" target="_blank" class="logo" style="margin-bottom:24px;padding:0 8px;" title="Voir le site public">
       <img src="/img/logo-full.png" alt="Dynasty 8" class="logo-entete">
     </a>
     <p class="admin-nav-groupe">Agence</p>
@@ -161,9 +166,14 @@
           <p class="agenda-sous-titre">🔒 Personnel — visible uniquement par vous · <span id="agenda-plage-dates"></span></p>
         </div>
         <div class="agenda-entete-actions">
-          <button type="button" class="btn btn-fantome btn-petit" id="agenda-semaine-precedente" aria-label="Semaine précédente">‹</button>
+          <div class="agenda-vue-toggle" role="group" aria-label="Choisir la vue">
+            <button type="button" class="agenda-vue-bouton" data-vue="mois">Mois</button>
+            <button type="button" class="agenda-vue-bouton actif" data-vue="semaine">Semaine</button>
+            <button type="button" class="agenda-vue-bouton" data-vue="jour">Jour</button>
+          </div>
+          <button type="button" class="btn btn-fantome btn-petit" id="agenda-semaine-precedente" aria-label="Période précédente">‹</button>
           <button type="button" class="btn btn-fantome btn-petit" id="agenda-aujourdhui">Aujourd'hui</button>
-          <button type="button" class="btn btn-fantome btn-petit" id="agenda-semaine-suivante" aria-label="Semaine suivante">›</button>
+          <button type="button" class="btn btn-fantome btn-petit" id="agenda-semaine-suivante" aria-label="Période suivante">›</button>
           <button type="button" class="btn btn-or btn-petit" id="agenda-nouvel-evenement">+ Événement</button>
         </div>
       </div>
@@ -1021,5 +1031,25 @@ TOTAL    -    0    0    0    0    0    -"></textarea>
 
 <script src="/layout.js"></script>
 <script src="/admin.js"></script>
+<script type="module">
+  // Fond animé « aurore » de l'espace agents. Isolé dans un try/catch : si le
+  // WebGL est indisponible (vieux GPU, pilote bloqué...), on retombe simplement
+  // sur le fond sombre habituel, sans la moindre erreur visible pour l'agent.
+  import * as THREE from 'three';
+  import { mountAurora } from '/aurora.js';
+  try {
+    window.__aurora = mountAurora(THREE, {
+      canvas: document.getElementById('aurora-bg'),
+      intensity: 0.5,   // discret : c'est un outil de travail
+      stars: 0.7,
+      ridge: false,     // pas de silhouette de montagnes derrière un tableau de bord
+      parallax: true,
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
+    });
+  } catch (e) {
+    const c = document.getElementById('aurora-bg');
+    if (c) c.style.display = 'none';
+  }
+</script>
 </body>
 </html>

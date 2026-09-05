@@ -590,7 +590,7 @@ async function chatContacts(env, s) {
      FROM membres m
      LEFT JOIN presence p ON p.membre_id = m.id
      WHERE m.id != ?1 AND m.statut = 'valide' AND m.actif = 1
-     ORDER BY (dernier_le IS NULL) ASC, dernier_le DESC, m.pseudo COLLATE NOCASE`
+     ORDER BY dernier_le DESC NULLS LAST, m.pseudo COLLATE NOCASE`
   ).bind(s.id).all();
 
   const moi = await env.DB.prepare("SELECT statut FROM presence WHERE membre_id = ?1").bind(s.id).first();
@@ -605,7 +605,7 @@ async function chatContacts(env, s) {
     statut: m.presence_statut === "invisible" ? "hors_ligne" : (m.en_ligne ? (m.presence_statut || "disponible") : "hors_ligne"),
     dernier_message: m.dernier_type === "clin_oeil" ? "👋 Clin d'œil" : (m.dernier_contenu || ""),
     dernier_message_le: m.dernier_le || null,
-    non_lus: m.non_lus || 0,
+    non_lus: Number(m.non_lus) || 0,
   }));
   console.error(`[chat] contacts pour membre ${s.id} : ${contacts.length} trouvé(s).`);
   return json({ statut: (moi && moi.statut) || "disponible", contacts });

@@ -1849,6 +1849,49 @@ section.section.serre {
 .agenda-entete-actions #agenda-semaine-precedente, .agenda-entete-actions #agenda-semaine-suivante { width: 34px; padding: 0; }
 .agenda-note { flex-shrink: 0; margin: 12px 0 0; font-size: 0.78rem; color: var(--text-faint); }
 
+/* ---- agenda : bascule de vue (Mois / Semaine / Jour) ---- */
+.agenda-vue-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.agenda-vue-bouton {
+  background: rgba(6, 12, 26, 0.5); color: var(--text-faint); border: none; border-left: 1px solid var(--border);
+  height: 34px; padding: 0 15px; font-family: var(--d8-font-ui); font-size: 0.8rem; font-weight: 500; cursor: pointer;
+  transition: background var(--d8-t), color var(--d8-t);
+}
+.agenda-vue-bouton:first-child { border-left: none; }
+.agenda-vue-bouton:hover { color: var(--text); }
+.agenda-vue-bouton.actif { background: var(--d8-grad-gold-soft); color: var(--gold-light); box-shadow: inset 0 0 0 1px rgba(201, 165, 92, 0.35); }
+
+/* ---- agenda : vue mois (grille type Google Agenda) ---- */
+.agenda-grille-conteneur.agenda-conteneur-mois { overflow: auto; }
+.agenda-mois { display: flex; flex-direction: column; min-width: 760px; min-height: 100%; }
+.agenda-mois-entete { display: grid; grid-template-columns: repeat(7, 1fr); position: sticky; top: 0; z-index: 2; background: var(--bg-elevated); border-bottom: 1px solid var(--border); }
+.agenda-mois-entete-jour { text-align: center; padding: 9px 6px; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text); font-weight: 500; border-right: 1px solid var(--border); }
+.agenda-mois-entete-jour:last-child { border-right: none; }
+.agenda-mois-corps { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(102px, 1fr); }
+.agenda-mois-case {
+  display: flex; flex-direction: column; gap: 3px; min-height: 102px; padding: 4px 4px 6px; box-sizing: border-box;
+  border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); cursor: pointer; overflow: hidden;
+}
+.agenda-mois-case:nth-child(7n) { border-right: none; }
+.agenda-mois-case:hover { background: rgba(201, 165, 92, 0.06); }
+.agenda-mois-case:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: -2px; }
+.agenda-mois-hors { background: rgba(6, 12, 26, 0.35); }
+.agenda-mois-hors .agenda-mois-num { color: var(--text-faint); opacity: 0.55; }
+.agenda-mois-num { align-self: flex-end; font-size: 0.8rem; color: var(--text); padding: 0 4px; line-height: 1.4; }
+.agenda-mois-aujourdhui .agenda-mois-num {
+  background: var(--d8-grad-gold); color: var(--or-contrast); font-weight: 600; border-radius: 999px;
+  min-width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.agenda-mois-evenements { display: flex; flex-direction: column; gap: 2px; min-height: 0; }
+.agenda-mois-evenement {
+  display: flex; align-items: baseline; gap: 5px; font-size: 0.72rem; color: var(--text);
+  background: rgba(201, 165, 92, 0.16); border-left: 2px solid var(--gold); border-radius: 3px;
+  padding: 1px 5px; cursor: pointer; white-space: nowrap; overflow: hidden;
+}
+.agenda-mois-evenement:hover, .agenda-mois-evenement:focus-visible { background: rgba(201, 165, 92, 0.34); outline: none; }
+.agenda-mois-heure { color: var(--gold-strong); font-weight: 500; flex-shrink: 0; }
+.agenda-mois-evenement-titre { overflow: hidden; text-overflow: ellipsis; }
+.agenda-mois-plus { font-size: 0.68rem; color: var(--text-faint); padding-left: 5px; }
+
 .agenda-grille-conteneur {
   flex: 1; min-height: 0; overflow: auto;
   border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card);
@@ -2440,6 +2483,9 @@ section.section.serre {
 /* La zone de contenu ne doit jamais déborder du viewport : les tableaux larges
    défilent dans leur propre conteneur (.carte-table est en overflow-x:auto). */
 .admin-contenu { min-width: 0; }
+/* Le contenu occupe toute la largeur disponible (plus de plafond) : sur les
+   grands écrans, tableau, cartes et indicateurs s'étirent jusqu'aux bords. */
+.admin-contenu { max-width: none; width: 100%; }
 
 /* ---- en-tête de panneau + filet or ---- */
 .entete-admin { align-items: flex-end; padding-bottom: 18px; margin-bottom: 22px; position: relative; }
@@ -2537,6 +2583,35 @@ section.section.serre {
   .stat-carte { padding: 12px 14px; gap: 10px; }
   .stat-icone { width: 38px; height: 38px; }
   .stat-sous-libelle { display: none; }
+}
+
+/* ==========================================================================
+   Espace agents — fond animé « aurore » (Three.js, voir admin.html)
+   Tout est scopé à body.page-agents pour NE PAS toucher au site public, qui
+   partage pourtant cette feuille de style. Le canvas est la couche la plus au
+   fond (z-index -3) ; les couches marbre (-2) et voile (-1) deviennent
+   semi-transparentes ici pour laisser voir l'aurore tout en gardant le texte
+   lisible. Le fond opaque du body reste en repli si le WebGL échoue.
+   ========================================================================== */
+#aurora-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: -3; }
+
+body.page-agents::before {
+  background:
+    radial-gradient(55% 30% at 12% 8%, rgba(201, 165, 92, 0.16), transparent 60%),
+    radial-gradient(40% 26% at 88% 22%, rgba(201, 165, 92, 0.13), transparent 62%),
+    radial-gradient(45% 24% at 22% 70%, rgba(201, 165, 92, 0.1), transparent 60%),
+    radial-gradient(38% 22% at 80% 88%, rgba(201, 165, 92, 0.09), transparent 60%),
+    linear-gradient(160deg, rgba(14, 27, 51, 0.34) 0%, rgba(10, 20, 40, 0.46) 45%, rgba(6, 12, 26, 0.6) 100%);
+}
+body.page-agents::after {
+  background:
+    radial-gradient(120% 75% at 50% 0%, rgba(6, 12, 26, 0.12) 0%, rgba(6, 12, 26, 0.5) 68%, rgba(6, 12, 26, 0.68) 100%),
+    linear-gradient(180deg, rgba(6, 12, 26, 0.05) 0%, rgba(6, 12, 26, 0.4) 100%);
+}
+/* Écran de connexion : on retire le fond opaque pour laisser voir l'aurore,
+   en gardant la lueur dorée d'origine. */
+body.page-agents .ecran-connexion {
+  background: radial-gradient(ellipse at top, rgba(207, 159, 86, 0.16), transparent 60%);
 }
 
 .cache { display: none !important; }
