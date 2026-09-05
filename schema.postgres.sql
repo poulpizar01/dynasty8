@@ -264,92 +264,46 @@ CREATE TABLE IF NOT EXISTS stats_ventes_doublons_marques (
 CREATE INDEX IF NOT EXISTS idx_doublons_marques_originale ON stats_ventes_doublons_marques(ligne_originale_id);
 
 
--- ---- Intégration bot Discord "Roxwood Network" -----------------------------
--- Le bot Roxwood Network (recrutement/service client/absences/monitoring
--- FiveM, tourne sur son propre serveur) peut envoyer des événements en direct
--- par webhook signé HMAC-SHA256 (voir /api/webhooks/roxwood dans
--- src/index.js). Chaque type d'événement a SON PROPRE secret côté bot (généré
--- une fois par abonnement webhook, panneau Discord "Monitoring" -> "Ajouter
--- un webhook") : on stocke donc un secret par type_evenement, saisi à la main
--- dans Paramètres -> Roxwood Network, jamais dans le code ni une variable
--- d'environnement. Les événements reçus sont conservés tels quels dans
--- roxwood_evenements, en simple journal de consultation — rien ici
--- n'alimente automatiquement stats_logs_ventes ni la comptabilité.
--- Le type "custom" est particulier : contrairement aux 7 autres (un seul
--- secret possible par type), il autorise PLUSIEURS abonnements simultanés
--- pour le même bot (ex: deux synchros Google Sheets différentes vers deux
--- webhooks distincts). On les distingue par un "label" libre choisi côté
--- Discord lors de la création de l'abonnement webhook "Personnalisé". Pour
--- les 7 types fixes, label vaut toujours '' (chaîne vide) : un seul secret
--- par type_evenement, comme avant.
-CREATE TABLE IF NOT EXISTS roxwood_config (
-  type_evenement TEXT NOT NULL,
-  label TEXT NOT NULL DEFAULT '',
-  webhook_secret TEXT NOT NULL,
-  mis_a_jour_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')),
-  mis_a_jour_par TEXT,
-  PRIMARY KEY (type_evenement, label)
-);
 
--- Migration idempotente pour une base déjà déployée avec l'ancien schéma
--- (clé primaire = type_evenement seul, pas de colonne label).
-ALTER TABLE roxwood_config ADD COLUMN IF NOT EXISTS label TEXT NOT NULL DEFAULT '';
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM information_schema.table_constraints tc
-    JOIN information_schema.key_column_usage kcu
-      ON kcu.constraint_name = tc.constraint_name
-     AND kcu.table_name = tc.table_name
-    WHERE tc.table_name = 'roxwood_config'
-      AND tc.constraint_type = 'PRIMARY KEY'
-      AND kcu.column_name = 'label'
-  ) THEN
-    ALTER TABLE roxwood_config DROP CONSTRAINT IF EXISTS roxwood_config_pkey;
-    ALTER TABLE roxwood_config ADD CONSTRAINT roxwood_config_pkey PRIMARY KEY (type_evenement, label);
-  END IF;
-END $$;
+-- ---- Retrait de l'intégration bot Discord "Roxwood Network" (sept. 2026) --
+-- Plus utilisée (confirmé) : ni le journal d'événements, ni l'agrégation de
+-- CA, ni le webhook "custom" (qui ne servait plus à enregistrer de ventes
+-- réelles). DROP idempotent : sans effet si déjà exécuté une fois.
+DROP TABLE IF EXISTS roxwood_transactions CASCADE;
+DROP TABLE IF EXISTS roxwood_evenements CASCADE;
+DROP TABLE IF EXISTS roxwood_config CASCADE;
 
-CREATE TABLE IF NOT EXISTS roxwood_evenements (
+-- ---- Synchronisation Google Sheets (recap primes par membre, "Mon profil") -
+-- Lit un onglet précis d'un Google Sheets externe via son export CSV public
+-- (partagé "Tous les utilisateurs disposant du lien - Lecteur"), sans API ni
+-- identifiants Google côté serveur — voir src/google-sheets.js. Colonne D =
+-- nom complet, E = grade, L = nb ventes, M = nb locations. Les MONTANTS de
+-- primes ne sont volontairement PAS lus depuis le Sheet (colonnes N/O) : ils
+-- sont recalculés à partir des mêmes barèmes que le reste du module
+-- Statistiques (stats_baremes_primes), pour n'avoir qu'un seul endroit où
+-- régler un montant de prime.
+ALTER TABLE membres ADD COLUMN IF NOT EXISTS nom_sheet TEXT;
+
+CREATE TABLE IF NOT EXISTS sync_sheet_agents (
   id SERIAL PRIMARY KEY,
-  guild_id TEXT,
-  type_evenement TEXT NOT NULL,
-  label TEXT NOT NULL DEFAULT '',
-  charge_utile TEXT NOT NULL,
-  recu_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
+  nom_sheet TEXT NOT NULL,
+  nom_normalise TEXT NOT NULL,
+  grade_sheet TEXT NOT NULL DEFAULT '',
+  nb_ventes INTEGER NOT NULL DEFAULT 0,
+  nb_locations INTEGER NOT NULL DEFAULT 0,
+  membre_id INTEGER REFERENCES membres(id) ON DELETE SET NULL,
+  ligne_sheet INTEGER,
+  maj TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
 );
-ALTER TABLE roxwood_evenements ADD COLUMN IF NOT EXISTS label TEXT NOT NULL DEFAULT '';
-CREATE INDEX IF NOT EXISTS idx_roxwood_evenements_recu_le ON roxwood_evenements(recu_le DESC);
-CREATE INDEX IF NOT EXISTS idx_roxwood_evenements_type ON roxwood_evenements(type_evenement);
+CREATE INDEX IF NOT EXISTS idx_sync_sheet_agents_membre ON sync_sheet_agents(membre_id);
 
--- ---- Agrégation des ventes Roxwood (produits/factures/commandes livrées) --
--- Sert UNIQUEMENT une nouvelle vue d'ensemble globale dans Statistiques
--- (CA immobilier existant + CA Roxwood additionnés). N'alimente JAMAIS les
--- primes/commissions/quotas par agent ni la déclaration DOT : Roxwood n'a ni
--- notion d'agent immobilier (ses ventes sont attribuées à des pseudos
--- Discord d'une autre activité) ni de location — voir la doc en tête de
--- src/roxwood-agrege.js pour le détail du raisonnement. roxwood_evenements
--- (la source brute) n'est jamais modifié par cette table : ceci est une
--- extraction dérivée, recalculable à tout moment.
-CREATE TABLE IF NOT EXISTS roxwood_transactions (
-  id SERIAL PRIMARY KEY,
-  guild_id TEXT,
-  type TEXT NOT NULL DEFAULT 'Vente',
-  montant INTEGER NOT NULL DEFAULT 0,
-  bien TEXT NOT NULL DEFAULT '',
-  source TEXT NOT NULL,
-  cle_dedup TEXT NOT NULL,
-  date_transaction TEXT,
-  roxwood_evenement_id INTEGER REFERENCES roxwood_evenements(id) ON DELETE SET NULL,
-  cree_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
+-- Une seule ligne (id verrouillé à 1) : état de la dernière synchronisation,
+-- affiché dans Paramètres (date, succès/erreur, nb de lignes lues/appariées).
+CREATE TABLE IF NOT EXISTS sync_sheet_etat (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  derniere_sync TEXT,
+  statut TEXT NOT NULL DEFAULT '',
+  erreur TEXT NOT NULL DEFAULT '',
+  nb_lignes INTEGER NOT NULL DEFAULT 0,
+  nb_apparies INTEGER NOT NULL DEFAULT 0
 );
-CREATE UNIQUE INDEX IF NOT EXISTS idx_roxwood_transactions_dedup ON roxwood_transactions(cle_dedup);
-CREATE INDEX IF NOT EXISTS idx_roxwood_transactions_date ON roxwood_transactions(date_transaction);
-
--- État d'extraction par événement source (uniquement pour monitoring.sale,
--- monitoring.invoice, order.updated — NULL pour tous les autres types) :
---   'ok'     -> une ligne a été créée/mise à jour dans roxwood_transactions
---   'ignore' -> commande pas (encore) livrée : normal, pas une erreur
---   'echec'  -> événement mal formé, compté "non traités" dans Paramètres
-ALTER TABLE roxwood_evenements ADD COLUMN IF NOT EXISTS etat_extraction TEXT;

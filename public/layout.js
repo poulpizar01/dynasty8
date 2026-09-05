@@ -455,3 +455,92 @@ function ameliorerSelect(select, pastille, portee) {
 function nettoyerSelectsPortee(portee) {
   document.querySelectorAll(`.d8-select-flottant[data-portee="${portee}"]`).forEach((el) => el.remove());
 }
+
+// =============================================================================
+// Cartes « hub » en 3D + poussière d'or de fond (toutes les pages publiques).
+// - habillerCartesHub() : bascule vers la souris, reflet qui suit le curseur,
+//   apparition en cascade, et remplacement des emojis par des icônes dorées au
+//   trait (mêmes formes que dans l'espace agents). Aucune modification de HTML
+//   nécessaire sur les pages : tout se fait sur la classe .carte-hub.
+// - demarrerPoussiereOr() : canvas WebGL fixe derrière la page (Three.js chargé
+//   à la demande depuis /vendor). Ignoré sur l'espace agents (déjà l'aurore),
+//   sans WebGL, ou si la personne a demandé de réduire les animations.
+// =============================================================================
+const D8_ICONES_HUB = {
+  "🏠": '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+  "🚗": '<path d="M3 13l2-5a2 2 0 0 1 2-1h10a2 2 0 0 1 2 1l2 5v5H3z"/><circle cx="7.5" cy="16" r="1.5"/><circle cx="16.5" cy="16" r="1.5"/><path d="M5 13h14"/>',
+  "💎": '<path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M9 3l3 6 3-6M12 9l-3 12M12 9l3 12"/>',
+  "🧭": '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+  "⭐": '<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/>',
+  "🏝️": '<path d="M12 21c4-5 7-8.5 7-12a7 7 0 1 0-14 0c0 3.5 3 7 7 12z"/><circle cx="12" cy="9" r="2.5"/>',
+  "🌲": '<path d="M12 3l5 8h-3l4 6H6l4-6H7z"/><path d="M12 17v4"/>',
+  "🛋️": '<path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M3 12a2 2 0 0 1 2 2v3h14v-3a2 2 0 0 1 2-2"/><path d="M5 17v2M19 17v2"/>',
+  "📦": '<path d="M3 8l9-4 9 4-9 4z"/><path d="M3 8v9l9 4 9-4V8"/><path d="M12 12v9"/>',
+};
+const D8_FLECHE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+
+function habillerCartesHub() {
+  const cartes = document.querySelectorAll(".carte-hub");
+  if (!cartes.length) return;
+  const reduit = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  cartes.forEach((c, i) => {
+    // icône : emoji -> trait doré (si on connaît l'emoji ; sinon on le laisse)
+    const ic = c.querySelector(".icone");
+    if (ic && !ic.querySelector("svg")) {
+      const cle = Object.keys(D8_ICONES_HUB).find((k) => ic.textContent.trim().startsWith(k.replace("️", "")) || ic.textContent.trim() === k);
+      if (cle) ic.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${D8_ICONES_HUB[cle]}</svg>`;
+    }
+    // flèche : "Texte →" -> "Texte" + icône
+    const fl = c.querySelector(".carte-hub-fleche");
+    if (fl && !fl.querySelector("svg")) fl.innerHTML = fl.textContent.replace(/\s*→\s*$/, "") + " " + D8_FLECHE_SVG;
+    // apparition en cascade (réinitialisée par grille)
+    const grille = c.closest(".grille-hub");
+    const idx = grille ? Array.prototype.indexOf.call(grille.children, c) : i;
+    c.style.setProperty("--i", String(Math.max(0, idx)));
+    c.classList.add("carte-hub--anim");
+    // bascule + reflet
+    c.addEventListener("pointermove", (e) => {
+      const r = c.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+      c.style.setProperty("--mx", (px * 100) + "%"); c.style.setProperty("--my", (py * 100) + "%"); c.style.setProperty("--lum", "1");
+      if (!reduit) { c.style.setProperty("--ry", ((px - 0.5) * 14) + "deg"); c.style.setProperty("--rx", ((0.5 - py) * 12) + "deg"); }
+    });
+    c.addEventListener("pointerleave", () => { c.style.setProperty("--rx", "0deg"); c.style.setProperty("--ry", "0deg"); c.style.setProperty("--lum", "0"); });
+  });
+}
+
+function demarrerPoussiereOr() {
+  if (document.body.classList.contains("page-agents")) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (document.querySelector(".d8-poussiere")) return;
+  import("/vendor/three.module.min.js").then((THREE) => {
+    const canvas = document.createElement("canvas");
+    canvas.className = "d8-poussiere"; canvas.setAttribute("aria-hidden", "true");
+    document.body.prepend(canvas);
+    let renderer;
+    try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true, powerPreference: "high-performance" }); }
+    catch (e) { canvas.remove(); return; }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); renderer.setClearColor(0x000000, 0);
+    const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(55, 1, 0.1, 100); cam.position.z = 9;
+    const N = 600, pos = new Float32Array(N * 3), seed = new Float32Array(N), sz = new Float32Array(N);
+    for (let i = 0; i < N; i++) { pos[i*3] = (Math.random()*2-1)*16; pos[i*3+1] = (Math.random()*2-1)*9; pos[i*3+2] = (Math.random()*2-1)*5; seed[i] = Math.random()*6.283; sz[i] = 0.35 + Math.random()*1.1; }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("aSeed", new THREE.BufferAttribute(seed, 1)); g.setAttribute("aSize", new THREE.BufferAttribute(sz, 1));
+    const u = { uTime: { value: 0 }, uPix: { value: 1 }, uScroll: { value: 0 } };
+    scene.add(new THREE.Points(g, new THREE.ShaderMaterial({ uniforms: u, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: `uniform float uTime,uPix,uScroll;attribute float aSeed,aSize;varying float vA;
+        void main(){vec3 p=position;p.y=mod(p.y+uTime*0.25+uScroll*(0.6+0.4*fract(aSeed))+9.0,18.0)-9.0;p.x+=sin(uTime*0.2+aSeed)*0.5;
+        vec4 mv=modelViewMatrix*vec4(p,1.0);gl_Position=projectionMatrix*mv;gl_PointSize=aSize*uPix*(30.0/-mv.z);vA=0.25+0.75*(0.5+0.5*sin(uTime*1.2+aSeed*3.0));}`,
+      fragmentShader: `precision highp float;varying float vA;void main(){vec2 c=gl_PointCoord-0.5;float d=length(c);if(d>0.5)discard;float gl=smoothstep(0.5,0.0,d);gl_FragColor=vec4(mix(vec3(0.75,0.5,0.24),vec3(0.98,0.9,0.66),gl),gl*gl*vA*0.7);}` })));
+    function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); u.uPix.value = (h * renderer.getPixelRatio()) / 900; }
+    addEventListener("resize", resize); resize();
+    const t0 = performance.now();
+    (function frame(now) { requestAnimationFrame(frame); u.uTime.value = (now - t0) / 1000; u.uScroll.value = scrollY / 300; renderer.render(scene, cam); })(t0);
+  }).catch(() => {});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => { habillerCartesHub(); demarrerPoussiereOr(); });
+} else {
+  habillerCartesHub(); demarrerPoussiereOr();
+}

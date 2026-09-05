@@ -23,7 +23,7 @@
 
 import { enc, b64url, unb64url } from "./util-crypto.js";
 import * as statsCalc from "./stats-calc.js";
-import { extraireTransactionRoxwood, extraireLigneImmobiliereRoxwood } from "./roxwood-agrege.js";
+import { synchroniserSheetSansErreur } from "./google-sheets.js";
 
 const COOKIE = "d8_session";
 const COOKIE_ETAT_OAUTH = "d8_oauth_state"; // protection anti-CSRF pendant l'aller-retour vers Discord
@@ -182,8 +182,7 @@ export default {
       if (chemin.startsWith("/api/chat/")) return await chat(request, url, env);
       if (chemin.startsWith("/api/comptabilite/")) return await comptabilite(request, url, env);
       if (chemin.startsWith("/api/stats/")) return await statistiques(request, url, env);
-      if (chemin === "/api/webhooks/roxwood") return await roxwoodWebhook(request, env);
-      if (chemin.startsWith("/api/roxwood/")) return await roxwood(request, url, env);
+      if (chemin.startsWith("/api/sync-sheet/")) return await syncSheet(request, url, env);
       return json({ erreur: "Adresse inconnue." }, 404);
     } catch (e) {
       // DIAGNOSTIC : journalise l'erreur complète côté serveur (jamais de
@@ -409,13 +408,43 @@ function statsPeutAdministrer(s) {
   return estDirection(s);
 }
 
+// Ventes/locations synchronisées depuis le Google Sheets (colonnes L/M,
+// appariées via nom_sheet ou pseudo — voir src/google-sheets.js) + primes
+// recalculées avec les MÊMES barèmes que le reste du module Statistiques
+// (stats_baremes_primes), jamais les colonnes N/O du Sheet. Toujours des
+// zéros si le membre n'a pas (encore) de ligne appariée dans le Sheet.
+async function mesPrimesSheet(env, membreId) {
+  const [ligneR, baremesR, etatR] = await Promise.all([
+    env.DB.prepare("SELECT nb_ventes, nb_locations, maj FROM sync_sheet_agents WHERE membre_id = ?1").bind(membreId).first(),
+    env.DB.prepare("SELECT * FROM stats_baremes_primes").all(),
+    env.DB.prepare("SELECT derniere_sync FROM sync_sheet_etat WHERE id = 1").first(),
+  ]);
+  const baremes = baremesR.results || [];
+  const baremeVentes = baremes.filter((b) => b.type === "vente");
+  const baremeLocations = baremes.filter((b) => b.type === "location");
+  const nbVentes = ligneR ? ligneR.nb_ventes : 0;
+  const nbLocations = ligneR ? ligneR.nb_locations : 0;
+  const primeVente = statsCalc.montantPalier(baremeVentes, nbVentes);
+  const primeLocations = statsCalc.montantPalier(baremeLocations, nbLocations);
+  return {
+    synchronise: !!ligneR,
+    ventes: nbVentes,
+    locations: nbLocations,
+    primeVente,
+    primeLocations,
+    primeTotale: primeVente + primeLocations,
+    derniereSync: (etatR && etatR.derniere_sync) || null,
+  };
+}
+
 async function moi(request, env) {
   const s = await session(request, env);
   if (!s) return json({ connecte: false }, 401);
   if (request.method === "PUT") return modifierMonProfil(request, env, s);
-  const m = await env.DB.prepare(
-    "SELECT poste, specialite, bio, photo FROM membres WHERE id = ?1"
-  ).bind(s.id).first();
+  const [m, primes] = await Promise.all([
+    env.DB.prepare("SELECT poste, specialite, bio, photo FROM membres WHERE id = ?1").bind(s.id).first(),
+    mesPrimesSheet(env, s.id),
+  ]);
   return json({
     connecte: true,
     id: s.id,
@@ -427,6 +456,7 @@ async function moi(request, env) {
     specialite: (m && m.specialite) || "",
     bio: (m && m.bio) || "",
     photo: (m && m.photo) || "",
+    primes,
   });
 }
 
@@ -1312,7 +1342,15 @@ async function statsSemaines(env, s) {
   if (!statsPeutVoirSoi(s)) return json({ erreur: "Non connecté." }, 401);
   const { lignes } = await lireLignesPourCalculs(env);
   const compteurs = new Map();
+  // Totaux agence, toutes semaines confondues (mêmes unités que le récap par
+  // agent : compterAchats()/compterLocations() dans stats-calc.js — une
+  // ligne avec intérieur ET garage compte pour 2, une location compte sa
+  // quantité en colonne N, pas juste "1 ligne").
+  let totalVentes = 0;
+  let totalLocations = 0;
   lignes.forEach((l) => {
+    if (l.type === "Vente") totalVentes += (l.interieur !== "" ? 1 : 0) + (l.garage !== "" ? 1 : 0);
+    else if (l.type === "Location") totalLocations += (l.interieur !== "" ? l.quantiteLoc : 0) + (l.garage !== "" ? l.quantiteLoc : 0);
     if (!l.semaine) return; // absente en colonne P -> exclue de tous les récaps (§7)
     compteurs.set(l.semaine, (compteurs.get(l.semaine) || 0) + 1);
   });
@@ -1332,7 +1370,7 @@ async function statsSemaines(env, s) {
     })
     .sort((a, b) => b.ordre - a.ordre)
     .map(({ ordre, ...reste }) => reste);
-  return json({ semaines });
+  return json({ semaines, totalVentes, totalLocations });
 }
 
 async function statsAnomalies(env, url, s) {
@@ -1412,12 +1450,12 @@ async function calculerRecapSemaine(env, semaine) {
   return agents;
 }
 
-// ---- Vue d'ensemble globale (NOUVEAU) : additionne le CA immobilier ------
-// existant (inchangé, mêmes lignes/exclusions que partout ailleurs sur le
-// site — voir lireLignesPourCalculs()) et le CA Roxwood (produits/factures/
-// commandes livrées, voir roxwood-agrege.js), sur une période libre. Ne
-// touche JAMAIS aux primes/commissions/DOT par agent : ce sont des totaux
-// d'affichage uniquement, calculés à part.
+// ---- Vue d'ensemble globale : chiffre d'affaires immobilier (mêmes lignes/
+// exclusions que la paie/le récap, voir lireLignesPourCalculs()) sur une
+// période libre. Ne touche JAMAIS aux primes/commissions/DOT par agent : un
+// total d'affichage uniquement, calculé à part.
+// (L'intégration "Roxwood Network" — CA combiné avec un bot externe — a été
+// retirée en sept. 2026, plus utilisée.)
 function parseDateVenteJJMMAAAA(brut) {
   const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(brut || "").trim());
   if (!m) return null;
@@ -1435,7 +1473,6 @@ async function statsVueEnsemble(env, url, s) {
     return json({ erreur: "Paramètres « debut » et « fin » invalides (format AAAA-MM-JJ attendu, debut <= fin)." }, 400);
   }
 
-  // ---- Côté immobilier (inchangé, mêmes lignes que la paie/le récap) -----
   const { lignes } = await lireLignesPourCalculs(env);
   let immoNbVentes = 0, immoNbLocations = 0, immoCa = 0;
   for (const l of lignes) {
@@ -1447,35 +1484,10 @@ async function statsVueEnsemble(env, url, s) {
     immoCa += Number(l.montant) || 0;
   }
 
-  // ---- Côté Roxwood (agrégat SQL déjà pré-calculé, voir roxwoodStats()) --
-  const isoTransactions = (d) => d.toISOString();
-  const isoInterne = (d) => d.toISOString().replace("T", " ").replace(/\.\d+Z$/, "");
-  const agg = await env.DB.prepare(
-    `SELECT COUNT(*) AS nb, COALESCE(SUM(montant), 0) AS total
-       FROM roxwood_transactions
-      WHERE date_transaction >= ?1 AND date_transaction < ?2`
-  ).bind(isoTransactions(bDebut), isoTransactions(bFinExclusive)).first();
-  // "non traites" ne doit compter QUE les echecs des 3 types qui nourrissent
-  // reellement roxwood_transactions (donc roxwoodNbVentes/roxwoodCa
-  // ci-dessus) -- pas les echecs d'un webhook "custom" (ex: synchro
-  // immobiliere), qui est une fonctionnalite totalement separee (voir
-  // extraireLigneImmobiliereRoxwood) et ne doit jamais gonfler ce compteur.
-  const echecs = await env.DB.prepare(
-    `SELECT COUNT(*) AS nb
-       FROM roxwood_evenements
-      WHERE etat_extraction = 'echec'
-        AND type_evenement IN ('monitoring.sale', 'monitoring.invoice', 'order.updated')
-        AND recu_le >= ?1 AND recu_le < ?2`
-  ).bind(isoInterne(bDebut), isoInterne(bFinExclusive)).first();
-  const roxwoodNbVentes = Number(agg?.nb || 0);
-  const roxwoodCa = Number(agg?.total || 0);
-
   return json({
     debut,
     fin,
     immobilier: { nbVentes: immoNbVentes, nbLocations: immoNbLocations, ca: immoCa },
-    roxwood: { nbVentes: roxwoodNbVentes, ca: roxwoodCa, nonTraites: Number(echecs?.nb || 0) },
-    combine: { nbVentes: immoNbVentes + roxwoodNbVentes, nbLocations: immoNbLocations, ca: immoCa + roxwoodCa },
   });
 }
 
@@ -2020,7 +2032,7 @@ async function comptes(request, url, env) {
 
   if (m === "GET") {
     const r = await env.DB.prepare(
-      `SELECT id, pseudo, grade, discord_pseudo, discord_avatar, statut, actif, cree_le, derniere_visite, poste, specialite, bio, photo
+      `SELECT id, pseudo, grade, discord_pseudo, discord_avatar, statut, actif, cree_le, derniere_visite, poste, specialite, bio, photo, nom_sheet
          FROM membres
          WHERE statut != 'desactive'
          ORDER BY CASE statut WHEN 'attente' THEN 0 WHEN 'invite' THEN 1 ELSE 2 END,
@@ -2101,6 +2113,16 @@ async function comptes(request, url, env) {
       if (b.bio !== undefined) { binds.push(txt(b.bio, 1000).trim()); champs.push(`bio = ?${binds.length}`); }
       if (b.photo !== undefined) { binds.push(typeof b.photo === "string" ? b.photo.trim() : ""); champs.push(`photo = ?${binds.length}`); }
     }
+    // Nom exact "Nom Prénom" dans le Google Sheets de recap des primes (voir
+    // src/google-sheets.js) — sert uniquement à l'appariement automatique,
+    // aucun effet sur les droits d'accès. Vide = pas encore réglé, la ligne
+    // du Sheet reste "non appariée" tant que ni ce champ ni le pseudo ne
+    // correspondent au nom du Sheet.
+    if (b.nom_sheet !== undefined) {
+      const nomSheet = txt(b.nom_sheet, 120).trim();
+      binds.push(nomSheet || null);
+      champs.push(`nom_sheet = ?${binds.length}`);
+    }
     if (!champs.length) return json({ erreur: "Aucune modification envoyée." }, 400);
     await env.DB.prepare(`UPDATE membres SET ${champs.join(", ")} WHERE id = ?1`).bind(...binds).run();
     return json({ ok: true });
@@ -2119,347 +2141,42 @@ async function comptes(request, url, env) {
 }
 
 
-// =============================================================================
-// Intégration bot Discord "Roxwood Network" (recrutement/service client/
-// absences/monitoring FiveM, voir sa doc pour le détail) — configurée à la
-// main dans l'onglet Paramètres, sans aucune automatisation cachée :
-//
-//   - /api/webhooks/roxwood : appelé directement par le bot (aucune session,
-//     aucun cookie) à chaque événement. Vérifié par une signature
-//     HMAC-SHA256 (header X-Signature-256), avec LE secret du type
-//     d'événement concerné — le bot génère un secret DIFFÉRENT à chaque
-//     abonnement webhook créé dans son panneau Discord "Monitoring", même
-//     si l'URL de destination est la même à chaque fois.
-//   - /api/roxwood/* : sert l'écran Paramètres -> Roxwood Network, réservé à
-//     la Direction comme le reste des réglages sensibles du site.
-//
-// Rien ici n'écrit jamais dans stats_logs_ventes ni dans une table de
-// comptabilité : les événements reçus sont seulement conservés tels quels
-// dans roxwood_evenements, consultables comme un journal dans Paramètres.
-// =============================================================================
-
-// Source de vérité des 7 types d'événements que le bot peut envoyer (copiée
-// de WEBHOOK_EVENT_LABELS dans son code source, src/services/webhookDispatcher.ts)
-// — à mettre à jour ici si une future version du bot en ajoute un nouveau.
-const EVENEMENTS_ROXWOOD = {
-  "monitoring.shift": "Prise de service",
-  "monitoring.recruitment": "Recrutement (Monitoring)",
-  "monitoring.safe": "Coffre",
-  "monitoring.invoice": "Facture",
-  "monitoring.sale": "Vente run",
-  "absence.updated": "Absences",
-  "order.updated": "Commandes",
-  // Contrairement aux 7 types ci-dessus (un seul secret possible), "custom"
-  // autorise PLUSIEURS abonnements simultanés distingués par un "label"
-  // libre (ex: deux synchros Google Sheets différentes). Voir roxwood_config
-  // (colonne label) et la doc en tête de ce bloc.
-  "custom": "Personnalisé (contenu au choix)",
-};
-
-// Signature hexadécimale HMAC-SHA256 (Web Crypto — fonctionne aussi bien sous
-// Cloudflare Workers que sous Node.js, comme le reste de ce fichier ; voir
-// signer() plus haut, qui fait la même chose mais renvoie du base64url au
-// lieu de l'hexadécimal attendu ici par le bot).
-async function signerHex(secret, texte) {
-  const cle = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const octets = new Uint8Array(await crypto.subtle.sign("HMAC", cle, enc.encode(texte)));
-  return [...octets].map((o) => o.toString(16).padStart(2, "0")).join("");
+// ---- Synchronisation Google Sheets (recap ventes/locations par membre) ----
+// Écran Paramètres -> Comptes & accès : état de la dernière synchro, bouton
+// "Synchroniser maintenant", et liste des lignes lues (avec le compte
+// apparié, ou "non apparié" si aucun membre.nom_sheet/pseudo ne correspond).
+// Réservé à la Direction, comme le reste des réglages sensibles.
+async function syncSheetEtat(env, s) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const [etatR, lignesR] = await Promise.all([
+    env.DB.prepare("SELECT * FROM sync_sheet_etat WHERE id = 1").first(),
+    env.DB.prepare(
+      `SELECT sa.id, sa.nom_sheet, sa.grade_sheet, sa.nb_ventes, sa.nb_locations, sa.membre_id, sa.ligne_sheet,
+              m.pseudo AS membre_pseudo
+         FROM sync_sheet_agents sa
+         LEFT JOIN membres m ON m.id = sa.membre_id
+         ORDER BY sa.nom_sheet COLLATE NOCASE`
+    ).all(),
+  ]);
+  return json({
+    etat: etatR || null,
+    lignes: lignesR.results || [],
+  });
 }
 
-async function roxwoodWebhook(request, env) {
-  if (request.method !== "POST") return json({ erreur: "Méthode non autorisée." }, 405);
-
-  // Les octets EXACTS envoyés par le bot, avant tout JSON.parse : la
-  // signature ne correspondrait plus si on la recalculait sur un texte
-  // re-sérialisé (voir la doc du bot, section "Sécurité des webhooks sortants").
-  const corpsBrut = await request.text();
-
-  let donnees;
-  try {
-    donnees = JSON.parse(corpsBrut);
-  } catch (e) {
-    console.error("[roxwood] Rejeté : corps JSON invalide.");
-    return json({ erreur: "Corps JSON invalide." }, 400);
-  }
-  const { guildId, eventType, payload } = donnees || {};
-  if (!eventType || !EVENEMENTS_ROXWOOD[eventType]) {
-    console.error(`[roxwood] Rejeté : eventType manquant ou inconnu (reçu : ${JSON.stringify(eventType)}).`);
-    return json({ erreur: "« eventType » manquant ou inconnu." }, 400);
-  }
-
-  // Seul le type "custom" transporte un label (plusieurs abonnements
-  // possibles) — les 7 types fixes utilisent toujours label = '' côté base,
-  // même si le bot n'envoie pas ce champ pour eux.
-  const label = eventType === "custom" ? String(donnees.label || "").trim() : "";
-  if (eventType === "custom" && !label) {
-    console.error("[roxwood] Rejeté : type « custom » sans label.");
-    return json({ erreur: "« label » manquant pour un webhook personnalisé." }, 400);
-  }
-
-  const config = await env.DB.prepare(
-    "SELECT webhook_secret FROM roxwood_config WHERE type_evenement = ?1 AND label = ?2"
-  ).bind(eventType, label).first();
-  if (!config || !config.webhook_secret) {
-    const cible = label ? `« ${eventType} / ${label} »` : `« ${eventType} »`;
-    // DIAGNOSTIC : n'affiche jamais le secret, seulement le type/label reçus
-    // et ceux déjà connus en base, pour repérer une différence de label
-    // (espace, casse, tiret...) sans exposer aucune donnée sensible.
-    const connus = await env.DB.prepare("SELECT type_evenement, label FROM roxwood_config").all();
-    console.error(`[roxwood] Rejeté (401) : aucun secret configuré côté site pour ${cible}. Reçu tel quel -> type=${JSON.stringify(eventType)} label=${JSON.stringify(label)}. Configurés en base -> ${JSON.stringify((connus.results || []).map(r => ({ type: r.type_evenement, label: r.label })))}`);
-    return json({ erreur: `Aucun secret configuré côté site pour ${cible} (Paramètres -> Roxwood Network).` }, 401);
-  }
-
-  const signatureRecue = request.headers.get("X-Signature-256") || "";
-  const signatureAttendue = await signerHex(config.webhook_secret, corpsBrut);
-  if (!signatureRecue || !egal(signatureRecue, signatureAttendue)) {
-    console.error(`[roxwood] Rejeté (401) : signature invalide pour ${label ? `${eventType}/${label}` : eventType}. Header X-Signature-256 reçu (${signatureRecue.length} car.) : ${signatureRecue ? "présent" : "ABSENT"}.`);
-    return json({ erreur: "Signature invalide." }, 401);
-  }
-
-  const insertion = await env.DB.prepare(
-    "INSERT INTO roxwood_evenements (guild_id, type_evenement, label, charge_utile) VALUES (?1, ?2, ?3, ?4)"
-  ).bind(guildId || null, eventType, label, JSON.stringify(payload ?? null)).run();
-  const evenementId = insertion.meta.last_row_id;
-
-  // Cas particulier prioritaire : un webhook "custom" dont le CONTENU est une
-  // vraie ligne de vente/location immobilière (ex: synchro Google Sheet
-  // "STATS VENTES", reconnue à sa forme -- voir extraireLigneImmobiliereRoxwood
-  // dans roxwood-agrege.js). Va directement dans stats_logs_ventes (même
-  // table que la saisie manuelle et l'autre bot de stats), pour que le
-  // Récapitulatif par agent (primes, DOT) la prenne en compte automatiquement
-  // -- rien à changer de ce côté-là, il lit déjà cette table.
-  if (eventType === "custom") {
-    const ligneImmo = extraireLigneImmobiliereRoxwood(payload, { guildId, label });
-    if (ligneImmo) {
-      const reponseVente = await statsEnregistrerVente({ json: async () => ligneImmo }, env, null);
-      const succes = reponseVente.status >= 200 && reponseVente.status < 300;
-      await env.DB.prepare("UPDATE roxwood_evenements SET etat_extraction = ?2 WHERE id = ?1")
-        .bind(evenementId, succes ? "ok" : "echec").run();
-      if (!succes) {
-        const detail = await reponseVente.clone().json().catch(() => null);
-        console.error(`[roxwood] Ligne immobilière (custom/${label}) rejetée par stats_logs_ventes : ${detail?.erreur || reponseVente.status}`);
-      }
-      console.log(`[roxwood] Accepté : ${label ? `${eventType}/${label}` : eventType} (guild ${guildId || "?"}) -> ligne immobilière ${succes ? "enregistrée" : "REJETÉE (voir logs ci-dessus)"}.`);
-      return json({ ok: true });
-    }
-  }
-
-  // Extraction dérivée pour la vue d'ensemble globale de Statistiques (voir
-  // src/roxwood-agrege.js pour le détail) : ne touche jamais à la ligne
-  // roxwood_evenements qu'on vient d'insérer ci-dessus (source brute
-  // inchangée), seulement une table séparée + un état de suivi.
-  const resultat = extraireTransactionRoxwood({ guildId, type: eventType, payload, sentAt: donnees.sentAt });
-  if (resultat === undefined) {
-    // Type concerné (vente/facture/commande) mais champs manquants ou
-    // invalides -> compté "non traités" (Paramètres -> Roxwood Network).
-    await env.DB.prepare("UPDATE roxwood_evenements SET etat_extraction = 'echec' WHERE id = ?1").bind(evenementId).run();
-  } else if (resultat && resultat.supprimer) {
-    // Commande pas (encore) livrée, ou annulée après l'avoir été : jamais/
-    // plus une vente -> pas d'erreur, juste rien (ou plus rien) à compter.
-    await env.DB.prepare("UPDATE roxwood_evenements SET etat_extraction = 'ignore' WHERE id = ?1").bind(evenementId).run();
-    await env.DB.prepare("DELETE FROM roxwood_transactions WHERE cle_dedup = ?1").bind(resultat.cleDedup).run();
-  } else if (resultat) {
-    await env.DB.prepare("UPDATE roxwood_evenements SET etat_extraction = 'ok' WHERE id = ?1").bind(evenementId).run();
-    await env.DB.prepare(
-      `INSERT INTO roxwood_transactions (guild_id, type, montant, bien, source, cle_dedup, date_transaction, roxwood_evenement_id)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
-       ON CONFLICT (cle_dedup) DO UPDATE SET
-         montant = ?3, bien = ?4, date_transaction = ?7, roxwood_evenement_id = ?8
-       RETURNING id`
-    ).bind(guildId || null, resultat.type, resultat.montant, resultat.bien, resultat.source, resultat.cleDedup, resultat.dateTransaction, evenementId).run();
-  }
-  // resultat === null : pas un type de transaction (shift/recrutement/coffre/absences/custom), rien à faire.
-
-  console.log(`[roxwood] Accepté : ${label ? `${eventType}/${label}` : eventType} (guild ${guildId || "?"}).`);
-  return json({ ok: true });
+async function syncSheetSynchroniser(request, env, s) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const etat = await synchroniserSheetSansErreur(env);
+  if (etat.statut !== "ok") return json({ erreur: etat.erreur || "Échec de la synchronisation." }, 502);
+  return json({ ok: true, etat });
 }
 
-async function roxwood(request, url, env) {
+async function syncSheet(request, url, env) {
   const s = await session(request, env);
   if (!s) return json({ erreur: "Non connecté." }, 401);
-  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-
-  const route = url.pathname.slice("/api/roxwood".length); // "/config" | "/evenements"
-
-  if (route === "/config" && request.method === "GET") {
-    const r = await env.DB.prepare(
-      "SELECT type_evenement, label, mis_a_jour_le, mis_a_jour_par FROM roxwood_config"
-    ).all();
-    const lignes = r.results || [];
-    const parType = {};
-    for (const row of lignes) {
-      if (row.type_evenement === "custom") continue; // traité séparément (plusieurs par type)
-      parType[row.type_evenement] = row;
-    }
-    const types = Object.entries(EVENEMENTS_ROXWOOD)
-      .filter(([type]) => type !== "custom")
-      .map(([type, libelle]) => ({
-        type,
-        libelle,
-        configure: !!parType[type],
-        misAJourLe: parType[type]?.mis_a_jour_le || null,
-        misAJourPar: parType[type]?.mis_a_jour_par || null,
-      }));
-    // "custom" : autant de lignes que d'abonnements configurés, un par label.
-    const personnalises = lignes
-      .filter((row) => row.type_evenement === "custom")
-      .map((row) => ({
-        label: row.label,
-        misAJourLe: row.mis_a_jour_le,
-        misAJourPar: row.mis_a_jour_par,
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label, "fr"));
-    return json({ types, personnalises });
-  }
-
-  if (route === "/config" && request.method === "PUT") {
-    const b = await request.json().catch(() => null);
-    const type = b && String(b.type || "").trim();
-    const secret = b && String(b.secret || "").trim();
-    // Seul "custom" utilise un label (plusieurs abonnements possibles) ; les
-    // 7 types fixes restent stockés avec label = '' (une seule config chacun).
-    const label = type === "custom" ? String((b && b.label) || "").trim() : "";
-    if (!type || !EVENEMENTS_ROXWOOD[type]) return json({ erreur: "Type d'événement inconnu." }, 400);
-    if (type === "custom" && !label) {
-      return json({ erreur: "Indiquez le libellé de ce webhook personnalisé (celui choisi côté Discord)." }, 400);
-    }
-    if (!secret || secret.length < 16) {
-      return json({ erreur: "Collez le secret tel quel depuis Discord (au moins 16 caractères)." }, 400);
-    }
-    // "RETURNING type_evenement" explicite : roxwood_config n'a pas de
-    // colonne "id" (sa clé est le couple type_evenement/label) — sans ce
-    // RETURNING déjà présent, l'adaptateur Postgres (avecRetourId(), dans
-    // src/db-pg.js) ajoute automatiquement "RETURNING id" à toute requête
-    // INSERT qui n'en a pas, ce qui casserait la requête ici (colonne
-    // inexistante). Bug préexistant à la version 1 (avant l'ajout du type
-    // "custom"), repéré et corrigé pendant les tests de cette mise à jour.
-    await env.DB.prepare(
-      `INSERT INTO roxwood_config (type_evenement, label, webhook_secret, mis_a_jour_le, mis_a_jour_par)
-       VALUES (?1, ?2, ?3, datetime('now'), ?4)
-       ON CONFLICT (type_evenement, label) DO UPDATE SET webhook_secret = ?3, mis_a_jour_le = datetime('now'), mis_a_jour_par = ?4
-       RETURNING type_evenement`
-    ).bind(type, label, secret, s.pseudo).run();
-    return json({ ok: true });
-  }
-
-  if (route === "/config" && request.method === "DELETE") {
-    const type = url.searchParams.get("type") || "";
-    const label = type === "custom" ? String(url.searchParams.get("label") || "").trim() : "";
-    if (!EVENEMENTS_ROXWOOD[type]) return json({ erreur: "Type d'événement inconnu." }, 400);
-    if (type === "custom" && !label) return json({ erreur: "Libellé manquant." }, 400);
-    await env.DB.prepare(
-      "DELETE FROM roxwood_config WHERE type_evenement = ?1 AND label = ?2"
-    ).bind(type, label).run();
-    return json({ ok: true });
-  }
-
-  if (route === "/evenements" && request.method === "GET") {
-    const type = (url.searchParams.get("type") || "").trim();
-    const limite = Math.min(Math.max(Number(url.searchParams.get("limite")) || 50, 1), 200);
-    const r = type
-      ? await env.DB.prepare(
-          `SELECT id, guild_id, type_evenement, label, charge_utile, recu_le FROM roxwood_evenements
-           WHERE type_evenement = ?1 ORDER BY recu_le DESC, id DESC LIMIT ?2`
-        ).bind(type, limite).all()
-      : await env.DB.prepare(
-          `SELECT id, guild_id, type_evenement, label, charge_utile, recu_le FROM roxwood_evenements
-           ORDER BY recu_le DESC, id DESC LIMIT ?1`
-        ).bind(limite).all();
-    const evenements = (r.results || []).map((ev) => ({
-      id: ev.id,
-      guildId: ev.guild_id,
-      type: ev.type_evenement,
-      label: ev.label || "",
-      libelle: EVENEMENTS_ROXWOOD[ev.type_evenement] || ev.type_evenement,
-      payload: JSON.parse(ev.charge_utile || "null"),
-      recuLe: ev.recu_le,
-    }));
-    return json({ evenements });
-  }
-
-  if (route === "/stats" && request.method === "GET") return roxwoodStats(env, url);
-
+  const route = url.pathname.slice("/api/sync-sheet".length); // "/etat" | "/synchroniser"
+  if (route === "/etat" && request.method === "GET") return syncSheetEtat(env, s);
+  if (route === "/synchroniser" && request.method === "POST") return syncSheetSynchroniser(request, env, s);
   return json({ erreur: "Adresse inconnue." }, 404);
 }
 
-// ---- Vue d'ensemble globale (nouvelle) : CA Roxwood filtrable par période -
-// Les journées se comptent en heure de Paris (minuit à minuit, heure locale
-// du serveur RP) -- pas en UTC -- pour que "aujourd'hui"/"cette semaine"
-// coïncide avec la vraie journée vécue par les joueurs. Gère automatiquement
-// le changement heure d'été/hiver (CET/CEST), sans dépendance externe.
-function decalerDateAaaaMmJj(aaaaMmJj, decalageJours) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(aaaaMmJj || "");
-  if (!m) return null;
-  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-  d.setUTCDate(d.getUTCDate() + decalageJours);
-  return d.toISOString().slice(0, 10);
-}
-
-function parisMinuitEnUtc(aaaaMmJj) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(aaaaMmJj || "");
-  if (!m) return null;
-  // Devine "minuit UTC ce jour-là", puis corrige par le décalage réel de
-  // Paris à cet instant précis (1h l'hiver/CET, 2h l'été/CEST) -- recalculé
-  // à chaque appel plutôt que sur une plage, pour rester juste de part et
-  // d'autre d'un changement d'heure.
-  const guess = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-  const heureParisAMinuitUtc = Number(
-    new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Paris", hour: "2-digit", hour12: false }).format(guess)
-  ) % 24;
-  return new Date(guess.getTime() - heureParisAMinuitUtc * 3600000);
-}
-
-function borneJourUtc(dateAaaaMmJj, decalageJours = 0) {
-  const decale = decalageJours ? decalerDateAaaaMmJj(dateAaaaMmJj, decalageJours) : dateAaaaMmJj;
-  return decale ? parisMinuitEnUtc(decale) : null;
-}
-
-async function roxwoodStats(env, url) {
-  const debut = (url.searchParams.get("debut") || "").trim();
-  const fin = (url.searchParams.get("fin") || "").trim();
-  const bDebut = borneJourUtc(debut);
-  const bFinExclusive = borneJourUtc(fin, 1); // "fin" est incluse -> borne exclusive = lendemain
-  if (!bDebut || !bFinExclusive || bDebut > bFinExclusive) {
-    return json({ erreur: "Paramètres « debut » et « fin » invalides (format AAAA-MM-JJ attendu, debut <= fin)." }, 400);
-  }
-
-  // Deux formats de date coexistent sur le site (héritage SQLite) : les
-  // horodatages "internes" (recu_le, cree_le...) en "AAAA-MM-JJ HH:MM:SS",
-  // et date_transaction ici, qui reprend tel quel le "sentAt" ISO envoyé par
-  // le bot ("AAAA-MM-JJTHH:MM:SS.sssZ") — d'où les deux formats de bornes.
-  const isoTransactions = (d) => d.toISOString();
-  const isoInterne = (d) => d.toISOString().replace("T", " ").replace(/\.\d+Z$/, "");
-
-  const agg = await env.DB.prepare(
-    `SELECT COUNT(*) AS nb, COALESCE(SUM(montant), 0) AS total
-       FROM roxwood_transactions
-      WHERE date_transaction >= ?1 AND date_transaction < ?2`
-  ).bind(isoTransactions(bDebut), isoTransactions(bFinExclusive)).first();
-
-  // "non traites" ne doit compter QUE les echecs des 3 types qui nourrissent
-  // reellement roxwood_transactions (donc roxwoodNbVentes/roxwoodCa
-  // ci-dessus) -- pas les echecs d'un webhook "custom" (ex: synchro
-  // immobiliere), qui est une fonctionnalite totalement separee (voir
-  // extraireLigneImmobiliereRoxwood) et ne doit jamais gonfler ce compteur.
-  const echecs = await env.DB.prepare(
-    `SELECT COUNT(*) AS nb
-       FROM roxwood_evenements
-      WHERE etat_extraction = 'echec'
-        AND type_evenement IN ('monitoring.sale', 'monitoring.invoice', 'order.updated')
-        AND recu_le >= ?1 AND recu_le < ?2`
-  ).bind(isoInterne(bDebut), isoInterne(bFinExclusive)).first();
-
-  return json({
-    debut,
-    fin,
-    nbVentes: Number(agg?.nb || 0),
-    montantTotal: Number(agg?.total || 0),
-    nonTraites: Number(echecs?.nb || 0),
-  });
-}

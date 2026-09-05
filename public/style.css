@@ -138,7 +138,7 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: -2;
+  z-index: -3;
   pointer-events: none;
   background:
     radial-gradient(55% 30% at 12% 8%, rgba(201, 165, 92, 0.16), transparent 60%),
@@ -154,7 +154,7 @@ body::after {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: -2;
   pointer-events: none;
   background:
     radial-gradient(120% 75% at 50% 0%, rgba(6, 12, 26, 0.2) 0%, rgba(6, 12, 26, 0.78) 70%, rgba(6, 12, 26, 0.92) 100%),
@@ -1500,20 +1500,84 @@ section.section.serre {
 @media (min-width: 1180px) {
   .grille-hub--5 { grid-template-columns: repeat(5, 1fr); }
 }
+/* Cartes « hub » en 3D : elles basculent vers la souris (variables --rx/--ry
+   posées par layout.js), un reflet doré suit le curseur (--mx/--my/--lum) et les
+   éléments intérieurs sont posés à des profondeurs différentes. Sans JS, la
+   carte reste une carte classique, parfaitement lisible. */
+.grille-hub { perspective: 1200px; }
 .carte-hub {
-  display: flex; flex-direction: column; padding: 32px 28px; gap: 12px;
-  border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card);
-  transition: border-color 0.2s, transform 0.2s, background 0.2s;
+  --mx: 50%; --my: 50%; --rx: 0deg; --ry: 0deg; --lum: 0;
+  position: relative; display: flex; flex-direction: column; padding: 28px 26px 24px; gap: 12px; min-height: 240px;
+  border-radius: 8px; background: var(--d8-grad-card);
+  transform: rotateX(var(--rx)) rotateY(var(--ry)) translateZ(0); transform-style: preserve-3d;
+  transition: transform 0.18s ease-out, box-shadow 0.35s ease;
+  box-shadow: 0 20px 44px -22px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(201, 165, 92, 0.22);
 }
-.carte-hub:hover { border-color: var(--gold); transform: translateY(-3px); background: var(--bg-card-hover); }
+.carte-hub::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: radial-gradient(240px circle at var(--mx) var(--my), rgba(242, 223, 168, calc(0.15 + 0.75 * var(--lum))), rgba(201, 165, 92, 0.22) 45%, rgba(201, 165, 92, 0.12) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.carte-hub::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: var(--lum); transition: opacity 0.35s;
+  background: radial-gradient(320px circle at var(--mx) var(--my), rgba(242, 223, 168, 0.16), rgba(242, 223, 168, 0.05) 35%, transparent 60%);
+}
+.carte-hub:hover { box-shadow: 0 34px 70px -26px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(201, 165, 92, 0.5), 0 0 40px -10px rgba(201, 165, 92, 0.35); }
+.carte-hub:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 3px; }
 .carte-hub .icone {
-  width: 52px; height: 52px; border-radius: 14px; background: rgba(207,159,86,0.14);
-  color: var(--gold); display: flex; align-items: center; justify-content: center;
-  font-size: 1.4rem; margin-bottom: 6px;
+  width: 46px; height: 46px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px;
+  color: var(--d8-gold-300); font-size: 1.3rem;
+  background: linear-gradient(145deg, rgba(242, 223, 168, 0.16), rgba(201, 165, 92, 0.05));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 10px 22px -10px rgba(0, 0, 0, 0.8);
+  transform: translateZ(34px); transition: transform 0.25s;
 }
-.carte-hub h3 { font-size: 1.15rem; margin-bottom: 0; }
-.carte-hub p { color: var(--text-muted); font-size: 0.92rem; flex: 1; margin: 0; }
-.carte-hub .carte-hub-fleche { color: var(--gold); font-size: 0.88rem; font-weight: 600; margin-top: 6px; }
+.carte-hub:hover .icone { transform: translateZ(48px) scale(1.06); }
+.carte-hub .icone svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.carte-hub h3 { font-size: 1.25rem; margin-bottom: 0; font-weight: 500; transform: translateZ(22px); }
+.carte-hub p { color: var(--text-muted); font-size: 0.88rem; line-height: 1.6; flex: 1; margin: 0; transform: translateZ(14px); }
+.carte-hub .carte-hub-fleche {
+  color: var(--gold-strong); font-size: 0.82rem; font-weight: 500; margin-top: 8px;
+  display: inline-flex; align-items: center; gap: 8px; transform: translateZ(18px);
+}
+.carte-hub .carte-hub-fleche svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.25s; }
+.carte-hub:hover .carte-hub-fleche svg { transform: translateX(5px); }
+/* apparition en cascade (classe posée par layout.js, index --i par carte) */
+.carte-hub.carte-hub--anim { opacity: 0; translate: 0 18px; animation: carte-hub-monte 0.8s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; animation-delay: calc(var(--i, 0) * 90ms); }
+@keyframes carte-hub-monte { to { opacity: 1; translate: 0 0; } }
+/* poussière d'or WebGL de fond (canvas injecté par layout.js sur les pages publiques) */
+.d8-poussiere { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .carte-hub, .carte-hub .icone, .carte-hub .carte-hub-fleche svg { transition: none; }
+  .carte-hub.carte-hub--anim { animation: none; opacity: 1; translate: 0 0; }
+}
+
+/* ---------- variante "étape" des cartes hub : parcours numéroté (coherences.html) ---------- */
+/* Même carte 3D dorée que les cartes de catégorie, mais centrée et badge chiffré
+   au lieu d'une icône + flèche — pour un vrai fil "01 → 02 → 03". */
+.grille-hub--etapes { position: relative; }
+.carte-hub--etape { align-items: center; text-align: center; }
+.carte-hub--etape .carte-hub-etape-numero {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 6px;
+  font-family: var(--d8-font-display); font-style: italic; font-weight: 500; font-size: 1.35rem;
+  color: var(--d8-gold-300); font-variant-numeric: tabular-nums;
+  background: linear-gradient(145deg, rgba(242, 223, 168, 0.18), rgba(201, 165, 92, 0.05));
+  border: 1px solid rgba(201, 165, 92, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 10px 22px -10px rgba(0, 0, 0, 0.8);
+  transform: translateZ(34px); transition: transform 0.25s;
+}
+.carte-hub--etape:hover .carte-hub-etape-numero { transform: translateZ(48px) scale(1.06); }
+.carte-hub--etape h3 { font-size: 1.15rem; transform: translateZ(22px); }
+.carte-hub--etape p { transform: translateZ(14px); }
+@media (min-width: 760px) {
+  .grille-hub--etapes::before {
+    content: ""; position: absolute; left: calc(16.6% + 8px); right: calc(16.6% + 8px); top: 62px; height: 1px; z-index: 0;
+    background: linear-gradient(90deg, transparent, rgba(201, 165, 92, 0.4) 20%, rgba(201, 165, 92, 0.4) 80%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .carte-hub--etape .carte-hub-etape-numero { transition: none; }
+}
 
 /* ---------- pages de cohérence : blocs de règlement (règles / biens / intérieurs) ---------- */
 
@@ -2228,29 +2292,6 @@ section.section.serre {
 .puce-off { background: rgba(232,83,74,0.16); color: var(--danger-strong); }
 .puce-or { background: rgba(207,159,86,0.18); color: var(--gold-strong); }
 
-/* Paramètres -> Roxwood Network : journal des événements reçus (une carte
-   repliable par événement, voir chargerJournalRoxwood() dans admin.js). */
-.roxwood-evenement {
-  border: 1px solid var(--border-light); border-radius: var(--radius); background: var(--bg-card);
-  padding: 12px 16px; margin-bottom: 10px;
-}
-.roxwood-evenement summary {
-  cursor: pointer; display: flex; align-items: center; gap: 12px; list-style: none;
-}
-.roxwood-evenement summary::-webkit-details-marker { display: none; }
-.roxwood-evenement summary::before { content: "▸"; color: var(--text-faint); transition: transform 0.15s; }
-.roxwood-evenement[open] summary::before { transform: rotate(90deg); }
-.roxwood-payload {
-  margin: 12px 0 0; padding: 12px; background: var(--bg-muted, rgba(0,0,0,0.03)); border-radius: 8px;
-  font-size: 0.78rem; line-height: 1.5; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
-}
-
-.bouton-lien {
-  background: none; border: none; padding: 0; margin: 0; cursor: pointer;
-  font: inherit; font-size: 0.85rem; color: var(--accent-strong, var(--accent)); text-decoration: none;
-}
-.bouton-lien:hover { text-decoration: underline; }
-
 .message {
   padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.88rem; margin-bottom: 18px;
 }
@@ -2593,7 +2634,7 @@ section.section.serre {
    semi-transparentes ici pour laisser voir l'aurore tout en gardant le texte
    lisible. Le fond opaque du body reste en repli si le WebGL échoue.
    ========================================================================== */
-#aurora-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: -3; }
+#aurora-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: -4; }
 
 body.page-agents::before {
   background:
@@ -2612,6 +2653,25 @@ body.page-agents::after {
    en gardant la lueur dorée d'origine. */
 body.page-agents .ecran-connexion {
   background: radial-gradient(ellipse at top, rgba(207, 159, 86, 0.16), transparent 60%);
+}
+
+/* ==========================================================================
+   Accueil — hero « le logo qui se construit » (Three.js, voir accueil.html)
+   Le canvas remplace le diaporama de photos ; le voile garde le texte lisible
+   à gauche et laisse le logo respirer à droite. La vitrine « coup de cœur »
+   a quitté le hero (elle vit dans la section Nos coups de cœur) : la colonne
+   de droite de la grille reste volontairement vide pour le logo.
+   ========================================================================== */
+.hero-logo-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; display: block; }
+.hero-logo-voile {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(100deg, var(--bg) 2%, rgba(8, 12, 28, 0.72) 30%, rgba(8, 12, 28, 0.18) 50%, rgba(8, 12, 28, 0) 62%),
+    linear-gradient(0deg, rgba(8, 12, 28, 0.55) 0%, transparent 22%, transparent 80%, rgba(8, 12, 28, 0.45) 100%);
+}
+@media (max-width: 900px) {
+  .hero-logo-canvas { opacity: 0.5; }
+  .hero-logo-voile { background: linear-gradient(180deg, rgba(8, 12, 28, 0.25) 0%, rgba(8, 12, 28, 0.7) 45%, rgba(8, 12, 28, 0.85) 100%); }
 }
 
 .cache { display: none !important; }

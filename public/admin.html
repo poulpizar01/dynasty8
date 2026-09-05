@@ -193,6 +193,38 @@
         </div>
       </div>
       <div id="zone-message-profil"></div>
+
+      <!-- Ventes/locations/primes synchronisées depuis le Google Sheets de
+           recap (voir Paramètres -> Synchronisation Google Sheets côté
+           Direction). Toujours des 0 tant qu'aucune ligne du Sheet n'est
+           associée à ce compte. Même composant .stat-carte que l'onglet
+           Statistiques -> Vue d'ensemble, pour rester cohérent. -->
+      <h3 class="comptes-sous-titre" style="margin:22px 0 4px;">Mes ventes &amp; primes</h3>
+      <p class="champ-aide" id="primes-profil-maj" style="margin:0 0 12px;"></p>
+      <div class="admin-stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:8px;" id="primes-profil-cartes">
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--or">🏠</span>
+          <div><div class="stat-valeur" id="primes-profil-ventes">0</div><div class="stat-libelle">Ventes</div></div>
+        </div>
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--ambre">🔑</span>
+          <div><div class="stat-valeur" id="primes-profil-locations">0</div><div class="stat-libelle">Locations</div></div>
+        </div>
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--vert">$</span>
+          <div><div class="stat-valeur" id="primes-profil-prime-vente">0 $</div><div class="stat-libelle">Prime ventes</div></div>
+        </div>
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--vert">$</span>
+          <div><div class="stat-valeur" id="primes-profil-prime-location">0 $</div><div class="stat-libelle">Prime locations</div></div>
+        </div>
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--mauve">Σ</span>
+          <div><div class="stat-valeur" id="primes-profil-total">0 $</div><div class="stat-libelle">Total primes</div></div>
+        </div>
+      </div>
+      <p class="champ-aide cache" id="primes-profil-non-synchronise" style="margin-bottom:18px;">Aucune ligne du Google Sheets n'est encore associée à votre compte — contactez la Direction.</p>
+
       <div class="profil-mise-en-page">
         <div class="profil-photo-bloc">
           <div class="profil-photo-apercu" id="profil-photo-apercu"></div>
@@ -421,21 +453,21 @@
       <div class="entete-admin">
         <div>
           <h2 style="margin-bottom:2px;">Statistiques</h2>
-          <p style="margin:0;font-size:0.88rem;">Ventes et locations reçues automatiquement du bot, semaine par semaine — réservé à la Direction.</p>
+          <p style="margin:0;font-size:0.88rem;">Ventes et locations reçues automatiquement du bot — réservé à la Direction.</p>
         </div>
       </div>
       <div id="zone-message-statistiques"></div>
 
-      <!-- Vue d'ensemble (NOUVEAU) : additionne le CA immobilier existant
-           (inchangé) et le CA Roxwood (ventes produits/factures/commandes
-           livrées, Paramètres -> Roxwood Network) sur une période choisie.
+      <!-- Vue d'ensemble : chiffre d'affaires immobilier sur une période choisie.
            N'a AUCUN effet sur les primes/commissions/DOT par agent
-           ci-dessous, calculées séparément comme avant. -->
+           ci-dessous, calculées séparément comme avant.
+           (L'intégration "Roxwood Network" — CA combiné avec un bot externe —
+           a été retirée en sept. 2026, plus utilisée.) -->
       <div id="statistiques-vue-ensemble" style="margin-bottom:32px;">
         <div class="entete-admin">
           <div>
             <h3 style="margin-bottom:2px;">Vue d'ensemble</h3>
-            <p style="margin:0;font-size:0.88rem;">Chiffre d'affaires combiné — immobilier + activité Roxwood.</p>
+            <p style="margin:0;font-size:0.88rem;">Chiffre d'affaires immobilier.</p>
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <select id="ve-periode-preset" class="table-input">
@@ -450,32 +482,31 @@
           </div>
         </div>
         <div id="zone-message-vue-ensemble"></div>
-        <div class="admin-stats" style="grid-template-columns:repeat(3,1fr);" id="ve-cartes">
+        <div class="admin-stats" style="grid-template-columns:repeat(1,minmax(0,280px));" id="ve-cartes">
           <div class="stat-carte">
             <span class="stat-icone stat-icone--or">🏠</span>
             <div><div class="stat-valeur" id="ve-immo-ca">—</div><div class="stat-libelle">Immobilier</div><div class="stat-sous-libelle" id="ve-immo-detail"></div></div>
           </div>
-          <div class="stat-carte">
-            <span class="stat-icone stat-icone--mauve"><img src="/img/roxwood-logo.png" alt="Roxwood Network Bot" loading="lazy" width="30" height="30"></span>
-            <div><div class="stat-valeur" id="ve-roxwood-ca">—</div><div class="stat-libelle">Roxwood Network Bot</div><div class="stat-sous-libelle" id="ve-roxwood-detail"></div></div>
-          </div>
-          <div class="stat-carte">
-            <span class="stat-icone stat-icone--vert">Σ</span>
-            <div><div class="stat-valeur" id="ve-total-ca">—</div><div class="stat-libelle">Total combiné</div><div class="stat-sous-libelle" id="ve-total-detail"></div></div>
-          </div>
         </div>
       </div>
 
+      <!-- Totaux agence, toutes semaines confondues (mêmes unités que le récap
+           par agent ci-dessous) — remplace l'ancien tableau semaine par
+           semaine, plus consulté. La liste des semaines continue d'être
+           récupérée en arrière-plan (chargerStatistiques() dans admin.js)
+           pour alimenter le sélecteur du récap par agent juste en dessous. -->
       <div id="statistiques-vide" class="etat-vide cache">
         <p>Aucune vente reçue pour le moment. Les données arriveront automatiquement dès que le bot sera connecté.</p>
       </div>
-      <div id="statistiques-resultat" class="cache" style="overflow-x:auto;">
-        <table class="table-admin">
-          <thead>
-            <tr><th>Semaine</th><th>Période</th><th>Ventes/locations enregistrées</th><th></th></tr>
-          </thead>
-          <tbody id="corps-table-statistiques"></tbody>
-        </table>
+      <div id="statistiques-resultat" class="cache admin-stats" style="grid-template-columns:repeat(2,minmax(0,220px));">
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--or">🏠</span>
+          <div><div class="stat-valeur" id="stats-total-ventes">—</div><div class="stat-libelle">Ventes (agence)</div></div>
+        </div>
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--ambre">🔑</span>
+          <div><div class="stat-valeur" id="stats-total-locations">—</div><div class="stat-libelle">Locations (agence)</div></div>
+        </div>
       </div>
 
       <!-- Récapitulatif par agent (§6.2) : quota, primes et total à verser
@@ -562,10 +593,7 @@
       </div>
     </section>
 
-    <!-- Onglet Paramètres : réglages techniques du site, réservé à la Direction.
-         Section "Roxwood Network" = intégration du bot Discord (webhooks
-         entrants signés HMAC, un secret par type d'événement, saisi à la
-         main ici — voir roxwood()/roxwoodWebhook() dans src/index.js). -->
+    <!-- Onglet Paramètres : réglages techniques du site, réservé à la Direction. -->
     <section id="panneau-parametres" class="cache">
       <div class="entete-admin">
         <div>
@@ -574,67 +602,31 @@
         </div>
       </div>
 
-      <h3 class="comptes-sous-titre">🤖 Roxwood Network (bot Discord)</h3>
+      <!-- Synchronisation Google Sheets ("Mon profil" -> ventes/locations/primes
+           de chaque membre). Lu directement via son export CSV public (le
+           Sheet doit être partagé "Tous les utilisateurs disposant du lien -
+           Lecteur"), sans API ni identifiants Google côté serveur. Le Sheet
+           fournit seulement les compteurs (colonnes L/M) ; les MONTANTS de
+           primes sont recalculés avec les barèmes de Comptabilité ->
+           Paramètres (mêmes que le récap Statistiques), jamais les colonnes
+           N/O du Sheet — un seul endroit pour régler un montant. -->
+      <h3 class="comptes-sous-titre" style="margin-top:34px;">📊 Synchronisation Google Sheets — « Mon profil »</h3>
       <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">
-        Le bot Discord Roxwood Network (recrutement, service client, absences, logs FiveM) peut envoyer automatiquement ses événements au site. Pour chaque type que vous voulez recevoir : dans Discord, panneau d'administration du bot → <strong>Monitoring</strong> → <strong>Ajouter un webhook</strong>, choisissez le type, collez l'adresse ci-dessous comme URL de destination, puis copiez le secret affiché (affiché <strong>une seule fois</strong> par Discord !) et collez-le dans la case correspondante.
+        Récupère automatiquement, toutes les 20 minutes (+ à la demande ci-dessous), les ventes et locations de chaque membre depuis le Google Sheets de recap (partagé en lecture seule), pour les afficher dans « Mon profil ». Associez chaque ligne au bon compte ci-dessous — l'association se retient ensuite automatiquement (nom du Sheet mémorisé sur le compte).
       </p>
-
-      <div class="champ" style="max-width:560px;">
-        <label>Adresse à donner au bot (la même pour tous les types)</label>
-        <div style="display:flex;gap:8px;">
-          <input type="text" id="roxwood-url-webhook" readonly>
-          <button type="button" class="btn btn-fantome" id="bouton-copier-url-roxwood">📋 Copier</button>
-        </div>
-        <p class="champ-aide" id="roxwood-avertissement-url"></p>
+      <div id="zone-message-sync-sheet"></div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+        <p class="champ-aide" id="sync-sheet-etat" style="margin:0;">Chargement…</p>
+        <button type="button" class="btn btn-or btn-petit" id="bouton-synchroniser-sheet">🔄 Synchroniser maintenant</button>
       </div>
-
-      <div id="zone-message-roxwood" style="margin-top:16px;"></div>
-
-      <div style="overflow-x:auto;margin-top:10px;">
-        <table class="table-admin">
-          <thead>
-            <tr><th>Type d'événement</th><th>Statut</th><th>Secret</th><th></th></tr>
-          </thead>
-          <tbody id="corps-table-roxwood-config"><tr><td colspan="4">Chargement…</td></tr></tbody>
-        </table>
-      </div>
-
-      <h3 class="comptes-sous-titre" style="margin-top:34px;">🔧 Webhooks personnalisés (type « Personnalisé »)</h3>
-      <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">
-        Contrairement aux types ci-dessus (un seul secret chacun), le type <strong>Personnalisé</strong> accepte <strong>plusieurs webhooks à la fois</strong> — par exemple deux synchros Google Sheets différentes vers deux destinations distinctes. Créez-en un par un côté Discord (<strong>Monitoring</strong> → <strong>Ajouter un webhook</strong> → <strong>Personnalisé</strong>), en donnant à chacun un libellé qui vous permette de le reconnaître, puis enregistrez-le ci-dessous avec le même libellé.
-      </p>
       <div style="overflow-x:auto;">
         <table class="table-admin">
           <thead>
-            <tr><th>Libellé</th><th>Mis à jour</th><th></th></tr>
+            <tr><th>Nom (Sheet)</th><th>Grade (Sheet)</th><th style="text-align:right;">Ventes</th><th style="text-align:right;">Locations</th><th>Compte associé</th></tr>
           </thead>
-          <tbody id="corps-table-roxwood-custom"><tr><td colspan="3">Chargement…</td></tr></tbody>
+          <tbody id="corps-table-sync-sheet"><tr><td colspan="5">Chargement…</td></tr></tbody>
         </table>
       </div>
-      <div style="display:flex;gap:8px;align-items:end;margin-top:12px;flex-wrap:wrap;max-width:680px;">
-        <div class="champ" style="margin:0;flex:1;min-width:180px;">
-          <label>Libellé (le même que côté Discord)</label>
-          <input type="text" id="roxwood-custom-nouveau-label" placeholder="ex. Google Sheets — Stock">
-        </div>
-        <div class="champ" style="margin:0;flex:2;min-width:220px;">
-          <label>Secret</label>
-          <input type="password" id="roxwood-custom-nouveau-secret" placeholder="Collez le secret affiché par Discord">
-        </div>
-        <button type="button" class="btn btn-fantome btn-petit" id="bouton-ajouter-roxwood-custom" style="margin-bottom:18px;">+ Ajouter</button>
-      </div>
-
-      <h3 class="comptes-sous-titre" style="margin-top:34px;">📋 Journal des événements reçus</h3>
-      <p class="champ-aide" style="margin:0 0 12px;">Les événements les plus récents reçus du bot, en premier.</p>
-      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-        <select id="roxwood-filtre-type" class="table-input" style="max-width:260px;">
-          <option value="">Tous les types</option>
-        </select>
-        <button type="button" class="btn btn-fantome btn-petit" id="bouton-rafraichir-roxwood">🔄 Rafraîchir</button>
-      </div>
-      <div id="roxwood-journal-vide" class="etat-vide cache">
-        <p>Aucun événement reçu pour le moment.</p>
-      </div>
-      <div id="roxwood-journal-liste"></div>
     </section>
   </main>
 </div>

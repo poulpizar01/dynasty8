@@ -27,11 +27,10 @@
 <header class="entete" id="site-entete"></header>
 
 <section class="hero hero-accueil">
-  <div class="hero-ville" aria-hidden="true" id="hero-ville">
-    <img src="/img/hero-agence-interieur.jpg" alt="" loading="eager" class="hero-ville-active">
-    <img src="/img/hero-agence-facade.jpg" alt="" loading="lazy" style="object-position: center 62%;">
-  </div>
-  <div class="hero-particules" aria-hidden="true" id="hero-particules"></div>
+  <!-- Fond du hero : le logo Dynasty 8 qui se construit (Three.js, script en bas de page).
+       Le canvas est purement décoratif ; sans WebGL on garde simplement le fond marbré. -->
+  <canvas class="hero-logo-canvas" id="hero-logo" aria-hidden="true"></canvas>
+  <div class="hero-logo-voile" aria-hidden="true"></div>
   <div class="hero-accueil-grille">
     <div class="hero-texte">
       <div class="hero-etiquette">★ L'excellence immobilière à Los Santos</div>
@@ -45,12 +44,6 @@
         <div><strong id="stat-biens">—</strong><span id="stat-biens-libelle">Biens au catalogue</span></div>
         <div><strong>17</strong><span>Adresses référencées</span></div>
         <div><strong>24/7</strong><span>Service agents</span></div>
-      </div>
-    </div>
-    <div class="hero-vitrine" id="hero-vitrine">
-      <div class="hero-vitrine-vide">
-        <span style="font-size:1.8rem;">🏠</span>
-        <p>Chargement de la vitrine…</p>
       </div>
     </div>
   </div>
@@ -365,6 +358,106 @@
   document.getElementById("lien-discord-cta").href = LIEN_DISCORD;
   document.getElementById("lien-discord-cta").target = "_blank";
   document.getElementById("lien-discord-cta").rel = "noopener";
+</script>
+<script type="importmap">
+{ "imports": { "three": "/vendor/three.module.min.js" } }
+</script>
+<script type="module">
+// ---------------------------------------------------------------------------
+// Hero de l'accueil : le logo Dynasty 8 « qui se construit ».
+// Le toit puis la porte se tracent d'un seul geste, le soleil se lève derrière
+// la pente, puis le nom s'inscrit ; ensuite lueur qui respire + étincelles +
+// léger tilt à la souris. Géométrie reprise du logo (image 1024², unité =
+// largeur du logo). Three.js en local (/vendor), nom en PNG (/img/logo-wordmark.png).
+// ---------------------------------------------------------------------------
+import * as THREE from 'three';
+(function(){
+  const canvas = document.getElementById('hero-logo');
+  if (!canvas) return;
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'}); }
+  catch (e) { canvas.remove(); return; }
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1, 1.5)); renderer.setClearColor(0x000000, 0); renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const mouse={x:0,y:0}, ms={x:0,y:0};
+  addEventListener('pointermove', e=>{ mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-((e.clientY/innerHeight)*2-1); }, {passive:true});
+
+  const P = (x,y)=>new THREE.Vector2((x-512)/1024, (512-y)/1024);
+  const TRAIT = [P(158,565), P(473,249), P(708,484), P(708,397), P(820,397), P(820,710)];
+  const SOLEIL = {c:P(805.5,414.5), r:166.5/1024};
+  const WM = {c:P(505,646), w:930/1024, h:152/1024};
+  const EP = 36/1024;
+
+  const scene=new THREE.Scene(), cam=new THREE.PerspectiveCamera(30,1,0.1,100); cam.position.z=10;
+  const monde=new THREE.Group(); scene.add(monde);
+
+  // ruban du tracé, attribut t (0..1) pour le dessin progressif
+  const pos=[], ts=[]; let L=0; const segs=[];
+  for(let i=0;i<TRAIT.length-1;i++){const a=TRAIT[i],b=TRAIT[i+1];const l=a.distanceTo(b);segs.push({a,b,l,t0:L});L+=l;}
+  const tri=(p1,p2,p3,t1,t2,t3)=>{pos.push(p1.x,p1.y,0,p2.x,p2.y,0,p3.x,p3.y,0);ts.push(t1,t2,t3);};
+  segs.forEach(s=>{const d=new THREE.Vector2().subVectors(s.b,s.a).normalize();const n=new THREE.Vector2(-d.y,d.x).multiplyScalar(EP/2);
+    const a1=s.a.clone().add(n),a2=s.a.clone().sub(n),b1=s.b.clone().add(n),b2=s.b.clone().sub(n);const t0=s.t0/L,t1=(s.t0+s.l)/L;
+    tri(a1,a2,b1,t0,t0,t1);tri(a2,b2,b1,t0,t1,t1);});
+  TRAIT.forEach((p,i)=>{if(i===0||i===TRAIT.length-1)return; const t=(segs[i-1].t0+segs[i-1].l)/L;for(let k=0;k<20;k++){const a0=k/20*Math.PI*2,a1=(k+1)/20*Math.PI*2;
+    tri(p,new THREE.Vector2(p.x+Math.cos(a0)*EP/2,p.y+Math.sin(a0)*EP/2),new THREE.Vector2(p.x+Math.cos(a1)*EP/2,p.y+Math.sin(a1)*EP/2),t,t,t);}});
+  const rg=new THREE.BufferGeometry(); rg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); rg.setAttribute('aT',new THREE.Float32BufferAttribute(ts,1));
+  const ru={uProg:{value:0}};
+  const trait=new THREE.Mesh(rg,new THREE.ShaderMaterial({uniforms:ru,transparent:false,depthWrite:true,
+    vertexShader:`attribute float aT;varying float vT;void main(){vT=aT;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`precision highp float;varying float vT;uniform float uProg;void main(){if(vT>uProg)discard;float tip=smoothstep(uProg-0.03,uProg,vT)*(1.0-smoothstep(0.97,1.0,uProg));
+      vec3 vert=vec3(0.12,0.52,0.24); vec3 col=mix(vert,vec3(0.9,0.85,0.6),tip*0.8); gl_FragColor=vec4(col,1.0);}`}));
+  trait.renderOrder=2; monde.add(trait);
+
+  const su={uTime:{value:0},uIn:{value:0}};
+  const soleil=new THREE.Mesh(new THREE.PlaneGeometry(SOLEIL.r*5,SOLEIL.r*5),new THREE.ShaderMaterial({uniforms:su,transparent:true,depthWrite:false,
+    vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`precision highp float;varying vec2 vUv;uniform float uTime,uIn;
+      void main(){float d=length(vUv-0.5)/0.2; vec3 g1=vec3(0.99,0.85,0.35),g2=vec3(0.82,0.62,0.16);
+        float disc=1.0-smoothstep(0.97,1.0,d); vec3 col=mix(g1,g2,smoothstep(0.2,1.0,d));
+        float halo=exp(-max(d-1.0,0.0)*3.2)*(0.32+0.08*sin(uTime*0.9));
+        gl_FragColor=vec4(col*disc+vec3(0.95,0.78,0.42)*halo, (disc+halo)*uIn);}`}));
+  soleil.position.set(SOLEIL.c.x,SOLEIL.c.y,-0.01); soleil.renderOrder=1; monde.add(soleil);
+
+  const wu={uIn:{value:0}}; let wmMesh=null;
+  new THREE.TextureLoader().load('/img/logo-wordmark.png',(t)=>{t.colorSpace=THREE.SRGBColorSpace;
+    wmMesh=new THREE.Mesh(new THREE.PlaneGeometry(WM.w,WM.h),new THREE.ShaderMaterial({uniforms:{uTex:{value:t},uIn:wu.uIn},transparent:true,depthWrite:false,
+      vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:`precision highp float;varying vec2 vUv;uniform sampler2D uTex;uniform float uIn;void main(){vec4 c=texture2D(uTex,vUv);gl_FragColor=vec4(c.rgb,c.a*uIn);}`}));
+    wmMesh.position.set(WM.c.x,WM.c.y,0.01); wmMesh.renderOrder=3; monde.add(wmMesh);});
+
+  const N=320,pp=new Float32Array(N*3),sd=new Float32Array(N);
+  for(let i=0;i<N;i++){const a=Math.random()*6.283,r=0.55+Math.random()*0.5;pp[i*3]=Math.cos(a)*r*1.2;pp[i*3+1]=Math.sin(a)*r*0.8;pp[i*3+2]=(Math.random()-0.5)*0.4;sd[i]=Math.random()*6.283;}
+  const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(pp,3));pg.setAttribute('aSeed',new THREE.BufferAttribute(sd,1));
+  const pu={uTime:{value:0},uIn:{value:0},uPix:{value:1}};
+  monde.add(new THREE.Points(pg,new THREE.ShaderMaterial({uniforms:pu,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+    vertexShader:`uniform float uTime,uIn,uPix;attribute float aSeed;varying float vA;void main(){vec3 p=position;p.y+=sin(uTime*0.5+aSeed)*0.03;vec4 mv=modelViewMatrix*vec4(p,1.0);gl_Position=projectionMatrix*mv;gl_PointSize=(0.5+0.5*fract(aSeed*7.0))*uPix*(28.0/-mv.z);vA=uIn*(0.3+0.7*(0.5+0.5*sin(uTime*1.4+aSeed*3.0)));}`,
+    fragmentShader:`precision highp float;varying float vA;void main(){vec2 c=gl_PointCoord-0.5;float d=length(c);if(d>0.5)discard;float g=smoothstep(0.5,0.0,d);gl_FragColor=vec4(mix(vec3(0.79,0.52,0.25),vec3(0.98,0.9,0.66),g),g*g*vA);}`})));
+
+  function resize(){
+    const w=canvas.clientWidth, h=canvas.clientHeight; if(!w||!h) return;
+    renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix();
+    const wh=2*Math.tan(THREE.MathUtils.degToRad(15))*10, ww=wh*cam.aspect;
+    const etroit = w < 900;                                     // mobile / tablette : logo centré derrière le texte, plus petit
+    const s = etroit ? Math.min(wh*0.9, ww*0.8) : Math.min(wh*1.05, ww*0.42);
+    monde.scale.set(s,s,s); monde.position.set(etroit ? 0 : ww*0.24, etroit ? wh*0.18 : wh*0.04, 0);
+    pu.uPix.value=(h*renderer.getPixelRatio())/900;
+  }
+  addEventListener('resize', resize); resize();
+
+  const ease=x=>1-Math.pow(1-x,3); const t0=performance.now(); const sp=reduced?4:1;
+  function frame(now){
+    requestAnimationFrame(frame);
+    const t=(now-t0)/1000, e=t*sp;
+    ru.uProg.value=ease(Math.min(1,e/2.4));
+    const sIn=Math.max(0,Math.min(1,(e-1.1)/2.0)); su.uIn.value=ease(sIn); su.uTime.value=t; soleil.position.y=SOLEIL.c.y-0.34*(1-ease(sIn));
+    const wIn=Math.max(0,Math.min(1,(e-3.0)/1.2)); wu.uIn.value=ease(wIn); if(wmMesh) wmMesh.position.y=WM.c.y-0.03*(1-ease(wIn));
+    pu.uTime.value=t; pu.uIn.value=Math.max(0,Math.min(1,(e-3.6)/1.5));
+    ms.x+=(mouse.x-ms.x)*0.05; ms.y+=(mouse.y-ms.y)*0.05;
+    monde.rotation.y=ms.x*0.16; monde.rotation.x=-ms.y*0.1;
+    renderer.render(scene,cam);
+  }
+  requestAnimationFrame(frame);
+})();
 </script>
 </body>
 </html>

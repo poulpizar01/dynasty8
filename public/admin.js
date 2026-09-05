@@ -166,7 +166,7 @@ function basculerOnglet(nom) {
   if (nom === "agenda") chargerAgenda(true);
   if (nom === "comptabilite") chargerTablette();
   if (nom === "statistiques") { chargerStatistiques(); chargerAgentsStats(); chargerVueEnsemble(); }
-  if (nom === "parametres") chargerParametresRoxwood();
+  if (nom === "parametres") chargerSyncSheet();
 }
 
 // ---------------------------------------------------------------------------
@@ -174,10 +174,12 @@ function basculerOnglet(nom) {
 // via le bot (POST /api/stats/ventes avec sa clé secrète) ; cet écran se
 // contente d'afficher, semaine par semaine, ce qui a déjà été reçu.
 // ---------------------------------------------------------------------------
-// ---- Vue d'ensemble (NOUVEAU) : CA immobilier + Roxwood combinés sur une
-// période choisie. Ne touche JAMAIS aux primes/commissions/DOT par agent,
-// calculées séparément plus bas (Récapitulatif par agent), comme avant.
-// Toujours en UTC, comme les filtres calculés côté serveur.
+// ---- Vue d'ensemble : chiffre d'affaires immobilier sur une période choisie.
+// Ne touche JAMAIS aux primes/commissions/DOT par agent, calculées
+// séparément plus bas (Récapitulatif par agent), comme avant. Toujours en
+// UTC, comme les filtres calculés côté serveur.
+// (L'intégration "Roxwood Network" — CA combiné avec un bot externe — a été
+// retirée en sept. 2026, plus utilisée.)
 function formaterMontantVE(valeur) {
   const n = Math.round(Number(valeur) || 0);
   const chiffres = Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -260,12 +262,6 @@ async function chargerVueEnsemble() {
     const r = await appelAPI(`/api/stats/vue-ensemble?debut=${debut}&fin=${fin}`);
     document.getElementById("ve-immo-ca").textContent = formaterMontantVE(r.immobilier.ca);
     document.getElementById("ve-immo-detail").textContent = `${r.immobilier.nbVentes} vente(s), ${r.immobilier.nbLocations} location(s)`;
-    document.getElementById("ve-roxwood-ca").textContent = formaterMontantVE(r.roxwood.ca);
-    document.getElementById("ve-roxwood-detail").textContent = r.roxwood.nonTraites > 0
-      ? `${r.roxwood.nbVentes} vente(s) — ${r.roxwood.nonTraites} non traité(s)`
-      : `${r.roxwood.nbVentes} vente(s)`;
-    document.getElementById("ve-total-ca").textContent = formaterMontantVE(r.combine.ca);
-    document.getElementById("ve-total-detail").textContent = `${r.combine.nbVentes} vente(s), ${r.combine.nbLocations} location(s)`;
   } catch (e) {
     afficherMessage("zone-message-vue-ensemble", "Impossible de charger la vue d'ensemble : " + e.message, "erreur");
   }
@@ -291,14 +287,14 @@ async function chargerStatistiques() {
     vide.classList.add("cache");
     resultat.classList.remove("cache");
     recap.classList.remove("cache");
-    document.getElementById("corps-table-statistiques").innerHTML = reponse.semaines.map((s) => {
-      const periode = s.debut && s.fin ? `${formaterDateCourte(s.debut)} → ${formaterDateCourte(s.fin)}` : "—";
-      return `<tr><td><strong>${s.code}</strong></td><td>${periode}</td><td>${s.lignes}</td>` +
-        `<td><button type="button" class="bouton-lien" data-voir-recap="${s.code}">Voir le récap par agent →</button></td></tr>`;
-    }).join("");
+    // Totaux agence (toutes semaines confondues) — remplace l'ancien tableau
+    // semaine par semaine.
+    document.getElementById("stats-total-ventes").textContent = reponse.totalVentes ?? 0;
+    document.getElementById("stats-total-locations").textContent = reponse.totalLocations ?? 0;
 
-    // Le sélecteur de semaine du récap par agent reprend la même liste (déjà
-    // triée du plus récent au plus ancien par l'API).
+    // Le sélecteur de semaine du récap par agent reprend la liste des
+    // semaines (déjà triée du plus récent au plus ancien par l'API) — c'est
+    // désormais la seule chose que cette liste sert encore à alimenter.
     const select = document.getElementById("select-semaine-recap");
     const semaineChoisieAvant = select.value;
     select.innerHTML = reponse.semaines.map((s) => `<option value="${s.code}">${s.code}</option>`).join("");
@@ -315,13 +311,6 @@ async function chargerStatistiques() {
   }
 }
 
-document.getElementById("corps-table-statistiques").addEventListener("click", (e) => {
-  const bouton = e.target.closest("[data-voir-recap]");
-  if (!bouton) return;
-  document.getElementById("select-semaine-recap").value = bouton.dataset.voirRecap;
-  chargerRecap(bouton.dataset.voirRecap);
-  document.getElementById("statistiques-recap").scrollIntoView({ behavior: "smooth", block: "start" });
-});
 document.getElementById("select-semaine-recap").addEventListener("change", (e) => chargerRecap(e.target.value));
 
 async function chargerRecap(semaine) {
@@ -365,11 +354,6 @@ async function chargerRecap(semaine) {
   } catch (e) {
     afficherMessage("zone-message-recap", "Impossible de charger le récapitulatif : " + e.message, "erreur");
   }
-}
-
-function formaterDateCourte(isoAAAAMMJJ) {
-  const [a, m, j] = String(isoAAAAMMJJ).split("-");
-  return `${j}/${m}/${a}`;
 }
 
 // Même logique d'espacement des milliers que formaterPrix() (layout.js), mais
@@ -521,9 +505,26 @@ async function chargerMonProfil() {
     PHOTO_PROFIL = moiActuel.photo || "";
     majApercuPhotoProfil();
     majCompteurBioProfil();
+    afficherPrimesProfil(moiActuel.primes);
   } catch (e) {
     afficherMessage("zone-message-profil", "Impossible de charger votre profil : " + e.message, "erreur");
   }
+}
+
+// Ventes/locations/primes synchronisées depuis le Google Sheets de recap
+// (voir /api/moi côté serveur, qui recalcule les primes avec les barèmes de
+// Comptabilité -> Paramètres — jamais les colonnes N/O du Sheet).
+function afficherPrimesProfil(primes) {
+  const p = primes || { ventes: 0, locations: 0, primeVente: 0, primeLocations: 0, primeTotale: 0, synchronise: false, derniereSync: null };
+  document.getElementById("primes-profil-ventes").textContent = p.ventes;
+  document.getElementById("primes-profil-locations").textContent = p.locations;
+  document.getElementById("primes-profil-prime-vente").textContent = formaterArgentStats(p.primeVente);
+  document.getElementById("primes-profil-prime-location").textContent = formaterArgentStats(p.primeLocations);
+  document.getElementById("primes-profil-total").textContent = formaterArgentStats(p.primeTotale);
+  document.getElementById("primes-profil-non-synchronise").classList.toggle("cache", !!p.synchronise);
+  document.getElementById("primes-profil-maj").textContent = p.derniereSync
+    ? "Dernière mise à jour du Sheet : " + formaterDateAdmin(p.derniereSync)
+    : "";
 }
 
 function majApercuPhotoProfil() {
@@ -2775,177 +2776,96 @@ function demarrerMessagerie() {
 demarrer();
 
 
-// =============================================================================
-// Paramètres -> Roxwood Network (bot Discord) : un secret webhook par type
-// d'événement (voir EVENEMENTS_ROXWOOD / roxwood() côté serveur, dans
-// src/index.js), saisi à la main, plus un journal de consultation des
-// événements reçus. Rien ici n'alimente Statistiques ou Comptabilité.
-// =============================================================================
-
-function initialiserUrlWebhookRoxwood() {
-  const input = document.getElementById("roxwood-url-webhook");
-  if (!input) return;
-  input.value = window.location.origin + "/api/webhooks/roxwood";
-  const avertissement = document.getElementById("roxwood-avertissement-url");
-  if (avertissement) {
-    avertissement.textContent = /^\d+\.\d+\.\d+\.\d+$/.test(window.location.hostname)
-      ? "⚠️ Le site n'a pas encore de nom de domaine : cette adresse fonctionne, mais changera le jour où vous en aurez un — pensez à la remettre à jour côté bot à ce moment-là."
-      : "";
-  }
-}
-
-document.getElementById("bouton-copier-url-roxwood")?.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(document.getElementById("roxwood-url-webhook").value);
-    afficherMessage("zone-message-roxwood", "Adresse copiée ✓", "succes");
-  } catch (e) {
-    afficherMessage("zone-message-roxwood", "Impossible de copier automatiquement — sélectionnez le texte à la main.", "erreur");
-  }
-});
-
-async function chargerParametresRoxwood() {
-  initialiserUrlWebhookRoxwood();
-  afficherMessage("zone-message-roxwood", "", null);
-  try {
-    const r = await appelAPI("/api/roxwood/config");
-    document.getElementById("corps-table-roxwood-config").innerHTML = r.types.map((t) => `
-      <tr data-type-roxwood="${echapper(t.type)}">
-        <td>${echapper(t.libelle)}</td>
-        <td>${t.configure ? `<span class="puce puce-ok">✓ Configuré</span>` : `<span class="puce puce-off">Non configuré</span>`}</td>
-        <td><input type="password" class="table-input" placeholder="${t.configure ? "•••••••••••••••• (laisser vide pour ne pas changer)" : "Coller le secret ici"}" data-secret-roxwood style="min-width:220px;"></td>
-        <td style="white-space:nowrap;">
-          <button type="button" class="btn btn-fantome btn-petit" data-enregistrer-roxwood="${echapper(t.type)}">Enregistrer</button>
-          ${t.configure ? `<button type="button" class="btn btn-danger btn-petit" data-retirer-roxwood="${echapper(t.type)}">Retirer</button>` : ""}
-        </td>
-      </tr>`).join("");
-    cablerBoutonsRoxwoodConfig();
-
-    const filtre = document.getElementById("roxwood-filtre-type");
-    const valeurActuelle = filtre.value;
-    filtre.innerHTML = '<option value="">Tous les types</option>' +
-      r.types.map((t) => `<option value="${echapper(t.type)}">${echapper(t.libelle)}</option>`).join("") +
-      '<option value="custom">Personnalisé (contenu au choix)</option>';
-    filtre.value = valeurActuelle;
-
-    document.getElementById("corps-table-roxwood-custom").innerHTML = r.personnalises.length
-      ? r.personnalises.map((c) => `
-          <tr data-label-roxwood-custom="${echapper(c.label)}">
-            <td>${echapper(c.label)}</td>
-            <td class="champ-aide" style="margin:0;">${c.misAJourPar ? `${echapper(c.misAJourPar)} — ${formaterDateRoxwood(c.misAJourLe)}` : ""}</td>
-            <td style="white-space:nowrap;"><button type="button" class="btn btn-danger btn-petit" data-retirer-roxwood-custom="${echapper(c.label)}">Retirer</button></td>
-          </tr>`).join("")
-      : `<tr><td colspan="3" class="champ-aide" style="margin:0;">Aucun webhook personnalisé configuré pour le moment.</td></tr>`;
-    cablerBoutonsRoxwoodCustom();
-  } catch (e) {
-    document.getElementById("corps-table-roxwood-config").innerHTML = `<tr><td colspan="4">Erreur de chargement.</td></tr>`;
-    document.getElementById("corps-table-roxwood-custom").innerHTML = `<tr><td colspan="3">Erreur de chargement.</td></tr>`;
-    afficherMessage("zone-message-roxwood", "Impossible de charger la configuration : " + e.message, "erreur");
-  }
-  chargerJournalRoxwood();
-}
-
-function cablerBoutonsRoxwoodConfig() {
-  const corps = document.getElementById("corps-table-roxwood-config");
-  corps.querySelectorAll("[data-enregistrer-roxwood]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const type = btn.dataset.enregistrerRoxwood;
-      const ligne = corps.querySelector(`tr[data-type-roxwood="${CSS.escape(type)}"]`);
-      const secret = ligne.querySelector("[data-secret-roxwood]").value.trim();
-      if (!secret) { afficherMessage("zone-message-roxwood", "Collez d'abord le secret copié depuis Discord.", "erreur"); return; }
-      try {
-        await appelAPI("/api/roxwood/config", { method: "PUT", body: JSON.stringify({ type, secret }) });
-        afficherMessage("zone-message-roxwood", "Secret enregistré ✓", "succes");
-        chargerParametresRoxwood();
-      } catch (e) {
-        afficherMessage("zone-message-roxwood", "Impossible d'enregistrer : " + e.message, "erreur");
-      }
-    });
-  });
-  corps.querySelectorAll("[data-retirer-roxwood]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const type = btn.dataset.retirerRoxwood;
-      const ok = await confirmerAction("Le bot ne pourra plus envoyer ce type d'événement au site tant qu'un nouveau secret n'aura pas été collé ici. Continuer ?", "Retirer ce secret ?");
-      if (!ok) return;
-      try {
-        await appelAPI(`/api/roxwood/config?type=${encodeURIComponent(type)}`, { method: "DELETE" });
-        afficherMessage("zone-message-roxwood", "Secret retiré ✓", "succes");
-        chargerParametresRoxwood();
-      } catch (e) {
-        afficherMessage("zone-message-roxwood", "Impossible de retirer : " + e.message, "erreur");
-      }
-    });
-  });
-}
-
-function cablerBoutonsRoxwoodCustom() {
-  const corps = document.getElementById("corps-table-roxwood-custom");
-  corps.querySelectorAll("[data-retirer-roxwood-custom]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const label = btn.dataset.retirerRoxwoodCustom;
-      const ok = await confirmerAction(`Le bot ne pourra plus envoyer le webhook personnalisé « ${label} » au site tant qu'un nouveau secret n'aura pas été collé ici. Continuer ?`, "Retirer ce webhook ?");
-      if (!ok) return;
-      try {
-        await appelAPI(`/api/roxwood/config?type=custom&label=${encodeURIComponent(label)}`, { method: "DELETE" });
-        afficherMessage("zone-message-roxwood", "Webhook personnalisé retiré ✓", "succes");
-        chargerParametresRoxwood();
-      } catch (e) {
-        afficherMessage("zone-message-roxwood", "Impossible de retirer : " + e.message, "erreur");
-      }
-    });
-  });
-}
-
-document.getElementById("bouton-ajouter-roxwood-custom")?.addEventListener("click", async () => {
-  const champLabel = document.getElementById("roxwood-custom-nouveau-label");
-  const champSecret = document.getElementById("roxwood-custom-nouveau-secret");
-  const label = champLabel.value.trim();
-  const secret = champSecret.value.trim();
-  if (!label) { afficherMessage("zone-message-roxwood", "Indiquez le libellé choisi côté Discord pour ce webhook.", "erreur"); return; }
-  if (!secret) { afficherMessage("zone-message-roxwood", "Collez d'abord le secret copié depuis Discord.", "erreur"); return; }
-  try {
-    await appelAPI("/api/roxwood/config", { method: "PUT", body: JSON.stringify({ type: "custom", label, secret }) });
-    afficherMessage("zone-message-roxwood", "Webhook personnalisé enregistré ✓", "succes");
-    champLabel.value = "";
-    champSecret.value = "";
-    chargerParametresRoxwood();
-  } catch (e) {
-    afficherMessage("zone-message-roxwood", "Impossible d'enregistrer : " + e.message, "erreur");
-  }
-});
-
-document.getElementById("bouton-rafraichir-roxwood")?.addEventListener("click", () => chargerJournalRoxwood());
-document.getElementById("roxwood-filtre-type")?.addEventListener("change", () => chargerJournalRoxwood());
-
-function formaterDateRoxwood(iso) {
+// Formatage court "jj/mm/aaaa hh:mm" d'une date ISO/SQL — utilisé un peu
+// partout dans l'admin (horodatages divers).
+function formaterDateAdmin(iso) {
   if (!iso) return "";
   const d = new Date(iso.includes("T") || iso.includes("Z") ? iso : iso.replace(" ", "T") + "Z");
   if (isNaN(d.getTime())) return echapper(iso);
   return d.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "medium" });
 }
 
-async function chargerJournalRoxwood() {
-  const zone = document.getElementById("roxwood-journal-liste");
-  const vide = document.getElementById("roxwood-journal-vide");
-  if (!zone || !vide) return;
-  const type = document.getElementById("roxwood-filtre-type")?.value || "";
+// ---------------------------------------------------------------------------
+// Paramètres -> Synchronisation Google Sheets ("Mon profil" -> ventes/
+// locations/primes). Le Sheet fournit seulement les compteurs (colonnes L/M
+// -> nb_ventes/nb_locations) ; les montants de primes sont recalculés côté
+// serveur avec les barèmes de Comptabilité -> Paramètres, jamais lus depuis
+// le Sheet. Associer une ligne à un compte écrit son nom (colonne D) sur
+// membres.nom_sheet, pour que les prochaines synchros la retrouvent seules.
+// ---------------------------------------------------------------------------
+
+async function chargerSyncSheet() {
+  const corps = document.getElementById("corps-table-sync-sheet");
+  const etatLigne = document.getElementById("sync-sheet-etat");
+  afficherMessage("zone-message-sync-sheet", "", null);
+  corps.innerHTML = `<tr><td colspan="5">Chargement…</td></tr>`;
   try {
-    const r = await appelAPI(`/api/roxwood/evenements?limite=50${type ? "&type=" + encodeURIComponent(type) : ""}`);
-    if (!r.evenements.length) {
-      zone.innerHTML = "";
-      vide.classList.remove("cache");
+    if (!CACHE_MEMBRES.length) await appelAPI("/api/membres").then((d) => { CACHE_MEMBRES = d.membres || []; });
+    const r = await appelAPI("/api/sync-sheet/etat");
+
+    if (!r.etat) {
+      etatLigne.textContent = "Pas encore synchronisé.";
+    } else if (r.etat.statut === "erreur") {
+      etatLigne.textContent = `Dernière tentative en échec (${formaterDateAdmin(r.etat.derniere_sync)}) : ${r.etat.erreur}`;
+    } else {
+      etatLigne.textContent = `Dernière synchro : ${formaterDateAdmin(r.etat.derniere_sync)} — ${r.etat.nb_lignes} ligne(s) lue(s), ${r.etat.nb_apparies} associée(s).`;
+    }
+
+    if (!r.lignes.length) {
+      corps.innerHTML = `<tr><td colspan="5">Aucune ligne lue pour le moment — cliquez sur « Synchroniser maintenant ».</td></tr>`;
       return;
     }
-    vide.classList.add("cache");
-    zone.innerHTML = r.evenements.map((ev) => `
-      <details class="roxwood-evenement">
-        <summary>
-          <span class="puce puce-or">${echapper(ev.libelle)}${ev.label ? " — " + echapper(ev.label) : ""}</span>
-          <span class="champ-aide" style="margin:0;">${formaterDateRoxwood(ev.recuLe)}</span>
-        </summary>
-        <pre class="roxwood-payload">${echapper(JSON.stringify(ev.payload, null, 2))}</pre>
-      </details>`).join("");
+    const optionsMembres = `<option value="">— non apparié —</option>` +
+      CACHE_MEMBRES.filter((m) => m.statut !== "attente").map((m) => `<option value="${m.id}">${echapper(m.pseudo)}</option>`).join("");
+    nettoyerSelectsPortee("sync-sheet");
+    corps.innerHTML = r.lignes.map((l) => `
+      <tr>
+        <td>${echapper(l.nom_sheet)}</td>
+        <td>${echapper(l.grade_sheet || "—")}</td>
+        <td style="text-align:right;">${l.nb_ventes}</td>
+        <td style="text-align:right;">${l.nb_locations}</td>
+        <td><select class="table-select" data-sync-ligne="${echapper(l.nom_sheet)}">${optionsMembres}</select></td>
+      </tr>`).join("");
+    corps.querySelectorAll("[data-sync-ligne]").forEach((sel) => {
+      const ligne = r.lignes.find((l) => l.nom_sheet === sel.dataset.syncLigne);
+      sel.value = ligne && ligne.membre_id ? String(ligne.membre_id) : "";
+      sel.addEventListener("change", () => associerLigneSyncSheet(ligne.nom_sheet, sel.value));
+      ameliorerSelect(sel, null, "sync-sheet");
+    });
   } catch (e) {
-    zone.innerHTML = "";
-    afficherMessage("zone-message-roxwood", "Impossible de charger le journal : " + e.message, "erreur");
+    corps.innerHTML = `<tr><td colspan="5">Erreur de chargement : ${echapper(e.message)}</td></tr>`;
   }
 }
+
+async function associerLigneSyncSheet(nomSheet, membreId) {
+  try {
+    if (membreId) {
+      await appelAPI("/api/membres?id=" + membreId, { method: "PATCH", body: JSON.stringify({ nom_sheet: nomSheet }) });
+    }
+    // Ré-appliquer tout de suite la nouvelle association, sans attendre la
+    // prochaine synchro automatique (jusqu'à 20 min plus tard) — plus clair
+    // pour la Direction, qui voit l'effet de son clic immédiatement.
+    await appelAPI("/api/sync-sheet/synchroniser", { method: "POST" });
+    afficherMessage("zone-message-sync-sheet", "Association enregistrée ✓", "succes");
+    chargerSyncSheet();
+  } catch (e) {
+    afficherMessage("zone-message-sync-sheet", e.message, "erreur");
+  }
+}
+
+document.getElementById("bouton-synchroniser-sheet")?.addEventListener("click", async (ev) => {
+  const bouton = ev.currentTarget;
+  const texteInitial = bouton.textContent;
+  bouton.disabled = true;
+  bouton.textContent = "Synchronisation…";
+  try {
+    await appelAPI("/api/sync-sheet/synchroniser", { method: "POST" });
+    afficherMessage("zone-message-sync-sheet", "Synchronisation terminée ✓", "succes");
+    chargerSyncSheet();
+  } catch (e) {
+    afficherMessage("zone-message-sync-sheet", "Échec de la synchronisation : " + e.message, "erreur");
+  } finally {
+    bouton.disabled = false;
+    bouton.textContent = texteInitial;
+  }
+});

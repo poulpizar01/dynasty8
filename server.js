@@ -14,6 +14,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import worker from "./src/index.js";
 import { creerPool, creerAdaptateurDB } from "./src/db-pg.js";
+import { synchroniserSheetSansErreur } from "./src/google-sheets.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -112,6 +113,18 @@ function construireEnv() {
   };
 }
 
+// Synchro Google Sheets ("Mon profil") : une fois au démarrage, puis toutes
+// les 20 minutes — voir la doc en tête de src/google-sheets.js. N'échoue
+// jamais bruyamment (synchroniserSheetSansErreur avale ses erreurs et les
+// range dans sync_sheet_etat, lisible dans Paramètres) : un Sheet mal
+// configuré ou une coupure réseau ponctuelle ne doit jamais faire planter le
+// reste du site.
+const INTERVALLE_SYNC_SHEET_MS = 20 * 60 * 1000;
+function demarrerSyncSheet() {
+  synchroniserSheetSansErreur(construireEnv());
+  setInterval(() => synchroniserSheetSansErreur(construireEnv()), INTERVALLE_SYNC_SHEET_MS);
+}
+
 // ---- /api/* : transmis tel quel au Worker (Request web standard entrant, Response web standard sortant) ----
 app.use("/api", async (req, res) => {
   try {
@@ -162,6 +175,7 @@ app.use((req, res) => {
 appliquerSchema()
   .then(() => importerDonneesReelles())
   .then(() => amorcerPremierAdmin())
+  .then(() => demarrerSyncSheet())
   .catch((e) => {
     console.error("Impossible d'appliquer le schéma PostgreSQL au démarrage :", e);
   })

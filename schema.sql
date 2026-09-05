@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS membres (
   discord_id TEXT,                            -- identifiant Discord permanent, lié à vie à la première connexion
   discord_pseudo TEXT,                        -- pseudo Discord exact — sert à la pré-autorisation ("Créer le compte")
   discord_avatar TEXT,                        -- adresse de la photo de profil Discord — mise à jour à chaque connexion
-  statut TEXT NOT NULL DEFAULT 'attente'      -- 'attente' | 'invite' | 'valide' | 'desactive' — voir src/index.js
+  statut TEXT NOT NULL DEFAULT 'attente',     -- 'attente' | 'invite' | 'valide' | 'desactive' — voir src/index.js
+  nom_sheet TEXT                               -- nom exact "Nom Prénom" dans le Google Sheets de recap des primes (appariement, voir src/google-sheets.js)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_membres_discord_id ON membres(discord_id);
@@ -257,3 +258,27 @@ CREATE TABLE IF NOT EXISTS compta_dot_ecritures (
   cree_le TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_compta_dot_ecritures_type ON compta_dot_ecritures(type);
+
+-- ---- Synchronisation Google Sheets (recap primes par membre, "Mon profil") -
+-- Voir la même table côté PostgreSQL (schema.postgres.sql) pour la doc complète.
+CREATE TABLE IF NOT EXISTS sync_sheet_agents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nom_sheet TEXT NOT NULL,
+  nom_normalise TEXT NOT NULL,
+  grade_sheet TEXT NOT NULL DEFAULT '',
+  nb_ventes INTEGER NOT NULL DEFAULT 0,
+  nb_locations INTEGER NOT NULL DEFAULT 0,
+  membre_id INTEGER REFERENCES membres(id) ON DELETE SET NULL,
+  ligne_sheet INTEGER,
+  maj TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_sync_sheet_agents_membre ON sync_sheet_agents(membre_id);
+
+CREATE TABLE IF NOT EXISTS sync_sheet_etat (
+  id INTEGER PRIMARY KEY,
+  derniere_sync TEXT,
+  statut TEXT NOT NULL DEFAULT '',
+  erreur TEXT NOT NULL DEFAULT '',
+  nb_lignes INTEGER NOT NULL DEFAULT 0,
+  nb_apparies INTEGER NOT NULL DEFAULT 0
+);
