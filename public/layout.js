@@ -5,6 +5,13 @@
 
 // Adresse d'invitation Discord du serveur — à remplacer par la vraie une fois disponible.
 const LIEN_DISCORD = "https://discord.com/invite/zCsPrrR3uw";
+// Adresse de la WebMap : un chemin sur NOTRE domaine, jamais l'adresse
+// réelle du serveur qui héberge la carte — voir carteProxy() dans
+// src/index.js, qui va la chercher côté serveur et la reproxie ici. La
+// vraie adresse n'apparaît donc nulle part dans le code envoyé au
+// navigateur (ni ici, ni dans l'iframe intégrée en page, voir
+// data-webmap-toggle / data-webmap-boite ci-dessous).
+const LIEN_WEBMAP = "/api/carte/";
 
 // Menu volontairement resserré à 6 entrées (contre 9 avant) pour rester lisible
 // d'un coup d'œil : "Catalogue" regroupe Intérieurs/Garages/Exclusifs, "Agence"
@@ -124,7 +131,7 @@ function injecterPied() {
           <h4>Nous contacter</h4>
           <ul>
             <li><a href="${LIEN_DISCORD}" id="lien-discord" target="_blank" rel="noopener">Discord du serveur</a></li>
-            <li><a href="https://map.flashbackfa.fr/" target="_blank" rel="noopener">WebMap</a></li>
+            <li><a href="${LIEN_WEBMAP}">WebMap</a></li>
             <li><a href="/admin.html">Espace agents</a></li>
           </ul>
         </div>
@@ -539,8 +546,35 @@ function demarrerPoussiereOr() {
   }).catch(() => {});
 }
 
+
+// Bouton "Voir la WebMap" (accueil, cohérence, cohérences) : au clic,
+// insère la carte dans un <iframe> juste en dessous du bouton (jamais de
+// nouvel onglet) et ne la charge qu'une seule fois, au premier clic, pour
+// ne pas imposer ce script tiers à tous les visiteurs de la page.
+function initialiserWebmapInline() {
+  const bouton = document.querySelector("[data-webmap-toggle]");
+  const boite = document.querySelector("[data-webmap-boite]");
+  if (!bouton || !boite) return;
+  let chargee = false;
+  bouton.addEventListener("click", () => {
+    const maintenantCachee = boite.classList.toggle("cache");
+    if (maintenantCachee) { bouton.textContent = "Voir la WebMap"; return; }
+    if (!chargee) {
+      const iframe = document.createElement("iframe");
+      iframe.src = LIEN_WEBMAP;
+      iframe.title = "Carte interactive du serveur";
+      iframe.loading = "lazy";
+      iframe.referrerPolicy = "no-referrer";
+      boite.appendChild(iframe);
+      chargee = true;
+    }
+    bouton.textContent = "Masquer la carte";
+    boite.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => { habillerCartesHub(); demarrerPoussiereOr(); });
+  document.addEventListener("DOMContentLoaded", () => { habillerCartesHub(); demarrerPoussiereOr(); initialiserWebmapInline(); });
 } else {
-  habillerCartesHub(); demarrerPoussiereOr();
+  habillerCartesHub(); demarrerPoussiereOr(); initialiserWebmapInline();
 }

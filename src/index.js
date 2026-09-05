@@ -26,6 +26,15 @@ import * as statsCalc from "./stats-calc.js";
 import { synchroniserSheetSansErreur } from "./google-sheets.js";
 
 const COOKIE = "d8_session";
+
+// ---- proxy de la WebMap : cache complètement l'adresse réelle -------------
+// Le navigateur ne contacte jamais webmap.dynasty8.fbfa.fr : toutes les
+// requêtes (page, scripts, images, appels internes...) passent par
+// /api/carte/* sur NOTRE domaine, et c'est ce serveur qui va chercher la
+// vraie carte en coulisses. Résultat : l'adresse réelle n'apparaît nulle
+// part dans le code envoyé au navigateur, ni dans les outils de dev.
+const WEBMAP_ORIGIN = "https://webmap.dynasty8.fbfa.fr";
+const WEBMAP_PREFIXE = "/api/carte";
 const COOKIE_ETAT_OAUTH = "d8_oauth_state"; // protection anti-CSRF pendant l'aller-retour vers Discord
 const DUREE = 60 * 60 * 12; // 12 heures, en secondes
 const CATEGORIES = ["habitation", "garage"];
@@ -183,6 +192,7 @@ export default {
       if (chemin.startsWith("/api/comptabilite/")) return await comptabilite(request, url, env);
       if (chemin.startsWith("/api/stats/")) return await statistiques(request, url, env);
       if (chemin.startsWith("/api/sync-sheet/")) return await syncSheet(request, url, env);
+      if (chemin === WEBMAP_PREFIXE || chemin.startsWith(WEBMAP_PREFIXE + "/")) return await carteProxy(request, url);
       return json({ erreur: "Adresse inconnue." }, 404);
     } catch (e) {
       // DIAGNOSTIC : journalise l'erreur complète côté serveur (jamais de
@@ -981,12 +991,16 @@ async function comptaDotSalaries(env, url, s) {
   const semaine = (url.searchParams.get("semaine") || "").trim().toUpperCase();
   if (!semaine) return json({ erreur: "Le paramètre « semaine » est obligatoire (ex : S36-26)." }, 400);
 
-  const [agents, tabletteR] = await Promise.all([
+  const [agentsBruts, tabletteR, primesSheet] = await Promise.all([
     calculerRecapSemaine(env, semaine),
     env.DB.prepare(
       "SELECT colonnes, lignes FROM comptabilite_imports WHERE type = 'tablettes' ORDER BY importe_le DESC, id DESC LIMIT 1"
     ).first(),
+    primesSheetParPseudo(env),
   ]);
+  // Primes = mêmes données que "Mon profil" (voir remplacerPrimesParSheet) --
+  // le calcul par semaine n'est gardé ici que pour le salaire fixe.
+  const agents = remplacerPrimesParSheet(agentsBruts, primesSheet);
 
   let colonnes = [];
   let lignesEmployes = [];
@@ -1077,7 +1091,8 @@ async function comptaDotResume(env, url, s) {
 
   let montantTotalPrimes = null;
   if (semaine) {
-    const agents = await calculerRecapSemaine(env, semaine);
+    const [agentsBruts, primesSheet] = await Promise.all([calculerRecapSemaine(env, semaine), primesSheetParPseudo(env)]);
+    const agents = remplacerPrimesParSheet(agentsBruts, primesSheet);
     montantTotalPrimes = agents.reduce((s2, a) => s2 + a.totalAVerser, 0);
   }
 
@@ -1342,6 +1357,9 @@ async function statsSemaines(env, s) {
   if (!statsPeutVoirSoi(s)) return json({ erreur: "Non connecté." }, 401);
   const { lignes } = await lireLignesPourCalculs(env);
   const compteurs = new Map();
+  // ventes/locations PAR semaine (en plus du total agence ci-dessous), pour
+  // pouvoir en extraire la semaine la plus récente une fois triée.
+  const parSemaine = new Map(); // code -> { ventes, locations }
   // Totaux agence, toutes semaines confondues (mêmes unités que le récap par
   // agent : compterAchats()/compterLocations() dans stats-calc.js — une
   // ligne avec intérieur ET garage compte pour 2, une location compte sa
@@ -1349,10 +1367,16 @@ async function statsSemaines(env, s) {
   let totalVentes = 0;
   let totalLocations = 0;
   lignes.forEach((l) => {
-    if (l.type === "Vente") totalVentes += (l.interieur !== "" ? 1 : 0) + (l.garage !== "" ? 1 : 0);
-    else if (l.type === "Location") totalLocations += (l.interieur !== "" ? l.quantiteLoc : 0) + (l.garage !== "" ? l.quantiteLoc : 0);
+    const ventesLigne = l.type === "Vente" ? (l.interieur !== "" ? 1 : 0) + (l.garage !== "" ? 1 : 0) : 0;
+    const locationsLigne = l.type === "Location" ? (l.interieur !== "" ? l.quantiteLoc : 0) + (l.garage !== "" ? l.quantiteLoc : 0) : 0;
+    totalVentes += ventesLigne;
+    totalLocations += locationsLigne;
     if (!l.semaine) return; // absente en colonne P -> exclue de tous les récaps (§7)
     compteurs.set(l.semaine, (compteurs.get(l.semaine) || 0) + 1);
+    const c = parSemaine.get(l.semaine) || { ventes: 0, locations: 0 };
+    c.ventes += ventesLigne;
+    c.locations += locationsLigne;
+    parSemaine.set(l.semaine, c);
   });
   const semaines = Array.from(compteurs.entries())
     .map(([code, nbLignes]) => {
@@ -1370,7 +1394,20 @@ async function statsSemaines(env, s) {
     })
     .sort((a, b) => b.ordre - a.ordre)
     .map(({ ordre, ...reste }) => reste);
-  return json({ semaines, totalVentes, totalLocations });
+
+  // Semaine la plus récente ayant au moins une ligne (= "semaine en cours"
+  // à l'écran) — 0 partout si aucune semaine n'a encore de données.
+  const semaineRecente = semaines[0] || null;
+  const compteursSemaineRecente = semaineRecente ? (parSemaine.get(semaineRecente.code) || { ventes: 0, locations: 0 }) : { ventes: 0, locations: 0 };
+
+  return json({
+    semaines,
+    totalVentes,
+    totalLocations,
+    semaineRecente: semaineRecente ? semaineRecente.code : null,
+    ventesSemaine: compteursSemaineRecente.ventes,
+    locationsSemaine: compteursSemaineRecente.locations,
+  });
 }
 
 async function statsAnomalies(env, url, s) {
@@ -1388,9 +1425,13 @@ async function statsAnomalies(env, url, s) {
 // qui n'y est pas encore déclaré apparaît quand même, avec son pseudo brut
 // et le grade par défaut "Agent" (seul le grade "Stagiaire" change le calcul
 // des primes — tout le reste utilise le même barème pour l'instant).
-// Calcule le récap d'une semaine (utilisé par statsRecap ci-dessous ET par
-// comptaDotResume, qui a besoin du "Montant total des primes" de la même
-// semaine pour la déclaration DOT — un seul moteur de calcul, jamais dupliqué).
+// Calcule le récap d'une semaine, utilisé par statsRecap (Statistiques ->
+// Récapitulatif par agent, qui garde ce calcul historique par semaine, basé
+// sur les ventes/locations enregistrées par le bot). Comptabilité (DOT), en
+// revanche, ne garde de cette fonction QUE le salaire fixe et le classement
+// par grade : ses primes sont ensuite remplacées par remplacerPrimesParSheet
+// ci-dessous, pour afficher exactement les mêmes montants que "Mon profil"
+// (Google Sheets + barèmes) — voir cette fonction pour le détail.
 async function calculerRecapSemaine(env, semaine) {
   const { lignes } = await lireLignesPourCalculs(env);
   const identitesNormalisees = new Set(
@@ -1450,44 +1491,60 @@ async function calculerRecapSemaine(env, semaine) {
   return agents;
 }
 
-// ---- Vue d'ensemble globale : chiffre d'affaires immobilier (mêmes lignes/
-// exclusions que la paie/le récap, voir lireLignesPourCalculs()) sur une
-// période libre. Ne touche JAMAIS aux primes/commissions/DOT par agent : un
-// total d'affichage uniquement, calculé à part.
-// (L'intégration "Roxwood Network" — CA combiné avec un bot externe — a été
-// retirée en sept. 2026, plus utilisée.)
-function parseDateVenteJJMMAAAA(brut) {
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(brut || "").trim());
-  if (!m) return null;
-  const d = new Date(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])));
-  return isNaN(d.getTime()) ? null : d;
+// ---- Comptabilité (DOT) : primes alignées sur "Mon profil" ---------------
+// stats_agents (utilisé par calculerRecapSemaine ci-dessus) est un
+// référentiel séparé de membres (aucune clé commune) : le rapprochement
+// avec sync_sheet_agents — la même source que "Mon profil" — se fait donc
+// par pseudo Discord normalisé (stats_agents.discord_pseudo <->
+// membres.discord_pseudo), le seul champ que les deux univers partagent.
+async function primesSheetParPseudo(env) {
+  const [lignesR, baremesR] = await Promise.all([
+    env.DB.prepare(
+      `SELECT ssa.nb_ventes, ssa.nb_locations, m.discord_pseudo
+       FROM sync_sheet_agents ssa JOIN membres m ON m.id = ssa.membre_id`
+    ).all(),
+    env.DB.prepare("SELECT * FROM stats_baremes_primes").all(),
+  ]);
+  const baremes = baremesR.results || [];
+  const baremeVentes = baremes.filter((b) => b.type === "vente");
+  const baremeLocations = baremes.filter((b) => b.type === "location");
+  const parPseudo = new Map();
+  for (const l of lignesR.results || []) {
+    const cle = statsCalc.normaliserTexte(l.discord_pseudo || "");
+    if (!cle) continue;
+    const primeVente = statsCalc.montantPalier(baremeVentes, l.nb_ventes);
+    const primeLocations = statsCalc.montantPalier(baremeLocations, l.nb_locations);
+    parPseudo.set(cle, {
+      ventes: l.nb_ventes || 0,
+      locations: l.nb_locations || 0,
+      primeVente,
+      primeLocations,
+      primeTotale: primeVente + primeLocations,
+    });
+  }
+  return parPseudo;
 }
 
-async function statsVueEnsemble(env, url, s) {
-  if (!statsPeutVoirTous(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-  const debut = (url.searchParams.get("debut") || "").trim();
-  const fin = (url.searchParams.get("fin") || "").trim();
-  const bDebut = borneJourUtc(debut);
-  const bFinExclusive = borneJourUtc(fin, 1);
-  if (!bDebut || !bFinExclusive || bDebut > bFinExclusive) {
-    return json({ erreur: "Paramètres « debut » et « fin » invalides (format AAAA-MM-JJ attendu, debut <= fin)." }, 400);
-  }
-
-  const { lignes } = await lireLignesPourCalculs(env);
-  let immoNbVentes = 0, immoNbLocations = 0, immoCa = 0;
-  for (const l of lignes) {
-    const d = parseDateVenteJJMMAAAA(l.date);
-    if (!d || d < bDebut || d >= bFinExclusive) continue;
-    if (l.type === "Vente") immoNbVentes++;
-    else if (l.type === "Location") immoNbLocations++;
-    else continue;
-    immoCa += Number(l.montant) || 0;
-  }
-
-  return json({
-    debut,
-    fin,
-    immobilier: { nbVentes: immoNbVentes, nbLocations: immoNbLocations, ca: immoCa },
+// Remplace, sur une liste d'agents déjà calculée par calculerRecapSemaine(),
+// la prime "par semaine" par la prime "Mon profil" (Sheet + barèmes) — le
+// salaire fixe n'est pas touché. Un agent sans ligne Sheet associée retombe
+// sur 0 (jamais sur l'ancien calcul par semaine, pour ne jamais mélanger les
+// deux sources dans un même montant).
+function remplacerPrimesParSheet(agents, primesParPseudo) {
+  return agents.map((a) => {
+    const cle = statsCalc.normaliserTexte(a.identite || "");
+    const p = primesParPseudo.get(cle) || { ventes: 0, locations: 0, primeVente: 0, primeLocations: 0, primeTotale: 0 };
+    const salaireVerse = a.totalAVerser - a.primeTotale;
+    return {
+      ...a,
+      nbAchats: p.ventes,
+      nbLocations: p.locations,
+      primeVente: p.primeVente,
+      primeLocations: p.primeLocations,
+      primeTotale: p.primeTotale,
+      totalAVerser: salaireVerse + p.primeTotale,
+      totalGagne: (a.totalGagne - a.primeTotale) + p.primeTotale,
+    };
   });
 }
 
@@ -1724,7 +1781,6 @@ async function statistiques(request, url, env) {
   if (route === "/semaines" && m === "GET") return statsSemaines(env, s);
   if (route === "/anomalies" && m === "GET") return statsAnomalies(env, url, s);
   if (route === "/recap" && m === "GET") return statsRecap(env, url, s);
-  if (route === "/vue-ensemble" && m === "GET") return statsVueEnsemble(env, url, s);
   if (route === "/agents" && m === "GET") return statsListerAgents(env, s);
   if (route === "/agents" && m === "POST") return statsCreerAgent(request, env, s);
   if (route === "/ventes" && m === "POST") {
@@ -2120,6 +2176,14 @@ async function comptes(request, url, env) {
     // correspondent au nom du Sheet.
     if (b.nom_sheet !== undefined) {
       const nomSheet = txt(b.nom_sheet, 120).trim();
+      if (nomSheet) {
+        // Un seul membre peut porter un nom_sheet donné : sans ce nettoyage,
+        // un ancien titulaire non réassigné le garde en base, et la prochaine
+        // synchro (synchroniserSheet(), qui priorise nom_sheet) redevient
+        // imprévisible entre les deux -- c'est ce qui faisait "revenir" la
+        // ligne sur l'ancienne association au clic sur « Synchroniser ».
+        await env.DB.prepare("UPDATE membres SET nom_sheet = NULL WHERE nom_sheet = ?1 AND id != ?2").bind(nomSheet, id).run();
+      }
       binds.push(nomSheet || null);
       champs.push(`nom_sheet = ?${binds.length}`);
     }
@@ -2180,3 +2244,114 @@ async function syncSheet(request, url, env) {
   return json({ erreur: "Adresse inconnue." }, 404);
 }
 
+
+// ---- proxy de la WebMap (voir WEBMAP_ORIGIN / WEBMAP_PREFIXE plus haut) ---
+
+// Cookies : le navigateur envoie un seul en-tete Cookie qui melange le cookie
+// de session Dynasty 8 (d8_session) et, si la WebMap en pose, les siens. On
+// ne transmet a webmap.dynasty8.fbfa.fr QUE les cookies qu'elle a elle-meme
+// poses (prefixes "wm_" quand on les relaie au navigateur, voir plus bas) :
+// d8_session ne quitte donc jamais ce serveur.
+function cookiesVersWebmap(request) {
+  const brut = request.headers.get("cookie") || "";
+  const versDistant = [];
+  for (const paire of brut.split(";")) {
+    const p = paire.trim();
+    const i = p.indexOf("=");
+    if (i === -1) continue;
+    const nom = p.slice(0, i);
+    if (!nom.startsWith("wm_")) continue;
+    versDistant.push(nom.slice(3) + "=" + p.slice(i + 1));
+  }
+  return versDistant.join("; ");
+}
+
+// Ramene une adresse (absolue vers webmap.dynasty8.fbfa.fr, ou relative a sa
+// racine) vers son equivalent sous /api/carte sur notre propre domaine.
+function reecrireAdresseWebmap(lienBrut) {
+  try {
+    const u = new URL(lienBrut, WEBMAP_ORIGIN);
+    if (u.origin === new URL(WEBMAP_ORIGIN).origin) {
+      return WEBMAP_PREFIXE + u.pathname + u.search + u.hash;
+    }
+  } catch (e) { /* lien mal forme : laisse tel quel plus bas */ }
+  return lienBrut;
+}
+
+// Reecrit, a l'interieur d'une page HTML/JS/CSS/JSON renvoyee par la WebMap,
+// toutes les adresses qui pointeraient vers son vrai domaine, pour qu'elles
+// passent elles aussi par /api/carte. Trois filets, du plus precis au plus
+// large :
+//  1) adresses completes ("https://webmap.dynasty8.fbfa.fr/...") -> prefixe.
+//  2) chemins commencant par un seul "/" a l'interieur de guillemets (les
+//     appels d'API ou ressources codes "en dur" par l'application) ->
+//     prefixes eux aussi (le filtre negatif evite de re-prefixer un chemin
+//     deja prefixe par l'etape 1).
+//  3) une balise <base> posee en secours pour les chemins RELATIFS "normaux"
+//     (sans "/" au depart) : le navigateur les resout alors automatiquement
+//     par rapport a /api/carte/, sans qu'on ait besoin d'y toucher.
+function reecrireContenuWebmap(texte, typeContenu) {
+  texte = texte.split(WEBMAP_ORIGIN).join(WEBMAP_PREFIXE);
+  texte = texte.replace(/(["'])\/(?!\/)(?!api\/carte\/)/g, `$1${WEBMAP_PREFIXE}/`);
+  if (typeContenu.includes("text/html") && /<head[^>]*>/i.test(texte)) {
+    texte = texte.replace(/<head([^>]*)>/i, `<head$1><base href="${WEBMAP_PREFIXE}/">`);
+  }
+  return texte;
+}
+
+async function carteProxy(request, url) {
+  const sousChemin = url.pathname.slice(WEBMAP_PREFIXE.length) || "/";
+  const cible = WEBMAP_ORIGIN + sousChemin + url.search;
+
+  const entetes = new Headers();
+  for (const nom of ["accept", "accept-language", "content-type", "range"]) {
+    const v = request.headers.get(nom);
+    if (v) entetes.set(nom, v);
+  }
+  entetes.set("user-agent", request.headers.get("user-agent") || "Mozilla/5.0");
+  const cookieDistant = cookiesVersWebmap(request);
+  if (cookieDistant) entetes.set("cookie", cookieDistant);
+
+  const corps = ["GET", "HEAD"].includes(request.method) ? undefined : await request.arrayBuffer();
+
+  let reponseDistante;
+  try {
+    reponseDistante = await fetch(cible, { method: request.method, headers: entetes, body: corps, redirect: "manual" });
+  } catch (e) {
+    console.error("[carte-proxy] Injoignable :", e);
+    return new Response("La carte est momentanement indisponible.", { status: 502 });
+  }
+
+  // Redirection renvoyee par la WebMap : on la suit nous-memes vers son
+  // equivalent /api/carte/... -- jamais l'adresse reelle dans la barre
+  // d'adresse ou l'en-tete Location du navigateur.
+  if ([301, 302, 303, 307, 308].includes(reponseDistante.status)) {
+    const brut = reponseDistante.headers.get("location") || "/";
+    return new Response(null, { status: 302, headers: { location: reecrireAdresseWebmap(brut) } });
+  }
+
+  const typeContenu = reponseDistante.headers.get("content-type") || "";
+  const entetesSortie = new Headers();
+  entetesSortie.set("content-type", typeContenu || "application/octet-stream");
+  const cache = reponseDistante.headers.get("cache-control");
+  if (cache) entetesSortie.set("cache-control", cache);
+
+  const cookiesRecus = typeof reponseDistante.headers.getSetCookie === "function" ? reponseDistante.headers.getSetCookie() : [];
+  for (const c of cookiesRecus) {
+    const [pairePart, ...attributs] = c.split(";");
+    const i = pairePart.indexOf("=");
+    if (i === -1) continue;
+    const nom = pairePart.slice(0, i).trim();
+    const valeur = pairePart.slice(i + 1);
+    const attributsPropres = attributs.filter((a) => !/^\s*(domain|path)\s*=/i.test(a));
+    entetesSortie.append("set-cookie", `wm_${nom}=${valeur};${attributsPropres.join(";")}Path=${WEBMAP_PREFIXE}`);
+  }
+
+  const reecriture = typeContenu.includes("text/html") || typeContenu.includes("javascript")
+    || typeContenu.includes("text/css") || typeContenu.includes("json");
+  if (reecriture) {
+    const texte = reecrireContenuWebmap(await reponseDistante.text(), typeContenu);
+    return new Response(texte, { status: reponseDistante.status, headers: entetesSortie });
+  }
+  return new Response(reponseDistante.body, { status: reponseDistante.status, headers: entetesSortie });
+}

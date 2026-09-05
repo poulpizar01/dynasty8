@@ -165,7 +165,7 @@ function basculerOnglet(nom) {
   if (nom === "comptes") chargerTableMembres();
   if (nom === "agenda") chargerAgenda(true);
   if (nom === "comptabilite") chargerTablette();
-  if (nom === "statistiques") { chargerStatistiques(); chargerAgentsStats(); chargerVueEnsemble(); }
+  if (nom === "statistiques") { chargerStatistiques(); chargerAgentsStats(); }
   if (nom === "parametres") chargerSyncSheet();
 }
 
@@ -174,102 +174,6 @@ function basculerOnglet(nom) {
 // via le bot (POST /api/stats/ventes avec sa clé secrète) ; cet écran se
 // contente d'afficher, semaine par semaine, ce qui a déjà été reçu.
 // ---------------------------------------------------------------------------
-// ---- Vue d'ensemble : chiffre d'affaires immobilier sur une période choisie.
-// Ne touche JAMAIS aux primes/commissions/DOT par agent, calculées
-// séparément plus bas (Récapitulatif par agent), comme avant. Toujours en
-// UTC, comme les filtres calculés côté serveur.
-// (L'intégration "Roxwood Network" — CA combiné avec un bot externe — a été
-// retirée en sept. 2026, plus utilisée.)
-function formaterMontantVE(valeur) {
-  const n = Math.round(Number(valeur) || 0);
-  const chiffres = Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return (n < 0 ? "-" : "") + chiffres + "$";
-}
-
-function dateAaaaMmJjUtc(date) {
-  return date.toISOString().slice(0, 10);
-}
-
-/**
- * Date du jour EN HEURE DE PARIS (pas celle du navigateur de l'utilisateur,
- * qui peut être ailleurs). On utilise Intl pour lire l'année/mois/jour tels
- * qu'ils sont actuellement à Paris, puis on les remet dans un Date "en UTC"
- * (minuit UTC de ce jour-là) : comme tout le reste de cette fonction ne fait
- * que de l'arithmétique de calendrier (jour de la semaine, +/- des jours,
- * premier/dernier jour du mois...), ça donne le bon résultat quel que soit
- * le fuseau horaire de l'utilisateur.
- */
-function aujourdhuiParisCommeDateUtc() {
-  const parties = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Paris",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const valeur = (type) => Number(parties.find((p) => p.type === type).value);
-  return new Date(Date.UTC(valeur("year"), valeur("month") - 1, valeur("day")));
-}
-
-/** Bornes [debut, fin] (incluses, AAAA-MM-JJ) pour un préréglage de période, calculées sur le calendrier de Paris. */
-function calculerBornesPeriode(preset) {
-  const auj = aujourdhuiParisCommeDateUtc();
-  if (preset === "jour") return { debut: auj, fin: auj };
-  if (preset === "semaine") {
-    // Lundi de la semaine ISO courante (même convention que les codes "S36-26" utilisés ailleurs sur le site).
-    const jourSemaine = auj.getUTCDay() || 7; // dimanche (0) -> 7
-    const lundi = new Date(auj);
-    lundi.setUTCDate(auj.getUTCDate() - (jourSemaine - 1));
-    const dimanche = new Date(lundi);
-    dimanche.setUTCDate(lundi.getUTCDate() + 6);
-    return { debut: lundi, fin: dimanche };
-  }
-  if (preset === "mois") {
-    return {
-      debut: new Date(Date.UTC(auj.getUTCFullYear(), auj.getUTCMonth(), 1)),
-      fin: new Date(Date.UTC(auj.getUTCFullYear(), auj.getUTCMonth() + 1, 0)),
-    };
-  }
-  if (preset === "annee") {
-    return {
-      debut: new Date(Date.UTC(auj.getUTCFullYear(), 0, 1)),
-      fin: new Date(Date.UTC(auj.getUTCFullYear(), 11, 31)),
-    };
-  }
-  return null; // "custom" -> l'utilisateur choisit lui-même debut/fin
-}
-
-async function chargerVueEnsemble() {
-  const preset = document.getElementById("ve-periode-preset").value;
-  const champDebut = document.getElementById("ve-debut");
-  const champFin = document.getElementById("ve-fin");
-  let debut, fin;
-  if (preset === "custom") {
-    champDebut.classList.remove("cache");
-    champFin.classList.remove("cache");
-    debut = champDebut.value;
-    fin = champFin.value;
-    if (!debut || !fin) return; // attend que les deux dates soient choisies
-  } else {
-    champDebut.classList.add("cache");
-    champFin.classList.add("cache");
-    const bornes = calculerBornesPeriode(preset);
-    debut = dateAaaaMmJjUtc(bornes.debut);
-    fin = dateAaaaMmJjUtc(bornes.fin);
-  }
-
-  afficherMessage("zone-message-vue-ensemble", "", null);
-  try {
-    const r = await appelAPI(`/api/stats/vue-ensemble?debut=${debut}&fin=${fin}`);
-    document.getElementById("ve-immo-ca").textContent = formaterMontantVE(r.immobilier.ca);
-    document.getElementById("ve-immo-detail").textContent = `${r.immobilier.nbVentes} vente(s), ${r.immobilier.nbLocations} location(s)`;
-  } catch (e) {
-    afficherMessage("zone-message-vue-ensemble", "Impossible de charger la vue d'ensemble : " + e.message, "erreur");
-  }
-}
-
-document.getElementById("ve-periode-preset")?.addEventListener("change", chargerVueEnsemble);
-document.getElementById("ve-debut")?.addEventListener("change", chargerVueEnsemble);
-document.getElementById("ve-fin")?.addEventListener("change", chargerVueEnsemble);
 
 async function chargerStatistiques() {
   afficherMessage("zone-message-statistiques", "", null);
@@ -291,6 +195,13 @@ async function chargerStatistiques() {
     // semaine par semaine.
     document.getElementById("stats-total-ventes").textContent = reponse.totalVentes ?? 0;
     document.getElementById("stats-total-locations").textContent = reponse.totalLocations ?? 0;
+    // Semaine la plus récente ayant des données (voir statsSemaines côté
+    // serveur, qui la déduit de la liste déjà triée).
+    document.getElementById("stats-semaine-libelle").textContent = reponse.semaineRecente
+      ? `Semaine ${reponse.semaineRecente}`
+      : "Aucune semaine avec des données pour le moment.";
+    document.getElementById("stats-semaine-ventes").textContent = reponse.ventesSemaine ?? 0;
+    document.getElementById("stats-semaine-locations").textContent = reponse.locationsSemaine ?? 0;
 
     // Le sélecteur de semaine du récap par agent reprend la liste des
     // semaines (déjà triée du plus récent au plus ancien par l'API) — c'est
@@ -2829,7 +2740,7 @@ async function chargerSyncSheet() {
     corps.querySelectorAll("[data-sync-ligne]").forEach((sel) => {
       const ligne = r.lignes.find((l) => l.nom_sheet === sel.dataset.syncLigne);
       sel.value = ligne && ligne.membre_id ? String(ligne.membre_id) : "";
-      sel.addEventListener("change", () => associerLigneSyncSheet(ligne.nom_sheet, sel.value));
+      sel.addEventListener("change", () => associerLigneSyncSheet(ligne.nom_sheet, sel.value, ligne.membre_id));
       ameliorerSelect(sel, null, "sync-sheet");
     });
   } catch (e) {
@@ -2837,10 +2748,18 @@ async function chargerSyncSheet() {
   }
 }
 
-async function associerLigneSyncSheet(nomSheet, membreId) {
+async function associerLigneSyncSheet(nomSheet, membreId, ancienMembreId) {
   try {
     if (membreId) {
+      // Le serveur retire lui-même ce nom_sheet à tout autre membre qui le
+      // portait encore (voir comptes() côté serveur) -- pas besoin de le
+      // faire ici, même en cas de réassignation à quelqu'un d'autre.
       await appelAPI("/api/membres?id=" + membreId, { method: "PATCH", body: JSON.stringify({ nom_sheet: nomSheet }) });
+    } else if (ancienMembreId) {
+      // Repassé sur « — non apparié — » : il faut retirer nom_sheet chez
+      // l'ancien titulaire nous-mêmes, sinon la prochaine synchro le
+      // réassocie tout seul (elle priorise justement nom_sheet).
+      await appelAPI("/api/membres?id=" + ancienMembreId, { method: "PATCH", body: JSON.stringify({ nom_sheet: "" }) });
     }
     // Ré-appliquer tout de suite la nouvelle association, sans attendre la
     // prochaine synchro automatique (jusqu'à 20 min plus tard) — plus clair

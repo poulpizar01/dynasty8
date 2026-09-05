@@ -122,28 +122,25 @@ async function enregistrerEtat(env, etat) {
 // contenu de sync_sheet_agents (table dérivée, jamais éditée à la main —
 // sans risque de la vider/recréer à chaque synchro). L'appariement compte
 // <-> ligne est recalculé à chaque fois à partir de membres.nom_sheet
-// (réglé à la main par la Direction, prioritaire) puis, à défaut, du pseudo
-// du compte (dépannage, pour ne pas laisser tout le monde "non apparié"
-// tant que nom_sheet n'a pas encore été rempli).
+// UNIQUEMENT (réglé à la main par la Direction dans Paramètres) : PLUS de
+// repli automatique sur le pseudo Discord (retiré sept. 2026 — un membre
+// dont le pseudo ressemblait au nom du Sheet se voyait réapparié tout seul
+// dès la synchro suivante, y compris juste après que la Direction ait
+// explicitement choisi quelqu'un d'autre ou « non apparié » à l'écran :
+// nom_sheet est désormais la SEULE source de vérité, comme demandé).
 export async function synchroniserSheet(env) {
   const brut = await lireCSV();
   const lignes = analyserLignesSheet(brut.slice(1)); // ligne 1 = en-têtes
 
   const comptesR = await env.DB.prepare(
-    "SELECT id, pseudo, nom_sheet FROM membres WHERE statut != 'desactive'"
+    "SELECT id, nom_sheet FROM membres WHERE statut != 'desactive' AND nom_sheet IS NOT NULL"
   ).all();
   const comptes = comptesR.results || [];
   const parNomSheet = new Map();
-  const parPseudo = new Map();
   comptes.forEach((c) => {
     if (c.nom_sheet) parNomSheet.set(normaliserTexte(c.nom_sheet), c.id);
-    if (c.pseudo) parPseudo.set(normaliserTexte(c.pseudo), c.id);
   });
-  const trouverMembreId = (nomNormalise) => {
-    if (parNomSheet.has(nomNormalise)) return parNomSheet.get(nomNormalise);
-    if (parPseudo.has(nomNormalise)) return parPseudo.get(nomNormalise);
-    return null;
-  };
+  const trouverMembreId = (nomNormalise) => parNomSheet.get(nomNormalise) ?? null;
 
   await env.DB.prepare("DELETE FROM sync_sheet_agents").run();
   await Promise.all(

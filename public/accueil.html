@@ -125,8 +125,9 @@
       </a>
     </div>
     <div style="text-align:center;margin-top:32px;">
-      <a href="https://map.flashbackfa.fr/" target="_blank" rel="noopener" class="btn btn-fantome btn-large">Ouvrir la WebMap ↗</a>
+      <button type="button" class="btn btn-fantome btn-large" data-webmap-toggle>Voir la WebMap</button>
     </div>
+    <div class="webmap-boite cache" data-webmap-boite></div>
   </div>
 </section>
 
@@ -221,8 +222,11 @@
   <div class="conteneur" style="text-align:center;">
     <span class="etiquette">Rejoignez-nous</span>
     <h2 style="margin-top:10px;">Une question ? Un projet immobilier ?</h2>
-    <p style="max-width:520px;margin:0 auto 28px;">Nos agents sont disponibles sur le Discord officiel du serveur pour vous accompagner dans toutes vos démarches.</p>
-    <a href="#" id="lien-discord-cta" class="btn btn-or btn-large">Contacter Dynasty 8 sur Discord</a>
+    <p style="max-width:520px;margin:0 auto 28px;">Contactez-nous en jeu via l'application Eyefind : envoyez un message détaillé au numéro ci-dessous, un agent Dynasty 8 vous répondra pour vous accompagner dans toutes vos démarches.</p>
+    <div class="numero-contact" role="text" aria-label="Numéro Eyefind Dynasty 8 : 914">
+      <span class="numero-contact-libelle">Numéro Eyefind</span>
+      <span class="numero-contact-chiffre">914</span>
+    </div>
   </div>
 </section>
 
@@ -355,9 +359,6 @@
     }
   }
 
-  document.getElementById("lien-discord-cta").href = LIEN_DISCORD;
-  document.getElementById("lien-discord-cta").target = "_blank";
-  document.getElementById("lien-discord-cta").rel = "noopener";
 </script>
 <script type="importmap">
 { "imports": { "three": "/vendor/three.module.min.js" } }

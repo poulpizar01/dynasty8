@@ -87,7 +87,7 @@
     <button class="lien-onglet cache" data-onglet="statistiques" id="onglet-statistiques"><svg class="ico"><use href="#ico-chart"></use></svg><span>Statistiques</span></button>
     <button class="lien-onglet cache" data-onglet="comptes" id="onglet-comptes"><svg class="ico"><use href="#ico-lock"></use></svg><span>Comptes &amp; accès</span></button>
     <button class="lien-onglet cache" data-onglet="parametres" id="onglet-parametres"><svg class="ico"><use href="#ico-gear"></use></svg><span>Paramètres</span></button>
-    <a href="https://webmap.dynasty8.fbfa.fr/" target="_blank" rel="noopener" class="lien-onglet cache" id="lien-webmap"><svg class="ico"><use href="#ico-map"></use></svg><span>Webmap Dynasty8</span></a>
+    <a href="/api/carte/" target="_blank" rel="noopener" class="lien-onglet cache" id="lien-webmap"><svg class="ico"><use href="#ico-map"></use></svg><span>Webmap Dynasty8</span></a>
 
     <div class="admin-bas">
       <div class="admin-aide">
@@ -361,13 +361,16 @@
       <!-- Sous-onglet : DOT (§6.3) — la déclaration hebdomadaire versée à la
            DOT (organisme fiscal du serveur RP). Calculée automatiquement à
            partir du CA Brut (colonne « Total » de l'onglet Tablettes), des
-           dépenses/retraits saisis ci-dessous, et des primes de la semaine
-           choisie (déjà calculées par l'onglet Statistiques). -->
+           dépenses/retraits saisis ci-dessous, et des primes -- qui reprennent
+           désormais exactement les mêmes montants que « Mon profil »
+           (synchronisation Google Sheets + barèmes), quelle que soit la
+           semaine choisie ci-dessus (voir remplacerPrimesParSheet côté
+           serveur). -->
       <div id="compta-panneau-dot" class="cache">
         <div class="entete-admin" style="margin-top:20px;">
           <div>
             <h3 class="comptes-sous-titre" style="margin:0;">Déclaration DOT</h3>
-            <p class="champ-aide" style="margin:4px 0 0;">Calculée à partir de l'onglet Tablettes et des primes de la semaine choisie.</p>
+            <p class="champ-aide" style="margin:4px 0 0;">Calculée à partir de l'onglet Tablettes ; les primes reprennent les mêmes montants que « Mon profil ».</p>
           </div>
           <select id="select-semaine-dot"></select>
         </div>
@@ -458,54 +461,36 @@
       </div>
       <div id="zone-message-statistiques"></div>
 
-      <!-- Vue d'ensemble : chiffre d'affaires immobilier sur une période choisie.
-           N'a AUCUN effet sur les primes/commissions/DOT par agent
-           ci-dessous, calculées séparément comme avant.
-           (L'intégration "Roxwood Network" — CA combiné avec un bot externe —
-           a été retirée en sept. 2026, plus utilisée.) -->
-      <div id="statistiques-vue-ensemble" style="margin-bottom:32px;">
-        <div class="entete-admin">
-          <div>
-            <h3 style="margin-bottom:2px;">Vue d'ensemble</h3>
-            <p style="margin:0;font-size:0.88rem;">Chiffre d'affaires immobilier.</p>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <select id="ve-periode-preset" class="table-input">
-              <option value="jour">Aujourd'hui</option>
-              <option value="semaine" selected>Cette semaine</option>
-              <option value="mois">Ce mois</option>
-              <option value="annee">Cette année</option>
-              <option value="custom">Plage personnalisée</option>
-            </select>
-            <input type="date" id="ve-debut" class="table-input cache" style="max-width:150px;">
-            <input type="date" id="ve-fin" class="table-input cache" style="max-width:150px;">
-          </div>
-        </div>
-        <div id="zone-message-vue-ensemble"></div>
-        <div class="admin-stats" style="grid-template-columns:repeat(1,minmax(0,280px));" id="ve-cartes">
-          <div class="stat-carte">
-            <span class="stat-icone stat-icone--or">🏠</span>
-            <div><div class="stat-valeur" id="ve-immo-ca">—</div><div class="stat-libelle">Immobilier</div><div class="stat-sous-libelle" id="ve-immo-detail"></div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Totaux agence, toutes semaines confondues (mêmes unités que le récap
-           par agent ci-dessous) — remplace l'ancien tableau semaine par
-           semaine, plus consulté. La liste des semaines continue d'être
-           récupérée en arrière-plan (chargerStatistiques() dans admin.js)
-           pour alimenter le sélecteur du récap par agent juste en dessous. -->
+      <!-- Totaux agence (toutes semaines confondues) + semaine la plus
+           récente ayant des données, mêmes unités que le récap par agent
+           ci-dessous. Remplace l'ancien tableau semaine par semaine, plus
+           consulté. La liste des semaines continue d'être récupérée en
+           arrière-plan (chargerStatistiques() dans admin.js) pour alimenter
+           le sélecteur du récap par agent juste en dessous. -->
       <div id="statistiques-vide" class="etat-vide cache">
         <p>Aucune vente reçue pour le moment. Les données arriveront automatiquement dès que le bot sera connecté.</p>
       </div>
-      <div id="statistiques-resultat" class="cache admin-stats" style="grid-template-columns:repeat(2,minmax(0,220px));">
-        <div class="stat-carte">
-          <span class="stat-icone stat-icone--or">🏠</span>
-          <div><div class="stat-valeur" id="stats-total-ventes">—</div><div class="stat-libelle">Ventes (agence)</div></div>
+      <div id="statistiques-resultat" class="cache">
+        <div class="admin-stats" style="grid-template-columns:repeat(2,minmax(0,220px));margin-bottom:14px;">
+          <div class="stat-carte">
+            <span class="stat-icone stat-icone--or">🏠</span>
+            <div><div class="stat-valeur" id="stats-total-ventes">—</div><div class="stat-libelle">Ventes (agence)</div></div>
+          </div>
+          <div class="stat-carte">
+            <span class="stat-icone stat-icone--ambre">🔑</span>
+            <div><div class="stat-valeur" id="stats-total-locations">—</div><div class="stat-libelle">Locations (agence)</div></div>
+          </div>
         </div>
-        <div class="stat-carte">
-          <span class="stat-icone stat-icone--ambre">🔑</span>
-          <div><div class="stat-valeur" id="stats-total-locations">—</div><div class="stat-libelle">Locations (agence)</div></div>
+        <p class="champ-aide" id="stats-semaine-libelle" style="margin:0 0 8px;"></p>
+        <div class="admin-stats" style="grid-template-columns:repeat(2,minmax(0,220px));">
+          <div class="stat-carte">
+            <span class="stat-icone stat-icone--or">🏠</span>
+            <div><div class="stat-valeur" id="stats-semaine-ventes">—</div><div class="stat-libelle">Ventes (semaine)</div></div>
+          </div>
+          <div class="stat-carte">
+            <span class="stat-icone stat-icone--ambre">🔑</span>
+            <div><div class="stat-valeur" id="stats-semaine-locations">—</div><div class="stat-libelle">Locations (semaine)</div></div>
+          </div>
         </div>
       </div>
 
@@ -607,9 +592,12 @@
            Sheet doit être partagé "Tous les utilisateurs disposant du lien -
            Lecteur"), sans API ni identifiants Google côté serveur. Le Sheet
            fournit seulement les compteurs (colonnes L/M) ; les MONTANTS de
-           primes sont recalculés avec les barèmes de Comptabilité ->
-           Paramètres (mêmes que le récap Statistiques), jamais les colonnes
-           N/O du Sheet — un seul endroit pour régler un montant. -->
+           primes sont recalculés avec les barèmes ci-dessous (Paramètres),
+           jamais les colonnes N/O du Sheet — un seul endroit pour régler un
+           montant. Ces mêmes montants alimentent aussi le tableau des
+           salariés de l'onglet DOT (voir remplacerPrimesParSheet côté
+           serveur) : la prime d'un membre est identique partout sur le
+           site. -->
       <h3 class="comptes-sous-titre" style="margin-top:34px;">📊 Synchronisation Google Sheets — « Mon profil »</h3>
       <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">
         Récupère automatiquement, toutes les 20 minutes (+ à la demande ci-dessous), les ventes et locations de chaque membre depuis le Google Sheets de recap (partagé en lecture seule), pour les afficher dans « Mon profil ». Associez chaque ligne au bon compte ci-dessous — l'association se retient ensuite automatiquement (nom du Sheet mémorisé sur le compte).
