@@ -129,6 +129,7 @@ function demarrerEspaceAdmin() {
   // Un membre sans droits sur les annonces (grade "Stagiaire") n'a accès qu'à son profil.
   document.getElementById("onglet-annonces").classList.toggle("cache", !SESSION.peutGererAnnonces);
   if (SESSION.direction) {
+    document.getElementById("groupe-direction").classList.remove("cache");
     document.getElementById("onglet-comptes").classList.remove("cache");
     document.getElementById("onglet-comptabilite").classList.remove("cache");
     document.getElementById("onglet-statistiques").classList.remove("cache");
@@ -889,21 +890,31 @@ function statutBien(b) {
 function calculerStatsBiens(liste) {
   const total = liste.length;
   const visibles = liste.filter((b) => b.disponible).length;
+  const masquees = total - visibles;
+  const coupsDeCoeur = liste.filter((b) => b.coup_de_coeur).length;
   const valeurTotale = liste.reduce((s, b) => s + (b.dispo_vente ? Number(b.prix) || 0 : 0), 0);
   const prixMoyen = total ? Math.round(valeurTotale / total) : 0;
-  return { total, visibles, valeurTotale, prixMoyen };
+  return { total, visibles, masquees, coupsDeCoeur, valeurTotale, prixMoyen };
 }
 
 function rendreStats() {
   const s = calculerStatsBiens(CACHE_BIENS);
   document.getElementById("admin-stats").innerHTML = `
     <div class="stat-carte">
-      <span class="stat-icone stat-icone--or">🏠</span>
+      <span class="stat-icone stat-icone--or"><svg class="ico"><use href="#ico-home"></use></svg></span>
       <div><div class="stat-valeur">${s.total}</div><div class="stat-libelle">Annonces</div><div class="stat-sous-libelle">Total des biens</div></div>
     </div>
     <div class="stat-carte">
-      <span class="stat-icone stat-icone--vert">👁️</span>
-      <div><div class="stat-valeur">${s.visibles}</div><div class="stat-libelle">Visibles</div><div class="stat-sous-libelle">En ligne</div></div>
+      <span class="stat-icone stat-icone--vert"><svg class="ico"><use href="#ico-eye"></use></svg></span>
+      <div><div class="stat-valeur">${s.visibles}</div><div class="stat-libelle">Visibles</div><div class="stat-sous-libelle">En ligne sur le site</div></div>
+    </div>
+    <div class="stat-carte">
+      <span class="stat-icone stat-icone--or"><svg class="ico"><use href="#ico-star"></use></svg></span>
+      <div><div class="stat-valeur">${s.coupsDeCoeur}</div><div class="stat-libelle">Coups de cœur</div><div class="stat-sous-libelle">En vitrine sur l'accueil</div></div>
+    </div>
+    <div class="stat-carte">
+      <span class="stat-icone stat-icone--mauve"><svg class="ico"><use href="#ico-eyeoff"></use></svg></span>
+      <div><div class="stat-valeur">${s.masquees}</div><div class="stat-libelle">Masquée${s.masquees > 1 ? "s" : ""}</div><div class="stat-sous-libelle">Hors catalogue public</div></div>
     </div>`;
 }
 
@@ -932,14 +943,14 @@ function rendreTableBiens(liste) {
   corps.innerHTML = liste.map((b) => `
     <tr class="${b.coup_de_coeur ? "ligne-coup-de-coeur" : ""}">
       <td class="cellule-vignette">${ligneVignetteHTML(b)}</td>
-      <td>${echapper(b.titre)}${b.coup_de_coeur ? ' <span class="puce puce-or">Coup de cœur</span>' : ""}${b.standing ? ' <span class="puce puce-or">Exception</span>' : ""}</td>
+      <td><div class="table-biens-titre">${echapper(b.titre)}${b.coup_de_coeur ? ' <span class="table-biens-fav" title="Coup de cœur"><svg class="ico"><use href="#ico-star"></use></svg></span>' : ""}${b.standing ? ' <span class="puce puce-or">Exception</span>' : ""}</div>${b.coherence ? `<div class="table-biens-sous">${echapper(b.coherence)}</div>` : ""}</td>
       <td>${ETIQUETTES_CATEGORIE[b.categorie] || b.categorie}</td>
-      <td>${echapper(b.sous_categorie || "—")}${b.coherence ? ` <span class="champ-aide" style="display:inline;">· ${echapper(b.coherence)}</span>` : ""}</td>
-      <td>${b.dispo_vente ? formaterPrix(b.prix) : ""}${b.dispo_vente && b.dispo_location ? " · " : ""}${b.dispo_location ? formaterPrix(b.prix_location) + " /sem." : ""}</td>
-      <td>${b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>'}</td>
+      <td>${echapper(b.sous_categorie || "—")}</td>
+      <td>${b.dispo_vente ? `<div class="table-biens-prix">${formaterPrix(b.prix)}</div>` : ""}${b.dispo_location ? `<div class="table-biens-sous">${formaterPrix(b.prix_location)} /sem.</div>` : ""}</td>
+      <td>${b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-masquee">Masquée</span>'}</td>
       <td><div class="actions-ligne">
-        <button class="actions-icone" data-editer="${b.id}" title="Modifier" aria-label="Modifier">✏️</button>
-        <button class="actions-icone actions-icone--danger" data-supprimer="${b.id}" title="Supprimer" aria-label="Supprimer">🗑️</button>
+        <button class="actions-icone" data-editer="${b.id}" title="Modifier" aria-label="Modifier"><svg class="ico"><use href="#ico-pencil"></use></svg></button>
+        <button class="actions-icone actions-icone--danger" data-supprimer="${b.id}" title="Supprimer" aria-label="Supprimer"><svg class="ico"><use href="#ico-trash"></use></svg></button>
       </div></td>
     </tr>`).join("");
   corps.querySelectorAll("[data-editer]").forEach((btn) => btn.addEventListener("click", () => ouvrirModaleBien(Number(btn.dataset.editer))));
@@ -948,22 +959,32 @@ function rendreTableBiens(liste) {
 
 function rendreGrilleBiens(liste) {
   const conteneur = document.getElementById("vue-grille-biens");
-  conteneur.innerHTML = liste.map((b) => `
-    <div class="carte-admin-bien ${b.coup_de_coeur ? "ligne-coup-de-coeur" : ""}">
-      <div class="carte-admin-bien-visuel">${b.images && b.images[0] ? `<img src="${b.images[0]}" alt="">` : ""}</div>
+  conteneur.innerHTML = liste.map((b) => {
+    const meta = [b.sous_categorie, ETIQUETTES_CATEGORIE[b.categorie] || b.categorie, b.coherence].filter(Boolean).map(echapper).join(" · ");
+    const prix = b.dispo_vente ? formaterPrix(b.prix) : (b.dispo_location ? formaterPrix(b.prix_location) + " /sem." : "—");
+    const loc = b.dispo_vente && b.dispo_location ? `<span class="carte-admin-bien-loc">· ${formaterPrix(b.prix_location)} /sem.</span>` : "";
+    return `
+    <article class="carte-admin-bien">
+      <div class="carte-admin-bien-visuel">
+        ${b.images && b.images[0] ? `<img src="${b.images[0]}" alt="" loading="lazy">` : ""}
+        ${b.coup_de_coeur ? '<span class="carte-admin-bien-fav"><svg class="ico"><use href="#ico-star"></use></svg> Coup de cœur</span>' : ""}
+        <span class="carte-admin-bien-categorie">${b.standing ? "Exclusif" : (ETIQUETTES_CATEGORIE[b.categorie] || b.categorie)}</span>
+      </div>
       <div class="carte-admin-bien-corps">
-        <div class="carte-admin-bien-titre">${echapper(b.titre)}</div>
-        <div class="carte-admin-bien-meta">${ETIQUETTES_CATEGORIE[b.categorie] || b.categorie}${b.sous_categorie ? " · " + echapper(b.sous_categorie) : ""}</div>
-        <div>${b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-off">Masquée</span>'}${b.coup_de_coeur ? ' <span class="puce puce-or">Coup de cœur</span>' : ""}</div>
+        <div class="carte-admin-bien-entete">
+          <div><h3 class="carte-admin-bien-titre">${echapper(b.titre)}</h3><div class="carte-admin-bien-meta">${meta}</div></div>
+          ${b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-masquee">Masquée</span>'}
+        </div>
         <div class="carte-admin-bien-pied">
-          <span class="carte-admin-bien-prix">${b.dispo_vente ? formaterPrix(b.prix) : (b.dispo_location ? formaterPrix(b.prix_location) + " /sem." : "—")}</span>
+          <span class="carte-admin-bien-prix">${prix}${loc}</span>
           <div class="carte-admin-bien-actions">
-            <button class="actions-icone" data-editer="${b.id}" title="Modifier" aria-label="Modifier">✏️</button>
-            <button class="actions-icone actions-icone--danger" data-supprimer="${b.id}" title="Supprimer" aria-label="Supprimer">🗑️</button>
+            <button class="actions-icone actions-icone--rond" data-editer="${b.id}" title="Modifier" aria-label="Modifier"><svg class="ico"><use href="#ico-pencil"></use></svg></button>
+            <button class="actions-icone actions-icone--rond actions-icone--danger" data-supprimer="${b.id}" title="Supprimer" aria-label="Supprimer"><svg class="ico"><use href="#ico-trash"></use></svg></button>
           </div>
         </div>
       </div>
-    </div>`).join("");
+    </article>`;
+  }).join("");
   conteneur.querySelectorAll("[data-editer]").forEach((btn) => btn.addEventListener("click", () => ouvrirModaleBien(Number(btn.dataset.editer))));
   conteneur.querySelectorAll("[data-supprimer]").forEach((btn) => btn.addEventListener("click", () => supprimerBienDepuisListe(Number(btn.dataset.supprimer))));
 }

@@ -2395,4 +2395,148 @@ section.section.serre {
 .d8-switch input:checked + .d8-switch-piste::after { transform: translateX(18px); background: var(--gold-strong); }
 .d8-switch input:focus-visible + .d8-switch-piste { outline: 2px solid var(--d8-gold-400); outline-offset: 2px; }
 
+/* ==========================================================================
+   Espace agents — refonte « Marbre & Or + cartes Vitrine » (sept. 2026)
+   Placé en fin de fichier pour l'emporter sur les anciennes règles admin
+   sans les réécrire : barre latérale groupée avec icônes SVG, filet or sous
+   les en-têtes, 4 indicateurs, tableau encadré, vue grille en cartes photo.
+   ========================================================================== */
+
+/* ---- icônes SVG (sprite en tête d'admin.html) ---- */
+.ico {
+  width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: currentColor;
+  stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; vertical-align: -3px;
+}
+.btn .ico { width: 14px; height: 14px; }
+
+/* ---- barre latérale ---- */
+.admin-barre-laterale { gap: 4px; }
+.admin-barre-laterale a.logo { margin-bottom: 12px !important; }
+.admin-barre-laterale a.logo img { height: auto; width: 150px; max-width: 100%; }
+.admin-nav-groupe {
+  margin: 0; padding: 14px 14px 6px; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--d8-gold-600); font-weight: 500;
+}
+.admin-barre-laterale button.lien-onglet, .admin-barre-laterale a.lien-onglet {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px; font-size: 0.92rem; color: var(--text-muted);
+  font-family: var(--d8-font-ui); font-weight: 400; cursor: pointer; transition: background var(--d8-t), color var(--d8-t), box-shadow var(--d8-t);
+}
+.admin-barre-laterale button.lien-onglet .ico, .admin-barre-laterale a.lien-onglet .ico { color: var(--text-faint); }
+.admin-barre-laterale button.lien-onglet:hover, .admin-barre-laterale a.lien-onglet:hover { background: var(--bg-card); color: var(--text); }
+.admin-barre-laterale button.lien-onglet:hover .ico, .admin-barre-laterale a.lien-onglet:hover .ico { color: var(--text); }
+.admin-barre-laterale button.lien-onglet.actif {
+  background: var(--d8-grad-gold-soft); color: var(--gold-light);
+  box-shadow: inset 0 0 0 1px rgba(201, 165, 92, 0.35);
+}
+.admin-barre-laterale button.lien-onglet.actif .ico { color: var(--gold-light); }
+.admin-bas { border-top: none; padding-top: 12px; gap: 12px; }
+.admin-aide { display: flex; flex-direction: column; gap: 4px; background: none; }
+.admin-aide-titre { display: flex; align-items: center; gap: 8px; color: var(--gold-light); }
+.admin-barre-laterale .admin-aide a { display: inline; width: auto; padding: 0; font-size: 0.8rem; color: var(--gold-strong); }
+.admin-aide-titre .ico { width: 16px; height: 16px; }
+.admin-compte-grade { text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.68rem; color: var(--gold); }
+#bouton-deconnexion .ico { width: 14px; height: 14px; }
+
+/* La zone de contenu ne doit jamais déborder du viewport : les tableaux larges
+   défilent dans leur propre conteneur (.carte-table est en overflow-x:auto). */
+.admin-contenu { min-width: 0; }
+
+/* ---- en-tête de panneau + filet or ---- */
+.entete-admin { align-items: flex-end; padding-bottom: 18px; margin-bottom: 22px; position: relative; }
+.entete-admin::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--d8-rule);
+}
+.entete-admin h2 { font-size: clamp(1.9rem, 3vw, 2.75rem); }
+.entete-admin p { color: var(--text-faint); }
+
+/* ---- indicateurs ---- */
+.stat-carte { background: var(--d8-grad-card); border-radius: var(--radius); padding: 14px 20px; box-shadow: var(--d8-shadow-card); }
+.stat-icone { color: var(--gold-light); }
+.stat-icone--vert { color: #8fe0ad; }
+.stat-icone--mauve { color: #c9c2f5; }
+.stat-icone .ico { width: 20px; height: 20px; }
+
+/* ---- barre d'outils ---- */
+/* Les <select> sont habillés par layout.js dans une enveloppe pleine largeur :
+   dans la barre d'outils, on la laisse à sa largeur naturelle pour que tout
+   tienne sur une ligne (recherche extensible + filtres + bascule liste/grille). */
+.annonces-outils .d8-select-enveloppe { width: auto; flex: 0 0 auto; }
+.annonces-outils select { width: auto; }
+.annonces-recherche-icone { display: flex; }
+.annonces-recherche-icone .ico { width: 16px; height: 16px; }
+.annonces-vue-bouton { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.annonces-vue-bouton .ico { width: 16px; height: 16px; }
+
+/* ---- tableau encadré ---- */
+.carte-table { border: 1px solid var(--border); border-radius: var(--radius); background: rgba(14, 27, 51, 0.6); }
+.carte-table .table-admin th { background: rgba(6, 12, 26, 0.35); font-size: 0.69rem; letter-spacing: 0.08em; font-weight: 500; }
+.carte-table .table-admin th, .carte-table .table-admin td { padding: 9px 14px; border-bottom-color: rgba(201, 165, 92, 0.18); }
+.carte-table .table-admin tr:last-child td { border-bottom: none; }
+.table-admin tr.ligne-coup-de-coeur td:first-child { box-shadow: none; }
+.table-biens-vignette { width: 40px; height: 40px; }
+.table-biens-titre { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--text); }
+.table-biens-fav { color: var(--gold-strong); display: inline-flex; }
+.table-biens-fav .ico { width: 14px; height: 14px; }
+.table-biens-sous { font-size: 0.76rem; color: var(--text-faint); margin-top: 1px; }
+.table-biens-prix { font-weight: 500; color: var(--gold-light); white-space: nowrap; }
+.table-biens-titre, .carte-table .table-admin td:nth-child(5) .table-biens-sous { white-space: nowrap; }
+.actions-icone { width: 32px; height: 32px; background: rgba(6, 12, 26, 0.4); border-color: var(--border); color: var(--text-muted); cursor: pointer; }
+.actions-icone .ico { width: 16px; height: 16px; }
+.actions-icone:hover { background: rgba(201, 165, 92, 0.18); color: var(--text); }
+.actions-icone--rond { border-radius: 999px; width: 30px; height: 30px; }
+.actions-icone--rond .ico { width: 15px; height: 15px; }
+
+/* ---- badges de statut (point + libellé) ---- */
+.puce { font-size: 0.66rem; letter-spacing: 0.12em; font-weight: 500; padding: 0 10px; height: 24px; }
+.puce-ok::before, .puce-off::before, .puce-masquee::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.puce-ok { color: #8fe0ad; background: rgba(28, 156, 80, 0.16); }
+.puce-masquee { background: rgba(154, 166, 190, 0.14); color: var(--text-faint); }
+
+/* ---- vue grille : cartes photo ---- */
+.grille-admin-biens { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 18px; }
+.carte-admin-bien {
+  display: flex; flex-direction: column; background: var(--d8-grad-card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--d8-shadow-card); transition: transform var(--d8-t), box-shadow var(--d8-t);
+}
+.carte-admin-bien:hover { transform: translateY(-2px); box-shadow: var(--d8-shadow-card-hover); }
+.carte-admin-bien-visuel { position: relative; aspect-ratio: 16 / 7; background: var(--bg-elevated); }
+.carte-admin-bien-visuel::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(6, 12, 26, 0) 40%, rgba(6, 12, 26, 0.75));
+}
+.carte-admin-bien-fav {
+  position: absolute; top: 10px; left: 10px; z-index: 1; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px;
+  border-radius: 999px; background: linear-gradient(135deg, var(--d8-gold-600), var(--d8-gold-300)); color: var(--or-contrast);
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500;
+}
+.carte-admin-bien-fav .ico { width: 13px; height: 13px; }
+.carte-admin-bien-categorie {
+  position: absolute; bottom: 10px; left: 12px; z-index: 1; font-size: 10.5px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--gold-light); font-weight: 500;
+}
+.carte-admin-bien-corps { padding: 12px 14px 14px; gap: 10px; }
+.carte-admin-bien-entete { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.carte-admin-bien-entete .puce { flex-shrink: 0; }
+.carte-admin-bien-titre { font-family: var(--d8-font-display); font-style: italic; font-weight: 500; font-size: 1.3rem; line-height: 1.1; margin: 0; color: var(--text); }
+.carte-admin-bien-meta { font-size: 0.76rem; color: var(--text-faint); margin-top: 3px; }
+.carte-admin-bien-pied { margin-top: 0; }
+.carte-admin-bien-prix { font-size: 0.95rem; color: var(--gold-light); font-weight: 500; }
+.carte-admin-bien-loc { font-size: 0.76rem; color: var(--text-faint); font-weight: 300; margin-left: 4px; }
+
+/* ---- mobile / tablette : la barre devient une rangée défilante ---- */
+@media (max-width: 800px) {
+  .admin-nav-groupe { display: none; }
+  .admin-barre-laterale a.logo { margin-bottom: 0 !important; }
+  .admin-barre-laterale a.logo img { width: 110px; }
+  .admin-barre-laterale button.lien-onglet, .admin-barre-laterale a.lien-onglet { padding: 8px 12px; gap: 8px; }
+  .admin-bas { padding-top: 0; }
+  .grille-admin-biens { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+}
+@media (max-width: 520px) {
+  .admin-stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-carte { padding: 12px 14px; gap: 10px; }
+  .stat-icone { width: 38px; height: 38px; }
+  .stat-sous-libelle { display: none; }
+}
+
 .cache { display: none !important; }
