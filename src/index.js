@@ -419,13 +419,14 @@ async function folkosCallback(url, env) {
 }
 
 function deconnexion(env) {
-  return new Response(JSON.stringify({ ok: true }), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Set-Cookie": poserCookie(COOKIE, "", 0, env),
-    },
-  });
+  // On efface le cookie dans ses DEUX variantes (HTTPS « Secure; SameSite=None »
+  // et HTTP « SameSite=Lax ») : ainsi la déconnexion marche même si le réglage
+  // COOKIES_HTTP a changé depuis la connexion (sinon le navigateur refuse
+  // l'effacement d'un cookie « Secure » en HTTP et la session reste ouverte).
+  const headers = new Headers({ "Content-Type": "application/json; charset=utf-8" });
+  headers.append("Set-Cookie", `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=0`);
+  headers.append("Set-Cookie", `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+  return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
 }
 
 // On ne se contente jamais du grade/pseudo enregistrés dans le cookie au moment
