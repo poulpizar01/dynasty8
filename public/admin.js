@@ -1959,21 +1959,39 @@ function comptaColonneEstNumerique(lignes, index) {
   return valeurs.length > 0 && valeurs.every((v) => /^-?[\d\s.,]+$/.test(v));
 }
 
-function rendreTableCompta(colonnes, lignes) {
+// `avecSuppression` : ajoute une colonne avec une croix par ligne (sauf la
+// ligne Total) pour retirer un membre du relevé — utilisée seulement sur le
+// tableau enregistré, pas sur l'aperçu de la modale d'import.
+function rendreTableCompta(colonnes, lignes, avecSuppression) {
   const numerique = colonnes.map((_, i) => comptaColonneEstNumerique(lignes, i));
   const thead = `<thead><tr>${colonnes
     .map((c, i) => `<th${numerique[i] ? ' style="text-align:right;"' : ""}>${echapper(c)}</th>`)
-    .join("")}</tr></thead>`;
+    .join("")}${avecSuppression ? '<th class="compta-col-actions" aria-label="Actions"></th>' : ""}</tr></thead>`;
   const tbody = `<tbody>${lignes
-    .map((ligne) => {
+    .map((ligne, index) => {
       const total = comptaLigneEstTotal(ligne);
       const cellules = colonnes
         .map((_, i) => `<td${numerique[i] ? ' style="text-align:right;"' : ""}>${echapper(ligne[i] || "")}</td>`)
         .join("");
-      return `<tr${total ? ' class="ligne-total"' : ""}>${cellules}</tr>`;
+      const action = avecSuppression
+        ? `<td class="compta-col-actions">${total ? "" : `<button type="button" class="actions-icone actions-icone--danger compta-supprimer-ligne" data-index="${index}" data-nom="${echapper(ligne[0] || "")}" title="Retirer ${echapper(ligne[0] || "cette ligne")} du relevé" aria-label="Retirer ${echapper(ligne[0] || "cette ligne")} du relevé">✕</button>`}</td>`
+        : "";
+      return `<tr${total ? ' class="ligne-total"' : ""}>${cellules}${action}</tr>`;
     })
     .join("")}</tbody>`;
   return thead + tbody;
+}
+
+async function supprimerLigneTablette(index, nom) {
+  const ok = await confirmerAction(`« ${nom} » sera retiré du relevé Tablettes. Les totaux (CA brut, DOT) seront recalculés sans cette ligne.`, "Retirer ce membre du relevé ?");
+  if (!ok) return;
+  try {
+    await appelAPI(`/api/comptabilite/tablettes/lignes/${index}`, { method: "DELETE", body: JSON.stringify({ nom }) });
+    afficherMessage("zone-message-tablette", `« ${nom} » retiré du relevé ✓`, "succes");
+    chargerTablette();
+  } catch (e) {
+    afficherMessage("zone-message-tablette", "Impossible de retirer cette ligne : " + e.message, "erreur");
+  }
 }
 
 function formaterDateHeureCompta(brut) {
@@ -2005,7 +2023,11 @@ async function chargerTablette() {
     boutonReset.classList.remove("cache");
     document.getElementById("compta-tablette-info").textContent =
       `Importé par ${reponse.import.importe_par || "un membre"} le ${formaterDateHeureCompta(reponse.import.importe_le)}.`;
-    document.getElementById("table-tablette").innerHTML = rendreTableCompta(reponse.import.colonnes, reponse.import.lignes);
+    const table = document.getElementById("table-tablette");
+    table.innerHTML = rendreTableCompta(reponse.import.colonnes, reponse.import.lignes, true);
+    table.querySelectorAll(".compta-supprimer-ligne").forEach((btn) => {
+      btn.addEventListener("click", () => supprimerLigneTablette(Number(btn.dataset.index), btn.dataset.nom));
+    });
   } catch (e) {
     afficherMessage("zone-message-tablette", "Impossible de charger les données : " + e.message, "erreur");
   }

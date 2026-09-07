@@ -84,12 +84,31 @@ function injecterEntete(cleActive) {
       <nav class="nav-principale" id="nav-mobile">${liens}</nav>
       <div class="nav-cta">
         <button class="bouton-menu" id="bouton-menu" aria-label="Ouvrir le menu">☰</button>
+        <a href="${LIEN_WEBMAP}" class="btn btn-fantome btn-petit nav-webmap" id="nav-webmap" title="Carte interactive du serveur">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>
+          <span>WebMap</span>
+        </a>
         <a href="/admin.html" class="btn btn-fantome btn-petit">Espace agents</a>
       </div>
     </div>`;
   const bouton = document.getElementById("bouton-menu");
   const nav = document.getElementById("nav-mobile");
   if (bouton && nav) bouton.addEventListener("click", () => nav.classList.toggle("ouvert"));
+
+  // Bouton WebMap de la barre : sur une page qui a déjà la carte intégrée
+  // (accueil), on l'ouvre sur place et on y descend ; ailleurs, le lien ouvre
+  // la carte en pleine page.
+  const navWebmap = document.getElementById("nav-webmap");
+  if (navWebmap) {
+    navWebmap.addEventListener("click", (ev) => {
+      const toggle = document.querySelector("[data-webmap-toggle]");
+      const boite = document.querySelector("[data-webmap-boite]");
+      if (!toggle || !boite) return;
+      ev.preventDefault();
+      if (boite.classList.contains("cache")) toggle.click();
+      else boite.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }
 
   // En-tête transparente qui devient opaque (fond flouté) dès qu'on scrolle un peu.
   const bascule = () => monte.classList.toggle("entete-scrolled", window.scrollY > 24);

@@ -3030,3 +3030,13 @@ body.visionneuse-ouverte { overflow: hidden; }
 .bien-image-url-groupe { display: flex; gap: 6px; flex: 1 1 260px; }
 .bien-image-url-groupe input { flex: 1; min-height: 34px; padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid rgba(201, 165, 92, 0.28); background: rgba(6, 12, 26, 0.55); color: var(--text); font-size: 0.85rem; font-family: inherit; }
 .dans-folkos #bouton-parcourir { order: 2; }
+
+/* Comptabilité → Tablettes : colonne de suppression (croix discrète, visible au survol de la ligne) */
+.compta-col-actions { width: 44px; text-align: right; padding-right: 8px !important; }
+.compta-supprimer-ligne { width: 28px; height: 28px; padding: 0; font-size: 0.8rem; line-height: 1; opacity: 0.45; transition: opacity var(--d8-t), background var(--d8-t); }
+tr:hover .compta-supprimer-ligne, .compta-supprimer-ligne:focus-visible { opacity: 1; }
+
+/* Bouton WebMap dans la barre de navigation */
+.nav-webmap { display: inline-flex; align-items: center; gap: 7px; }
+.nav-webmap svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+@media (max-width: 560px) { .nav-webmap span { display: none; } .nav-webmap { padding: 0 11px; } }

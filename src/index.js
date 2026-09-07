@@ -880,6 +880,33 @@ async function comptaDernier(env, s, type) {
 // un nouvel import normal, mais sans colonnes). L'historique complet reste donc
 // dans la base pour la Direction — utile si quelqu'un se trompe en réinitialisant,
 // ou pour retrouver un ancien relevé plus tard — seul l'onglet redevient vide.
+// Retire une ligne (index dans le tableau tel qu'affiché) du dernier relevé,
+// en enregistrant un NOUVEL import sans cette ligne — l'historique des relevés
+// reste intact, comme pour une réinitialisation. Le nom envoyé par le
+// navigateur sert de garde-fou : si le relevé a changé entre-temps, on refuse.
+async function comptaSupprimerLigne(request, env, s, type, index) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  let b = {};
+  try { b = await request.json(); } catch (e) { /* corps facultatif */ }
+  const r = await env.DB.prepare(
+    `SELECT colonnes, lignes FROM comptabilite_imports WHERE type = ?1 ORDER BY importe_le DESC, id DESC LIMIT 1`
+  ).bind(type).first();
+  if (!r) return json({ erreur: "Aucun relevé importé." }, 404);
+  const colonnes = JSON.parse(r.colonnes);
+  if (!colonnes.length) return json({ erreur: "Aucun relevé importé." }, 404);
+  const lignes = corrigerLigneTotaleDecalee(colonnes, JSON.parse(r.lignes));
+  if (!Number.isInteger(index) || index < 0 || index >= lignes.length) return json({ erreur: "Ligne introuvable." }, 404);
+  const nomAttendu = b && b.nom != null ? String(b.nom).trim() : null;
+  if (nomAttendu !== null && String(lignes[index][0] || "").trim() !== nomAttendu) {
+    return json({ erreur: "Le relevé a changé depuis l'affichage : rechargez la page avant de supprimer." }, 409);
+  }
+  const restantes = lignes.filter((_, i) => i !== index);
+  await env.DB.prepare(
+    `INSERT INTO comptabilite_imports (type, colonnes, lignes, importe_par) VALUES (?1, ?2, ?3, ?4)`
+  ).bind(type, JSON.stringify(colonnes), JSON.stringify(restantes), s.id).run();
+  return json({ ok: true, restantes: restantes.length });
+}
+
 async function comptaReset(env, s, type) {
   if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
   await env.DB.prepare(
@@ -1195,6 +1222,10 @@ async function comptabilite(request, url, env) {
   if (route === "/dot/ecritures" && request.method === "DELETE") return comptaDotReinitialiserEcritures(env, url, s);
   const mEcriture = route.match(/^\/dot\/ecritures\/(\d+)$/);
   if (mEcriture && request.method === "DELETE") return comptaDotSupprimerEcriture(env, s, mEcriture[1]);
+
+  // Suppression d'une seule ligne (un membre) du dernier relevé importé.
+  const mLigne = route.match(/^\/(tablettes)\/lignes\/(\d+)$/);
+  if (mLigne && request.method === "DELETE") return comptaSupprimerLigne(request, env, s, mLigne[1], Number(mLigne[2]));
 
   const type = route.replace(/^\//, "");
   if (!COMPTA_TYPES.includes(type)) return json({ erreur: "Adresse inconnue." }, 404);
