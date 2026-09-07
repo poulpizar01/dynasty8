@@ -145,6 +145,7 @@ function demarrerEspaceAdmin() {
     document.getElementById("onglet-comptabilite").classList.remove("cache");
     document.getElementById("onglet-statistiques").classList.remove("cache");
     document.getElementById("onglet-parametres").classList.remove("cache");
+    document.getElementById("groupe-outils").classList.remove("cache");
   }
   // Le lien Webmap est réservé au Patron, au Co Patron, et au Développeur web
   // (qui a exactement les mêmes accès que le Patron, y compris ici).
