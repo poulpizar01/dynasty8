@@ -1488,6 +1488,18 @@ async function statsSemaines(env, s) {
   const semaineRecente = semaines[0] || null;
   const compteursSemaineRecente = semaineRecente ? (parSemaine.get(semaineRecente.code) || { ventes: 0, locations: 0 }) : { ventes: 0, locations: 0 };
 
+  // La semaine EN COURS est toujours proposée, même sans aucune vente encore
+  // enregistrée (sinon, en début de semaine, impossible de préparer la
+  // déclaration DOT ou de consulter le récap tant que personne n'a vendu).
+  const iso = statsCalc.semaineISO(new Date());
+  const codeCourant = `S${iso.numero}-${String(iso.anneeIso).slice(-2)}`;
+  if (!semaines.some((w) => w.code === codeCourant)) {
+    const lundi = statsCalc.lundiDeSemaineISO(iso.anneeIso, iso.numero);
+    const dimanche = new Date(lundi);
+    dimanche.setUTCDate(lundi.getUTCDate() + 6);
+    semaines.unshift({ code: codeCourant, debut: lundi.toISOString().slice(0, 10), fin: dimanche.toISOString().slice(0, 10), lignes: 0 });
+  }
+
   return json({
     semaines,
     totalVentes,

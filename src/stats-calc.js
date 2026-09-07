@@ -79,7 +79,7 @@ function dateDepuisJJMMAAAA(brut) {
 
 // Semaine ISO 8601 (lundi début de semaine, semaine 1 = celle contenant le
 // premier jeudi de l'année) — renvoie { numero, anneeIso } ou null.
-function semaineISO(date) {
+export function semaineISO(date) {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const jourSemaine = d.getUTCDay() || 7; // dimanche -> 7
   d.setUTCDate(d.getUTCDate() + 4 - jourSemaine); // jeudi de cette semaine-là
