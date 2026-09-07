@@ -16,7 +16,7 @@ jeu (FolkOS). Contact : Thomas (Dynasty 8 / Roxwood Network).
 ```bash
 git clone <dépôt> /opt/dynasty8      # ou copie du dossier fourni
 cd /opt/dynasty8/deploy/operateur
-cp .env.example .env                 # remplir (voir ci-dessous)
+# le fichier .env est déjà fourni dans ce dossier : ne reste qu'à remplir les 3 lignes FOLKOS_*
 docker compose up -d --build
 ```
 Le serveur crée/met à jour lui-même son schéma au démarrage : aucune migration
@@ -61,7 +61,7 @@ server {
 | Variable | Qui la fournit | Rôle |
 |---|---|---|
 | `POSTGRES_*`, `SESSION_SECRET` | vous (valeurs aléatoires) | base et signature des sessions |
-| `DISCORD_CLIENT_ID/SECRET`, `STATS_BOT_SECRET` | Dynasty 8 | connexion Discord de l'espace agents, bot de ventes |
+| `DISCORD_CLIENT_ID/SECRET`, `STATS_BOT_SECRET` | déjà renseignés dans `.env` | connexion Discord de l'espace agents, bot de ventes |
 | `DISCORD_REDIRECT_URI` | fixe | `https://dynasty8.fbfa.fr/api/auth/discord/callback` |
 | `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | vous | SSO « Se connecter IG » |
 
