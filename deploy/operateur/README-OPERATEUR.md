@@ -23,8 +23,8 @@ Le serveur crée/met à jour lui-même son schéma au démarrage : aucune migrat
 à lancer à la main.
 
 ## Reprise des données actuelles
-Une sauvegarde `pg_dump -Fc` (fichier `dynasty8_AAAAMMJJ_HHMMSS.dump`) est
-fournie par Dynasty 8. Pour la charger (écrase la base vide fraîchement créée) :
+La sauvegarde `pg_dump -Fc` de la base actuelle est fournie dans ce dossier
+(`deploy/operateur/dynasty8_AAAAMMJJ_HHMMSS.dump`). Pour la charger (écrase la base vide fraîchement créée) :
 ```bash
 cd /opt/dynasty8/deploy/operateur
 set -a; source .env; set +a

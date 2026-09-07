@@ -10,4 +10,6 @@ export-cloudflare.sql
 deploy/vps/.env
 deploy/vps/backups/
 deploy/operateur/.env
-deploy/operateur/*.dump
+_a-envoyer/
+# Sauvegarde de la base à restaurer par l opérateur (choix de Thomas : dans le dépôt)
+!deploy/operateur/*.dump
