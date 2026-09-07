@@ -437,7 +437,7 @@ async function chargerFicheBien() {
     const partager = document.getElementById("fiche-partager");
     partager.addEventListener("click", async () => {
       try {
-        await navigator.clipboard.writeText(window.location.href);
+        if (!(await copierTexte(window.location.href))) throw new Error("copie impossible");
         partager.querySelector("span").textContent = "Lien copié !";
         partager.classList.add("ok");
         setTimeout(() => { partager.querySelector("span").textContent = "Copier le lien"; partager.classList.remove("ok"); }, 2200);

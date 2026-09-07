@@ -3040,3 +3040,8 @@ tr:hover .compta-supprimer-ligne, .compta-supprimer-ligne:focus-visible { opacit
 .nav-webmap { display: inline-flex; align-items: center; gap: 7px; }
 .nav-webmap svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
 @media (max-width: 560px) { .nav-webmap span { display: none; } .nav-webmap { padding: 0 11px; } }
+
+/* Comptabilité → DOT : réglage « coller à partir de la ligne » à côté du bouton de copie */
+.dot-copie-outils { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dot-copie-libelle { font-family: var(--d8-font-ui); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
+.dot-copie-ligne { width: 72px; text-align: center; }

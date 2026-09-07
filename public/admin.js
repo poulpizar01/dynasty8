@@ -1787,12 +1787,12 @@ async function copierEcrituresDot(type, idCorps) {
   const lignes = [entetes.join("\t")];
   document.querySelectorAll(`#${idCorps} tr`).forEach((tr) => {
     const cellules = Array.from(tr.querySelectorAll("td")).map((td) => td.textContent.trim());
-    if (cellules.length === 4) lignes.push(cellules.slice(0, 3).join("\t"));
+    // montant copié comme un vrai nombre (« 1 200 $ » -> 1200) pour que le tableur puisse calculer dessus
+    if (cellules.length === 4) lignes.push([cellules[0], cellules[1], cellules[2].replace(/[^\d-]/g, "")].join("\t"));
   });
-  try {
-    await navigator.clipboard.writeText(lignes.join("\n"));
+  if (await copierTexte(lignes.join("\n"))) {
     afficherMessage("zone-message-dot", "Tableau copié ✓ Vous pouvez le coller dans Excel/Google Sheets.", "succes");
-  } catch (e) {
+  } else {
     afficherMessage("zone-message-dot", "Impossible de copier automatiquement — sélectionnez le tableau à la main (Ctrl+C).", "erreur");
   }
 }
@@ -1841,10 +1841,11 @@ document.getElementById("formulaire-ecriture-dot").addEventListener("submit", as
 async function chargerDotSalaries() {
   const semaine = document.getElementById("select-semaine-dot").value;
   const corps = document.getElementById("corps-table-dot-salaries");
-  if (!semaine) { corps.innerHTML = `<tr><td colspan="8" class="champ-aide">Choisissez une semaine.</td></tr>`; return; }
+  if (!semaine) { DOT_SALARIES = []; corps.innerHTML = `<tr><td colspan="8" class="champ-aide">Choisissez une semaine.</td></tr>`; return; }
   try {
     const r = await appelAPI(`/api/comptabilite/dot/salaries?semaine=${encodeURIComponent(semaine)}`);
     const agents = r.agents || [];
+    DOT_SALARIES = agents;
     corps.innerHTML = agents.length
       ? agents.map((a) => `<tr>
             <td>${echapper(a.identiteRp || a.identite)}</td>
@@ -1863,21 +1864,40 @@ async function chargerDotSalaries() {
 }
 
 // « Copier le tableau » : copie au format tableur (colonnes séparées par des
-// tabulations) — se colle proprement dans Excel/Google Sheets. Les montants
-// sont copiés comme des nombres calculés, pas comme des formules : si une
-// formule Excel/Sheets est nécessaire (ex: la colonne CA TOTAL REALISE),
-// redemandez un fichier prêt à coller, il peut être généré à la demande.
+// tabulations) — se colle proprement dans Excel/Google Sheets :
+//   - les montants sont copiés comme de VRAIS nombres (pas « 74 970 $ » en
+//     texte), pour que le document puisse calculer dessus ;
+//   - la colonne CA TOTAL REALISE est copiée sous forme de FORMULE (=RUN+FACTURE
+//     +VENTE, même colonnes que le document DOT : C, D, E) et non comme un
+//     chiffre figé, comme dans le document original. Le numéro de la première
+//     ligne où l'on colle se règle à côté du bouton (2 par défaut = juste sous
+//     les titres).
+let DOT_SALARIES = []; // dernier tableau chargé (données brutes, pas le HTML)
+function formuleCaTotal(numeroLigne) {
+  return `=C${numeroLigne}+D${numeroLigne}+E${numeroLigne}`;
+}
 document.getElementById("bouton-copier-salaries").addEventListener("click", async () => {
-  const entetes = ["Nom du salarié", "Grade", "RUN", "FACTURE", "VENTE", "CA TOTAL REALISE", "Salaire", "Prime"];
-  const lignes = [entetes.join("\t")];
-  document.querySelectorAll("#corps-table-dot-salaries tr").forEach((tr) => {
-    const cellules = Array.from(tr.querySelectorAll("td")).map((td) => td.textContent.trim());
-    if (cellules.length === 8) lignes.push(cellules.join("\t"));
-  });
-  try {
-    await navigator.clipboard.writeText(lignes.join("\n"));
-    afficherMessage("zone-message-dot", "Tableau copié ✓ Vous pouvez le coller dans Excel/Google Sheets.", "succes");
-  } catch (e) {
+  if (!DOT_SALARIES.length) {
+    afficherMessage("zone-message-dot", "Rien à copier : choisissez une semaine avec des salariés.", "erreur");
+    return;
+  }
+  const champLigne = document.getElementById("dot-copie-premiere-ligne");
+  let premiereLigne = champLigne ? parseInt(champLigne.value, 10) : 2;
+  if (!Number.isInteger(premiereLigne) || premiereLigne < 1) premiereLigne = 2;
+  const nombre = (v) => String(Math.round(Number(v) || 0));
+  const lignes = DOT_SALARIES.map((a, i) => [
+    a.identiteRp || a.identite,
+    a.grade,
+    nombre(a.run),
+    nombre(a.facture),
+    nombre(a.vente),
+    formuleCaTotal(premiereLigne + i),
+    nombre(a.salaireFixe),
+    nombre(a.primeTotale),
+  ].join("\t"));
+  if (await copierTexte(lignes.join("\n"))) {
+    afficherMessage("zone-message-dot", `Tableau copié ✓ (${lignes.length} salariés, sans la ligne de titres). Collez-le en ligne ${premiereLigne}, colonne A, du document DOT : la colonne CA TOTAL REALISE arrive en formule.`, "succes");
+  } else {
     afficherMessage("zone-message-dot", "Impossible de copier automatiquement — sélectionnez le tableau à la main (Ctrl+C).", "erreur");
   }
 });

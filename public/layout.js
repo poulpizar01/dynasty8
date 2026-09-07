@@ -348,6 +348,26 @@ function texteSansMarquage(texte) {
     .replace(/\*(.+?)\*/g, "$1");
 }
 
+// Copie un texte dans le presse-papiers. navigator.clipboard n'existe qu'en
+// HTTPS (« contexte sécurisé ») : sur le VPS en HTTP simple ou dans le
+// navigateur du jeu, il est absent — on se rabat alors sur l'ancienne méthode
+// (zone de texte invisible + commande « copy »), qui marche partout.
+async function copierTexte(texte) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(texte); return true; } catch (e) { /* on tente le repli */ }
+  }
+  const zone = document.createElement("textarea");
+  zone.value = texte;
+  zone.setAttribute("readonly", "");
+  zone.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;";
+  document.body.appendChild(zone);
+  zone.focus(); zone.select(); zone.setSelectionRange(0, texte.length);
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+  document.body.removeChild(zone);
+  return ok;
+}
+
 async function appelAPI(chemin, options) {
   const reponse = await fetch(chemin, {
     credentials: "same-origin",

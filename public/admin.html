@@ -432,9 +432,13 @@
         <div class="entete-admin" style="margin-top:36px;">
           <div>
             <h3 style="margin-bottom:2px;">Tableau des salariés</h3>
-            <p style="margin:0;font-size:0.88rem;">Prêt à copier-coller dans le document de la DOT (RUN/FACTURE/VENTE viennent du relevé Tablettes — 0$ si le salarié n'y figure pas).</p>
+            <p style="margin:0;font-size:0.88rem;">Prêt à copier-coller dans le document de la DOT (RUN/FACTURE/VENTE viennent du relevé Tablettes — 0$ si le salarié n'y figure pas). La copie envoie des nombres, et la colonne CA TOTAL REALISE en formule (=RUN+FACTURE+VENTE), sans la ligne de titres.</p>
           </div>
-          <button type="button" class="btn btn-fantome" id="bouton-copier-salaries">📋 Copier le tableau</button>
+          <div class="dot-copie-outils">
+            <label for="dot-copie-premiere-ligne" class="dot-copie-libelle">Coller à partir de la ligne</label>
+            <input type="number" id="dot-copie-premiere-ligne" class="table-input dot-copie-ligne" min="1" step="1" value="2" title="Numéro de la ligne du document DOT où sera collée la première personne (pour que la formule CA TOTAL vise les bonnes cases)">
+            <button type="button" class="btn btn-fantome" id="bouton-copier-salaries">📋 Copier le tableau</button>
+          </div>
         </div>
         <div style="overflow-x:auto;">
           <table class="table-admin">
