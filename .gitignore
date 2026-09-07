@@ -1,15 +1,12 @@
 node_modules/
-.wrangler/
-.dev.vars
 *.log
-
-# Export brut intermédiaire (SQLite) — le fichier utile est donnees-cloudflare.postgres.sql
-export-cloudflare.sql
 
 # Pack VPS (deploy/vps) : secrets réels et sauvegardes, jamais dans Git
 deploy/vps/.env
 deploy/vps/backups/
+Claude outputs/
 _a-envoyer/
 # Sauvegarde de la base à restaurer par l opérateur (choix de Thomas : dans le dépôt)
 !deploy/operateur/*.dump
 !deploy/operateur/.env
+

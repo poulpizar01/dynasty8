@@ -11,7 +11,7 @@
 - **Serveur RP :** FlashbackFA
 - **Développement :** Roxwood Network
 
-L'URL `workers.dev` correspond à l'instance Cloudflare historique. Le dépôt contient également toute l'architecture nécessaire pour fonctionner sous **Node.js + PostgreSQL**, notamment sur Railway ou sur un VPS Docker.
+Le site tourne sous **Node.js (Express) + PostgreSQL**, en Docker Compose : sur le VPS Dynasty 8 (`deploy/vps/`) ou sur le serveur de l'opérateur FlashbackFA qui l'embarque dans l'ordinateur en jeu FolkOS (`deploy/operateur/`).
 
 ---
 
@@ -186,13 +186,10 @@ Navigateur
    └── /api/*
           │
           ▼
-      src/index.js
+      server.js (Express)
           │
-          ├── Cloudflare Workers + D1
-          │
-          └── Node.js / Express + PostgreSQL
-                     │
-                     └── src/db-pg.js
+          ▼
+      src/index.js  ──►  src/db-pg.js  ──►  PostgreSQL
 ```
 
 ### Front-end
@@ -224,43 +221,17 @@ public/
 
 ### Back-end partagé
 
-`src/index.js` contient l'API principale en utilisant les objets web standards `Request` / `Response`.
+`src/index.js` contient l'API principale, écrite avec les objets web standards `Request` / `Response` (héritage de la première version hébergée sur Cloudflare Workers, abandonnée en septembre 2026 — le code métier n'a pas eu à être réécrit).
 
-Ce choix permet au même code métier de fonctionner :
+### Serveur Node.js + PostgreSQL
 
-- directement dans **Cloudflare Workers** ;
-- derrière le serveur **Express** de `server.js`.
-
-### Mode Cloudflare
-
-Le fichier `wrangler.toml` configure :
-
-- le Worker `dynasty8` ;
-- les fichiers statiques du dossier `public/` ;
-- le passage prioritaire des routes `/api/*` dans le Worker ;
-- la base **Cloudflare D1** liée sous le binding `DB`.
-
-Commandes :
-
-```bash
-npm install
-npm run dev
-npm run deploy
-```
-
-Le mode Cloudflare reste conservé dans le dépôt afin de garder l'ancienne infrastructure exploitable pendant les migrations.
-
-### Mode Node.js + PostgreSQL
-
-Le serveur `server.js` permet d'exécuter l'application sur un hébergement Node.js classique.
-
-Il :
+Le serveur `server.js` :
 
 - sert les fichiers de `public/` avec Express ;
 - transmet `/api/*` au même back-end `src/index.js` ;
 - utilise PostgreSQL via `src/db-pg.js` ;
 - applique automatiquement `schema.postgres.sql` au démarrage ;
-- conserve la compatibilité avec les requêtes initialement écrites pour D1/SQLite.
+- traduit à la volée les requêtes écrites en style SQLite (`?1`, `datetime('now')`…) vers PostgreSQL (`src/db-pg.js`).
 
 Prérequis :
 
@@ -325,26 +296,11 @@ PGSSL=require
 
 ---
 
-## Base de données et migrations
+## Base de données
 
-Le dépôt conserve deux familles de schémas :
+Un seul fichier de schéma : `schema.postgres.sql`. Le serveur l'applique automatiquement au démarrage, avec des opérations non destructives (`CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`…) prévues pour être rejouées à chaque déploiement : une nouvelle table ou colonne s'ajoute simplement à ce fichier.
 
-- `schema.sql` pour Cloudflare D1 / SQLite ;
-- `schema.postgres.sql` pour PostgreSQL.
-
-Plusieurs migrations fonctionnelles sont également conservées dans le dépôt, notamment pour :
-
-- Discord OAuth ;
-- profils d'équipe ;
-- agenda ;
-- comptabilité ;
-- rémunération ;
-- statistiques ;
-- ventes / locations ;
-- DOT ;
-- VIP PLUS.
-
-Le serveur Node applique automatiquement le schéma PostgreSQL au démarrage avec des opérations non destructives prévues pour être rejouables.
+Sauvegarde / restauration : `deploy/vps/backup.sh` et `restore.sh` (`pg_dump` / `pg_restore`).
 
 ---
 
@@ -388,14 +344,15 @@ Dynasty8/
 ├── src/
 │   ├── index.js               # API / logique applicative principale
 │   └── db-pg.js               # Adaptateur PostgreSQL
-├── deploy/vps/                # Pack Docker Compose pour VPS
+├── deploy/
+│   ├── vps/                   # Docker Compose autonome (app + PostgreSQL + Caddy)
+│   └── operateur/             # Docker Compose pour le serveur FlashbackFA (proxy externe, SSO FolkOS)
 ├── notes/                     # Documentation technique complémentaire
-├── scripts/                   # Scripts d'administration / contrôle
-├── tests/                     # Tests automatisés
+├── scripts/                   # Scripts d'administration (à lancer à la main)
+├── tests/                     # Tests automatisés (`npm test`)
 ├── server.js                  # Serveur Node.js / Express
-├── schema.sql                 # Schéma Cloudflare D1
-├── schema.postgres.sql        # Schéma PostgreSQL
-├── wrangler.toml              # Configuration Cloudflare Workers
+├── schema.postgres.sql        # Schéma PostgreSQL (appliqué au démarrage)
+├── mettre-en-ligne-vps.bat    # Mise en ligne sur le VPS depuis Windows
 ├── package.json
 └── README.md
 ```
@@ -418,6 +375,4 @@ Le dépôt contient des tests automatisés pour plusieurs comportements critique
 
 ## État du projet
 
-Le projet est **actif** et continue d'évoluer. L'ancienne architecture Cloudflare est conservée, tandis que la version Node.js/PostgreSQL permet désormais une migration vers une infrastructure plus classique et maîtrisable.
-
-La priorité est de conserver une seule logique applicative tout en pouvant changer d'hébergeur sans réécrire tout le site.
+Le projet est **actif** et continue d'évoluer. L'architecture Cloudflare d'origine a été retirée du dépôt en septembre 2026 : une seule façon de lancer le site, Node.js + PostgreSQL en Docker Compose.

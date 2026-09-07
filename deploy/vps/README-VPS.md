@@ -1,32 +1,32 @@
-# Déploiement sur un VPS (Docker Compose) — préparation uniquement
+# Déploiement sur le VPS Dynasty 8 (Docker Compose)
 
-Ce dossier prépare une migration future vers un VPS. **Rien ici n'est utilisé
-par Railway** (Railway construit directement depuis la racine du dépôt avec
-son propre système, Railpack — ce dossier ne le change pas).
+Pack autonome : `app` (le site), `postgres` (base, volume persistant, jamais
+exposée), `caddy` (reverse proxy ; HTTP sur l'IP pour l'instant, HTTPS
+automatique dès qu'un nom de domaine pointera vers ce VPS).
+
+Pour l'hébergement chez l'opérateur FlashbackFA (dynasty8.fbfa.fr, ordinateur
+en jeu), voir plutôt `../operateur/`.
 
 ## Contenu
-- `Dockerfile` — construit l'application Node.js (identique au code qui tourne sur Railway).
-- `compose.yaml` — 3 services : `app` (le site), `postgres` (base, volume persistant, jamais exposée publiquement), `caddy` (HTTPS automatique + domaine).
-- `Caddyfile` — à modifier avec le vrai nom de domaine.
-- `.env.example` — modèle des variables à renseigner (copier en `.env`, jamais commité).
-- `backup.sh` / `restore.sh` — sauvegarde/restauration de la base (`pg_dump`/`pg_restore`).
+- `Dockerfile` — construit l'application Node.js.
+- `compose.yaml` — les 3 services.
+- `Caddyfile` — `:80` tant qu'il n'y a pas de domaine sur ce VPS.
+- `.env.example` — modèle des variables (copier en `.env`, jamais commité). En HTTP simple, garder `COOKIES_HTTP=1`.
+- `backup.sh` / `restore.sh` — sauvegarde/restauration de la base (`pg_dump`/`pg_restore`). Lancer avec `bash backup.sh`.
 
-## Ce qui a été vérifié pendant la préparation
-- Aucun fichier persistant généré par le site en dehors de la base PostgreSQL (pas d'upload de fichiers dans le code) — seul le volume `postgres_data` est donc nécessaire aujourd'hui.
-- Le serveur applique lui-même son schéma (`schema.postgres.sql`) et l'import unique des données réelles au démarrage — aucune commande de migration séparée à lancer, comme sur Railway.
+## Mise en ligne au quotidien
+Depuis le PC : double-clic sur `mettre-en-ligne-vps.bat` à la racine du projet
+(copie les fichiers par `scp` puis reconstruit le conteneur `app`), puis Ctrl+F5.
 
-## Points à renseigner avant un vrai déploiement (pas encore faits)
-1. Un vrai VPS avec Docker + Docker Compose installés.
-2. Un nom de domaine pointant vers ce VPS (à mettre dans `Caddyfile`).
-3. `deploy/vps/.env` rempli avec de vraies valeurs (mot de passe PostgreSQL, `SESSION_SECRET`, identifiants Discord, `STATS_BOT_SECRET`).
-4. Si vous gardez les mêmes identifiants Discord que Railway : ajouter cette nouvelle URL de redirection dans le panneau développeur Discord (Railway continue de fonctionner en parallèle avec la sienne).
-5. Une politique de sauvegarde régulière (ex. `backup.sh` via une tâche planifiée), non mise en place ici.
-6. Bascule finale du domaine et arrêt de Railway/Cloudflare : décision et exécution manuelles, hors périmètre de cette préparation.
-
-## Démarrage (le jour venu)
+## Première installation
 ```bash
-cd deploy/vps
-cp .env.example .env   # puis remplir les vraies valeurs
-docker compose up -d --build
-./backup.sh             # première sauvegarde de test
+cd /opt/dynasty8/deploy/vps
+cp .env.example .env      # puis remplir les vraies valeurs
+sudo docker compose up -d --build
+bash backup.sh            # première sauvegarde de test
 ```
+Le serveur applique lui-même son schéma (`schema.postgres.sql`) au démarrage.
+
+## Exploitation
+- Journaux : `sudo docker compose logs -f app`
+- Sauvegarde : `bash backup.sh` (fichiers dans `backups/`, exclus de Git)

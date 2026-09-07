@@ -1,3 +1,5 @@
+> **Note (sept. 2026)** : ce document date de l'hébergement Railway. Le site tourne désormais sur le VPS / chez l'opérateur (Docker Compose) ; la variable `STATS_BOT_SECRET` se règle dans `deploy/*/.env` et l'adresse de l'API est celle du site (https://dynasty8.fbfa.fr). Le reste (format des messages, clé, idempotence) est inchangé.
+
 # Configuration du bot de ventes — première mise en service
 
 Le bot Discord qui doit enregistrer automatiquement les ventes de l'équipe n'est pas encore configuré. Voici tout ce qu'il faut pour le brancher, directement sur le nouveau site (Railway) — pas besoin de passer par l'ancien site Cloudflare, qui n'a jamais servi pour ça.

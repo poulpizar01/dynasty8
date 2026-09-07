@@ -1,11 +1,8 @@
 // ============================================================================
-// Point d'entrée Node.js / Railway
+// Point d'entrée Node.js (Express + PostgreSQL)
 // ----------------------------------------------------------------------------
-// Ce fichier remplace, pour l'hébergement Railway, ce que Cloudflare Workers
-// faisait tout seul : servir les fichiers du dossier /public, et envoyer
-// les adresses /api/* au code de src/index.js (qui n'a lui-même PAS été
-// réécrit — il est resté écrit en "standard web" (Request/Response), qui
-// fonctionne aussi bien sous Cloudflare Workers que sous Node.js).
+// Sert les fichiers du dossier /public et transmet les adresses /api/* au
+// code de src/index.js, écrit en "standard web" (Request/Response).
 // ============================================================================
 
 import express from "express";
@@ -40,7 +37,7 @@ app.use((req, res, next) => {
 });
 
 if (!process.env.DATABASE_URL) {
-  console.error("DATABASE_URL n'est pas définie — vérifie les variables du service sur Railway.");
+  console.error("DATABASE_URL n'est pas définie — vérifie le fichier .env (deploy/vps ou deploy/operateur).");
 }
 const pool = creerPool(process.env.DATABASE_URL);
 const adaptateurDB = creerAdaptateurDB();
@@ -53,27 +50,6 @@ async function appliquerSchema() {
   const sql = fs.readFileSync(chemin, "utf8");
   await pool.query(sql);
   console.log("Schéma PostgreSQL vérifié/appliqué avec succès.");
-}
-
-// Import UNIQUE des vraies données exportées de Cloudflare D1 (membres, biens,
-// historique des ventes, réglages de rémunération...). Protégé par la table
-// migrations_appliquees : ce fichier ne sera jamais rejoué une deuxième fois,
-// même après un redémarrage — indispensable puisqu'il commence par VIDER les
-// tables avant de tout réinsérer.
-async function importerDonneesReelles() {
-  const NOM_MIGRATION = "import_donnees_cloudflare_20260902";
-  const chemin = path.join(__dirname, "donnees-cloudflare.postgres.sql");
-  if (!fs.existsSync(chemin)) return; // fichier déjà supprimé après un import réussi ailleurs
-
-  const deja = await pool.query(
-    "SELECT 1 FROM migrations_appliquees WHERE nom = $1",
-    [NOM_MIGRATION]
-  );
-  if (deja.rows.length) return;
-
-  const sql = fs.readFileSync(chemin, "utf8");
-  await pool.query(sql); // le fichier contient déjà son propre BEGIN ... COMMIT
-  console.log("Données réelles importées depuis Cloudflare D1 (import unique).");
 }
 
 // Amorçage du tout premier compte Direction : si AUCUN compte Direction
@@ -198,7 +174,6 @@ app.use((req, res) => {
 });
 
 appliquerSchema()
-  .then(() => importerDonneesReelles())
   .then(() => amorcerPremierAdmin())
   .then(() => demarrerSyncSheet())
   .catch((e) => {
@@ -206,6 +181,6 @@ appliquerSchema()
   })
   .finally(() => {
     app.listen(PORT, () => {
-      console.log(`Dynasty 8 (Node/Railway) en écoute sur le port ${PORT}`);
+      console.log(`Dynasty 8 en écoute sur le port ${PORT}`);
     });
   });
