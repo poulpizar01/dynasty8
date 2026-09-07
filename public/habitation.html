@@ -9,15 +9,15 @@
 <meta property="og:site_name" content="Dynasty 8">
 <meta property="og:title" content="Habitation — Dynasty 8">
 <meta property="og:description" content="Tous les biens Habitation de Dynasty 8 : Eclipse Tower, Del Perro Heights, Villa, Maison, Appartement et bien d'autres.">
-<meta property="og:image" content="https://dynasty8.poulpizar.workers.dev/img/og-image.jpg">
-<meta property="og:url" content="https://dynasty8.poulpizar.workers.dev/habitation.html">
+<meta property="og:image" content="https://dynasty8.fbfa.fr/img/og-image.jpg">
+<meta property="og:url" content="https://dynasty8.fbfa.fr/habitation.html">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Habitation — Dynasty 8">
 <meta name="twitter:description" content="Tous les biens Habitation de Dynasty 8 : Eclipse Tower, Del Perro Heights, Villa, Maison, Appartement et bien d'autres.">
-<meta name="twitter:image" content="https://dynasty8.poulpizar.workers.dev/img/og-image.jpg">
+<meta name="twitter:image" content="https://dynasty8.fbfa.fr/img/og-image.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,600;1,300;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 <link rel="icon" type="image/png" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/favicon-180.png">
@@ -69,18 +69,18 @@
   // Les 19 sous-catégories (voir SOUS_CATEGORIES_HABITATION dans layout.js)
   // sont regroupées en 4 familles pour un filtre à deux niveaux plus lisible
   // que les 19 boutons à plat d'avant. "Autres" n'a pas de sous-filtre visible
-  // (la ligne 2 se replie), mais couvre bien les 5 adresses qui ne rentrent
+  // (la ligne 2 se replie), mais couvre bien les 3 adresses qui ne rentrent
   // dans aucune des 3 autres familles, pour ne perdre aucune annonce.
   const FAMILLES_HABITATION = [
     { id: "residences", label: "Résidences", categories: ["Villa", "Maison"] },
     { id: "immeubles", label: "Immeubles", categories: [
         "Eclipse Tower", "Tinsel Tower", "Flat", "Motel", "Duplex",
-        "Del Perro Heights", "Richards Majestic", "Weazel Plaza",
+        "Del Perro Heights", "Richards Majestic", "Weazel Plaza", "Alta Street", "Appartement",
       ] },
     { id: "business", label: "Business", categories: ["Bureau", "Entrepôt", "Headquarter", "Bar"] },
     { id: "autres", label: "Autres", categories: [] },
   ];
-  const SOUS_CATEGORIES_AUTRES = ["San Andreas", "Alta Street", "Caravane", "Appartement", "Autre"];
+  const SOUS_CATEGORIES_AUTRES = ["San Andreas", "Caravane", "Autre"];
 
   function sousCategoriesDeFamille(familleId) {
     if (familleId === "autres") return SOUS_CATEGORIES_AUTRES;

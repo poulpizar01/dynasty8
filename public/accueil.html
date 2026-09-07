@@ -9,33 +9,35 @@
 <meta property="og:site_name" content="Dynasty 8">
 <meta property="og:title" content="Dynasty 8 — Agence immobilière de Los Santos">
 <meta property="og:description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
-<meta property="og:image" content="https://dynasty8.poulpizar.workers.dev/img/og-image.jpg">
-<meta property="og:url" content="https://dynasty8.poulpizar.workers.dev/accueil.html">
+<meta property="og:image" content="https://dynasty8.fbfa.fr/img/og-image.jpg">
+<meta property="og:url" content="https://dynasty8.fbfa.fr/accueil.html">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Dynasty 8 — Agence immobilière de Los Santos">
 <meta name="twitter:description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
-<meta name="twitter:image" content="https://dynasty8.poulpizar.workers.dev/img/og-image.jpg">
+<meta name="twitter:image" content="https://dynasty8.fbfa.fr/img/og-image.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,600;1,300;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 <link rel="icon" type="image/png" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/favicon-180.png">
 </head>
-<body>
+<body class="page-accueil">
 
 <header class="entete" id="site-entete"></header>
 
+<!-- ============================================================
+     HERO — le logo Dynasty 8 « qui se construit » (Three.js, script en bas
+     de page). Le canvas est décoratif ; sans WebGL on garde le fond marbré.
+     ============================================================ -->
 <section class="hero hero-accueil">
-  <!-- Fond du hero : le logo Dynasty 8 qui se construit (Three.js, script en bas de page).
-       Le canvas est purement décoratif ; sans WebGL on garde simplement le fond marbré. -->
   <canvas class="hero-logo-canvas" id="hero-logo" aria-hidden="true"></canvas>
   <div class="hero-logo-voile" aria-hidden="true"></div>
   <div class="hero-accueil-grille">
     <div class="hero-texte">
-      <div class="hero-etiquette">★ L'excellence immobilière à Los Santos</div>
+      <div class="hero-etiquette"><span class="hero-etiquette-filet" aria-hidden="true"></span>L'excellence immobilière à Los Santos</div>
       <h1>Trouvez le bien qui porte votre nom.</h1>
-      <p class="lead">Dynasty 8 accompagne les résidents de Los Santos dans l'achat, la location et la gestion de leurs habitations, garages et propriétés d'exception depuis leur arrivée en ville.</p>
+      <p class="lead">Dynasty 8 accompagne les résidents de Los Santos dans l'achat, la location et la gestion de leurs habitations, garages et propriétés d'exception.</p>
       <div class="hero-actions">
         <a href="/exclusifs.html" class="btn btn-or btn-large">Voir les biens exclusifs</a>
         <a href="#coups-de-coeur" class="btn btn-fantome btn-large">Nos coups de cœur</a>
@@ -47,14 +49,17 @@
       </div>
     </div>
   </div>
+  <a href="#acces-rapide" class="hero-indice" aria-label="Découvrir le site"><span>Découvrir</span><i aria-hidden="true"></i></a>
 </section>
 
-<section class="section" style="padding-top: clamp(40px, 6vw, 64px);">
+<!-- ============================================================
+     1. ACCÈS RAPIDE — cinq portes d'entrée, collées au hero
+     ============================================================ -->
+<section class="section section-acces" id="acces-rapide">
   <div class="conteneur">
     <div class="section-entete">
       <span class="etiquette">Accès rapide</span>
       <h2>Tout le catalogue, en un clic</h2>
-      <p>Cinq portes d'entrée vers l'ensemble de nos annonces et avantages.</p>
     </div>
     <div class="grille-hub grille-hub--5">
       <a class="carte-hub" href="/interieurs.html">
@@ -91,14 +96,84 @@
   </div>
 </section>
 
-<section class="section">
+<!-- ============================================================
+     2. COUPS DE CŒUR — la sélection de la semaine (remontée juste
+     sous l'accès rapide : c'est le vrai produit de l'agence)
+     ============================================================ -->
+<section class="section alterne section-coeur" id="coups-de-coeur">
+  <div class="conteneur">
+    <div class="section-entete">
+      <span class="etiquette">Sélection</span>
+      <h2>Nos coups de cœur</h2>
+      <p>Une sélection de biens mis en avant par nos agents cette semaine.</p>
+    </div>
+
+    <div class="coeur-filtres" id="coeur-filtres" role="group" aria-label="Filtrer les coups de cœur">
+      <button type="button" class="coeur-filtre actif" data-filtre="tous" aria-pressed="true">Tous</button>
+      <button type="button" class="coeur-filtre" data-filtre="vente-location" aria-pressed="false">Vente &amp; Location</button>
+      <button type="button" class="coeur-filtre" data-filtre="garage" aria-pressed="false">Garages</button>
+      <button type="button" class="coeur-filtre" data-filtre="habitation" aria-pressed="false">Habitations</button>
+    </div>
+
+    <div class="coeur-rangee">
+      <button type="button" class="coeur-fleche coeur-fleche--precedent cache" id="coeur-precedent" aria-label="Biens précédents">‹</button>
+      <div class="carrousel-scroll" id="grille-coeur"></div>
+      <button type="button" class="coeur-fleche coeur-fleche--suivant cache" id="coeur-suivant" aria-label="Biens suivants">›</button>
+    </div>
+
+    <div class="coeur-atouts">
+      <div class="coeur-atout">
+        <span class="coeur-atout-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M9 3l3 6 3-6M12 9l-3 12M12 9l3 12"/></svg></span>
+        <div><h4>Biens sélectionnés</h4><p>Triés sur le volet par nos agents experts.</p></div>
+      </div>
+      <div class="coeur-atout">
+        <span class="coeur-atout-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/></svg></span>
+        <div><h4>Opportunités rares</h4><p>Des biens d'exception à ne pas laisser passer.</p></div>
+      </div>
+      <div class="coeur-atout">
+        <span class="coeur-atout-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+        <div><h4>Mises à jour hebdo</h4><p>Chaque semaine, une nouvelle sélection exclusive.</p></div>
+      </div>
+      <div class="coeur-atout">
+        <span class="coeur-atout-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <div><h4>Accompagnement VIP</h4><p>Un suivi personnalisé pour chaque projet.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     3. STANDING — panneau sombre biens exclusifs
+     ============================================================ -->
+<section class="section section-standing">
+  <div class="conteneur">
+    <div class="vitrine-exception">
+      <div class="vitrine-exception-texte">
+        <span class="vitrine-exception-etiquette">Standing</span>
+        <h2>Un niveau d'exception, pensé pour Los Santos.</h2>
+        <p>Villas avec piscine à débordement, terrasses privées, garages de collection : nos agents dénichent les propriétés les plus recherchées de la ville pour une clientèle exigeante.</p>
+        <a href="/exclusifs.html" class="btn btn-or btn-large">Découvrir les biens exclusifs <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="vitrine-exception-image">
+        <img src="/img/villa-exception.jpg" alt="Villa de standing avec piscine à débordement, vue de nuit" loading="lazy">
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="d8-sep" aria-hidden="true"></div>
+
+<!-- ============================================================
+     4. COHÉRENCES & WEBMAP — quatre cartes sur une seule rangée
+     ============================================================ -->
+<section class="section section-coherences">
   <div class="conteneur">
     <div class="section-entete">
       <span class="etiquette">Le point de départ</span>
-      <h2>Cohérences & WebMap</h2>
+      <h2>Cohérences &amp; WebMap</h2>
       <p>Avant de choisir un bien, repérez sa cohérence — la zone de jeu et les règles RP qui vont avec — puis localisez-la sur la WebMap du serveur.</p>
     </div>
-    <div class="grille-hub">
+    <div class="grille-hub grille-hub--4">
       <a class="carte-hub" href="/coherence.html?zone=Habitation">
         <div class="icone">🏠</div>
         <h3>Habitation</h3>
@@ -124,72 +199,19 @@
         <span class="carte-hub-fleche">Consulter →</span>
       </a>
     </div>
-    <div style="text-align:center;margin-top:32px;">
+    <div class="section-pied-action">
       <button type="button" class="btn btn-fantome btn-large" data-webmap-toggle>Voir la WebMap</button>
     </div>
     <div class="webmap-boite cache" data-webmap-boite></div>
   </div>
 </section>
 
-<section class="section alterne" id="coups-de-coeur">
-  <div class="conteneur">
-    <div class="section-entete">
-      <span class="etiquette">Sélection</span>
-      <h2>Nos coups de cœur</h2>
-      <p>Une sélection de biens mis en avant par nos agents cette semaine.</p>
-    </div>
+<div class="d8-sep" aria-hidden="true"></div>
 
-    <div class="coeur-filtres" id="coeur-filtres" role="group" aria-label="Filtrer les coups de cœur">
-      <button type="button" class="coeur-filtre actif" data-filtre="tous" aria-pressed="true">♥ Tous les coups de cœur</button>
-      <button type="button" class="coeur-filtre" data-filtre="vente-location" aria-pressed="false">🏷️ Vente &amp; Location</button>
-      <button type="button" class="coeur-filtre" data-filtre="garage" aria-pressed="false">🚗 Garages</button>
-      <button type="button" class="coeur-filtre" data-filtre="habitation" aria-pressed="false">🏠 Habitations</button>
-    </div>
-
-    <div class="coeur-rangee">
-      <button type="button" class="coeur-fleche coeur-fleche--precedent cache" id="coeur-precedent" aria-label="Biens précédents">‹</button>
-      <div class="carrousel-scroll" id="grille-coeur"></div>
-      <button type="button" class="coeur-fleche coeur-fleche--suivant cache" id="coeur-suivant" aria-label="Biens suivants">›</button>
-    </div>
-
-    <div class="coeur-atouts">
-      <div class="coeur-atout">
-        <span class="coeur-atout-icone" aria-hidden="true">💎</span>
-        <div><h4>Biens sélectionnés</h4><p>Triés sur le volet par nos agents experts.</p></div>
-      </div>
-      <div class="coeur-atout">
-        <span class="coeur-atout-icone" aria-hidden="true">⭐</span>
-        <div><h4>Opportunités rares</h4><p>Des biens d'exception à ne pas laisser passer.</p></div>
-      </div>
-      <div class="coeur-atout">
-        <span class="coeur-atout-icone" aria-hidden="true">🕓</span>
-        <div><h4>Mises à jour hebdo</h4><p>Chaque semaine, une nouvelle sélection exclusive.</p></div>
-      </div>
-      <div class="coeur-atout">
-        <span class="coeur-atout-icone" aria-hidden="true">🛡️</span>
-        <div><h4>Accompagnement VIP</h4><p>Un suivi personnalisé pour chaque projet.</p></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="conteneur">
-    <div class="vitrine-exception">
-      <div class="vitrine-exception-texte">
-        <span class="vitrine-exception-etiquette">Standing</span>
-        <h2>Un niveau d'exception, pensé pour Los Santos.</h2>
-        <p>Villas avec piscine à débordement, terrasses privées, garages de collection : nos agents dénichent les propriétés les plus recherchées de la ville pour une clientèle exigeante.</p>
-        <a href="/exclusifs.html" class="btn btn-or btn-large">Découvrir les biens exclusifs <span aria-hidden="true">→</span></a>
-      </div>
-      <div class="vitrine-exception-image">
-        <img src="/img/villa-exception.jpg" alt="Villa de standing avec piscine à débordement, vue de nuit" loading="lazy">
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section">
+<!-- ============================================================
+     5. MODE D'EMPLOI — infographie
+     ============================================================ -->
+<section class="section section-guide">
   <div class="conteneur">
     <div class="section-entete">
       <span class="etiquette">Mode d'emploi</span>
@@ -202,7 +224,10 @@
   </div>
 </section>
 
-<section class="section">
+<!-- ============================================================
+     6. PARTENAIRE
+     ============================================================ -->
+<section class="section section-partenaire">
   <div class="conteneur">
     <div class="partenaire-bandeau">
       <div class="partenaire-bandeau-image">
@@ -218,11 +243,15 @@
   </div>
 </section>
 
-<section class="section alterne">
-  <div class="conteneur" style="text-align:center;">
+<!-- ============================================================
+     7. CONTACT — bandeau final
+     ============================================================ -->
+<section class="section alterne section-contact">
+  <div class="conteneur section-contact-inner">
+    <svg class="section-contact-embleme" width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden="true"><path d="M22 3 L39 22 L22 41 L5 22 Z" stroke="currentColor" stroke-width="1.2"/><circle cx="22" cy="22" r="3" stroke="currentColor" stroke-width="1.2"/></svg>
     <span class="etiquette">Rejoignez-nous</span>
-    <h2 style="margin-top:10px;">Une question ? Un projet immobilier ?</h2>
-    <p style="max-width:520px;margin:0 auto 28px;">Contactez-nous en jeu via l'application Eyefind : envoyez un message détaillé au numéro ci-dessous, un agent Dynasty 8 vous répondra pour vous accompagner dans toutes vos démarches.</p>
+    <h2>Une question ? Un projet immobilier ?</h2>
+    <p>Contactez-nous en jeu via l'application Eyefind : envoyez un message détaillé au numéro ci-dessous, un agent Dynasty 8 vous répondra pour vous accompagner dans toutes vos démarches.</p>
     <div class="numero-contact" role="text" aria-label="Numéro Eyefind Dynasty 8 : 914">
       <span class="numero-contact-libelle">Numéro Eyefind</span>
       <span class="numero-contact-chiffre">914</span>
@@ -236,6 +265,8 @@
 <script src="/biens.js"></script>
 <script>
   initialiserLayout("accueil");
+  // Apparition douce au défilement des grands blocs de la page.
+  reveler(".section-entete, .vitrine-exception, .partenaire-bandeau, .cadre-guide, .coeur-atout, .section-contact-inner");
 
   // ---- vitrine "Nos coups de cœur" : filtres + carrousel à flèches -------------
   let COEUR_BIENS = [];
@@ -261,10 +292,20 @@
     suivant.classList.toggle("cache", !peutDefiler);
   }
 
+  // État vide « salon » : pas de boîte en pointillés, une invitation élégante.
+  function etatVideHTML(titre, texte, lien) {
+    return `<div class="etat-vide etat-vide--salon">
+      <span class="etat-vide-ornement" aria-hidden="true">✦</span>
+      <p class="etat-vide-titre">${titre}</p>
+      <p class="etat-vide-texte">${texte}</p>
+      ${lien ? `<a href="${lien.href}" class="btn btn-fantome btn-petit">${lien.texte}</a>` : ""}
+    </div>`;
+  }
+
   function rendreCoeur() {
     const conteneur = document.getElementById("grille-coeur");
     if (!COEUR_BIENS.length) {
-      conteneur.innerHTML = `<div class="etat-vide">Aucun coup de cœur pour le moment. Ajoutez-en depuis l'espace agents.</div>`;
+      conteneur.innerHTML = etatVideHTML("La sélection de la semaine arrive.", "Nos agents préparent les prochains coups de cœur. En attendant, le catalogue complet reste ouvert.", { href: "/interieurs.html", texte: "Parcourir le catalogue" });
       document.getElementById("coeur-filtres").classList.add("cache");
       majFlechesCoeur();
       return;
@@ -272,7 +313,7 @@
     const liste = biensCoeurFiltres();
     conteneur.innerHTML = liste.length
       ? liste.map((b) => carteCoeurHTML(b)).join("")
-      : `<div class="etat-vide">Aucun coup de cœur ne correspond à ce filtre pour le moment.</div>`;
+      : etatVideHTML("Rien dans cette catégorie pour l'instant.", "Essayez un autre filtre, ou parcourez le catalogue complet.", { href: "/interieurs.html", texte: "Parcourir le catalogue" });
     conteneur.scrollTo({ left: 0 });
     majFlechesCoeur();
   }
@@ -297,68 +338,27 @@
   window.addEventListener("resize", majFlechesCoeur);
 
   appelAPI("/api/biens?coup_de_coeur=1")
-    .then((d) => {
-      COEUR_BIENS = d.biens || [];
-      rendreCoeur();
-      const zoneVitrine = document.getElementById("hero-vitrine");
-      if (!zoneVitrine) return;
-      if (COEUR_BIENS.length) {
-        zoneVitrine.innerHTML = carteBienHTML(COEUR_BIENS[0]);
-      } else {
-        zoneVitrine.innerHTML = `
-          <div class="hero-vitrine-vide">
-            <span style="font-size:1.8rem;">🏠</span>
-            <p>Votre premier coup de cœur apparaîtra ici, en vitrine.</p>
-            <a href="/admin.html" class="btn btn-fantome btn-petit">Ajouter un bien</a>
-          </div>`;
-      }
-    })
+    .then((d) => { COEUR_BIENS = d.biens || []; rendreCoeur(); })
     .catch(() => {
-      document.getElementById("grille-coeur").innerHTML = `<div class="etat-vide">Impossible de charger les coups de cœur pour le moment.</div>`;
+      document.getElementById("grille-coeur").innerHTML = etatVideHTML("Les coups de cœur sont momentanément indisponibles.", "Réessayez dans un instant.");
       document.getElementById("coeur-filtres").classList.add("cache");
     });
 
+  // Compteur animé du hero (« 7 biens au catalogue »).
+  function animerCompteur(el, cible) {
+    if (reduireMouvement || !cible) { el.textContent = cible; return; }
+    const t0 = performance.now(), duree = 1100;
+    (function tick(now) {
+      const p = Math.min(1, (now - t0) / duree), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(cible * e);
+      if (p < 1) requestAnimationFrame(tick);
+    })(t0);
+  }
   appelAPI("/api/biens").then((d) => {
     const liste = d.biens || [];
-    document.getElementById("stat-biens").textContent = liste.length;
+    animerCompteur(document.getElementById("stat-biens"), liste.length);
     document.getElementById("stat-biens-libelle").textContent = liste.length > 1 ? "Biens au catalogue" : "Bien au catalogue";
-  }).catch(() => {});
-
-  // Fond animé du hero : fenêtres qui scintillent au hasard sur la silhouette de ville.
-  const zoneVille = document.getElementById("hero-ville");
-  if (zoneVille) {
-    for (let i = 0; i < 34; i++) {
-      const f = document.createElement("div");
-      f.className = "hero-fenetre";
-      f.style.width = (2 + Math.random() * 2) + "px";
-      f.style.height = (2 + Math.random() * 2) + "px";
-      f.style.left = (4 + Math.random() * 92) + "%";
-      f.style.bottom = (8 + Math.random() * 55) + "%";
-      f.style.animationDuration = (2 + Math.random() * 4) + "s";
-      f.style.animationDelay = (Math.random() * -6) + "s";
-      zoneVille.appendChild(f);
-    }
-  }
-
-  // Fond animé du hero : tempête de particules dorées qui montent lentement.
-  const zoneParticules = document.getElementById("hero-particules");
-  if (zoneParticules) {
-    for (let i = 0; i < 46; i++) {
-      const p = document.createElement("div");
-      p.className = "hero-particule";
-      const taille = 2 + Math.random() * 7;
-      p.style.width = taille + "px";
-      p.style.height = taille + "px";
-      p.style.left = Math.random() * 100 + "%";
-      p.style.bottom = (-10 - Math.random() * 20) + "%";
-      p.style.setProperty("--dx", (Math.random() * 120 - 60).toFixed(0) + "px");
-      const duree = 4 + Math.random() * 5;
-      p.style.animationDuration = duree + "s";
-      p.style.animationDelay = (Math.random() * -duree) + "s";
-      zoneParticules.appendChild(p);
-    }
-  }
-
+  }).catch(() => { document.getElementById("stat-biens").textContent = "—"; });
 </script>
 <script type="importmap">
 { "imports": { "three": "/vendor/three.module.min.js" } }
@@ -370,6 +370,15 @@
 // la pente, puis le nom s'inscrit ; ensuite lueur qui respire + étincelles +
 // léger tilt à la souris. Géométrie reprise du logo (image 1024², unité =
 // largeur du logo). Three.js en local (/vendor), nom en PNG (/img/logo-wordmark.png).
+//
+// Rendu (refonte sept. 2026) — les couleurs officielles (vert / jaune) sont
+// conservées, seul le rendu change :
+//   - le trait vert a désormais un léger relief (arête haute plus claire, arête
+//     basse plus sombre, fin liseré) au lieu d'un aplat ;
+//   - une ombre douce est portée sous le trait, comme une enseigne posée sur
+//     le marbre ;
+//   - le soleil a des rayons lents et un halo chaud plus large ;
+//   - une nappe de lumière au sol reflète le logo.
 // ---------------------------------------------------------------------------
 import * as THREE from 'three';
 (function(){
@@ -383,49 +392,113 @@ import * as THREE from 'three';
   const mouse={x:0,y:0}, ms={x:0,y:0};
   addEventListener('pointermove', e=>{ mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-((e.clientY/innerHeight)*2-1); }, {passive:true});
 
-  const P = (x,y)=>new THREE.Vector2((x-512)/1024, (512-y)/1024);
-  const TRAIT = [P(158,565), P(473,249), P(708,484), P(708,397), P(820,397), P(820,710)];
-  const SOLEIL = {c:P(805.5,414.5), r:166.5/1024};
-  const WM = {c:P(505,646), w:930/1024, h:152/1024};
-  const EP = 36/1024;
+  // Géométrie relevée sur le logo officiel (image 1254², unité = largeur de l'image).
+  const P = (x,y)=>new THREE.Vector2((x-627)/1254, (627-y)/1254);
+  // un seul tracé continu : toit, puis remontée du montant gauche, linteau, montant
+  // droit — l'angle entre le toit et le montant est coupé à onglet (pas de bout qui dépasse).
+  const TRAIT = [P(222,692), P(583,334), P(860,636), P(860,484), P(1005,484), P(1005,878)];
+  const SOLEIL = {c:P(990,505), r:208/1254};
+  const WM = {c:P(625,826), w:1150/1254, h:252/1254};
+  const EP = 48/1254;
 
   const scene=new THREE.Scene(), cam=new THREE.PerspectiveCamera(30,1,0.1,100); cam.position.z=10;
   const monde=new THREE.Group(); scene.add(monde);
 
-  // ruban du tracé, attribut t (0..1) pour le dessin progressif
-  const pos=[], ts=[]; let L=0; const segs=[];
-  for(let i=0;i<TRAIT.length-1;i++){const a=TRAIT[i],b=TRAIT[i+1];const l=a.distanceTo(b);segs.push({a,b,l,t0:L});L+=l;}
-  const tri=(p1,p2,p3,t1,t2,t3)=>{pos.push(p1.x,p1.y,0,p2.x,p2.y,0,p3.x,p3.y,0);ts.push(t1,t2,t3);};
-  segs.forEach(s=>{const d=new THREE.Vector2().subVectors(s.b,s.a).normalize();const n=new THREE.Vector2(-d.y,d.x).multiplyScalar(EP/2);
-    const a1=s.a.clone().add(n),a2=s.a.clone().sub(n),b1=s.b.clone().add(n),b2=s.b.clone().sub(n);const t0=s.t0/L,t1=(s.t0+s.l)/L;
-    tri(a1,a2,b1,t0,t0,t1);tri(a2,b2,b1,t0,t1,t1);});
-  TRAIT.forEach((p,i)=>{if(i===0||i===TRAIT.length-1)return; const t=(segs[i-1].t0+segs[i-1].l)/L;for(let k=0;k<20;k++){const a0=k/20*Math.PI*2,a1=(k+1)/20*Math.PI*2;
-    tri(p,new THREE.Vector2(p.x+Math.cos(a0)*EP/2,p.y+Math.sin(a0)*EP/2),new THREE.Vector2(p.x+Math.cos(a1)*EP/2,p.y+Math.sin(a1)*EP/2),t,t,t);}});
-  const rg=new THREE.BufferGeometry(); rg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); rg.setAttribute('aT',new THREE.Float32BufferAttribute(ts,1));
+  // ---- ruban du tracé : angles à onglet (coins carrés, comme le logo), bouts
+  //      coupés droit ; attribut t (0..1) pour le dessin progressif, s (-1..1)
+  //      = position en travers du ruban, n = normale de l'arête (pour le biseau) ----
+  function ajouterRuban(acc, pts, ep, tDebut, tFin){
+    const segs=[]; let L=0;
+    for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const l=a.distanceTo(b);const d=new THREE.Vector2().subVectors(b,a).normalize();segs.push({a,b,l,t0:L,d,n:new THREE.Vector2(-d.y,d.x)});L+=l;}
+    // coin à onglet au point i (entre segs[i-1] et segs[i]) : décalage m tel que les deux bords se rejoignent
+    const coin=(i,signe)=>{
+      if(i===0) return pts[0].clone().add(segs[0].n.clone().multiplyScalar(signe*ep/2));
+      if(i===pts.length-1) return pts[i].clone().add(segs[i-1].n.clone().multiplyScalar(signe*ep/2));
+      const n1=segs[i-1].n, n2=segs[i].n; const m=n1.clone().add(n2).normalize(); const k=(ep/2)/Math.max(0.35,m.dot(n1));
+      return pts[i].clone().add(m.multiplyScalar(signe*k));
+    };
+    const tri=(p1,p2,p3,t1,t2,t3,s1,s2,s3,n)=>{acc.pos.push(p1.x,p1.y,0,p2.x,p2.y,0,p3.x,p3.y,0);acc.ts.push(t1,t2,t3);acc.ss.push(s1,s2,s3);for(let k=0;k<3;k++)acc.ns.push(n.x,n.y);};
+    segs.forEach((sg,i)=>{
+      const a1=coin(i,1),a2=coin(i,-1),b1=coin(i+1,1),b2=coin(i+1,-1);
+      const t0=tDebut+(tFin-tDebut)*sg.t0/L, t1=tDebut+(tFin-tDebut)*(sg.t0+sg.l)/L;
+      tri(a1,a2,b1,t0,t0,t1,1,-1,1,sg.n); tri(a2,b2,b1,t0,t1,t1,-1,-1,1,sg.n);
+    });
+  }
+  function rubanGeometrie(ep){
+    const acc={pos:[],ts:[],ss:[],ns:[]};
+    ajouterRuban(acc,TRAIT,ep,0,1);
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(acc.pos,3)); g.setAttribute('aT',new THREE.Float32BufferAttribute(acc.ts,1));
+    g.setAttribute('aS',new THREE.Float32BufferAttribute(acc.ss,1)); g.setAttribute('aN',new THREE.Float32BufferAttribute(acc.ns,2));
+    return g;
+  }
   const ru={uProg:{value:0}};
-  const trait=new THREE.Mesh(rg,new THREE.ShaderMaterial({uniforms:ru,transparent:false,depthWrite:true,
-    vertexShader:`attribute float aT;varying float vT;void main(){vT=aT;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-    fragmentShader:`precision highp float;varying float vT;uniform float uProg;void main(){if(vT>uProg)discard;float tip=smoothstep(uProg-0.03,uProg,vT)*(1.0-smoothstep(0.97,1.0,uProg));
-      vec3 vert=vec3(0.12,0.52,0.24); vec3 col=mix(vert,vec3(0.9,0.85,0.6),tip*0.8); gl_FragColor=vec4(col,1.0);}`}));
-  trait.renderOrder=2; monde.add(trait);
+  const VS_RUBAN=`attribute float aT;attribute float aS;attribute vec2 aN;varying float vT;varying float vS;varying vec2 vN;void main(){vT=aT;vS=aS;vN=aN;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
 
+  // ombre portée douce sous le trait (même ruban, un peu plus large, décalé ; test
+  // de profondeur strict pour qu'elle ne se superpose jamais à elle-même)
+  const ombre=new THREE.Mesh(rubanGeometrie(EP*1.5),new THREE.ShaderMaterial({uniforms:ru,transparent:true,depthWrite:true,depthFunc:THREE.LessDepth,side:THREE.DoubleSide,
+    vertexShader:VS_RUBAN,
+    fragmentShader:`precision highp float;varying float vT;varying float vS;varying vec2 vN;uniform float uProg;void main(){if(vT>uProg)discard;float a=0.30*(1.0-0.6*smoothstep(0.6,1.0,abs(vS)));gl_FragColor=vec4(0.0,0.0,0.0,a);}`}));
+  ombre.position.set(0.012,-0.018,-0.004); ombre.renderOrder=2; monde.add(ombre);
+
+  // le trait vert (couleur officielle) avec un biseau : les arêtes tournées vers la
+  // lumière (haut / gauche) s'éclaircissent, les autres s'assombrissent — le
+  // centre reste plat. Aucun raccord visible : les angles sont à onglet.
+  const trait=new THREE.Mesh(rubanGeometrie(EP),new THREE.ShaderMaterial({uniforms:ru,transparent:true,depthWrite:true,depthFunc:THREE.LessDepth,side:THREE.DoubleSide,
+    vertexShader:VS_RUBAN,
+    fragmentShader:`precision highp float;varying float vT;varying float vS;varying vec2 vN;uniform float uProg;
+      void main(){if(vT>uProg)discard;
+        float tip=smoothstep(uProg-0.03,uProg,vT)*(1.0-smoothstep(0.97,1.0,uProg));
+        vec3 base=vec3(0.01,0.56,0.23);
+        vec2 nrm=normalize(vN)*sign(vS);                       // normale de l'arête la plus proche
+        float lum=dot(nrm,normalize(vec2(-0.55,0.85)));        // lumière haut-gauche
+        float bord=smoothstep(0.45,0.95,abs(vS));              // biseau sur les bords seulement
+        vec3 col=base*(1.0+0.55*lum*bord)+vec3(0.16,0.22,0.12)*max(lum,0.0)*bord;
+        col+=vec3(0.02,0.03,0.02)*(1.0-abs(vS));               // très léger relief au centre
+        col=mix(col,vec3(0.95,0.9,0.66),tip*0.85);
+        gl_FragColor=vec4(col,1.0);}`}));
+  trait.renderOrder=3; monde.add(trait);
+
+  // ---- soleil : disque jaune (couleur officielle), halo chaud + rayons lents ----
   const su={uTime:{value:0},uIn:{value:0}};
-  const soleil=new THREE.Mesh(new THREE.PlaneGeometry(SOLEIL.r*5,SOLEIL.r*5),new THREE.ShaderMaterial({uniforms:su,transparent:true,depthWrite:false,
+  const soleil=new THREE.Mesh(new THREE.PlaneGeometry(SOLEIL.r*7,SOLEIL.r*7),new THREE.ShaderMaterial({uniforms:su,transparent:true,depthWrite:false,
     vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
     fragmentShader:`precision highp float;varying vec2 vUv;uniform float uTime,uIn;
-      void main(){float d=length(vUv-0.5)/0.2; vec3 g1=vec3(0.99,0.85,0.35),g2=vec3(0.82,0.62,0.16);
-        float disc=1.0-smoothstep(0.97,1.0,d); vec3 col=mix(g1,g2,smoothstep(0.2,1.0,d));
-        float halo=exp(-max(d-1.0,0.0)*3.2)*(0.32+0.08*sin(uTime*0.9));
-        gl_FragColor=vec4(col*disc+vec3(0.95,0.78,0.42)*halo, (disc+halo)*uIn);}`}));
+      void main(){vec2 q=(vUv-0.5)/(1.0/7.0); float d=length(q); float ang=atan(q.y,q.x);
+        vec3 g1=vec3(1.0,0.90,0.30), g2=vec3(0.95,0.70,0.12), g3=vec3(0.88,0.52,0.06);
+        float disc=1.0-smoothstep(0.985,1.0,d);
+        // reflet en haut à gauche, limbe orangé en bas à droite (comme le logo)
+        float reflet=exp(-length(q-vec2(-0.38,0.38))*2.0)*0.22;
+        float ombreLimbe=smoothstep(0.55,1.0,d)*(0.5-0.5*dot(normalize(q+vec2(1e-4)),normalize(vec2(-0.5,0.6))));
+        vec3 col=mix(g1,g2,smoothstep(0.2,1.0,d)); col=mix(col,g3,ombreLimbe*0.8)+vec3(reflet);
+        float rayons=0.72+0.28*sin(ang*14.0+uTime*0.12)*sin(ang*5.0-uTime*0.07);
+        float halo=exp(-max(d-1.0,0.0)*2.6)*(0.30+0.06*sin(uTime*0.9))*mix(1.0,rayons,smoothstep(1.0,1.12,d));
+        float bloom=exp(-max(d-1.0,0.0)*0.9)*0.075;
+        vec3 chaud=vec3(0.98,0.8,0.42);
+        gl_FragColor=vec4(col*disc+chaud*(halo+bloom), (disc+halo+bloom)*uIn);}`}));
   soleil.position.set(SOLEIL.c.x,SOLEIL.c.y,-0.01); soleil.renderOrder=1; monde.add(soleil);
 
+  // ---- nappe de lumière au sol (reflet du logo sur le marbre) ----
+  const nu={uIn:{value:0},uTime:{value:0}};
+  const nappe=new THREE.Mesh(new THREE.PlaneGeometry(1.6,0.5),new THREE.ShaderMaterial({uniforms:nu,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+    vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`precision highp float;varying vec2 vUv;uniform float uIn,uTime;
+      void main(){vec2 q=vUv-0.5; float d=length(q*vec2(1.0,2.6));
+        float a=exp(-d*d*7.0)*(0.16+0.03*sin(uTime*0.7));
+        vec3 col=mix(vec3(0.2,0.55,0.3),vec3(0.95,0.78,0.42),smoothstep(-0.3,0.4,q.x));
+        gl_FragColor=vec4(col*a*uIn,a*uIn);}`}));
+  nappe.position.set(0.0,-0.30,-0.02); nappe.renderOrder=0; monde.add(nappe);
+
+  // ---- nom (wordmark) ----
   const wu={uIn:{value:0}}; let wmMesh=null;
   new THREE.TextureLoader().load('/img/logo-wordmark.png',(t)=>{t.colorSpace=THREE.SRGBColorSpace;
     wmMesh=new THREE.Mesh(new THREE.PlaneGeometry(WM.w,WM.h),new THREE.ShaderMaterial({uniforms:{uTex:{value:t},uIn:wu.uIn},transparent:true,depthWrite:false,
       vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
       fragmentShader:`precision highp float;varying vec2 vUv;uniform sampler2D uTex;uniform float uIn;void main(){vec4 c=texture2D(uTex,vUv);gl_FragColor=vec4(c.rgb,c.a*uIn);}`}));
-    wmMesh.position.set(WM.c.x,WM.c.y,0.01); wmMesh.renderOrder=3; monde.add(wmMesh);});
+    wmMesh.position.set(WM.c.x,WM.c.y,0.01); wmMesh.renderOrder=4; monde.add(wmMesh);});
 
+  // ---- étincelles dorées ----
   const N=320,pp=new Float32Array(N*3),sd=new Float32Array(N);
   for(let i=0;i<N;i++){const a=Math.random()*6.283,r=0.55+Math.random()*0.5;pp[i*3]=Math.cos(a)*r*1.2;pp[i*3+1]=Math.sin(a)*r*0.8;pp[i*3+2]=(Math.random()-0.5)*0.4;sd[i]=Math.random()*6.283;}
   const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(pp,3));pg.setAttribute('aSeed',new THREE.BufferAttribute(sd,1));
@@ -439,19 +512,23 @@ import * as THREE from 'three';
     renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix();
     const wh=2*Math.tan(THREE.MathUtils.degToRad(15))*10, ww=wh*cam.aspect;
     const etroit = w < 900;                                     // mobile / tablette : logo centré derrière le texte, plus petit
-    const s = etroit ? Math.min(wh*0.9, ww*0.8) : Math.min(wh*1.05, ww*0.42);
-    monde.scale.set(s,s,s); monde.position.set(etroit ? 0 : ww*0.24, etroit ? wh*0.18 : wh*0.04, 0);
+    const s = etroit ? Math.min(wh*0.9, ww*0.8) : Math.min(wh*1.0, ww*0.4);
+    monde.scale.set(s,s,s); monde.position.set(etroit ? 0 : ww*0.25, etroit ? wh*0.18 : wh*0.06, 0);
     pu.uPix.value=(h*renderer.getPixelRatio())/900;
   }
   addEventListener('resize', resize); resize();
 
   const ease=x=>1-Math.pow(1-x,3); const t0=performance.now(); const sp=reduced?4:1;
+  let visible=true;
+  new IntersectionObserver((e)=>{visible=e[0].isIntersecting;},{threshold:0}).observe(canvas);
   function frame(now){
     requestAnimationFrame(frame);
+    if(!visible) return;                                        // hero hors écran : on ne dessine pas
     const t=(now-t0)/1000, e=t*sp;
-    ru.uProg.value=ease(Math.min(1,e/2.4));
+    ru.uProg.value=ease(Math.min(1,e/2.8));
     const sIn=Math.max(0,Math.min(1,(e-1.1)/2.0)); su.uIn.value=ease(sIn); su.uTime.value=t; soleil.position.y=SOLEIL.c.y-0.34*(1-ease(sIn));
     const wIn=Math.max(0,Math.min(1,(e-3.0)/1.2)); wu.uIn.value=ease(wIn); if(wmMesh) wmMesh.position.y=WM.c.y-0.03*(1-ease(wIn));
+    nu.uIn.value=ease(Math.max(0,Math.min(1,(e-2.0)/1.8))); nu.uTime.value=t;
     pu.uTime.value=t; pu.uIn.value=Math.max(0,Math.min(1,(e-3.6)/1.5));
     ms.x+=(mouse.x-ms.x)*0.05; ms.y+=(mouse.y-ms.y)*0.05;
     monde.rotation.y=ms.x*0.16; monde.rotation.x=-ms.y*0.1;

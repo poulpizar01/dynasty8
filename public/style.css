@@ -56,8 +56,11 @@
   --d8-shadow-gold: 0 8px 24px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.42);
 
   /* ---- Typo ---- */
-  --d8-font-display: "Cormorant Garamond", "Playfair Display", Georgia, serif;
-  --d8-font-ui: "Jost", "Inter", "Helvetica Neue", Arial, sans-serif;
+  /* Typo (sept. 2026) : Marcellus (capitales romaines, gravé) pour les titres,
+     Raleway pour le texte courant. Marcellus n'a ni italique ni graisses : les
+     titres sont désormais droits, en 400. */
+  --d8-font-display: "Marcellus", "Cormorant Garamond", "Times New Roman", serif;
+  --d8-font-ui: "Raleway", "Jost", "Helvetica Neue", Arial, sans-serif;
 
   /* ---- Rythme ---- */
   --d8-gutter: clamp(20px, 4vw, 56px);
@@ -128,6 +131,10 @@ body {
   font-weight: 300;
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
+  /* Raleway a des chiffres « à l'ancienne » par défaut : on force les chiffres
+     alignés (prix, dates, tableaux). */
+  font-variant-numeric: lining-nums;
+  font-feature-settings: "lnum" 1;
 }
 
 /* ---------- fond marbré (bleu nuit veiné d'or) ---------- */
@@ -183,11 +190,11 @@ body::after {
 /* Titres : serif italique fine — jamais de gras, le luxe est dans la finesse. */
 h1, h2, h3, h4 {
   font-family: var(--d8-font-display);
-  font-style: italic;
-  font-weight: 300;
+  font-style: normal;
+  font-weight: 400;
   line-height: 1.12;
   margin: 0 0 0.5em;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.015em;
   color: var(--d8-cream);
 }
 
@@ -288,7 +295,7 @@ label, .eyebrow-label {
   background: linear-gradient(180deg, transparent, rgba(201, 165, 92, 0.6), transparent);
 }
 .logo-texte {
-  font-family: var(--d8-font-display); font-style: italic; font-weight: 300;
+  font-family: var(--d8-font-display); font-style: normal; font-weight: 300;
   font-size: 22px; color: var(--d8-cream);
 }
 @media (max-width: 480px) { .logo-texte { display: none; } .logo-filet { display: none; } }
@@ -365,7 +372,7 @@ label, .eyebrow-label {
      capitale espacée du menu desktop, illisible en pile sur un écran étroit). */
   .nav-principale a {
     width: 100%; padding: 14px 0; border-bottom: 1px solid var(--border);
-    font-family: var(--d8-font-display); font-style: italic; font-weight: 400;
+    font-family: var(--d8-font-display); font-style: normal; font-weight: 400;
     font-size: 1.35rem; text-transform: none; letter-spacing: 0; color: var(--d8-cream);
   }
   .nav-principale a::after { display: none; }
@@ -560,7 +567,7 @@ label, .eyebrow-label {
   color: var(--d8-gold-500); text-transform: uppercase; letter-spacing: 0.28em;
 }
 .numero-contact-chiffre {
-  font-family: var(--d8-font-display); font-style: italic; font-weight: 500;
+  font-family: var(--d8-font-display); font-style: normal; font-weight: 500;
   font-size: 2.75rem; line-height: 1; color: var(--d8-gold-300);
   font-variant-numeric: tabular-nums;
 }
@@ -1167,7 +1174,7 @@ section.section.serre {
 .carte-bien .badge-standing { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--accent-contrast); }
 
 .carte-bien .corps { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.carte-bien h3 { font-family: var(--d8-font-display); font-weight: 500; font-style: italic; font-size: 1.24rem; line-height: 1.25; margin-bottom: 0; }
+.carte-bien h3 { font-family: var(--d8-font-display); font-weight: 500; font-style: normal; font-size: 1.24rem; line-height: 1.25; margin-bottom: 0; }
 .carte-bien .zone-tag { font-family: var(--d8-font-ui); font-size: 0.68rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.18em; }
 .carte-bien .description { font-size: 0.88rem; margin-bottom: 4px; flex: 1; }
 .carte-bien .pied {
@@ -1292,18 +1299,19 @@ section.section.serre {
 .d8-filtre2 { margin-bottom: 30px; }
 
 .d8-filtre2-rail {
-  position: relative; display: flex; gap: 2px; align-items: center;
-  padding: 5px; border: 1px solid rgba(201, 165, 92, 0.28); border-radius: var(--d8-r-pill);
+  position: relative; display: flex; flex-wrap: wrap; gap: 4px 2px; align-items: center;
+  padding: 5px; border: 1px solid rgba(201, 165, 92, 0.28); border-radius: 24px;
   background: rgba(255, 255, 255, 0.03);
-  overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+  /* Les onglets passent à la ligne quand ils ne tiennent pas (au lieu d'être coupés
+     par un défilement invisible) ; l'indicateur or suit sur la bonne ligne. */
 }
 .d8-filtre2-rail::-webkit-scrollbar { display: none; }
 
 .d8-filtre2-indicateur {
-  position: absolute; top: 5px; left: 0; height: calc(100% - 10px); width: 0;
+  position: absolute; top: 0; left: 0; height: 34px; width: 0;
   border-radius: var(--d8-r-pill); background: var(--or-grad);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -1px 2px rgba(0, 0, 0, .25), 0 6px 16px -8px rgba(0, 0, 0, .55);
-  transform: translateX(0); pointer-events: none; z-index: 0;
+  transform: translate(0, 5px); pointer-events: none; z-index: 0;
   transition: transform .32s cubic-bezier(.4, 1.2, .4, 1), width .32s cubic-bezier(.4, 1.2, .4, 1);
 }
 .d8-filtre2-indicateur.sans-transition { transition: none; }
@@ -1396,7 +1404,7 @@ section.section.serre {
 .fiche-description-vitrine em { font-style: italic; }
 
 .fiche-fiche { position: sticky; top: 100px; }
-.fiche-fiche h1 { font-family: var(--d8-font-display); font-weight: 500; font-style: italic; }
+.fiche-fiche h1 { font-family: var(--d8-font-display); font-weight: 500; font-style: normal; }
 .fiche-fiche p { max-width: 62ch; }
 .fiche-prix { font-family: var(--d8-font-ui); font-weight: 500; font-size: 2.1rem; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
 .fiche-prix > span:not(.prix-valeur) { font-size: 1rem; font-weight: 400; color: var(--text-faint); font-family: var(--d8-font-ui); }
@@ -1499,7 +1507,7 @@ section.section.serre {
   color: var(--gold); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
 }
 .carte-service h3 {
-  font-family: var(--d8-font-display); font-style: italic; font-weight: 500; font-size: 1.05rem;
+  font-family: var(--d8-font-display); font-style: normal; font-weight: 500; font-size: 1.05rem;
   margin: 0 0 14px;
 }
 .carte-service h3::after {
@@ -1579,7 +1587,7 @@ section.section.serre {
 .carte-hub--etape .carte-hub-etape-numero {
   width: 56px; height: 56px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; margin-bottom: 6px;
-  font-family: var(--d8-font-display); font-style: italic; font-weight: 500; font-size: 1.35rem;
+  font-family: var(--d8-font-display); font-style: normal; font-weight: 500; font-size: 1.35rem;
   color: var(--d8-gold-300); font-variant-numeric: tabular-nums;
   background: linear-gradient(145deg, rgba(242, 223, 168, 0.18), rgba(201, 165, 92, 0.05));
   border: 1px solid rgba(201, 165, 92, 0.4);
@@ -1730,7 +1738,7 @@ section.section.serre {
 }
 
 .carte-membre-corps { padding: 22px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
-.carte-membre-corps h3 { font-family: var(--d8-font-display); font-weight: 500; font-style: italic; font-size: 1.16rem; margin: 0; }
+.carte-membre-corps h3 { font-family: var(--d8-font-display); font-weight: 500; font-style: normal; font-size: 1.16rem; margin: 0; }
 .carte-membre-poste { color: var(--gold); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
 .carte-membre-specialite { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px; }
 .carte-membre-specialite span { display: block; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-faint); margin-bottom: 2px; }
@@ -1769,7 +1777,7 @@ section.section.serre {
   font-family: var(--d8-font-ui); font-size: 1.3rem; font-weight: 700;
 }
 .profil-membre-photo img { width: 100%; height: 100%; object-fit: cover; }
-.profil-membre-entete h3 { font-family: var(--d8-font-display); font-style: italic; font-weight: 500; font-size: 1.3rem; margin: 0; }
+.profil-membre-entete h3 { font-family: var(--d8-font-display); font-style: normal; font-weight: 500; font-size: 1.3rem; margin: 0; }
 .profil-membre-bio { font-size: 0.92rem; line-height: 1.7; color: var(--text); white-space: pre-line; }
 
 .accordeon-item { border-bottom: 1px solid var(--border); }
@@ -2261,7 +2269,7 @@ section.section.serre {
 .carte-admin-bien-visuel { aspect-ratio: 4/3; background: var(--bg-elevated); }
 .carte-admin-bien-visuel img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .carte-admin-bien-corps { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
-.carte-admin-bien-titre { font-family: var(--d8-font-display); font-style: italic; font-size: 1.02rem; }
+.carte-admin-bien-titre { font-family: var(--d8-font-display); font-style: normal; font-size: 1.02rem; }
 .carte-admin-bien-meta { font-size: 0.78rem; color: var(--text-faint); }
 .carte-admin-bien-pied { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
 .carte-admin-bien-prix { font-size: 0.9rem; color: var(--gold-strong); font-weight: 500; }
@@ -2305,7 +2313,7 @@ section.section.serre {
 
 .modale-fond {
   position: fixed; inset: 0; background: rgba(5,6,7,0.7); backdrop-filter: blur(3px);
-  display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100;
+  display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100000;
 }
 .modale {
   width: 100%; max-width: 640px; max-height: 88vh; overflow-y: auto; background: var(--bg-card);
@@ -2634,7 +2642,7 @@ section.section.serre {
 .carte-admin-bien-corps { padding: 12px 14px 14px; gap: 10px; }
 .carte-admin-bien-entete { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .carte-admin-bien-entete .puce { flex-shrink: 0; }
-.carte-admin-bien-titre { font-family: var(--d8-font-display); font-style: italic; font-weight: 500; font-size: 1.3rem; line-height: 1.1; margin: 0; color: var(--text); }
+.carte-admin-bien-titre { font-family: var(--d8-font-display); font-style: normal; font-weight: 500; font-size: 1.3rem; line-height: 1.1; margin: 0; color: var(--text); }
 .carte-admin-bien-meta { font-size: 0.76rem; color: var(--text-faint); margin-top: 3px; }
 .carte-admin-bien-pied { margin-top: 0; }
 .carte-admin-bien-prix { font-size: 0.95rem; color: var(--gold-light); font-weight: 500; }
@@ -2705,3 +2713,320 @@ body.page-agents .ecran-connexion {
 }
 
 .cache { display: none !important; }
+
+/* ==========================================================================
+   REFONTE VISUELLE DE L'ACCUEIL (sept. 2026)
+   Tout ce bloc est scopé sur body.page-accueil (sauf les quelques réglages
+   « communs » signalés plus bas) : les autres pages publiques ne bougent pas.
+   Objectifs : un rythme vertical plus serré, des sections qui s'enchaînent
+   au lieu de flotter en îlots, des cadres simplifiés, un seul langage
+   d'icônes, des états vides élégants.
+   ========================================================================== */
+
+/* ---- rythme : sections plus proches, en-têtes plus compacts ---- */
+.page-accueil { --d8-section-y: clamp(56px, 7vw, 96px); }
+.page-accueil .section-entete { margin-bottom: 40px; }
+.page-accueil .section-entete h2 { margin-bottom: 0.35em; }
+.page-accueil .section-entete p { margin: 0; }
+/* petit filet or sous chaque titre de section */
+.page-accueil .section-entete h2::after {
+  content: ""; display: block; width: 56px; height: 1px; margin: 16px auto 0;
+  background: linear-gradient(90deg, transparent, var(--d8-gold-500), transparent);
+}
+.page-accueil .section-pied-action { text-align: center; margin-top: 34px; }
+
+/* ---- séparateur ornemental entre deux sections (remplace les bordures dures) ---- */
+.d8-sep {
+  position: relative; height: 1px; max-width: 560px; margin: 0 auto;
+  background: var(--d8-rule);
+}
+.d8-sep::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--d8-navy-900); border: 1px solid var(--d8-gold-500);
+}
+
+/* ---- sections « alterne » : plus de bordures dures qui coupent le cadre,
+        un panneau qui se fond en haut et en bas ---- */
+.page-accueil .alterne {
+  border: 0;
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(20, 37, 68, 0.72) 10%, rgba(14, 27, 51, 0.82) 50%, rgba(20, 37, 68, 0.72) 90%, transparent 100%);
+}
+
+/* ---- HERO ---- */
+.page-accueil .hero.hero-accueil {
+  padding: clamp(72px, 9vw, 112px) 24px clamp(96px, 11vw, 150px);
+  min-height: min(88vh, 820px);
+  display: flex; flex-direction: column; justify-content: center;
+  /* fond : on garde le halo aurore, mais fondu vers le marbre en bas pour que
+     l'accès rapide s'enchaîne sans coupure */
+}
+.page-accueil .hero-logo-voile {
+  background:
+    linear-gradient(100deg, var(--bg) 2%, rgba(8, 12, 28, 0.72) 30%, rgba(8, 12, 28, 0.18) 50%, rgba(8, 12, 28, 0) 62%),
+    linear-gradient(0deg, var(--d8-navy-900) 0%, rgba(10, 20, 40, 0.65) 14%, transparent 34%, transparent 82%, rgba(8, 12, 28, 0.45) 100%);
+}
+.page-accueil .hero-accueil-grille { width: 100%; }
+.page-accueil .hero-etiquette { gap: 14px; margin-bottom: 22px; }
+.page-accueil .hero-etiquette-filet { display: inline-block; width: 34px; height: 1px; background: var(--d8-gold-500); }
+.page-accueil .hero-accueil h1 { max-width: 600px; font-size: clamp(2.7rem, 5.4vw, 4.6rem); }
+.page-accueil .hero-accueil p.lead { max-width: 480px; margin-top: 22px; }
+/* stats : plus de plaque de verre (il n'y a plus de photo dessous) — une simple
+   ligne de chiffres sur un filet or, alignée sur le texte */
+.page-accueil .hero-accueil .hero-stats {
+  background: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+  border: 0; border-top: 1px solid rgba(201, 165, 92, 0.28); border-radius: 0;
+  padding: 26px 0 0; margin-top: 48px; max-width: 640px; gap: 0; flex-wrap: nowrap;
+}
+.page-accueil .hero-accueil .hero-stats div { padding: 0 28px; white-space: nowrap; }
+.page-accueil .hero-accueil .hero-stats div:first-child { padding-left: 0; }
+.page-accueil .hero-accueil .hero-stats strong { font-size: 2.2rem; text-shadow: none; }
+.page-accueil .hero-accueil .hero-stats span { color: var(--text-faint); text-shadow: none; }
+/* indice de défilement en bas du hero */
+.page-accueil .hero-indice {
+  position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 3;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  font-family: var(--d8-font-ui); font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+  color: var(--d8-gold-500); opacity: 0.85; transition: opacity var(--d8-t), color var(--d8-t);
+}
+.page-accueil .hero-indice:hover { opacity: 1; color: var(--d8-gold-300); }
+.page-accueil .hero-indice i {
+  display: block; width: 1px; height: 38px;
+  background: linear-gradient(180deg, var(--d8-gold-500), transparent);
+  animation: hero-indice-glisse 2.2s ease-in-out infinite;
+}
+@keyframes hero-indice-glisse { 0%, 100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(6px); opacity: 1; } }
+@media (max-width: 900px) {
+  .page-accueil .hero.hero-accueil { min-height: 0; padding: 64px 24px 88px; }
+  .page-accueil .hero-accueil .hero-stats { max-width: none; }
+}
+@media (max-width: 560px) {
+  .page-accueil .hero-accueil .hero-stats { flex-direction: column; gap: 16px; }
+  .page-accueil .hero-accueil .hero-stats div { padding: 0; }
+  .page-accueil .hero-accueil .hero-stats div + div::before { display: none; }
+  .page-accueil .hero-indice { display: none; }
+}
+
+/* ---- 1. accès rapide : collé au hero, comme sa suite naturelle ---- */
+.page-accueil .section-acces { padding-top: clamp(16px, 2vw, 28px); }
+.page-accueil .section-acces .section-entete { margin-bottom: 30px; }
+
+/* ---- 2. coups de cœur ---- */
+.page-accueil .section-coeur { padding-top: clamp(56px, 7vw, 88px); }
+.page-accueil .coeur-filtres { margin: -6px auto 32px; }
+/* atouts : même langage que les cartes hub (icône carrée en trait doré) */
+.page-accueil .coeur-atouts {
+  margin-top: 44px; padding-top: 36px;
+  border-top: 1px solid rgba(201, 165, 92, 0.16);
+}
+.page-accueil .coeur-atout-icone {
+  width: 44px; height: 44px; border-radius: 10px; color: var(--d8-gold-300);
+  background: linear-gradient(145deg, rgba(242, 223, 168, 0.16), rgba(201, 165, 92, 0.05));
+  border: 0; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 10px 22px -10px rgba(0, 0, 0, 0.8);
+}
+.page-accueil .coeur-atout-icone svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- état vide « salon » (coups de cœur) ---- */
+.etat-vide--salon {
+  width: 100%; padding: 52px 24px; border: 1px solid rgba(201, 165, 92, 0.22); border-style: solid;
+  background: linear-gradient(180deg, rgba(20, 37, 68, 0.55), rgba(10, 20, 40, 0.75));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.etat-vide-ornement { color: var(--d8-gold-500); font-size: 0.9rem; letter-spacing: 0.4em; margin-bottom: 6px; }
+.etat-vide-titre {
+  font-family: var(--d8-font-display); font-style: normal; font-weight: 400;
+  font-size: 1.6rem; line-height: 1.2; color: var(--d8-cream); margin: 0;
+}
+.etat-vide-texte { max-width: 46ch; font-size: 0.92rem; color: var(--text-faint); margin: 0 0 10px; }
+
+/* ---- 3. standing ---- */
+.page-accueil .section-standing { padding-top: clamp(40px, 5vw, 64px); }
+.page-accueil .vitrine-exception { border-radius: 8px; }
+.page-accueil .vitrine-exception-image img { transition: transform 1.2s var(--d8-ease); }
+.page-accueil .vitrine-exception:hover .vitrine-exception-image img { transform: scale(1.03); }
+
+/* ---- 4. cohérences : quatre cartes sur une seule rangée dès qu'il y a la place ---- */
+@media (min-width: 1000px) { .grille-hub--4 { grid-template-columns: repeat(4, 1fr); } }
+
+/* ---- 5. mode d'emploi : cadre à coins dorés ---- */
+.page-accueil .cadre-guide {
+  position: relative; overflow: visible; border-radius: 6px;
+  border-color: rgba(201, 165, 92, 0.3);
+}
+.page-accueil .cadre-guide img { border-radius: 6px; }
+.page-accueil .cadre-guide::before, .page-accueil .cadre-guide::after {
+  content: ""; position: absolute; width: 26px; height: 26px; pointer-events: none;
+}
+.page-accueil .cadre-guide::before { top: -9px; left: -9px; border-top: 1px solid var(--d8-gold-400); border-left: 1px solid var(--d8-gold-400); }
+.page-accueil .cadre-guide::after { bottom: -9px; right: -9px; border-bottom: 1px solid var(--d8-gold-400); border-right: 1px solid var(--d8-gold-400); }
+
+/* ---- 6. partenaire ---- */
+.page-accueil .section-partenaire { padding-top: 0; }
+.page-accueil .partenaire-bandeau { border-radius: 8px; }
+
+/* ---- 7. contact ---- */
+.page-accueil .section-contact { padding-bottom: clamp(72px, 9vw, 120px); }
+.page-accueil .section-contact-inner { text-align: center; }
+.page-accueil .section-contact-embleme { display: block; margin: 0 auto 18px; color: var(--d8-gold-500); }
+.page-accueil .section-contact h2 { margin: 10px 0 0.5em; }
+.page-accueil .section-contact p { max-width: 520px; margin: 0 auto 30px; }
+.page-accueil .numero-contact { padding: 26px 64px; }
+.page-accueil .numero-contact-chiffre { font-size: 3.2rem; }
+
+/* ---- réglages communs (toutes les pages publiques) ---- */
+/* état vide : fini les pointillés, un liseré discret et un texte serif */
+.etat-vide { border-style: solid; border-color: rgba(201, 165, 92, 0.22); background: rgba(20, 37, 68, 0.28); font-family: var(--d8-font-display); font-style: normal; font-size: 1.15rem; }
+/* pied de page : plus d'air, logo plus présent */
+.pied-page { padding-top: 8px; }
+.pied-filet { margin-bottom: 44px; }
+.pied-grille { gap: 44px; padding-top: 36px; margin-bottom: 44px; }
+.pied-page .logo img.logo-pied { height: 64px; }
+.pied-page .pied-grille > div:first-child p { max-width: 34ch; font-size: 0.9rem; line-height: 1.7; }
+.pied-page ul li { margin-bottom: 12px; }
+.pied-page ul a { position: relative; transition: color var(--d8-t), padding-left var(--d8-t); }
+.pied-page ul a:hover { padding-left: 12px; }
+.pied-page ul a::before {
+  content: ""; position: absolute; left: 0; top: 50%; width: 0; height: 1px; background: var(--gold);
+  transition: width var(--d8-t);
+}
+.pied-page ul a:hover::before { width: 8px; }
+
+/* ==========================================================================
+   FICHE D'UNE ANNONCE — refonte (sept. 2026) : fil d'Ariane + « copier le
+   lien », galerie avec flèches et visionneuse plein écran (zoom au clic),
+   caractéristiques en grille, numéro Eyefind mis en avant.
+   ========================================================================== */
+
+/* espaces entre les milliers un peu resserrés (Raleway a une espace large) */
+/* chiffres proportionnels (plus harmonieux en gros corps que les tabulaires) */
+.prix-valeur { font-variant-numeric: lining-nums proportional-nums; }
+.encart-contact-etapes li > span { flex: 1; min-width: 0; }
+
+.fiche-bien { display: block; }
+.fiche-bien-grille { display: grid; grid-template-columns: 1.3fr 1fr; gap: 48px; align-items: start; }
+@media (max-width: 860px) { .fiche-bien-grille { grid-template-columns: 1fr; gap: 32px; } }
+
+.fiche-entete { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+.fiche-ariane { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-family: var(--d8-font-ui); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-faint); }
+.fiche-ariane a { color: var(--text-faint); transition: color var(--d8-t); }
+.fiche-ariane a:hover { color: var(--d8-gold-300); }
+.fiche-ariane > span:last-child { color: var(--d8-gold-400); }
+.fiche-partager {
+  display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: var(--d8-r-pill);
+  border: 1px solid var(--border); background: rgba(255, 255, 255, 0.03); color: var(--text-muted);
+  font-family: var(--d8-font-ui); font-size: 10.5px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase;
+  transition: border-color var(--d8-t), color var(--d8-t), background var(--d8-t);
+}
+.fiche-partager svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.fiche-partager:hover { border-color: var(--d8-gold-400); color: var(--d8-gold-300); }
+.fiche-partager.ok { background: var(--d8-grad-gold); border-color: transparent; color: var(--or-contrast); }
+
+/* galerie */
+.fiche-visuel-principal--zoom { cursor: zoom-in; }
+.fiche-visuel-principal img { transition: transform 700ms var(--d8-ease); }
+.fiche-visuel-principal--zoom:hover img { transform: scale(1.025); }
+.fiche-visuel-agrandir {
+  position: absolute; left: 14px; bottom: 14px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: var(--d8-r-pill);
+  background: rgba(6, 9, 24, 0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(201, 165, 92, 0.35); color: var(--d8-gold-300);
+  font-family: var(--d8-font-ui); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  opacity: 0; transform: translateY(4px); transition: opacity var(--d8-t), transform var(--d8-t);
+}
+.fiche-visuel-agrandir svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.fiche-visuel-principal:hover .fiche-visuel-agrandir, .fiche-visuel-principal:focus-visible .fiche-visuel-agrandir { opacity: 1; transform: translateY(0); }
+@media (hover: none) { .fiche-visuel-agrandir { opacity: 1; transform: none; } }
+.fiche-visuel-fleche {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 3;
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(201, 165, 92, 0.4);
+  background: rgba(6, 9, 24, 0.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  color: var(--d8-gold-300); font-size: 1.4rem; line-height: 1; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity var(--d8-t), background var(--d8-t);
+}
+.fiche-visuel-fleche--prec { left: 14px; } .fiche-visuel-fleche--suiv { right: 14px; }
+.fiche-visuel-principal:hover .fiche-visuel-fleche { opacity: 1; }
+.fiche-visuel-fleche:hover { background: rgba(20, 37, 68, 0.9); }
+@media (hover: none) { .fiche-visuel-fleche { opacity: 1; } }
+.miniatures button { width: 86px; height: 62px; }
+.miniatures { gap: 8px; }
+
+/* colonne droite */
+.fiche-fiche .zone-tag { display: block; margin-bottom: 8px; }
+.fiche-fiche h1 { font-size: clamp(2rem, 3.6vw, 2.9rem); line-height: 1.08; margin-bottom: 18px; }
+.fiche-indispo { color: var(--danger-strong); font-weight: 500; font-size: 0.92rem; margin: 0 0 14px; }
+.fiche-fiche .fiche-prix-double .fiche-prix-ligne { font-size: 1.5rem; padding: 16px 20px; }
+.fiche-fiche .fiche-prix-double .fiche-prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { flex: 0 0 100%; font-size: 0.72rem; }
+dl.fiche-carac {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin: 18px 0 22px; padding: 0;
+  background: rgba(6, 12, 26, 0.35); border: 1px solid var(--border); border-radius: var(--d8-r-sm); overflow: hidden;
+}
+dl.fiche-carac > div { padding: 14px 18px; border-right: 1px solid rgba(201, 165, 92, 0.14); border-bottom: 1px solid rgba(201, 165, 92, 0.14); text-transform: none; letter-spacing: 0; font-size: inherit; }
+dl.fiche-carac > div:nth-child(3n) { border-right: 0; }
+dl.fiche-carac dt { font-family: var(--d8-font-ui); font-size: 0.66rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 5px; }
+dl.fiche-carac dd { margin: 0; font-family: var(--d8-font-display); font-size: 1.12rem; color: var(--d8-gold-300); line-height: 1.2; }
+.fiche-carac-lien { color: var(--d8-gold-300); border-bottom: 1px solid rgba(201, 165, 92, 0.4); transition: border-color var(--d8-t), color var(--d8-t); }
+.fiche-carac-lien:hover { color: var(--d8-cream); border-color: var(--d8-cream); }
+@media (max-width: 480px) { dl.fiche-carac { grid-template-columns: 1fr 1fr; } dl.fiche-carac > div:nth-child(3n) { border-right: 1px solid rgba(201, 165, 92, 0.14); } dl.fiche-carac > div:nth-child(2n) { border-right: 0; } }
+.encart-contact-numero {
+  display: inline-block; padding: 0 8px; margin: 0 2px; border-radius: 4px;
+  background: var(--d8-grad-gold); color: var(--or-contrast) !important; font-weight: 700; letter-spacing: 0.06em; font-variant-numeric: tabular-nums;
+}
+.fiche-retour { width: 100%; margin-top: 12px; }
+
+/* visionneuse plein écran */
+body.visionneuse-ouverte { overflow: hidden; }
+.visionneuse {
+  position: fixed; inset: 0; z-index: 100000; display: flex; flex-direction: column;
+  background: rgba(4, 8, 18, 0.94); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  opacity: 0; transition: opacity 220ms ease;
+}
+.visionneuse.visible { opacity: 1; }
+.visionneuse-fermer {
+  position: absolute; top: 18px; right: 22px; z-index: 5; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid rgba(201, 165, 92, 0.4); background: rgba(6, 9, 24, 0.7); color: var(--d8-gold-300);
+  font-size: 1.6rem; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background var(--d8-t);
+}
+.visionneuse-fermer:hover { background: rgba(20, 37, 68, 0.95); }
+.visionneuse-scene { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 64px 72px 12px; position: relative; }
+.visionneuse-cadre { margin: 0; max-width: 100%; max-height: 100%; overflow: hidden; border: 1px solid rgba(201, 165, 92, 0.3); box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9); cursor: zoom-in; }
+.visionneuse-cadre img { display: block; max-width: calc(100vw - 144px); max-height: calc(100vh - 220px); object-fit: contain; transition: transform 280ms var(--d8-ease); }
+.visionneuse-cadre img.apparait { animation: fiche-visuel-entree 0.3s ease; }
+.visionneuse-cadre.zoom { cursor: zoom-out; }
+.visionneuse-cadre.zoom img { transform: scale(2.2); }
+.visionneuse-fleche {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 4; width: 52px; height: 52px; border-radius: 50%;
+  border: 1px solid rgba(201, 165, 92, 0.4); background: rgba(6, 9, 24, 0.7); color: var(--d8-gold-300);
+  font-size: 1.8rem; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background var(--d8-t);
+}
+.visionneuse-fleche:hover { background: rgba(20, 37, 68, 0.95); }
+.visionneuse-fleche--prec { left: 16px; } .visionneuse-fleche--suiv { right: 16px; }
+.visionneuse-pied { display: flex; align-items: baseline; justify-content: center; gap: 18px; flex-wrap: wrap; padding: 10px 24px 0; font-family: var(--d8-font-ui); }
+.visionneuse-titre { font-family: var(--d8-font-display); font-size: 1.15rem; color: var(--d8-cream); }
+.visionneuse-compteur { font-size: 0.78rem; font-weight: 600; color: var(--d8-gold-300); font-variant-numeric: tabular-nums; letter-spacing: 0.06em; }
+.visionneuse-aide { font-size: 0.72rem; color: var(--text-faint); letter-spacing: 0.04em; }
+.visionneuse-vignettes { display: flex; gap: 8px; justify-content: center; padding: 12px 24px 18px; overflow-x: auto; }
+.visionneuse-vignettes button { flex: 0 0 auto; width: 74px; height: 52px; padding: 0; border-radius: 6px; overflow: hidden; border: 2px solid rgba(201, 165, 92, 0.25); background: var(--bg-card); opacity: 0.6; transition: opacity var(--d8-t), border-color var(--d8-t); }
+.visionneuse-vignettes button:hover, .visionneuse-vignettes button.actif { opacity: 1; }
+.visionneuse-vignettes button.actif { border-color: var(--d8-gold-400); }
+.visionneuse-vignettes img { width: 100%; height: 100%; object-fit: cover; }
+@media (max-width: 720px) {
+  .visionneuse-scene { padding: 64px 12px 8px; }
+  .visionneuse-cadre img { max-width: calc(100vw - 24px); max-height: calc(100vh - 200px); }
+  .visionneuse-fleche { display: none; }
+  .visionneuse-aide { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .visionneuse, .visionneuse-cadre img, .fiche-visuel-principal img { transition: none; }
+}
+
+/* champ de repli « copier le lien » (fiche) quand le presse-papiers n'est pas disponible */
+.fiche-lien-copie { width: min(100%, 420px); height: 34px; padding: 0 12px; border-radius: var(--d8-r-pill); border: 1px solid var(--border); background: rgba(6, 12, 26, 0.6); color: var(--d8-gold-300); font-family: var(--d8-font-ui); font-size: 0.8rem; }
+
+/* ordinateur en jeu (FolkOS) : le sélecteur de fichiers natif est peu fiable
+   en NUI, on met en avant l'ajout de photo par lien */
+.bien-images-outils { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bien-image-url-groupe { display: flex; gap: 6px; flex: 1 1 260px; }
+.bien-image-url-groupe input { flex: 1; min-height: 34px; padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid rgba(201, 165, 92, 0.28); background: rgba(6, 12, 26, 0.55); color: var(--text); font-size: 0.85rem; font-family: inherit; }
+.dans-folkos #bouton-parcourir { order: 2; }

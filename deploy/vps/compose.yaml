@@ -2,8 +2,7 @@
 # Usage : cd deploy/vps && cp .env.example .env (remplir les vraies valeurs)
 #         puis : docker compose up -d --build
 #
-# Domaine : remplacer "votre-domaine.exemple" dans Caddyfile avant le premier
-# lancement.
+# Domaine : dynasty8.fbfa.fr (voir Caddyfile).
 
 services:
   app:

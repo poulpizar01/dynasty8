@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,600;1,300;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 <!-- Aurore (fond animé de l'espace agents) : Three.js hébergé en local -->
 <script type="importmap">
@@ -721,14 +721,18 @@
         <div class="description-apercu vide" id="apercu-description"></div>
       </div>
       <div class="champ">
-        <label>Photos <span class="champ-compteur" id="bien-images-compteur">0 / 5</span></label>
+        <label>Photos <span class="champ-compteur" id="bien-images-compteur">0 / 10</span></label>
         <div class="bien-images-outils">
           <button type="button" class="btn btn-fantome btn-petit" id="bouton-parcourir">📁 Parcourir mes fichiers</button>
           <input type="file" id="bien-image-fichier" accept="image/*" multiple class="cache">
+          <div class="bien-image-url-groupe">
+            <input type="url" id="bien-image-url" placeholder="…ou collez le lien d'une image (https://…)" autocomplete="off">
+            <button type="button" class="btn btn-fantome btn-petit" id="bouton-ajouter-url">Ajouter</button>
+          </div>
         </div>
         <p class="champ-erreur cache" id="erreur-bien-images"></p>
         <div class="bien-images-grille" id="bien-images-grille"></div>
-        <p class="champ-aide">Glissez la photo principale en premier. Formats acceptés : JPG, PNG, WEBP — 5 photos maximum par bien.</p>
+        <p class="champ-aide">Glissez la photo principale en premier. Formats acceptés : JPG, PNG, WEBP — 10 photos maximum par bien. Depuis l'ordinateur en jeu, utilisez l'ajout par lien.</p>
       </div>
       <div class="champ-deux">
         <div class="champ champ-checkbox">

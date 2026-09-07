@@ -1,0 +1,61 @@
+# Dynasty 8 — pack pour l'hébergeur (serveur FlashbackFA / FolkOS)
+# ---------------------------------------------------------------------------
+# Variante SANS Caddy : le HTTPS et le nom de domaine (dynasty8.fbfa.fr) sont
+# gérés par le reverse proxy déjà en place sur votre serveur. L'application
+# n'est exposée qu'en local, sur 127.0.0.1:${PORT_LOCAL} (3010 par défaut).
+#
+# Usage :   cd deploy/operateur
+#           cp .env.example .env      (remplir)
+#           docker compose up -d --build
+#
+# Le reverse proxy doit :
+#   - relayer https://dynasty8.fbfa.fr  ->  http://127.0.0.1:${PORT_LOCAL}
+#   - transmettre X-Forwarded-Proto: https (et Host) — l'app s'y fie (trust proxy)
+#   - NE PAS ajouter X-Frame-Options ni écraser Content-Security-Policy :
+#     l'app pose elle-même « frame-ancestors … nui://game … » sur chaque réponse.
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/vps/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "3000"
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:${PORT_LOCAL:-3010}:3000"
+    # Permet à l'app de joindre le validateur SSO `id` qui écoute en 127.0.0.1
+    # SUR L'HÔTE : depuis le conteneur, l'hôte s'appelle host.docker.internal.
+    # -> FOLKOS_ID_BASE=http://host.docker.internal:<port de id> dans .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Jamais de "ports:" : la base n'est joignable que par le service app.
+
+volumes:
+  postgres_data:

@@ -50,7 +50,7 @@ function confirmerAction(message, titre) {
     function surValider() { nettoyer(true); }
     function surAnnuler() { nettoyer(false); }
     function surClicFond(ev) { if (ev.target === modale) nettoyer(false); }
-    function surEchap(ev) { if (ev.key === "Escape") nettoyer(false); }
+    function surEchap(ev) { if (ev.key === "Escape") { ev.preventDefault(); nettoyer(false); } }
 
     boutonValider.addEventListener("click", surValider);
     boutonAnnuler.addEventListener("click", surAnnuler);
@@ -90,7 +90,18 @@ async function demarrer() {
     // Non connecté : on continue vers l'écran de connexion.
   }
 
-  if (etat === "attente") {
+  if (etat && etat.startsWith("folkos_")) {
+    // Retour de « Se connecter IG » (ordinateur en jeu, voir folkosCallback côté serveur).
+    const code = etat.slice(7);
+    const messages = {
+      "compte-inconnu": "Aucun compte Dynasty 8 n'est lié à votre Discord. Connectez-vous une première fois avec Discord depuis un navigateur, puis réessayez en jeu.",
+      "attente": "Votre demande d'accès est en attente de validation par la Direction.",
+      "desactive": "Ce compte est désactivé. Contactez la Direction si vous pensez qu'il s'agit d'une erreur.",
+      "config": "La connexion en jeu n'est pas encore configurée sur le serveur.",
+      "sans-discord": "Votre compte en jeu n'a pas de Discord associé : impossible de retrouver votre compte Dynasty 8.",
+    };
+    afficherMessage("zone-message", messages[code] || "La connexion depuis l'ordinateur en jeu a échoué. Réessayez, ou connectez-vous avec Discord.", "erreur");
+  } else if (etat === "attente") {
     document.getElementById("bloc-connexion").classList.add("cache");
     document.getElementById("bloc-attente").classList.remove("cache");
   } else if (etat === "desactive") {
@@ -378,6 +389,7 @@ function ouvrirModaleAgent() {
   document.getElementById("agent-discord-pseudo").focus();
 }
 function fermerModaleAgent() {
+  fermerSelectOuvert();
   document.getElementById("modale-agent").classList.add("cache");
 }
 document.getElementById("bouton-nouvel-agent").addEventListener("click", ouvrirModaleAgent);
@@ -790,6 +802,7 @@ function ouvrirModaleEvenement(options) {
 }
 
 function fermerModaleEvenement() {
+  fermerSelectOuvert();
   document.getElementById("modale-evenement").classList.add("cache");
 }
 
@@ -798,6 +811,7 @@ document.getElementById("bouton-annuler-evenement").addEventListener("click", fe
 document.getElementById("modale-evenement").addEventListener("click", (ev) => { if (ev.target.id === "modale-evenement") fermerModaleEvenement(); });
 document.addEventListener("keydown", (ev) => {
   if (ev.key === "Escape" && !document.getElementById("modale-evenement").classList.contains("cache")) {
+    ev.preventDefault();
     fermerModaleEvenement();
   }
 });
@@ -1175,6 +1189,9 @@ function afficherErreurImages(texte) {
   erreur.classList.remove("cache");
 }
 
+// Nombre maximum de photos par annonce (la même limite est vérifiée côté serveur, src/index.js).
+const MAX_PHOTOS_BIEN = 10;
+
 function redessinerImagesBien() {
   const grille = document.getElementById("bien-images-grille");
   grille.innerHTML = IMAGES_BIEN.map((src, i) => `
@@ -1189,17 +1206,34 @@ function redessinerImagesBien() {
       redessinerImagesBien();
     });
   });
-  document.getElementById("bien-images-compteur").textContent = IMAGES_BIEN.length + " / 5";
-  const complet = IMAGES_BIEN.length >= 5;
+  document.getElementById("bien-images-compteur").textContent = IMAGES_BIEN.length + " / " + MAX_PHOTOS_BIEN;
+  const complet = IMAGES_BIEN.length >= MAX_PHOTOS_BIEN;
   document.getElementById("bouton-parcourir").disabled = complet;
-  afficherErreurImages(complet ? "Limite de 5 photos atteinte. Retirez une photo pour en ajouter une autre." : "");
+  afficherErreurImages(complet ? "Limite de " + MAX_PHOTOS_BIEN + " photos atteinte. Retirez une photo pour en ajouter une autre." : "");
 }
 
 function ajouterImageBien(valeur) {
-  if (IMAGES_BIEN.length >= 5) return;
+  if (IMAGES_BIEN.length >= MAX_PHOTOS_BIEN) return;
   IMAGES_BIEN.push(valeur);
   redessinerImagesBien();
 }
+
+// Ajout d'une photo par lien (indispensable depuis l'ordinateur en jeu, où le
+// sélecteur de fichiers natif n'est pas fiable).
+function ajouterImageParLien() {
+  const champ = document.getElementById("bien-image-url");
+  const url = (champ.value || "").trim();
+  if (!url) return;
+  if (!/^https?:\/\/\S+$/i.test(url)) { afficherErreurImages("Le lien doit commencer par http:// ou https://"); return; }
+  if (IMAGES_BIEN.length >= MAX_PHOTOS_BIEN) return;
+  afficherErreurImages("");
+  ajouterImageBien(url);
+  champ.value = "";
+}
+document.getElementById("bouton-ajouter-url").addEventListener("click", ajouterImageParLien);
+document.getElementById("bien-image-url").addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter") { ev.preventDefault(); ajouterImageParLien(); }
+});
 
 document.getElementById("bouton-parcourir").addEventListener("click", () => {
   document.getElementById("bien-image-fichier").click();
@@ -1208,7 +1242,7 @@ document.getElementById("bouton-parcourir").addEventListener("click", () => {
 document.getElementById("bien-image-fichier").addEventListener("change", async (ev) => {
   const fichiers = Array.from(ev.target.files || []);
   ev.target.value = ""; // permet de resélectionner le même fichier plus tard si besoin
-  const place = 5 - IMAGES_BIEN.length;
+  const place = MAX_PHOTOS_BIEN - IMAGES_BIEN.length;
   for (const fichier of fichiers.slice(0, place)) {
     try {
       ajouterImageBien(await redimensionnerImage(fichier));
@@ -1343,13 +1377,14 @@ function ouvrirModaleBien(id) {
   document.getElementById("bouton-supprimer-bien").classList.toggle("cache", !bien);
   document.querySelectorAll("#formulaire-bien .champ-erreur").forEach((p) => p.classList.add("cache"));
   afficherMessage("zone-message-modale-bien", "", null);
-  IMAGES_BIEN = bien && bien.images ? bien.images.slice(0, 5) : [];
+  IMAGES_BIEN = bien && bien.images ? bien.images.slice(0, MAX_PHOTOS_BIEN) : [];
   redessinerImagesBien();
   document.getElementById("modale-bien").classList.remove("cache");
   ETAT_INITIAL_BIEN = etatFormulaireBien();
 }
 
 function fermerModaleBien() {
+  fermerSelectOuvert();
   document.getElementById("modale-bien").classList.add("cache");
 }
 
@@ -1367,6 +1402,7 @@ document.getElementById("bouton-annuler-bien").addEventListener("click", demande
 document.getElementById("modale-bien").addEventListener("click", (ev) => { if (ev.target.id === "modale-bien") demanderFermetureModaleBien(); });
 document.addEventListener("keydown", (ev) => {
   if (ev.key === "Escape" && !document.getElementById("modale-bien").classList.contains("cache")) {
+    ev.preventDefault();
     demanderFermetureModaleBien();
   }
 });

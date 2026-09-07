@@ -143,7 +143,12 @@ function cookies(req) {
 // connexion circulent en clair sur le réseau.
 function poserCookie(nom, valeur, secondes, env) {
   const insecure = env && env.COOKIES_HTTP === "1";
-  return `${nom}=${encodeURIComponent(valeur)}; Path=/; HttpOnly; ${insecure ? "" : "Secure; "}SameSite=Lax; Max-Age=${secondes}`;
+  // En HTTPS : SameSite=None + Secure, indispensable pour que la session soit
+  // reconnue quand le site tourne dans l'iframe de l'ordinateur en jeu (FolkOS).
+  // En HTTP (COOKIES_HTTP=1, sans domaine) : None sans Secure serait refusé par
+  // Chrome, on garde donc Lax — l'espace agents ne marchera pas en jeu tant que
+  // le site n'est pas en HTTPS.
+  return `${nom}=${encodeURIComponent(valeur)}; Path=/; HttpOnly; ${insecure ? "SameSite=Lax" : "Secure; SameSite=None"}; Max-Age=${secondes}`;
 }
 
 function json(d, s = 200) {
@@ -182,6 +187,7 @@ export default {
       // "Error 1101"), au lieu d'afficher un message clair.
       if (chemin === "/api/auth/discord") return await discordAutoriser(request, env);
       if (chemin === "/api/auth/discord/callback") return await discordCallback(request, url, env);
+      if (chemin === "/api/folkos") return await folkosCallback(url, env);
       if (chemin === "/api/deconnexion") return deconnexion(env);
       if (chemin === "/api/moi") return await moi(request, env);
       if (chemin === "/api/biens") return await biens(request, url, env);
@@ -357,6 +363,57 @@ async function discordCallback(request, url, env) {
   } catch (e) {
     // DIAGNOSTIC TEMPORAIRE : montre le message d'erreur réel de la base de
     // données (utile si la migration n'a pas encore été appliquée en remote).
+    return echec("bd_" + String(e && e.message).slice(0, 60).replace(/[^a-zA-Z0-9]/g, ""));
+  }
+}
+
+// ---- « Se connecter IG » : SSO FolkOS (ordinateur en jeu) ----
+// Le joueur arrive ici avec ?folkos_ticket=… (ticket à usage unique délivré par
+// le broker access.fbfa.fr). On ne fait confiance qu'à la réponse du validateur
+// `id` (/sso/verify), jamais au ticket lui-même. Le compte Dynasty 8 est retrouvé
+// par discord_id — le même identifiant que la connexion Discord classique — donc
+// aucune donnée supplémentaire à gérer : un agent déjà lié à son Discord se
+// connecte en jeu sans rien faire de plus.
+async function folkosCallback(url, env) {
+  const echec = (raison) => {
+    console.error(`[folkos-login] Échec de connexion : ${raison}`);
+    return redirection("/admin.html?d8=folkos_" + encodeURIComponent(raison));
+  };
+  if (!env.FOLKOS_ID_BASE || !env.FOLKOS_CLIENT_ID || !env.FOLKOS_CLIENT_SECRET) return echec("config");
+  const ticket = url.searchParams.get("folkos_ticket");
+  if (!ticket) return echec("sans-ticket");
+
+  let data;
+  try {
+    const r = await fetch(String(env.FOLKOS_ID_BASE).replace(/\/$/, "") + "/sso/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ client_id: env.FOLKOS_CLIENT_ID, client_secret: env.FOLKOS_CLIENT_SECRET, token: ticket }),
+    });
+    data = await r.json().catch(() => null);
+    if (!r.ok || !data || !data.valid || !data.identity) return echec("ticket_" + r.status);
+  } catch (e) {
+    return echec("reseau");
+  }
+
+  // Jamais de clé sur `sub` (sa forme change selon le chemin d'entrée) :
+  // on utilise discord_id, toujours converti en chaîne.
+  const identite = data.identity;
+  const discordId = identite.discord_id != null ? String(identite.discord_id) : "";
+  if (!discordId) return echec("sans-discord");
+
+  try {
+    const m = await env.DB.prepare("SELECT * FROM membres WHERE discord_id = ?1").bind(discordId).first();
+    if (!m) return echec("compte-inconnu");
+    if (m.statut === "attente") return echec("attente");
+    if (m.statut !== "valide" || !m.actif) return echec("desactive");
+    await env.DB.prepare("UPDATE membres SET derniere_visite = datetime('now') WHERE id = ?1").bind(m.id).run();
+    const jeton = await creerSession(env.SESSION_SECRET, { id: m.id, pseudo: m.pseudo, grade: m.grade, exp: maintenant() + DUREE });
+    // ?next= : uniquement un chemin relatif du site (jamais une URL externe).
+    const next = url.searchParams.get("next") || "";
+    const cible = /^\/(?!\/)[^\s]*$/.test(next) ? next : "/admin.html";
+    return redirection(cible, [poserCookie(COOKIE, jeton, DUREE, env)]);
+  } catch (e) {
     return echec("bd_" + String(e && e.message).slice(0, 60).replace(/[^a-zA-Z0-9]/g, ""));
   }
 }
@@ -1872,7 +1929,7 @@ function validerBien(b) {
     }
   }
   const images = Array.isArray(b.images) ? b.images : [];
-  if (images.length > 5) return "5 photos maximum par bien.";
+  if (images.length > 10) return "10 photos maximum par bien.";
   if (images.some((u) => typeof u !== "string" || u.length > 2_000_000)) {
     return "Une des photos est invalide ou trop volumineuse.";
   }

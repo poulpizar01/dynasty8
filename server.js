@@ -18,7 +18,26 @@ import { synchroniserSheetSansErreur } from "./src/google-sheets.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+// Le site tourne toujours derrière un reverse proxy (Caddy sur le VPS, ou le
+// proxy de l'opérateur FlashbackFA) qui termine le HTTPS : on lui fait
+// confiance pour X-Forwarded-Proto / X-Forwarded-For, sinon req.protocol vaut
+// "http" et l'URL reconstruite pour /api (redirections OAuth, cookies Secure)
+// est fausse.
+app.set("trust proxy", true);
 const PORT = process.env.PORT || 3000;
+
+// ---- Autoriser l'affichage du site dans l'ordinateur en jeu (FolkOS / FiveM) ----
+// Le navigateur embarqué de FiveM vérifie chaque « ancêtre » de l'iframe via
+// frame-ancestors : s'il en manque un, la page reste blanche sans message.
+// Vrai en-tête HTTP sur TOUTES les réponses (une balise <meta> serait ignorée),
+// et surtout jamais de X-Frame-Options (il contredirait cette règle).
+const CSP_FRAME_ANCESTORS =
+  "frame-ancestors 'self' https://*.fbfa.fr https://fbfa.fr https://cfx-nui-external-iframe nui://game nui:";
+app.use((req, res, next) => {
+  res.setHeader("Content-Security-Policy", CSP_FRAME_ANCESTORS);
+  res.removeHeader("X-Frame-Options");
+  next();
+});
 
 if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL n'est pas définie — vérifie les variables du service sur Railway.");
@@ -110,6 +129,11 @@ function construireEnv() {
     // ignorée : le cookie de connexion reste marqué "Secure" et le navigateur
     // continue de le refuser en HTTP tout court.
     COOKIES_HTTP: process.env.COOKIES_HTTP,
+    // SSO FolkOS (« Se connecter IG » depuis l'ordinateur en jeu) — valeurs
+    // fournies par l'opérateur, côté serveur uniquement.
+    FOLKOS_ID_BASE: process.env.FOLKOS_ID_BASE,
+    FOLKOS_CLIENT_ID: process.env.FOLKOS_CLIENT_ID,
+    FOLKOS_CLIENT_SECRET: process.env.FOLKOS_CLIENT_SECRET,
   };
 }
 
@@ -150,6 +174,7 @@ app.use("/api", async (req, res) => {
     res.status(reponse.status);
     for (const [cle, valeur] of reponse.headers.entries()) {
       if (cle.toLowerCase() === "set-cookie") continue; // géré à part ci-dessous (plusieurs cookies possibles)
+      if (cle.toLowerCase() === "x-frame-options" || cle.toLowerCase() === "content-security-policy") continue; // gardés par le middleware FolkOS ci-dessus
       res.setHeader(cle, valeur);
     }
     const cookies = typeof reponse.headers.getSetCookie === "function" ? reponse.headers.getSetCookie() : [];

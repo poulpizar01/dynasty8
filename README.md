@@ -6,8 +6,8 @@
 
 ## Site actuel
 
-- **Instance publique :** https://dynasty8.poulpizar.workers.dev/
-- **Espace agents :** https://dynasty8.poulpizar.workers.dev/admin.html
+- **Instance publique :** https://dynasty8.fbfa.fr/
+- **Espace agents :** https://dynasty8.fbfa.fr/admin.html
 - **Serveur RP :** FlashbackFA
 - **Développement :** Roxwood Network
 

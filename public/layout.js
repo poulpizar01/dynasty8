@@ -188,7 +188,54 @@ function ajusterCadre() {
   cadre.style.setProperty("--d8-frame-top", (hauteur + 10) + "px");
 }
 
+// ---------------------------------------------------------------------------
+// FolkOS (ordinateur en jeu, FiveM) : quand le site est affiché dans l'iframe
+// de l'ordinateur in-game, on charge le petit SDK de l'opérateur qui libère le
+// clavier pour nos champs de saisie et gère la touche Échap. Hors iframe
+// (navigateur normal), on ne charge rien. Hôte fourni par l'opérateur.
+// ---------------------------------------------------------------------------
+const FOLKOS_HOTE = "https://computer.game.fbfa.fr";
+
+function initialiserFolkOS() {
+  let dansIframe = false;
+  try { dansIframe = window.self !== window.top; } catch (e) { dansIframe = true; }
+  if (!dansIframe) return;
+  const script = document.createElement("script");
+  script.src = FOLKOS_HOTE + "/fbfa-game.js";
+  script.async = true;
+  script.onload = () => {
+    try {
+      if (window.FBFAGame && typeof window.FBFAGame.init === "function") {
+        window.FBFAGame.init({
+          typing: { mode: "field" },   // le clavier est rendu au site dès qu'un champ a le focus
+          escape: false,               // le site est une PAGE du navigateur FolkOS : Échap ne ferme pas la fenêtre
+        });
+      }
+    } catch (e) { /* hors FiveM : silencieux */ }
+  };
+  script.onerror = () => { /* SDK indisponible : le site reste utilisable */ };
+  document.head.appendChild(script);
+
+  // Suivi d'adresse : la barre de FolkOS affiche notre sous-page et la restaure
+  // après un rechargement (le script ne transmet que le chemin d'URL).
+  const bridge = document.createElement("script");
+  bridge.src = FOLKOS_HOTE + "/fbfa-bridge.js";
+  bridge.async = true;
+  document.head.appendChild(bridge);
+
+  // En jeu, target="_blank" / window.open n'ouvrent rien : on navigue dans le
+  // cadre (le bouton « précédent » de FolkOS permet de revenir). Gestion par
+  // délégation pour couvrir aussi les liens ajoutés plus tard par le JS.
+  document.addEventListener("click", (ev) => {
+    const lien = ev.target && ev.target.closest ? ev.target.closest('a[target="_blank"]') : null;
+    if (lien) lien.removeAttribute("target");
+  }, true);
+  window.open = (url) => { if (url) window.location.href = String(url); return null; };
+  document.documentElement.classList.add("dans-folkos");
+}
+
 function initialiserLayout(cleActive) {
+  initialiserFolkOS();
   injecterEntete(cleActive);
   injecterPied();
   injecterCadre();
@@ -248,7 +295,7 @@ function formaterPrix(valeur) {
   // Espace bien visible tous les 3 chiffres (milliers, millions...) : on ne
   // laisse pas le navigateur choisir l'espacement (toLocaleString utilise une
   // espace fine à peine visible en gras) — on l'écrit nous-même.
-  const chiffres = Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  const chiffres = Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");   // espace insécable classique (l'ancienne « demi-cadratine » était trop large avec Raleway)
   // "HT" (hors taxe) : les prix du catalogue Dynasty 8 sont donnés hors taxe,
   // comme dans le règlement officiel des cohérences.
   return (n < 0 ? "-" : "") + chiffres + " $ HT";
@@ -357,10 +404,15 @@ function couleurGrade(nom) {
 let D8_SELECT_OUVERT = null; // { select, flottant, enveloppe }
 
 function fermerSelectOuvert() {
-  if (!D8_SELECT_OUVERT) return;
-  D8_SELECT_OUVERT.flottant.classList.add("cache");
-  D8_SELECT_OUVERT.enveloppe.classList.remove("ouvert");
-  D8_SELECT_OUVERT = null;
+  if (D8_SELECT_OUVERT) {
+    D8_SELECT_OUVERT.flottant.classList.add("cache");
+    D8_SELECT_OUVERT.enveloppe.classList.remove("ouvert");
+    D8_SELECT_OUVERT = null;
+  }
+  // Filet de sécurité : aucune liste flottante ne doit rester affichée sans
+  // être « le menu ouvert » (sinon elle reste plantée au milieu de la page).
+  document.querySelectorAll(".d8-select-flottant:not(.cache)").forEach((el) => el.classList.add("cache"));
+  document.querySelectorAll(".d8-select-enveloppe.ouvert").forEach((el) => el.classList.remove("ouvert"));
 }
 
 document.addEventListener("mousedown", (ev) => {
@@ -369,7 +421,7 @@ document.addEventListener("mousedown", (ev) => {
   }
 });
 document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Escape") fermerSelectOuvert();
+  if (ev.key === "Escape" && D8_SELECT_OUVERT) { ev.preventDefault(); fermerSelectOuvert(); }
 });
 window.addEventListener("resize", fermerSelectOuvert);
 // "true" (phase de capture) est nécessaire pour détecter un défilement de la
@@ -435,6 +487,7 @@ function ameliorerSelect(select, pastille, portee) {
 
   function ouvrir() {
     if (select.disabled) return;
+    fermerSelectOuvert(); // un seul menu ouvert à la fois — même si on passe directement d'un select à un autre
     rendreOptions();
     positionner();
     flottant.classList.remove("cache");
@@ -447,6 +500,9 @@ function ameliorerSelect(select, pastille, portee) {
     select.focus();
     if (D8_SELECT_OUVERT && D8_SELECT_OUVERT.select === select) fermerSelectOuvert();
     else ouvrir();
+  });
+  select.addEventListener("blur", () => {
+    if (D8_SELECT_OUVERT && D8_SELECT_OUVERT.select === select) setTimeout(fermerSelectOuvert, 120);
   });
   select.addEventListener("keydown", (ev) => {
     if (["Enter", " ", "ArrowDown", "ArrowUp"].includes(ev.key)) {

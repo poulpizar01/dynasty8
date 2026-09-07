@@ -49,7 +49,7 @@ function prixFicheHTML(bien) {
   if (bien.dispo_vente && bien.dispo_location) {
     return `<div class="fiche-prix fiche-prix-double">
       <div class="fiche-prix-ligne"><span class="prix-etiquette">Vente</span><span class="prix-valeur">${formaterPrix(bien.prix)}</span></div>
-      <div class="fiche-prix-ligne"><span class="prix-etiquette">Location</span><span class="prix-valeur">${formaterPrix(bien.prix_location)}</span><span> / semaine</span></div>
+      <div class="fiche-prix-ligne"><span class="prix-etiquette">Location</span><span class="prix-valeur">${formaterPrix(bien.prix_location)}</span><span>par semaine</span></div>
     </div>`;
   }
   if (bien.dispo_location) {
@@ -211,12 +211,13 @@ function construireFiltre2Niveaux({ conteneur, familles, familleDepart, categori
 
   function positionner(indicateur, bouton, animer) {
     if (!bouton) { indicateur.style.width = "0px"; return; }
-    const x = bouton.offsetLeft;
+    const x = bouton.offsetLeft, y = bouton.offsetTop;
     const largeur = bouton.offsetWidth;
     const sansTransition = !animer || reduireMouvement();
     if (sansTransition) indicateur.classList.add("sans-transition");
-    indicateur.style.transform = "translateX(" + x + "px)";
+    indicateur.style.transform = "translate(" + x + "px, " + y + "px)";
     indicateur.style.width = largeur + "px";
+    indicateur.style.height = bouton.offsetHeight + "px";
     if (sansTransition) {
       void indicateur.offsetWidth;
       indicateur.classList.remove("sans-transition");
@@ -343,62 +344,200 @@ async function chargerFicheBien() {
   try {
     const bien = await appelAPI("/api/biens?id=" + encodeURIComponent(id));
     document.title = bien.titre + " — Dynasty 8";
-    const images = bien.images && bien.images.length ? bien.images : [null];
-    conteneur.innerHTML = `
-      <div>
-        <div class="fiche-visuel-principal" id="visuel-principal">
-          ${images[0] ? `<img src="${echapper(images[0])}" alt="${echapper(bien.titre)}">` : `<span style="font-size:3rem;">${iconeCategorie(bien.categorie)}</span>`}
+    const images = (bien.images || []).filter(Boolean);
+    const aPhotos = images.length > 0;
+    let courant = 0;
+    const categorieLien = { habitation: "/interieurs.html", garage: "/garages.html" }[bien.categorie] || "/accueil.html";
+    const categorieNom = ETIQUETTES_CATEGORIE[bien.categorie] || "Catalogue";
+
+    // Fil d'Ariane + bouton « copier le lien » (pratique pour partager l'annonce sur Discord).
+    const enTeteHTML = `
+      <div class="fiche-entete">
+        <nav class="fiche-ariane" aria-label="Fil d'Ariane">
+          <a href="/accueil.html">Accueil</a><span aria-hidden="true">›</span>
+          <a href="${categorieLien}">${echapper(categorieNom)}</a><span aria-hidden="true">›</span>
+          <span>${echapper(bien.titre)}</span>
+        </nav>
+        <button type="button" class="fiche-partager" id="fiche-partager">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+          <span>Copier le lien</span>
+        </button>
+      </div>`;
+
+    const galerieHTML = `
+      <div class="fiche-galerie">
+        <div class="fiche-visuel-principal ${aPhotos ? "fiche-visuel-principal--zoom" : ""}" id="visuel-principal" ${aPhotos ? 'role="button" tabindex="0" aria-label="Agrandir la photo"' : ""}>
+          ${aPhotos ? `<img src="${echapper(images[0])}" alt="${echapper(bien.titre)}">` : `<span style="font-size:3rem;">${iconeCategorie(bien.categorie)}</span>`}
+          ${aPhotos ? `<span class="fiche-visuel-agrandir" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Agrandir</span>` : ""}
+          ${images.length > 1 ? `<button type="button" class="fiche-visuel-fleche fiche-visuel-fleche--prec" data-sens="-1" aria-label="Photo précédente">‹</button><button type="button" class="fiche-visuel-fleche fiche-visuel-fleche--suiv" data-sens="1" aria-label="Photo suivante">›</button>` : ""}
           ${images.length > 1 ? `<span class="fiche-visuel-compteur" id="visuel-compteur">1 / ${images.length}</span>` : ""}
         </div>
-        ${images.length > 1 ? `<div class="miniatures">${images
-          .map(
-            (u, i) =>
-              `<button data-i="${i}" class="${i === 0 ? "actif" : ""}">${u ? `<img src="${echapper(u)}">` : ""}</button>`
-          )
+        ${images.length > 1 ? `<div class="miniatures" id="miniatures">${images
+          .map((u, i) => `<button type="button" data-i="${i}" class="${i === 0 ? "actif" : ""}" aria-label="Photo ${i + 1}"><img src="${echapper(u)}" alt=""></button>`)
           .join("")}</div>` : ""}
-        ${bien.description && texteSansMarquage(bien.description).trim()
-          ? `<div class="fiche-description-vitrine">${analyserDescription(bien.description)}</div>`
-          : ""}
-      </div>
-      <div class="fiche-fiche">
-        <span class="zone-tag">${echapper(bien.sous_categorie || ETIQUETTES_CATEGORIE[bien.categorie] || "")}${bien.coup_de_coeur ? " · Coup de cœur" : ""}${bien.standing ? " · Bien d'exception" : ""}</span>
-        <h1>${echapper(bien.titre)}</h1>
-        ${prixFicheHTML(bien)}
-        ${!bien.disponible ? '<p class="champ-aide" style="color:var(--danger);font-weight:600;">Ce bien n’est plus disponible.</p>' : ""}
-        <div class="fiche-carac">
-          <div><strong>${etiquetteTransaction(bien)}</strong>Transaction</div>
-          <div><strong>${ETIQUETTES_CATEGORIE[bien.categorie] || ""}</strong>Catégorie</div>
-          ${bien.categorie === "habitation" ? `<div><strong>${bien.meuble ? "Meublé" : "Non meublé"}</strong>Ameublement</div>` : ""}
-          ${bien.places ? `<div><strong>${bien.places}</strong>Places</div>` : ""}
-          ${bien.coffre_kg ? `<div><strong>${bien.coffre_kg} kg</strong>Coffre</div>` : ""}
-          ${bien.vip ? '<div><strong>VIP</strong>Statut</div>' : ""}
-          ${bien.coherence ? `<div><strong>${echapper(bien.coherence)}</strong>Cohérence</div>` : ""}
-        </div>
-        ${bien.coherence ? `<a class="btn btn-fantome btn-petit" style="margin-bottom:14px;" href="/coherence.html?zone=${encodeURIComponent(bien.coherence)}">Voir la fiche de cohérence « ${echapper(bien.coherence)} » →</a>` : ""}
-        <div class="encart-contact">
-          <div class="encart-contact-titre">📱 Comment obtenir ce bien ?</div>
-          <ol class="encart-contact-etapes">
-            <li>Ouvrez l'application <strong>Eyefind</strong> sur votre téléphone, en jeu.</li>
-            <li>Recherchez <strong>Dynasty 8</strong> et envoyez-nous un message.</li>
-            <li>Patientez sur place : un agent Dynasty 8 arrive pour finaliser avec vous.</li>
-          </ol>
-        </div>
-        <a class="btn btn-fantome" style="width:100%;margin-top:10px;" href="javascript:history.back()">← Retour aux annonces</a>
       </div>`;
-    const miniatures = conteneur.querySelectorAll(".miniatures button");
-    miniatures.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        miniatures.forEach((b) => b.classList.remove("actif"));
-        btn.classList.add("actif");
-        const i = Number(btn.dataset.i);
-        const url = images[i];
-        const compteur = images.length > 1 ? `<span class="fiche-visuel-compteur">${i + 1} / ${images.length}</span>` : "";
-        document.getElementById("visuel-principal").innerHTML = (url
-          ? `<img src="${echapper(url)}" alt="${echapper(bien.titre)}">`
-          : `<span style="font-size:3rem;">${iconeCategorie(bien.categorie)}</span>`) + compteur;
-      });
+
+    conteneur.innerHTML = `
+      ${enTeteHTML}
+      <div class="fiche-bien-grille">
+        <div>
+          ${galerieHTML}
+          ${bien.description && texteSansMarquage(bien.description).trim()
+            ? `<div class="fiche-description-vitrine">${analyserDescription(bien.description)}</div>`
+            : ""}
+        </div>
+        <div class="fiche-fiche">
+          <span class="zone-tag">${echapper(bien.sous_categorie || categorieNom)}${bien.coup_de_coeur ? " · Coup de cœur" : ""}${bien.standing ? " · Bien d'exception" : ""}</span>
+          <h1>${echapper(bien.titre)}</h1>
+          ${prixFicheHTML(bien)}
+          ${!bien.disponible ? '<p class="fiche-indispo">Ce bien n’est plus disponible.</p>' : ""}
+          <dl class="fiche-carac">
+            <div><dt>Transaction</dt><dd>${etiquetteTransaction(bien)}</dd></div>
+            <div><dt>Catégorie</dt><dd>${echapper(categorieNom)}</dd></div>
+            ${bien.categorie === "habitation" ? `<div><dt>Ameublement</dt><dd>${bien.meuble ? "Meublé" : "Non meublé"}</dd></div>` : ""}
+            ${bien.places ? `<div><dt>Places</dt><dd>${echapper(bien.places)}</dd></div>` : ""}
+            ${bien.coffre_kg ? `<div><dt>Coffre</dt><dd>${echapper(bien.coffre_kg)} kg</dd></div>` : ""}
+            ${bien.vip ? '<div><dt>Statut</dt><dd>VIP</dd></div>' : ""}
+            ${bien.coherence ? `<div><dt>Cohérence</dt><dd><a href="/coherence.html?zone=${encodeURIComponent(bien.coherence)}" class="fiche-carac-lien">${echapper(bien.coherence)} <span aria-hidden="true">→</span></a></dd></div>` : ""}
+          </dl>
+          <div class="encart-contact">
+            <div class="encart-contact-titre">Comment obtenir ce bien ?</div>
+            <ol class="encart-contact-etapes">
+              <li><span>Ouvrez l'application <strong>Eyefind</strong> sur votre téléphone, en jeu.</span></li>
+              <li><span>Écrivez à <strong>Dynasty 8</strong> au <strong class="encart-contact-numero">914</strong> en précisant le bien qui vous intéresse.</span></li>
+              <li><span>Patientez sur place : un agent Dynasty 8 arrive pour finaliser avec vous.</span></li>
+            </ol>
+          </div>
+          <a class="btn btn-fantome fiche-retour" href="${categorieLien}">← Retour aux annonces</a>
+        </div>
+      </div>`;
+
+    // ---- galerie : navigation entre les photos ----
+    const principal = document.getElementById("visuel-principal");
+    const miniatures = conteneur.querySelectorAll("#miniatures button");
+    function afficher(i) {
+      if (!aPhotos) return;
+      courant = (i + images.length) % images.length;
+      const img = principal.querySelector("img");
+      if (img) { img.src = images[courant]; }
+      const compteur = document.getElementById("visuel-compteur");
+      if (compteur) compteur.textContent = `${courant + 1} / ${images.length}`;
+      miniatures.forEach((b, k) => b.classList.toggle("actif", k === courant));
+    }
+    miniatures.forEach((btn) => btn.addEventListener("click", () => afficher(Number(btn.dataset.i))));
+    principal.querySelectorAll(".fiche-visuel-fleche").forEach((f) => {
+      f.addEventListener("click", (e) => { e.stopPropagation(); afficher(courant + Number(f.dataset.sens)); });
+    });
+    if (aPhotos) {
+      principal.addEventListener("click", () => ouvrirVisionneuse(images, courant, bien.titre, (i) => afficher(i)));
+      principal.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); principal.click(); } });
+    }
+
+    // ---- copier le lien ----
+    const partager = document.getElementById("fiche-partager");
+    partager.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        partager.querySelector("span").textContent = "Lien copié !";
+        partager.classList.add("ok");
+        setTimeout(() => { partager.querySelector("span").textContent = "Copier le lien"; partager.classList.remove("ok"); }, 2200);
+      } catch (e) {
+        // Pas de presse-papiers (navigateur ancien, iframe en jeu…) : on affiche le
+        // lien dans un champ pré-sélectionné — jamais de window.prompt (gèle FiveM).
+        let champ = document.getElementById("fiche-lien-copie");
+        if (!champ) {
+          champ = document.createElement("input");
+          champ.id = "fiche-lien-copie"; champ.className = "fiche-lien-copie"; champ.readOnly = true;
+          champ.setAttribute("aria-label", "Lien de l'annonce");
+          partager.insertAdjacentElement("afterend", champ);
+        }
+        champ.value = window.location.href; champ.focus(); champ.select();
+      }
     });
   } catch (e) {
     conteneur.innerHTML = `<div class="etat-vide">Cette annonce n'existe plus ou a été retirée.</div>`;
   }
+}
+
+// ---- visionneuse plein écran (clic sur une photo de la fiche) ----
+// Flèches / vignettes / clavier (← → Échap), balayage au doigt sur mobile, et
+// clic sur la photo pour zoomer ×2 à l'endroit cliqué. `onChange` resynchronise
+// la galerie de la fiche quand on ferme.
+function ouvrirVisionneuse(images, depart, titre, onChange) {
+  const ancien = document.getElementById("visionneuse");
+  if (ancien) ancien.remove();
+  let i = depart;
+  const v = document.createElement("div");
+  v.id = "visionneuse"; v.className = "visionneuse"; v.setAttribute("role", "dialog"); v.setAttribute("aria-modal", "true"); v.setAttribute("aria-label", "Photos de l'annonce");
+  v.innerHTML = `
+    <button type="button" class="visionneuse-fermer" aria-label="Fermer">×</button>
+    <div class="visionneuse-scene">
+      ${images.length > 1 ? `<button type="button" class="visionneuse-fleche visionneuse-fleche--prec" aria-label="Photo précédente">‹</button>` : ""}
+      <figure class="visionneuse-cadre"><img src="${echapper(images[i])}" alt="${echapper(titre)}"></figure>
+      ${images.length > 1 ? `<button type="button" class="visionneuse-fleche visionneuse-fleche--suiv" aria-label="Photo suivante">›</button>` : ""}
+    </div>
+    <div class="visionneuse-pied">
+      <span class="visionneuse-titre">${echapper(titre)}</span>
+      <span class="visionneuse-compteur">${i + 1} / ${images.length}</span>
+      <span class="visionneuse-aide">Cliquez sur la photo pour zoomer · Échap pour fermer</span>
+    </div>
+    ${images.length > 1 ? `<div class="visionneuse-vignettes">${images.map((u, k) => `<button type="button" data-i="${k}" class="${k === i ? "actif" : ""}" aria-label="Photo ${k + 1}"><img src="${echapper(u)}" alt=""></button>`).join("")}</div>` : ""}`;
+  document.body.appendChild(v);
+  document.body.classList.add("visionneuse-ouverte");
+  requestAnimationFrame(() => v.classList.add("visible"));
+
+  const cadre = v.querySelector(".visionneuse-cadre");
+  const img = cadre.querySelector("img");
+  const compteur = v.querySelector(".visionneuse-compteur");
+  const vignettes = v.querySelectorAll(".visionneuse-vignettes button");
+  let zoom = false;
+
+  function dezoomer() { zoom = false; cadre.classList.remove("zoom"); img.style.transformOrigin = ""; }
+  function aller(k) {
+    i = (k + images.length) % images.length;
+    dezoomer();
+    img.classList.remove("apparait"); void img.offsetWidth; img.classList.add("apparait");
+    img.src = images[i];
+    compteur.textContent = `${i + 1} / ${images.length}`;
+    vignettes.forEach((b, n) => b.classList.toggle("actif", n === i));
+    const active = vignettes[i]; if (active && active.scrollIntoView) active.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+    if (onChange) onChange(i);
+  }
+  function fermer() {
+    v.classList.remove("visible");
+    document.body.classList.remove("visionneuse-ouverte");
+    document.removeEventListener("keydown", clavier);
+    setTimeout(() => v.remove(), 220);
+  }
+  function clavier(e) {
+    if (e.key === "Escape") { e.preventDefault(); fermer(); }
+    else if (e.key === "ArrowRight") aller(i + 1);
+    else if (e.key === "ArrowLeft") aller(i - 1);
+  }
+  document.addEventListener("keydown", clavier);
+  v.querySelector(".visionneuse-fermer").addEventListener("click", fermer);
+  v.addEventListener("click", (e) => { if (e.target === v || e.target.classList.contains("visionneuse-scene")) fermer(); });
+  v.querySelectorAll(".visionneuse-fleche").forEach((f) => f.addEventListener("click", () => aller(i + (f.classList.contains("visionneuse-fleche--suiv") ? 1 : -1))));
+  vignettes.forEach((b) => b.addEventListener("click", () => aller(Number(b.dataset.i))));
+  // zoom ×2 centré sur le point cliqué ; second clic pour revenir
+  img.addEventListener("click", (e) => {
+    if (zoom) { dezoomer(); return; }
+    const r = img.getBoundingClientRect();
+    img.style.transformOrigin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
+    zoom = true; cadre.classList.add("zoom");
+  });
+  img.addEventListener("mousemove", (e) => {
+    if (!zoom) return;
+    const r = cadre.getBoundingClientRect();
+    img.style.transformOrigin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
+  });
+  // balayage au doigt
+  let x0 = null;
+  v.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+  v.addEventListener("touchend", (e) => {
+    if (x0 == null || zoom) return;
+    const dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if (Math.abs(dx) > 40) aller(i + (dx < 0 ? 1 : -1));
+  }, { passive: true });
+  v.querySelector(".visionneuse-fermer").focus();
 }

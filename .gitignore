@@ -9,3 +9,5 @@ export-cloudflare.sql
 # Pack VPS (deploy/vps) : secrets réels et sauvegardes, jamais dans Git
 deploy/vps/.env
 deploy/vps/backups/
+deploy/operateur/.env
+deploy/operateur/*.dump
