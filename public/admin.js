@@ -145,7 +145,6 @@ function demarrerEspaceAdmin() {
     document.getElementById("onglet-comptabilite").classList.remove("cache");
     document.getElementById("onglet-statistiques").classList.remove("cache");
     document.getElementById("onglet-parametres").classList.remove("cache");
-    document.getElementById("groupe-outils").classList.remove("cache");
   }
   // Le lien Webmap est réservé au Patron, au Co Patron, et au Développeur web
   // (qui a exactement les mêmes accès que le Patron, y compris ici).
@@ -1713,8 +1712,8 @@ async function chargerDotResume() {
       ligneResumeDot("Taux d'imposition", r.tauxImposition == null ? "—" : Math.round(r.tauxImposition * 100) + " %"),
       ligneResumeDot("Montant des impôts", val(r.montantImpots)),
       ligneResumeDot("Bénéfice après impôts", val(r.beneficeApresImpots), true),
-      ligneResumeDot("Montant total des primes" + (semaine ? "" : " <span class=\"champ-aide\">(choisissez une semaine)</span>"), val(r.montantTotalPrimes)),
-      ligneResumeDot("Bénéfice après primes", val(r.beneficeApresPrimes)),
+      ligneResumeDot("Montant total des salaires (fixe + paliers)" + (semaine ? "" : " <span class=\"champ-aide\">(choisissez une semaine)</span>"), val(r.montantTotalPrimes)),
+      ligneResumeDot("Bénéfice après salaires", val(r.beneficeApresPrimes)),
       ligneResumeDot("Retraits", val(r.retraits)),
       ligneResumeDot("Bénéfice net", val(r.beneficeNet), true),
     ].join("");
@@ -1849,14 +1848,14 @@ async function chargerDotSalaries() {
     DOT_SALARIES = agents;
     corps.innerHTML = agents.length
       ? agents.map((a) => `<tr>
-            <td>${echapper(a.identiteRp || a.identite)}</td>
+            <td>${echapper(a.identiteRp || a.identite)}${a.horsReferentiel ? ' <span class="champ-aide" title="Présent dans le relevé Tablettes, sans fiche dans le référentiel agents (Ventes &amp; statistiques → Agents)">*</span>' : ""}</td>
             <td>${echapper(a.grade)}</td>
             <td>${formaterArgentStats(a.run)}</td>
             <td>${formaterArgentStats(a.facture)}</td>
             <td>${formaterArgentStats(a.vente)}</td>
             <td><strong>${formaterArgentStats(a.caTotalRealise)}</strong></td>
-            <td>${formaterArgentStats(a.salaireFixe)}</td>
-            <td>${formaterArgentStats(a.primeTotale)}</td>
+            <td><strong>${formaterArgentStats(a.salaireTotal)}</strong></td>
+            <td>${formaterArgentStats(0)}</td>
           </tr>`).join("")
       : `<tr><td colspan="8" class="champ-aide">Aucune vente/location cette semaine-là.</td></tr>`;
   } catch (e) {
@@ -1893,8 +1892,8 @@ document.getElementById("bouton-copier-salaries").addEventListener("click", asyn
     nombre(a.facture),
     nombre(a.vente),
     formuleCaTotal(premiereLigne + i),
-    nombre(a.salaireFixe),
-    nombre(a.primeTotale),
+    nombre(a.salaireTotal),
+    "0",
   ].join("\t"));
   if (await copierTexte(lignes.join("\n"))) {
     afficherMessage("zone-message-dot", `Tableau copié ✓ (${lignes.length} salariés, sans la ligne de titres). Collez-le en ligne ${premiereLigne}, colonne A, du document DOT : la colonne CA TOTAL REALISE arrive en formule.`, "succes");
@@ -2790,7 +2789,6 @@ async function chargerSyncSheet() {
   afficherMessage("zone-message-sync-sheet", "", null);
   corps.innerHTML = `<tr><td colspan="5">Chargement…</td></tr>`;
   try {
-    if (!CACHE_MEMBRES.length) await appelAPI("/api/membres").then((d) => { CACHE_MEMBRES = d.membres || []; });
     const r = await appelAPI("/api/sync-sheet/etat");
 
     if (!r.etat) {
@@ -2798,56 +2796,23 @@ async function chargerSyncSheet() {
     } else if (r.etat.statut === "erreur") {
       etatLigne.textContent = `Dernière tentative en échec (${formaterDateAdmin(r.etat.derniere_sync)}) : ${r.etat.erreur}`;
     } else {
-      etatLigne.textContent = `Dernière synchro : ${formaterDateAdmin(r.etat.derniere_sync)} — ${r.etat.nb_lignes} ligne(s) lue(s), ${r.etat.nb_apparies} associée(s).`;
+      etatLigne.textContent = `Dernière synchro : ${formaterDateAdmin(r.etat.derniere_sync)} — ${r.etat.nb_lignes} ligne(s) lue(s), ${r.etat.nb_apparies} reconnue(s) (compte du site retrouvé).`;
     }
 
     if (!r.lignes.length) {
       corps.innerHTML = `<tr><td colspan="5">Aucune ligne lue pour le moment — cliquez sur « Synchroniser maintenant ».</td></tr>`;
       return;
     }
-    const optionsMembres = `<option value="">— non apparié —</option>` +
-      CACHE_MEMBRES.filter((m) => m.statut !== "attente").map((m) => `<option value="${m.id}">${echapper(m.pseudo)}</option>`).join("");
-    nettoyerSelectsPortee("sync-sheet");
     corps.innerHTML = r.lignes.map((l) => `
       <tr>
         <td>${echapper(l.nom_sheet)}</td>
         <td>${echapper(l.grade_sheet || "—")}</td>
         <td style="text-align:right;">${l.nb_ventes}</td>
         <td style="text-align:right;">${l.nb_locations}</td>
-        <td><select class="table-select" data-sync-ligne="${echapper(l.nom_sheet)}">${optionsMembres}</select></td>
+        <td>${l.membre_pseudo ? echapper(l.membre_pseudo) : '<span class="champ-aide" title="Aucun compte du site ne porte ce nom : créez ou corrigez la fiche agent (identité RP) dans Ventes &amp; statistiques → Agents.">— aucun compte reconnu —</span>'}</td>
       </tr>`).join("");
-    corps.querySelectorAll("[data-sync-ligne]").forEach((sel) => {
-      const ligne = r.lignes.find((l) => l.nom_sheet === sel.dataset.syncLigne);
-      sel.value = ligne && ligne.membre_id ? String(ligne.membre_id) : "";
-      sel.addEventListener("change", () => associerLigneSyncSheet(ligne.nom_sheet, sel.value, ligne.membre_id));
-      ameliorerSelect(sel, null, "sync-sheet");
-    });
   } catch (e) {
     corps.innerHTML = `<tr><td colspan="5">Erreur de chargement : ${echapper(e.message)}</td></tr>`;
-  }
-}
-
-async function associerLigneSyncSheet(nomSheet, membreId, ancienMembreId) {
-  try {
-    if (membreId) {
-      // Le serveur retire lui-même ce nom_sheet à tout autre membre qui le
-      // portait encore (voir comptes() côté serveur) -- pas besoin de le
-      // faire ici, même en cas de réassignation à quelqu'un d'autre.
-      await appelAPI("/api/membres?id=" + membreId, { method: "PATCH", body: JSON.stringify({ nom_sheet: nomSheet }) });
-    } else if (ancienMembreId) {
-      // Repassé sur « — non apparié — » : il faut retirer nom_sheet chez
-      // l'ancien titulaire nous-mêmes, sinon la prochaine synchro le
-      // réassocie tout seul (elle priorise justement nom_sheet).
-      await appelAPI("/api/membres?id=" + ancienMembreId, { method: "PATCH", body: JSON.stringify({ nom_sheet: "" }) });
-    }
-    // Ré-appliquer tout de suite la nouvelle association, sans attendre la
-    // prochaine synchro automatique (jusqu'à 20 min plus tard) — plus clair
-    // pour la Direction, qui voit l'effet de son clic immédiatement.
-    await appelAPI("/api/sync-sheet/synchroniser", { method: "POST" });
-    afficherMessage("zone-message-sync-sheet", "Association enregistrée ✓", "succes");
-    chargerSyncSheet();
-  } catch (e) {
-    afficherMessage("zone-message-sync-sheet", e.message, "erreur");
   }
 }
 

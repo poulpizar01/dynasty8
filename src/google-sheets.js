@@ -119,28 +119,40 @@ async function enregistrerEtat(env, etat) {
 }
 
 // Synchronisation complète : relit tout le Sheet et REMPLACE entièrement le
-// contenu de sync_sheet_agents (table dérivée, jamais éditée à la main —
-// sans risque de la vider/recréer à chaque synchro). L'appariement compte
-// <-> ligne est recalculé à chaque fois à partir de membres.nom_sheet
-// UNIQUEMENT (réglé à la main par la Direction dans Paramètres) : PLUS de
-// repli automatique sur le pseudo Discord (retiré sept. 2026 — un membre
-// dont le pseudo ressemblait au nom du Sheet se voyait réapparié tout seul
-// dès la synchro suivante, y compris juste après que la Direction ait
-// explicitement choisi quelqu'un d'autre ou « non apparié » à l'écran :
-// nom_sheet est désormais la SEULE source de vérité, comme demandé).
+// contenu de sync_sheet_agents (table dérivée, jamais éditée à la main).
+// Appariement compte <-> ligne du Sheet, dans cet ordre, toujours par
+// égalité EXACTE de nom (majuscules/accents ignorés — jamais de « ressemblance »,
+// qui reliait autrefois les mauvaises personnes) :
+//   1. membres.nom_sheet (forçage manuel depuis Comptes & accès, s'il existe) ;
+//   2. le référentiel agents : le compte est relié à son pseudo Discord, la
+//      fiche agent relie ce pseudo à l'identité RP, et l'identité RP est le
+//      nom écrit dans le Sheet ;
+//   3. le pseudo du compte lui-même, s'il est identique au nom du Sheet.
 export async function synchroniserSheet(env) {
   const brut = await lireCSV();
   const lignes = analyserLignesSheet(brut.slice(1)); // ligne 1 = en-têtes
 
-  const comptesR = await env.DB.prepare(
-    "SELECT id, nom_sheet FROM membres WHERE statut != 'desactive' AND nom_sheet IS NOT NULL"
-  ).all();
+  const [comptesR, fichesR] = await Promise.all([
+    env.DB.prepare("SELECT id, pseudo, discord_pseudo, nom_sheet FROM membres WHERE statut != 'desactive'").all(),
+    env.DB.prepare("SELECT discord_pseudo_normalise, identite_rp FROM stats_agents").all(),
+  ]);
   const comptes = comptesR.results || [];
-  const parNomSheet = new Map();
+  const parNomSheet = new Map();      // 1. forçage manuel
+  const parIdentiteRp = new Map();    // 2. via le référentiel agents
+  const parPseudo = new Map();        // 3. pseudo du compte
+  const compteParDiscord = new Map();
   comptes.forEach((c) => {
     if (c.nom_sheet) parNomSheet.set(normaliserTexte(c.nom_sheet), c.id);
+    if (c.discord_pseudo) compteParDiscord.set(normaliserTexte(c.discord_pseudo), c.id);
+    if (c.pseudo) parPseudo.set(normaliserTexte(c.pseudo), c.id);
   });
-  const trouverMembreId = (nomNormalise) => parNomSheet.get(nomNormalise) ?? null;
+  (fichesR.results || []).forEach((f) => {
+    const idCompte = compteParDiscord.get(f.discord_pseudo_normalise || "");
+    const rp = normaliserTexte(f.identite_rp || "");
+    if (idCompte && rp && !parIdentiteRp.has(rp)) parIdentiteRp.set(rp, idCompte);
+  });
+  const trouverMembreId = (nomNormalise) =>
+    parNomSheet.get(nomNormalise) ?? parIdentiteRp.get(nomNormalise) ?? parPseudo.get(nomNormalise) ?? null;
 
   await env.DB.prepare("DELETE FROM sync_sheet_agents").run();
   await Promise.all(

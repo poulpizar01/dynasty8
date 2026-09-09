@@ -29,6 +29,8 @@
   <symbol id="ico-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M2 20h20"/></symbol>
   <symbol id="ico-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
   <symbol id="ico-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></symbol>
+  <symbol id="ico-book" viewBox="0 0 24 24"><path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/></symbol>
+  <symbol id="ico-sheet" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M4 9h16M4 15h16M10 9v12"/></symbol>
   <symbol id="ico-sync" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.3M3 12a9 9 0 0 1 15.5-6.3"/><path d="M18 2v4h-4M6 22v-4h4"/></symbol>
   <symbol id="ico-map" viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></symbol>
   <symbol id="ico-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
@@ -89,9 +91,11 @@
     <button class="lien-onglet cache" data-onglet="comptabilite" id="onglet-comptabilite"><svg class="ico"><use href="#ico-calc"></use></svg><span>Comptabilité</span></button>
     <button class="lien-onglet cache" data-onglet="comptes" id="onglet-comptes"><svg class="ico"><use href="#ico-lock"></use></svg><span>Comptes &amp; accès</span></button>
 
-    <p class="admin-nav-groupe cache" id="groupe-outils">Outils</p>
-    <button class="lien-onglet cache" data-onglet="parametres" id="onglet-parametres"><svg class="ico"><use href="#ico-sync"></use></svg><span>Synchro Google Sheets</span></button>
+    <p class="admin-nav-groupe" id="groupe-outils">Outils</p>
+    <a href="https://intra.dynasty8.fbfa.fr/login" target="_blank" rel="noopener" class="lien-onglet" id="lien-registre" title="Registre Dynasty 8 (intranet)"><svg class="ico"><use href="#ico-book"></use></svg><span>Registre</span></a>
+    <a href="https://docs.google.com/spreadsheets/d/11510OMupYPv0GgwIQxqhGkdh3JV9avt3cF3rg2bhRRE/edit" target="_blank" rel="noopener" class="lien-onglet" id="lien-coherence-sheet" title="Tableau des cohérences (Google Sheets, lecture seule)"><svg class="ico"><use href="#ico-sheet"></use></svg><span>Cohérence</span></a>
     <a href="/api/carte/" target="_blank" rel="noopener" class="lien-onglet cache" id="lien-webmap"><svg class="ico"><use href="#ico-map"></use></svg><span>WebMap</span></a>
+    <button class="lien-onglet cache" data-onglet="parametres" id="onglet-parametres"><svg class="ico"><use href="#ico-sync"></use></svg><span>Synchro Sheets</span></button>
 
     <div class="admin-bas">
       <div class="admin-aide">
@@ -203,7 +207,7 @@
            Direction). Toujours des 0 tant qu'aucune ligne du Sheet n'est
            associée à ce compte. Même composant .stat-carte que l'onglet
            Statistiques -> Vue d'ensemble, pour rester cohérent. -->
-      <h3 class="comptes-sous-titre" style="margin:22px 0 4px;">Mes ventes &amp; primes</h3>
+      <h3 class="comptes-sous-titre" style="margin:22px 0 4px;">Mes ventes &amp; mon salaire</h3>
       <p class="champ-aide" id="primes-profil-maj" style="margin:0 0 12px;"></p>
       <div class="admin-stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:8px;" id="primes-profil-cartes">
         <div class="stat-carte">
@@ -216,18 +220,18 @@
         </div>
         <div class="stat-carte">
           <span class="stat-icone stat-icone--vert">$</span>
-          <div><div class="stat-valeur" id="primes-profil-prime-vente">0 $</div><div class="stat-libelle">Prime ventes</div></div>
+          <div><div class="stat-valeur" id="primes-profil-prime-vente">0 $</div><div class="stat-libelle">Salaire ventes</div></div>
         </div>
         <div class="stat-carte">
           <span class="stat-icone stat-icone--vert">$</span>
-          <div><div class="stat-valeur" id="primes-profil-prime-location">0 $</div><div class="stat-libelle">Prime locations</div></div>
+          <div><div class="stat-valeur" id="primes-profil-prime-location">0 $</div><div class="stat-libelle">Salaire locations</div></div>
         </div>
         <div class="stat-carte">
           <span class="stat-icone stat-icone--mauve">Σ</span>
-          <div><div class="stat-valeur" id="primes-profil-total">0 $</div><div class="stat-libelle">Total primes</div></div>
+          <div><div class="stat-valeur" id="primes-profil-total">0 $</div><div class="stat-libelle">Total salaire</div></div>
         </div>
       </div>
-      <p class="champ-aide cache" id="primes-profil-non-synchronise" style="margin-bottom:18px;">Aucune ligne du Google Sheets n'est encore associée à votre compte — contactez la Direction.</p>
+      <p class="champ-aide cache" id="primes-profil-non-synchronise" style="margin-bottom:18px;">Votre nom n'est pas encore reconnu dans le Google Sheets — demandez à la Direction de vérifier votre fiche agent (identité RP).</p>
 
       <div class="profil-mise-en-page">
         <div class="profil-photo-bloc">
@@ -306,13 +310,13 @@
         <div class="entete-admin" style="margin-top:20px;">
           <div>
             <h3 class="comptes-sous-titre" style="margin:0;">Rémunération</h3>
-            <p class="champ-aide" style="margin:4px 0 0;">Salaire fixe, primes de vente/location et droits par grade — utilisés automatiquement dans le récap de « Ventes &amp; statistiques » et dans la déclaration DOT.</p>
+            <p class="champ-aide" style="margin:4px 0 0;">Salaire fixe et salaire par palier de ventes/locations, par grade — utilisés automatiquement dans « Mon profil », le récap de « Ventes &amp; statistiques » et la déclaration DOT.</p>
           </div>
         </div>
         <div id="zone-message-parametres"></div>
 
         <h4 class="comptes-sous-titre" style="margin:26px 0 4px;">Par grade</h4>
-        <p class="champ-aide" style="margin:0 0 12px;">Les 3 interrupteurs sont indépendants : un grade peut toucher le salaire, les primes, les deux, ou aucun des deux.</p>
+        <p class="champ-aide" style="margin:0 0 12px;">Les 3 interrupteurs sont indépendants : un grade peut toucher le salaire fixe, le salaire aux paliers, les deux, ou aucun des deux.</p>
         <div style="overflow-x:auto;">
           <table class="table-admin" id="table-remuneration-grades">
             <thead>
@@ -320,8 +324,8 @@
                 <th>Grade</th>
                 <th style="text-align:center;">Salaire fixe</th>
                 <th style="text-align:right;">Montant / semaine</th>
-                <th style="text-align:center;">Primes vente</th>
-                <th style="text-align:center;">Primes location</th>
+                <th style="text-align:center;">Paliers ventes</th>
+                <th style="text-align:center;">Paliers locations</th>
               </tr>
             </thead>
             <tbody id="corps-table-remuneration-grades"><tr><td colspan="5">Chargement…</td></tr></tbody>
@@ -330,32 +334,32 @@
 
         <div style="display:flex; gap:28px; flex-wrap:wrap; margin-top:30px;">
           <div style="flex:1; min-width:280px;">
-            <h4 class="comptes-sous-titre" style="margin:0 0 4px;">Paliers — Primes de vente</h4>
-            <p class="champ-aide" style="margin:0 0 10px;">Nombre de ventes atteint dans la semaine → prime versée (le palier le plus haut atteint s'applique).</p>
+            <h4 class="comptes-sous-titre" style="margin:0 0 4px;">Paliers — Salaire selon les ventes</h4>
+            <p class="champ-aide" style="margin:0 0 10px;">Nombre de ventes atteint → montant de salaire (le palier le plus haut atteint s'applique).</p>
             <div style="overflow-x:auto;">
               <table class="table-admin" id="table-baremes-vente">
-                <thead><tr><th>Ventes atteintes</th><th style="text-align:right;">Prime</th><th></th></tr></thead>
+                <thead><tr><th>Ventes atteintes</th><th style="text-align:right;">Montant</th><th></th></tr></thead>
                 <tbody id="corps-table-baremes-vente"><tr><td colspan="3">Chargement…</td></tr></tbody>
               </table>
             </div>
             <div class="palier-ajout" data-type="vente" style="display:flex;gap:8px;align-items:end;margin-top:12px;">
               <div class="champ" style="margin:0;flex:1;"><label>Seuil</label><input type="number" min="1" step="1" class="palier-nouveau-seuil" placeholder="ex. 20"></div>
-              <div class="champ" style="margin:0;flex:1;"><label>Prime</label><input type="number" min="0" step="1000" class="palier-nouveau-montant" placeholder="ex. 10000"></div>
+              <div class="champ" style="margin:0;flex:1;"><label>Montant</label><input type="number" min="0" step="1000" class="palier-nouveau-montant" placeholder="ex. 10000"></div>
               <button type="button" class="btn btn-fantome btn-petit palier-ajouter" style="margin-bottom:18px;">+ Ajouter</button>
             </div>
           </div>
           <div style="flex:1; min-width:280px;">
-            <h4 class="comptes-sous-titre" style="margin:0 0 4px;">Paliers — Primes de location</h4>
-            <p class="champ-aide" style="margin:0 0 10px;">Nombre de locations atteint dans la semaine → prime versée (le palier le plus haut atteint s'applique).</p>
+            <h4 class="comptes-sous-titre" style="margin:0 0 4px;">Paliers — Salaire selon les locations</h4>
+            <p class="champ-aide" style="margin:0 0 10px;">Nombre de locations atteint → montant de salaire (le palier le plus haut atteint s'applique).</p>
             <div style="overflow-x:auto;">
               <table class="table-admin" id="table-baremes-location">
-                <thead><tr><th>Locations atteintes</th><th style="text-align:right;">Prime</th><th></th></tr></thead>
+                <thead><tr><th>Locations atteintes</th><th style="text-align:right;">Montant</th><th></th></tr></thead>
                 <tbody id="corps-table-baremes-location"><tr><td colspan="3">Chargement…</td></tr></tbody>
               </table>
             </div>
             <div class="palier-ajout" data-type="location" style="display:flex;gap:8px;align-items:end;margin-top:12px;">
               <div class="champ" style="margin:0;flex:1;"><label>Seuil</label><input type="number" min="1" step="1" class="palier-nouveau-seuil" placeholder="ex. 20"></div>
-              <div class="champ" style="margin:0;flex:1;"><label>Prime</label><input type="number" min="0" step="1000" class="palier-nouveau-montant" placeholder="ex. 10000"></div>
+              <div class="champ" style="margin:0;flex:1;"><label>Montant</label><input type="number" min="0" step="1000" class="palier-nouveau-montant" placeholder="ex. 10000"></div>
               <button type="button" class="btn btn-fantome btn-petit palier-ajouter" style="margin-bottom:18px;">+ Ajouter</button>
             </div>
           </div>
@@ -374,14 +378,14 @@
         <div class="entete-admin" style="margin-top:20px;">
           <div>
             <h3 class="comptes-sous-titre" style="margin:0;">Déclaration DOT</h3>
-            <p class="champ-aide" style="margin:4px 0 0;">Calculée à partir de l'onglet Tablettes ; les primes reprennent les mêmes montants que « Mon profil ».</p>
+            <p class="champ-aide" style="margin:4px 0 0;">Calculée à partir de l'onglet Tablettes ; les salaires reprennent les mêmes montants que « Mon profil » (fixe du grade + palier de ventes/locations).</p>
           </div>
           <select id="select-semaine-dot"></select>
         </div>
         <div id="zone-message-dot"></div>
 
         <div id="dot-resume-vide" class="etat-vide cache">
-          <p>Aucune vente/location enregistrée pour cette semaine — le total des primes ne peut pas être calculé (le reste s'affiche quand même ci-dessous).</p>
+          <p>Aucune vente/location enregistrée pour cette semaine — le total des salaires ne peut pas être calculé (le reste s'affiche quand même ci-dessous).</p>
         </div>
         <div style="overflow-x:auto;margin:16px 0 8px;">
           <table class="table-admin">
@@ -436,7 +440,7 @@
         <div class="entete-admin" style="margin-top:36px;">
           <div>
             <h3 style="margin-bottom:2px;">Tableau des salariés</h3>
-            <p style="margin:0;font-size:0.88rem;">Prêt à copier-coller dans le document de la DOT (RUN/FACTURE/VENTE viennent du relevé Tablettes — 0$ si le salarié n'y figure pas). La copie envoie des nombres, et la colonne CA TOTAL REALISE en formule (=RUN+FACTURE+VENTE), sans la ligne de titres.</p>
+            <p style="margin:0;font-size:0.88rem;">Prêt à copier-coller dans le document de la DOT (RUN/FACTURE/VENTE viennent du relevé Tablettes — 0$ si le salarié n'y figure pas). Salaire = fixe du grade + palier de ventes/locations ; Prime = à saisir à la main dans le document si besoin. La copie envoie des nombres, et la colonne CA TOTAL REALISE en formule (=RUN+FACTURE+VENTE), sans la ligne de titres.</p>
           </div>
           <div class="dot-copie-outils">
             <label for="dot-copie-premiere-ligne" class="dot-copie-libelle">Coller à partir de la ligne</label>
@@ -591,7 +595,7 @@
       <div class="entete-admin">
         <div>
           <h2 style="margin-bottom:2px;">Synchronisation Google Sheets</h2>
-          <p style="margin:0;font-size:0.88rem;">Lecture du Sheet de l'agence pour alimenter « Mon profil » (ventes, locations, primes) — réservé à la Direction.</p>
+          <p style="margin:0;font-size:0.88rem;">Lecture du Sheet de l'agence pour alimenter « Mon profil » et la comptabilité (ventes, locations, salaires) — réservé à la Direction.</p>
         </div>
       </div>
 
@@ -608,7 +612,7 @@
            site. -->
       <h3 class="comptes-sous-titre" style="margin-top:34px;">📊 État de la synchronisation</h3>
       <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">
-        Récupère automatiquement, toutes les 20 minutes (+ à la demande ci-dessous), les ventes et locations de chaque membre depuis le Google Sheets de recap (partagé en lecture seule), pour les afficher dans « Mon profil ». Associez chaque ligne au bon compte ci-dessous — l'association se retient ensuite automatiquement (nom du Sheet mémorisé sur le compte).
+        Récupère automatiquement, toutes les 20 minutes (+ à la demande ci-dessous), les ventes et locations de chaque membre depuis le Google Sheets de recap (partagé en lecture seule). Le compte du site est retrouvé tout seul : par l'identité RP de la fiche agent (Ventes &amp; statistiques → Agents) ou par un pseudo identique au nom du Sheet. Une ligne sans compte n'empêche rien pour la comptabilité ; seul « Mon profil » de la personne reste vide tant que sa fiche agent n'existe pas.
       </p>
       <div id="zone-message-sync-sheet"></div>
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
@@ -618,7 +622,7 @@
       <div style="overflow-x:auto;">
         <table class="table-admin">
           <thead>
-            <tr><th>Nom (Sheet)</th><th>Grade (Sheet)</th><th style="text-align:right;">Ventes</th><th style="text-align:right;">Locations</th><th>Compte associé</th></tr>
+            <tr><th>Nom (Sheet)</th><th>Grade (Sheet)</th><th style="text-align:right;">Ventes</th><th style="text-align:right;">Locations</th><th>Compte du site</th></tr>
           </thead>
           <tbody id="corps-table-sync-sheet"><tr><td colspan="5">Chargement…</td></tr></tbody>
         </table>

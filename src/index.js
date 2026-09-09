@@ -1064,6 +1064,7 @@ const COMPTA_ALIAS_NOM = ["nom", "nom de l'employé", "nom du salarié", "employ
 const COMPTA_ALIAS_RUN = ["run", "runs"];
 const COMPTA_ALIAS_FACTURE = ["facture", "factures"];
 const COMPTA_ALIAS_VENTE = ["vente", "ventes"];
+const COMPTA_ALIAS_RANG = ["rang", "grade", "poste", "rôle", "role"];
 
 // Le tableau des salariés (§6.3, "prêt à copier-coller") doit rester
 // cohérent avec le CA Brut : RUN/FACTURE/VENTE viennent du même relevé
@@ -1099,7 +1100,12 @@ async function comptaDotSalaries(env, url, s) {
   const iRun = indexColonneTablette(colonnesNormalisees, COMPTA_ALIAS_RUN);
   const iFacture = indexColonneTablette(colonnesNormalisees, COMPTA_ALIAS_FACTURE);
   const iVente = indexColonneTablette(colonnesNormalisees, COMPTA_ALIAS_VENTE);
+  const iRang = indexColonneTablette(colonnesNormalisees, COMPTA_ALIAS_RANG);
   const normaliser = (v) => String(v == null ? "" : v).trim().toLowerCase();
+
+  // Lignes du relevé déjà attribuées à un agent du référentiel — les autres
+  // seront ajoutées telles quelles à la fin (voir plus bas).
+  const lignesUtilisees = new Set();
 
   const resultat = agents.map((a) => {
     let run = 0, facture = 0, vente = 0, trouveDansTablette = false;
@@ -1110,6 +1116,7 @@ async function comptaDotSalaries(env, url, s) {
       });
       if (ligne) {
         trouveDansTablette = true;
+        lignesUtilisees.add(ligne);
         if (iRun !== -1) run = Math.round(versNombreTablette(ligne[iRun]));
         if (iFacture !== -1) facture = Math.round(versNombreTablette(ligne[iFacture]));
         if (iVente !== -1) vente = Math.round(versNombreTablette(ligne[iVente]));
@@ -1126,8 +1133,45 @@ async function comptaDotSalaries(env, url, s) {
       trouveDansTablette,
       salaireFixe: a.salaireFixe,
       primeTotale: a.primeTotale,
+      // Salaire déclaré à la DOT = fixe du grade + montant du palier de
+      // ventes/locations (ce que le Sheet appelle « prime » est en réalité
+      // un salaire variable).
+      salaireTotal: (a.salaireFixe || 0) + (a.primeTotale || 0),
     };
   });
+
+  // Toute personne présente dans le relevé Tablettes mais absente du
+  // référentiel agents est ajoutée quand même : si elle a facturé cette
+  // semaine-là, elle doit figurer dans la déclaration. Son grade est le rang
+  // indiqué dans le relevé ; le salaire fixe suit le barème de ce grade s'il
+  // existe dans Rémunération (sinon 0) ; la prime est retrouvée dans le Sheet
+  // par le nom, comme pour les autres.
+  if (iNom !== -1) {
+    const tauxR = await env.DB.prepare("SELECT grade, salaire_fixe, salaire_actif FROM stats_taux_commission").all();
+    const tauxParGrade = new Map((tauxR.results || []).map((t) => [normaliser(t.grade), t]));
+    for (const ligne of lignesEmployes) {
+      if (lignesUtilisees.has(ligne)) continue;
+      const nom = String(ligne[iNom] == null ? "" : ligne[iNom]).trim();
+      if (!nom) continue;
+      const grade = iRang !== -1 ? String(ligne[iRang] == null ? "" : ligne[iRang]).trim() : "";
+      const t = tauxParGrade.get(normaliser(grade).replace(/-/g, " ")) || tauxParGrade.get(normaliser(grade));
+      const run = iRun !== -1 ? Math.round(versNombreTablette(ligne[iRun])) : 0;
+      const facture = iFacture !== -1 ? Math.round(versNombreTablette(ligne[iFacture])) : 0;
+      const vente = iVente !== -1 ? Math.round(versNombreTablette(ligne[iVente])) : 0;
+      resultat.push({
+        identite: nom,
+        identiteRp: nom,
+        grade: grade || "—",
+        run, facture, vente,
+        caTotalRealise: run + facture + vente,
+        trouveDansTablette: true,
+        horsReferentiel: true,
+        salaireFixe: t && t.salaire_actif ? (t.salaire_fixe || 0) : 0,
+        primeTotale: primeSheetPour(primesSheet, nom).primeTotale,
+        salaireTotal: (t && t.salaire_actif ? (t.salaire_fixe || 0) : 0) + primeSheetPour(primesSheet, nom).primeTotale,
+      });
+    }
+  }
 
   return json({ agents: resultat, tabletteTrouvee: colonnes.length > 0 });
 }
@@ -1598,32 +1642,49 @@ async function calculerRecapSemaine(env, semaine) {
 // avec sync_sheet_agents — la même source que "Mon profil" — se fait donc
 // par pseudo Discord normalisé (stats_agents.discord_pseudo <->
 // membres.discord_pseudo), le seul champ que les deux univers partagent.
+// Chaque ligne du Sheet est retrouvable par PLUSIEURS clés (toutes
+// normalisées) : le nom écrit dans le Sheet (nom RP, ex. « Lola Finley »),
+// et, si la ligne est reliée à un compte, le pseudo Discord, le pseudo du
+// compte et son nom_sheet. Une ligne du Sheet sans compte relié compte donc
+// quand même : c'est ce qui manquait avant (prime à 0 pour tous les agents
+// dont le compte n'était pas apparié).
 async function primesSheetParPseudo(env) {
   const [lignesR, baremesR] = await Promise.all([
     env.DB.prepare(
-      `SELECT ssa.nb_ventes, ssa.nb_locations, m.discord_pseudo
-       FROM sync_sheet_agents ssa JOIN membres m ON m.id = ssa.membre_id`
+      `SELECT ssa.nom_sheet, ssa.nb_ventes, ssa.nb_locations, m.discord_pseudo, m.pseudo AS membre_pseudo, m.nom_sheet AS membre_nom_sheet
+       FROM sync_sheet_agents ssa LEFT JOIN membres m ON m.id = ssa.membre_id`
     ).all(),
     env.DB.prepare("SELECT * FROM stats_baremes_primes").all(),
   ]);
   const baremes = baremesR.results || [];
   const baremeVentes = baremes.filter((b) => b.type === "vente");
   const baremeLocations = baremes.filter((b) => b.type === "location");
-  const parPseudo = new Map();
+  const parCle = new Map();
   for (const l of lignesR.results || []) {
-    const cle = statsCalc.normaliserTexte(l.discord_pseudo || "");
-    if (!cle) continue;
     const primeVente = statsCalc.montantPalier(baremeVentes, l.nb_ventes);
     const primeLocations = statsCalc.montantPalier(baremeLocations, l.nb_locations);
-    parPseudo.set(cle, {
+    const valeur = {
       ventes: l.nb_ventes || 0,
       locations: l.nb_locations || 0,
       primeVente,
       primeLocations,
       primeTotale: primeVente + primeLocations,
-    });
+    };
+    for (const brut of [l.discord_pseudo, l.nom_sheet, l.membre_pseudo, l.membre_nom_sheet]) {
+      const cle = statsCalc.normaliserTexte(brut || "");
+      if (cle && !parCle.has(cle)) parCle.set(cle, valeur);
+    }
   }
-  return parPseudo;
+  return parCle;
+}
+
+// Retrouve la ligne Sheet d'une personne à partir de n'importe lequel de ses noms.
+function primeSheetPour(primesParCle, ...noms) {
+  for (const n of noms) {
+    const cle = statsCalc.normaliserTexte(n || "");
+    if (cle && primesParCle.has(cle)) return primesParCle.get(cle);
+  }
+  return { ventes: 0, locations: 0, primeVente: 0, primeLocations: 0, primeTotale: 0 };
 }
 
 // Remplace, sur une liste d'agents déjà calculée par calculerRecapSemaine(),
@@ -1633,8 +1694,7 @@ async function primesSheetParPseudo(env) {
 // deux sources dans un même montant).
 function remplacerPrimesParSheet(agents, primesParPseudo) {
   return agents.map((a) => {
-    const cle = statsCalc.normaliserTexte(a.identite || "");
-    const p = primesParPseudo.get(cle) || { ventes: 0, locations: 0, primeVente: 0, primeLocations: 0, primeTotale: 0 };
+    const p = primeSheetPour(primesParPseudo, a.identite, a.identiteRp);
     const salaireVerse = a.totalAVerser - a.primeTotale;
     return {
       ...a,
