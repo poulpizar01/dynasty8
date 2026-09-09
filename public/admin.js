@@ -1239,20 +1239,31 @@ document.getElementById("bouton-parcourir").addEventListener("click", () => {
   document.getElementById("bien-image-fichier").click();
 });
 
+// Chaque photo est redimensionnée/compressée dans le navigateur (léger,
+// garde une taille raisonnable), puis envoyée à /api/biens/photo qui la
+// transmet au stockage externe storage.fbfa.fr et renvoie une URL publique
+// courte — c'est cette URL qui est gardée dans IMAGES_BIEN, jamais l'image
+// elle-même (évite d'alourdir la base de données d'un blob par photo).
 document.getElementById("bien-image-fichier").addEventListener("change", async (ev) => {
   const fichiers = Array.from(ev.target.files || []);
   ev.target.value = ""; // permet de resélectionner le même fichier plus tard si besoin
   const place = MAX_PHOTOS_BIEN - IMAGES_BIEN.length;
+  const boutonParcourir = document.getElementById("bouton-parcourir");
+  boutonParcourir.disabled = true;
+  afficherErreurImages("");
   for (const fichier of fichiers.slice(0, place)) {
     try {
-      ajouterImageBien(await redimensionnerImage(fichier));
+      const image = await redimensionnerImage(fichier);
+      const { url } = await appelAPI("/api/biens/photo", { method: "POST", body: JSON.stringify({ image }) });
+      ajouterImageBien(url);
     } catch (e) {
       afficherErreurImages(e.message);
     }
   }
   if (fichiers.length > place && place > 0) {
-    afficherErreurImages(`Seules les ${place} premières photos ont été ajoutées (limite de 5).`);
+    afficherErreurImages(`Seules les ${place} premières photos ont été ajoutées (limite de ${MAX_PHOTOS_BIEN}).`);
   }
+  redessinerImagesBien(); // remet à jour l'état (activé/désactivé) du bouton "Parcourir"
 });
 
 // ---- barre d'outils de la description (gras / italique / emoji) + aperçu en direct ----

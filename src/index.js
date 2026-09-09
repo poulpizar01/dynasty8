@@ -190,6 +190,7 @@ export default {
       if (chemin === "/api/folkos") return await folkosCallback(url, env);
       if (chemin === "/api/deconnexion") return deconnexion(env);
       if (chemin === "/api/moi") return await moi(request, env);
+      if (chemin === "/api/biens/photo") return await bienPhotoUpload(request, env);
       if (chemin === "/api/biens") return await biens(request, url, env);
       if (chemin === "/api/membres") return await comptes(request, url, env);
       if (chemin === "/api/equipe") return await equipe(env);
@@ -2044,7 +2045,7 @@ function normaliserBien(b) {
   let images = [];
   try {
     const arr = Array.isArray(b.images) ? b.images : JSON.parse(b.images || "[]");
-    images = arr.filter((u) => typeof u === "string" && u.trim()).slice(0, 5).map((u) => u.trim());
+    images = arr.filter((u) => typeof u === "string" && u.trim()).slice(0, 10).map((u) => u.trim());
   } catch (e) {
     images = [];
   }
@@ -2079,6 +2080,55 @@ function normaliserBien(b) {
     vip: VALEURS_VIP.includes(b.vip) ? b.vip : "",
     standing: b.standing ? 1 : 0,
   };
+}
+
+// ---- Upload d'une photo de bien vers le stockage externe storage.fbfa.fr --
+// Remplace le stockage en base (image encodée en base64 directement dans la
+// colonne "images", jusqu'à 2 Mo par photo) : le navigateur redimensionne et
+// compresse déjà l'image (voir redimensionnerImage() dans admin.js) puis
+// l'envoie ici en data: URL ; on la décode et on la transmet telle quelle à
+// l'opérateur, qui renvoie une URL publique courte à stocker à la place. Les
+// biens créés avant ce changement gardent leurs photos en base64 : un data:
+// URL reste un <img src> valide, aucune migration n'est nécessaire.
+async function bienPhotoUpload(request, env) {
+  const s = await session(request, env);
+  if (!s) return json({ erreur: "Non connecté." }, 401);
+  if (!peutGererAnnonces(s)) {
+    return json({ erreur: "Votre grade ne permet pas de gérer les annonces." }, 403);
+  }
+  if (!env.FBFA_STORAGE_TOKEN) {
+    return json({ erreur: "Le stockage des photos n'est pas configuré sur le serveur." }, 500);
+  }
+
+  const b = await request.json().catch(() => null);
+  const dataUrl = b && typeof b.image === "string" ? b.image : "";
+  const correspond = /^data:(image\/[a-zA-Z0-9+.-]+);base64,([a-zA-Z0-9+/=]+)$/.exec(dataUrl);
+  if (!correspond) return json({ erreur: "Image invalide." }, 400);
+  const [, mime, base64] = correspond;
+  const extension = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
+  const octets = Buffer.from(base64, "base64");
+  if (!octets.length) return json({ erreur: "Image invalide." }, 400);
+  if (octets.length > 15 * 1024 * 1024) return json({ erreur: "Image trop volumineuse (15 Mo maximum)." }, 400);
+
+  const cle = `biens/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${extension}`;
+  let reponse;
+  try {
+    reponse = await fetch(`https://storage.fbfa.fr/api/object/${cle}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${env.FBFA_STORAGE_TOKEN}`, "Content-Type": mime },
+      body: octets,
+    });
+  } catch (e) {
+    return json({ erreur: "Service de stockage des photos injoignable. Réessayez." }, 502);
+  }
+  if (!reponse.ok) {
+    return json({ erreur: "Échec de l'envoi de la photo au stockage." }, 502);
+  }
+  const resultat = await reponse.json().catch(() => null);
+  if (!resultat || !resultat.url) {
+    return json({ erreur: "Réponse inattendue du service de stockage." }, 502);
+  }
+  return json({ url: resultat.url });
 }
 
 async function biens(request, url, env) {

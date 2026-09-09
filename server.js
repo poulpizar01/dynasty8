@@ -110,6 +110,8 @@ function construireEnv() {
     FOLKOS_ID_BASE: process.env.FOLKOS_ID_BASE,
     FOLKOS_CLIENT_ID: process.env.FOLKOS_CLIENT_ID,
     FOLKOS_CLIENT_SECRET: process.env.FOLKOS_CLIENT_SECRET,
+    // Stockage externe des photos de biens (storage.fbfa.fr) — voir bienPhotoUpload() dans src/index.js.
+    FBFA_STORAGE_TOKEN: process.env.FBFA_STORAGE_TOKEN,
   };
 }
 
