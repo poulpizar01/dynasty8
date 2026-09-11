@@ -108,9 +108,12 @@ function avecRetourId(sql) {
 }
 
 class Instruction {
-  constructor(sqlBrut) {
+  // `client` : connexion dédiée d'une transaction (voir transaction() plus
+  // bas) ; sans lui, chaque requête prend une connexion libre du pool.
+  constructor(sqlBrut, client) {
     this.sqlBrut = sqlBrut;
     this.valeurs = [];
+    this.client = client || null;
   }
 
   bind(...valeurs) {
@@ -118,21 +121,25 @@ class Instruction {
     return this;
   }
 
+  executant() {
+    return this.client || creerPool();
+  }
+
   async first() {
     const sql = traduireSQL(this.sqlBrut);
-    const r = await creerPool().query(sql, this.valeurs);
+    const r = await this.executant().query(sql, this.valeurs);
     return r.rows[0] || null;
   }
 
   async all() {
     const sql = traduireSQL(this.sqlBrut);
-    const r = await creerPool().query(sql, this.valeurs);
+    const r = await this.executant().query(sql, this.valeurs);
     return { results: r.rows, success: true };
   }
 
   async run() {
     const sql = traduireSQL(avecRetourId(this.sqlBrut));
-    const r = await creerPool().query(sql, this.valeurs);
+    const r = await this.executant().query(sql, this.valeurs);
     const dernierId = estInsert(this.sqlBrut) && r.rows[0] ? r.rows[0].id : undefined;
     return { success: true, meta: { last_row_id: dernierId, changes: r.rowCount } };
   }
@@ -142,6 +149,27 @@ export function creerAdaptateurDB() {
   return {
     prepare(sql) {
       return new Instruction(sql);
+    },
+    // Exécute fn(tx) dans UNE transaction PostgreSQL : tx offre la même API
+    // prepare().bind().first()/all()/run(), mais sur une connexion réservée.
+    // Tout est validé (COMMIT) si fn se termine sans erreur, sinon tout est
+    // annulé (ROLLBACK) et l'erreur est relancée telle quelle. Utilisé là où
+    // plusieurs écritures doivent réussir ou échouer ensemble (ex : une
+    // annonce et le rattachement de ses photos, voir src/medias.js).
+    async transaction(fn) {
+      const client = await creerPool().connect();
+      try {
+        await client.query("BEGIN");
+        const tx = { prepare: (sql) => new Instruction(sql, client) };
+        const resultat = await fn(tx);
+        await client.query("COMMIT");
+        return resultat;
+      } catch (e) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw e;
+      } finally {
+        client.release();
+      }
     },
   };
 }

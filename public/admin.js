@@ -5,9 +5,7 @@
 let SESSION = null; // { pseudo, grade, direction }
 let CACHE_BIENS = [];
 let CACHE_MEMBRES = [];
-let IMAGES_BIEN = []; // photos du bien en cours d'édition (URLs et/ou images importées)
-let PHOTO_PROFIL = ""; // photo de profil en cours d'édition (onglet Mon profil)
-let PHOTO_PROFIL_COMPTE = ""; // photo en cours d'édition dans la modale « Profil public » (Direction, pour un autre membre)
+let IMAGES_BIEN = []; // photos du bien en cours d'édition (URL importées, liens, anciennes images base64)
 let ETAT_INITIAL_BIEN = ""; // instantané du formulaire à l'ouverture, pour détecter les changements non enregistrés
 
 // ---- tableau de bord "Annonces" : recherche, filtres, vue et pagination ----
@@ -425,8 +423,7 @@ async function chargerMonProfil() {
     document.getElementById("profil-poste").value = moiActuel.poste || "";
     document.getElementById("profil-specialite").value = moiActuel.specialite || "";
     document.getElementById("profil-bio").value = moiActuel.bio || "";
-    PHOTO_PROFIL = moiActuel.photo || "";
-    majApercuPhotoProfil();
+    EDITEUR_PHOTO_PROFIL.charger(moiActuel.photo || "");
     majCompteurBioProfil();
     afficherPrimesProfil(moiActuel.primes);
   } catch (e) {
@@ -450,13 +447,107 @@ function afficherPrimesProfil(primes) {
     : "";
 }
 
-function majApercuPhotoProfil() {
-  const apercu = document.getElementById("profil-photo-apercu");
-  apercu.innerHTML = PHOTO_PROFIL
-    ? `<img src="${PHOTO_PROFIL}" alt="Photo de profil">`
-    : `<span>${initialesPseudo(SESSION.pseudo)}</span>`;
-  document.getElementById("bouton-profil-photo-retirer").classList.toggle("cache", !PHOTO_PROFIL);
+// Photo de profil : importée vers le stockage externe dès la sélection (même
+// mécanisme que les photos d'annonces, voir envoyerPhoto()), puis enregistrée
+// avec le reste du profil. Tant que « Enregistrer » n'a pas réussi, l'ancienne
+// photo reste celle du site ; le fichier importé et jamais enregistré est
+// nettoyé par le serveur au bout de 24 h. Un éditeur par emplacement :
+// « Mon profil » et la modale « Profil public » de la Direction.
+function creerEditeurPhotoProfil({ idApercu, idBoutonChanger, idBoutonRetirer, idErreur, bouton, pseudo }) {
+  const etat = { valeur: "", edition: 0, transfert: null, enregistrement: false };
+
+  function afficherErreur(texte) {
+    const zone = document.getElementById(idErreur);
+    zone.textContent = texte || "";
+    zone.classList.toggle("cache", !texte);
+  }
+
+  function dessiner() {
+    const apercu = document.getElementById(idApercu);
+    apercu.textContent = "";
+    if (etat.valeur) {
+      const img = document.createElement("img");
+      img.src = etat.valeur; // propriété DOM : une URL ne peut pas injecter de HTML
+      img.alt = "Photo de profil";
+      apercu.appendChild(img);
+    } else {
+      const initiales = document.createElement("span");
+      initiales.textContent = initialesPseudo(pseudo());
+      apercu.appendChild(initiales);
+    }
+    apercu.style.opacity = etat.transfert ? "0.5" : "";
+    apercu.setAttribute("aria-busy", etat.transfert ? "true" : "false");
+    const changer = document.getElementById(idBoutonChanger);
+    changer.textContent = etat.transfert ? "⏳ Envoi de la photo…" : "📁 Changer la photo";
+    changer.disabled = etat.enregistrement;
+    const retirer = document.getElementById(idBoutonRetirer);
+    retirer.textContent = etat.transfert ? "✕ Annuler l'envoi" : "✕ Retirer la photo";
+    retirer.classList.toggle("cache", !etat.valeur && !etat.transfert);
+    retirer.disabled = etat.enregistrement;
+    const enregistrer = bouton();
+    if (enregistrer && !etat.enregistrement) enregistrer.disabled = !!etat.transfert;
+  }
+
+  function annulerTransfert() {
+    etat.edition++;
+    if (etat.transfert) etat.transfert.abort();
+    etat.transfert = null;
+  }
+
+  return {
+    charger(photo) {
+      annulerTransfert();
+      etat.valeur = photo || "";
+      afficherErreur("");
+      dessiner();
+    },
+    fermer() {
+      annulerTransfert();
+      dessiner();
+    },
+    valeur: () => etat.valeur,
+    enCours: () => !!etat.transfert,
+    debutEnregistrement() { etat.enregistrement = true; dessiner(); },
+    finEnregistrement() { etat.enregistrement = false; dessiner(); },
+    async importer(fichier) {
+      if (etat.enregistrement) return;
+      annulerTransfert(); // une nouvelle sélection remplace l'envoi précédent
+      const edition = etat.edition;
+      const controleur = new AbortController();
+      etat.transfert = controleur;
+      afficherErreur("");
+      dessiner();
+      try {
+        const blob = await redimensionnerImage(fichier, 480, 0.82);
+        if (controleur.signal.aborted) return;
+        const { url } = await envoyerPhoto("/api/profil/photo", blob, controleur.signal);
+        if (edition !== etat.edition) return; // annulé, remplacé ou formulaire rechargé entre-temps
+        etat.valeur = url;
+      } catch (e) {
+        if (edition === etat.edition && e.name !== "AbortError") afficherErreur(e.message);
+      } finally {
+        if (edition === etat.edition) {
+          etat.transfert = null;
+          dessiner();
+        }
+      }
+    },
+    retirer() {
+      if (etat.transfert) annulerTransfert(); // garde la photo actuelle
+      else etat.valeur = "";
+      dessiner();
+    },
+  };
 }
+
+const EDITEUR_PHOTO_PROFIL = creerEditeurPhotoProfil({
+  idApercu: "profil-photo-apercu",
+  idBoutonChanger: "bouton-profil-photo",
+  idBoutonRetirer: "bouton-profil-photo-retirer",
+  idErreur: "erreur-profil-photo",
+  bouton: () => document.getElementById("bouton-enregistrer-profil"),
+  pseudo: () => (SESSION ? SESSION.pseudo : "?"),
+});
 
 function majCompteurBioProfil() {
   const n = document.getElementById("profil-bio").value.length;
@@ -469,33 +560,26 @@ document.getElementById("bouton-profil-photo").addEventListener("click", () => {
   document.getElementById("profil-photo-fichier").click();
 });
 
-document.getElementById("profil-photo-fichier").addEventListener("change", async (ev) => {
+document.getElementById("profil-photo-fichier").addEventListener("change", (ev) => {
   const fichier = (ev.target.files || [])[0];
   ev.target.value = ""; // permet de resélectionner le même fichier plus tard si besoin
-  if (!fichier) return;
-  const erreur = document.getElementById("erreur-profil-photo");
-  erreur.classList.add("cache");
-  try {
-    PHOTO_PROFIL = await redimensionnerImage(fichier, 480, 0.82);
-    majApercuPhotoProfil();
-  } catch (e) {
-    erreur.textContent = e.message;
-    erreur.classList.remove("cache");
-  }
+  if (fichier) EDITEUR_PHOTO_PROFIL.importer(fichier);
 });
 
-document.getElementById("bouton-profil-photo-retirer").addEventListener("click", () => {
-  PHOTO_PROFIL = "";
-  majApercuPhotoProfil();
-});
+document.getElementById("bouton-profil-photo-retirer").addEventListener("click", () => EDITEUR_PHOTO_PROFIL.retirer());
 
 document.getElementById("formulaire-profil").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   afficherMessage("zone-message-profil", "", null);
+  if (EDITEUR_PHOTO_PROFIL.enCours()) {
+    afficherMessage("zone-message-profil", "Attendez la fin de l'envoi de la photo avant d'enregistrer.", "erreur");
+    return;
+  }
   const bouton = document.getElementById("bouton-enregistrer-profil");
   const texteInitial = bouton.textContent;
   bouton.disabled = true;
   bouton.textContent = "Enregistrement…";
+  EDITEUR_PHOTO_PROFIL.debutEnregistrement();
   try {
     await appelAPI("/api/moi", {
       method: "PUT",
@@ -503,7 +587,7 @@ document.getElementById("formulaire-profil").addEventListener("submit", async (e
         poste: document.getElementById("profil-poste").value.trim(),
         specialite: document.getElementById("profil-specialite").value.trim(),
         bio: document.getElementById("profil-bio").value.trim(),
-        photo: PHOTO_PROFIL,
+        photo: EDITEUR_PHOTO_PROFIL.valeur(),
       }),
     });
     afficherMessage("zone-message-profil", "Profil enregistré ✓ Les changements sont déjà visibles sur la page équipe du site.", "succes");
@@ -512,6 +596,7 @@ document.getElementById("formulaire-profil").addEventListener("submit", async (e
   } finally {
     bouton.disabled = false;
     bouton.textContent = texteInitial;
+    EDITEUR_PHOTO_PROFIL.finEnregistrement();
   }
 });
 
@@ -953,7 +1038,7 @@ function biensFiltres() {
 // ---- rendu : tableau, grille et pagination -------------------------------
 
 function ligneVignetteHTML(b) {
-  return `<div class="table-biens-vignette">${b.images && b.images[0] ? `<img src="${b.images[0]}" alt="">` : ""}</div>`;
+  return `<div class="table-biens-vignette">${b.images && b.images[0] ? `<img src="${echapper(b.images[0])}" alt="">` : ""}</div>`;
 }
 
 function rendreTableBiens(liste) {
@@ -984,7 +1069,7 @@ function rendreGrilleBiens(liste) {
     return `
     <article class="carte-admin-bien">
       <div class="carte-admin-bien-visuel">
-        ${b.images && b.images[0] ? `<img src="${b.images[0]}" alt="" loading="lazy">` : ""}
+        ${b.images && b.images[0] ? `<img src="${echapper(b.images[0])}" alt="" loading="lazy">` : ""}
         ${b.coup_de_coeur ? '<span class="carte-admin-bien-fav"><svg class="ico"><use href="#ico-star"></use></svg> Coup de cœur</span>' : ""}
         <span class="carte-admin-bien-categorie">${b.standing ? "Exclusif" : (ETIQUETTES_CATEGORIE[b.categorie] || b.categorie)}</span>
       </div>
@@ -1153,69 +1238,212 @@ document.getElementById("bien-dispo-location").addEventListener("change", (ev) =
   document.getElementById("ligne-bien-prix-location").classList.toggle("cache", !ev.target.checked);
 });
 
-// ---- photos : ajout par URL ou depuis l'ordinateur, prévisualisation ------
+// ---- photos : import vers le stockage externe, ajout par lien, aperçu ------
 
+// Formats sources acceptés ; le navigateur les convertit ensuite en JPEG.
+const TYPES_PHOTO_ACCEPTES = ["image/jpeg", "image/png", "image/webp"];
+const RE_LIEN_PHOTO = /^https?:\/\/[^\s"'<>\\`]+$/i; // même règle que le serveur (valeurImageValide, src/index.js)
+
+// Réduit et compresse la photo dans le navigateur et renvoie un Blob JPEG,
+// envoyé tel quel (en binaire) au serveur. Le fond est peint en blanc pour
+// qu'un PNG transparent ne devienne pas noir une fois converti.
 function redimensionnerImage(fichier, largeurMax = 1280, qualite = 0.72) {
   return new Promise((resolve, reject) => {
-    if (!fichier.type.startsWith("image/")) return reject(new Error(`« ${fichier.name} » n'est pas une image.`));
+    const typeConnu = TYPES_PHOTO_ACCEPTES.includes(fichier.type) || (!fichier.type && /\.(jpe?g|png|webp)$/i.test(fichier.name));
+    if (!typeConnu) return reject(new Error(`« ${fichier.name} » : formats acceptés JPG, PNG ou WEBP.`));
     if (fichier.size > 15 * 1024 * 1024) return reject(new Error(`« ${fichier.name} » dépasse 15 Mo.`));
-    const lecteur = new FileReader();
-    lecteur.onerror = () => reject(new Error(`Impossible de lire « ${fichier.name} ».`));
-    lecteur.onload = () => {
-      const image = new Image();
-      image.onerror = () => reject(new Error(`Fichier image invalide : « ${fichier.name} ».`));
-      image.onload = () => {
-        let { width, height } = image;
-        if (width > largeurMax) {
-          height = Math.round(height * (largeurMax / width));
-          width = largeurMax;
-        }
-        const toile = document.createElement("canvas");
-        toile.width = width;
-        toile.height = height;
-        toile.getContext("2d").drawImage(image, 0, 0, width, height);
-        resolve(toile.toDataURL("image/jpeg", qualite));
-      };
-      image.src = lecteur.result;
+    const adresse = URL.createObjectURL(fichier);
+    const image = new Image();
+    image.onerror = () => {
+      URL.revokeObjectURL(adresse);
+      reject(new Error(`Fichier image invalide : « ${fichier.name} ».`));
     };
-    lecteur.readAsDataURL(fichier);
+    image.onload = () => {
+      URL.revokeObjectURL(adresse);
+      let width = image.naturalWidth;
+      let height = image.naturalHeight;
+      if (width > largeurMax) {
+        height = Math.round(height * (largeurMax / width));
+        width = largeurMax;
+      }
+      const toile = document.createElement("canvas");
+      toile.width = width;
+      toile.height = height;
+      const contexte = toile.getContext("2d");
+      contexte.fillStyle = "#ffffff";
+      contexte.fillRect(0, 0, width, height);
+      contexte.drawImage(image, 0, 0, width, height);
+      toile.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error(`Impossible de préparer « ${fichier.name} ».`))),
+        "image/jpeg",
+        qualite
+      );
+    };
+    image.src = adresse;
   });
 }
 
-function afficherErreurImages(texte) {
-  const erreur = document.getElementById("erreur-bien-images");
-  if (!texte) { erreur.classList.add("cache"); return; }
-  erreur.textContent = texte;
-  erreur.classList.remove("cache");
+// Envoie une photo préparée à /api/biens/photo ou /api/profil/photo, qui la
+// contrôle, la transmet à storage.fbfa.fr et renvoie son URL publique.
+async function envoyerPhoto(route, blob, signal) {
+  try {
+    return await appelAPI(route, {
+      method: "POST",
+      headers: { "Content-Type": blob.type || "image/jpeg" },
+      body: blob,
+      signal,
+    });
+  } catch (e) {
+    if (e.name === "AbortError") throw e;
+    if (!e.status) throw new Error("Connexion au serveur perdue pendant l'envoi de la photo. Réessayez.");
+    if (e.status === 413 && !(e.corps && e.corps.erreur)) throw new Error("Photo trop volumineuse.");
+    throw e;
+  }
 }
 
 // Nombre maximum de photos par annonce (la même limite est vérifiée côté serveur, src/index.js).
 const MAX_PHOTOS_BIEN = 10;
 
-function redessinerImagesBien() {
-  const grille = document.getElementById("bien-images-grille");
-  grille.innerHTML = IMAGES_BIEN.map((src, i) => `
-    <div class="bien-images-vignette">
-      <img src="${src}" alt="Photo ${i + 1} du bien">
-      ${i === 0 ? '<span class="bien-images-principale">Principale</span>' : ""}
-      <button type="button" class="bien-images-retirer" data-retirer="${i}" aria-label="Retirer cette photo">✕</button>
-    </div>`).join("");
-  grille.querySelectorAll("[data-retirer]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      IMAGES_BIEN.splice(Number(btn.dataset.retirer), 1);
-      redessinerImagesBien();
-    });
-  });
-  document.getElementById("bien-images-compteur").textContent = IMAGES_BIEN.length + " / " + MAX_PHOTOS_BIEN;
-  const complet = IMAGES_BIEN.length >= MAX_PHOTOS_BIEN;
-  document.getElementById("bouton-parcourir").disabled = complet;
-  afficherErreurImages(complet ? "Limite de " + MAX_PHOTOS_BIEN + " photos atteinte. Retirez une photo pour en ajouter une autre." : "");
+// Envois de la modale annonce. EDITION_BIEN change à chaque ouverture ET
+// fermeture : un envoi qui se termine après coup (modale fermée, ou rouverte
+// sur une autre annonce) le voit et n'ajoute rien. Le fichier déjà reçu par
+// le serveur reste alors temporaire et sera nettoyé automatiquement.
+let EDITION_BIEN = 0;
+let TRANSFERTS_BIEN = []; // { nom, fichier, controleur, enCours } — traités un par un, dans l'ordre
+let ERREURS_IMAGES_BIEN = []; // gardées visibles jusqu'à la prochaine ouverture de la modale
+let FILE_BIEN_ACTIVE = false;
+let SAUVEGARDE_BIEN_EN_COURS = false;
+
+function afficherErreursImagesBien() {
+  const zone = document.getElementById("erreur-bien-images");
+  const lignes = ERREURS_IMAGES_BIEN.slice(-5);
+  if (IMAGES_BIEN.length + TRANSFERTS_BIEN.length >= MAX_PHOTOS_BIEN) {
+    lignes.push(`Limite de ${MAX_PHOTOS_BIEN} photos atteinte. Retirez une photo pour en ajouter une autre.`);
+  }
+  zone.style.whiteSpace = "pre-line";
+  zone.textContent = lignes.join("\n");
+  zone.classList.toggle("cache", !lignes.length);
 }
 
-function ajouterImageBien(valeur) {
-  if (IMAGES_BIEN.length >= MAX_PHOTOS_BIEN) return;
-  IMAGES_BIEN.push(valeur);
+function ajouterErreurImagesBien(texte) {
+  ERREURS_IMAGES_BIEN.push(texte);
+  afficherErreursImagesBien();
+}
+
+function creerBoutonVignette(libelle, surClic) {
+  const bouton = document.createElement("button");
+  bouton.type = "button";
+  bouton.className = "bien-images-retirer";
+  bouton.textContent = "✕";
+  bouton.setAttribute("aria-label", libelle);
+  bouton.title = libelle;
+  bouton.addEventListener("click", surClic);
+  return bouton;
+}
+
+function redessinerImagesBien() {
+  const grille = document.getElementById("bien-images-grille");
+  grille.textContent = "";
+  IMAGES_BIEN.forEach((src, i) => {
+    const vignette = document.createElement("div");
+    vignette.className = "bien-images-vignette";
+    const img = document.createElement("img");
+    img.src = src; // propriété DOM : une URL ne peut pas injecter de HTML
+    img.alt = `Photo ${i + 1} du bien`;
+    vignette.appendChild(img);
+    if (i === 0) {
+      const principale = document.createElement("span");
+      principale.className = "bien-images-principale";
+      principale.textContent = "Principale";
+      vignette.appendChild(principale);
+    }
+    const retirer = creerBoutonVignette("Retirer cette photo", () => {
+      if (SAUVEGARDE_BIEN_EN_COURS) return;
+      IMAGES_BIEN.splice(i, 1);
+      redessinerImagesBien();
+    });
+    retirer.disabled = SAUVEGARDE_BIEN_EN_COURS;
+    vignette.appendChild(retirer);
+    grille.appendChild(vignette);
+  });
+  TRANSFERTS_BIEN.forEach((t) => {
+    const vignette = document.createElement("div");
+    vignette.className = "bien-images-vignette";
+    vignette.setAttribute("aria-busy", "true");
+    const texte = document.createElement("div");
+    texte.style.cssText = "position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px;text-align:center;font-size:0.68rem;line-height:1.25;overflow:hidden;";
+    const etat = document.createElement("strong");
+    etat.textContent = t.enCours ? "⏳ Envoi…" : "En attente";
+    const nom = document.createElement("span");
+    nom.textContent = t.nom;
+    nom.style.cssText = "opacity:0.7;word-break:break-all;";
+    texte.append(etat, nom);
+    vignette.appendChild(texte);
+    vignette.appendChild(creerBoutonVignette("Annuler l'envoi de cette photo", () => annulerTransfertBien(t)));
+    grille.appendChild(vignette);
+  });
+
+  const n = TRANSFERTS_BIEN.length;
+  document.getElementById("bien-images-compteur").textContent =
+    IMAGES_BIEN.length + " / " + MAX_PHOTOS_BIEN + (n ? ` · ${n} en cours d'envoi` : "");
+  const bloque = IMAGES_BIEN.length + n >= MAX_PHOTOS_BIEN || SAUVEGARDE_BIEN_EN_COURS;
+  document.getElementById("bouton-parcourir").disabled = bloque;
+  document.getElementById("bouton-ajouter-url").disabled = bloque;
+  document.getElementById("bien-image-url").disabled = bloque;
+  if (!SAUVEGARDE_BIEN_EN_COURS) {
+    const enregistrer = document.querySelector('#formulaire-bien button[type="submit"]');
+    enregistrer.disabled = n > 0;
+    enregistrer.title = n > 0 ? "Attendez la fin de l'envoi des photos" : "";
+  }
+  afficherErreursImagesBien();
+}
+
+function annulerTransfertBien(t) {
+  t.controleur.abort();
+  TRANSFERTS_BIEN = TRANSFERTS_BIEN.filter((x) => x !== t);
   redessinerImagesBien();
+}
+
+// À l'ouverture et à la fermeture de la modale : annule les envois en cours.
+function reinitialiserTransfertsBien() {
+  EDITION_BIEN++;
+  TRANSFERTS_BIEN.forEach((t) => t.controleur.abort());
+  TRANSFERTS_BIEN = [];
+  ERREURS_IMAGES_BIEN = [];
+}
+
+// File d'envoi : un seul fichier transféré à la fois, les autres attendent.
+async function traiterFileBien() {
+  if (FILE_BIEN_ACTIVE) return;
+  FILE_BIEN_ACTIVE = true;
+  const edition = EDITION_BIEN;
+  try {
+    while (edition === EDITION_BIEN && TRANSFERTS_BIEN.length) {
+      const t = TRANSFERTS_BIEN[0];
+      t.enCours = true;
+      redessinerImagesBien();
+      try {
+        const blob = await redimensionnerImage(t.fichier);
+        if (t.controleur.signal.aborted) continue;
+        const { url } = await envoyerPhoto("/api/biens/photo", blob, t.controleur.signal);
+        if (edition !== EDITION_BIEN || t.controleur.signal.aborted) continue;
+        if (IMAGES_BIEN.length < MAX_PHOTOS_BIEN) IMAGES_BIEN.push(url);
+      } catch (e) {
+        if (edition === EDITION_BIEN && e.name !== "AbortError") {
+          ajouterErreurImagesBien(e.message.includes(`« ${t.nom} »`) ? e.message : `« ${t.nom} » : ${e.message}`);
+        }
+      } finally {
+        if (edition === EDITION_BIEN) {
+          TRANSFERTS_BIEN = TRANSFERTS_BIEN.filter((x) => x !== t);
+          redessinerImagesBien();
+        }
+      }
+    }
+  } finally {
+    FILE_BIEN_ACTIVE = false;
+    // La modale a été rouverte pendant un envoi annulé : on traite la nouvelle file.
+    if (edition !== EDITION_BIEN && TRANSFERTS_BIEN.length) traiterFileBien();
+  }
 }
 
 // Ajout d'une photo par lien (indispensable depuis l'ordinateur en jeu, où le
@@ -1223,12 +1451,16 @@ function ajouterImageBien(valeur) {
 function ajouterImageParLien() {
   const champ = document.getElementById("bien-image-url");
   const url = (champ.value || "").trim();
-  if (!url) return;
-  if (!/^https?:\/\/\S+$/i.test(url)) { afficherErreurImages("Le lien doit commencer par http:// ou https://"); return; }
-  if (IMAGES_BIEN.length >= MAX_PHOTOS_BIEN) return;
-  afficherErreurImages("");
-  ajouterImageBien(url);
+  if (!url || SAUVEGARDE_BIEN_EN_COURS) return;
+  if (url.length > 2048 || !RE_LIEN_PHOTO.test(url)) {
+    ajouterErreurImagesBien("Le lien doit commencer par http:// ou https:// et ne contenir ni espace ni guillemet.");
+    return;
+  }
+  if (IMAGES_BIEN.length + TRANSFERTS_BIEN.length >= MAX_PHOTOS_BIEN) { afficherErreursImagesBien(); return; }
+  if (IMAGES_BIEN.includes(url)) { ajouterErreurImagesBien("Cette photo figure déjà dans l'annonce."); return; }
+  IMAGES_BIEN.push(url);
   champ.value = "";
+  redessinerImagesBien();
 }
 document.getElementById("bouton-ajouter-url").addEventListener("click", ajouterImageParLien);
 document.getElementById("bien-image-url").addEventListener("keydown", (ev) => {
@@ -1239,31 +1471,23 @@ document.getElementById("bouton-parcourir").addEventListener("click", () => {
   document.getElementById("bien-image-fichier").click();
 });
 
-// Chaque photo est redimensionnée/compressée dans le navigateur (léger,
-// garde une taille raisonnable), puis envoyée à /api/biens/photo qui la
-// transmet au stockage externe storage.fbfa.fr et renvoie une URL publique
-// courte — c'est cette URL qui est gardée dans IMAGES_BIEN, jamais l'image
-// elle-même (évite d'alourdir la base de données d'un blob par photo).
-document.getElementById("bien-image-fichier").addEventListener("change", async (ev) => {
+// Chaque photo est redimensionnée/compressée dans le navigateur, puis
+// envoyée à /api/biens/photo qui renvoie une URL publique courte — c'est
+// cette URL qui est gardée dans IMAGES_BIEN, jamais l'image elle-même.
+document.getElementById("bien-image-fichier").addEventListener("change", (ev) => {
   const fichiers = Array.from(ev.target.files || []);
   ev.target.value = ""; // permet de resélectionner le même fichier plus tard si besoin
-  const place = MAX_PHOTOS_BIEN - IMAGES_BIEN.length;
-  const boutonParcourir = document.getElementById("bouton-parcourir");
-  boutonParcourir.disabled = true;
-  afficherErreurImages("");
-  for (const fichier of fichiers.slice(0, place)) {
-    try {
-      const image = await redimensionnerImage(fichier);
-      const { url } = await appelAPI("/api/biens/photo", { method: "POST", body: JSON.stringify({ image }) });
-      ajouterImageBien(url);
-    } catch (e) {
-      afficherErreurImages(e.message);
-    }
+  if (!fichiers.length || SAUVEGARDE_BIEN_EN_COURS) return;
+  const place = MAX_PHOTOS_BIEN - IMAGES_BIEN.length - TRANSFERTS_BIEN.length;
+  if (place <= 0) { afficherErreursImagesBien(); return; }
+  if (fichiers.length > place) {
+    ajouterErreurImagesBien(`Seules les ${place} premières photos sélectionnées ont été retenues (limite de ${MAX_PHOTOS_BIEN}).`);
   }
-  if (fichiers.length > place && place > 0) {
-    afficherErreurImages(`Seules les ${place} premières photos ont été ajoutées (limite de ${MAX_PHOTOS_BIEN}).`);
-  }
-  redessinerImagesBien(); // remet à jour l'état (activé/désactivé) du bouton "Parcourir"
+  fichiers.slice(0, place).forEach((fichier) => {
+    TRANSFERTS_BIEN.push({ nom: fichier.name, fichier, controleur: new AbortController(), enCours: false });
+  });
+  redessinerImagesBien();
+  traiterFileBien();
 });
 
 // ---- barre d'outils de la description (gras / italique / emoji) + aperçu en direct ----
@@ -1388,6 +1612,8 @@ function ouvrirModaleBien(id) {
   document.getElementById("bouton-supprimer-bien").classList.toggle("cache", !bien);
   document.querySelectorAll("#formulaire-bien .champ-erreur").forEach((p) => p.classList.add("cache"));
   afficherMessage("zone-message-modale-bien", "", null);
+  reinitialiserTransfertsBien();
+  document.getElementById("bien-image-url").value = "";
   IMAGES_BIEN = bien && bien.images ? bien.images.slice(0, MAX_PHOTOS_BIEN) : [];
   redessinerImagesBien();
   document.getElementById("modale-bien").classList.remove("cache");
@@ -1396,11 +1622,17 @@ function ouvrirModaleBien(id) {
 
 function fermerModaleBien() {
   fermerSelectOuvert();
+  reinitialiserTransfertsBien();
+  redessinerImagesBien();
   document.getElementById("modale-bien").classList.add("cache");
 }
 
 async function demanderFermetureModaleBien() {
-  if (etatFormulaireBien() !== ETAT_INITIAL_BIEN) {
+  if (SAUVEGARDE_BIEN_EN_COURS) return;
+  if (TRANSFERTS_BIEN.length) {
+    const ok = await confirmerAction("Des photos sont encore en cours d'envoi : fermer maintenant annule ces envois, et les modifications non enregistrées seront perdues.", "Fermer sans enregistrer ?");
+    if (!ok) return;
+  } else if (etatFormulaireBien() !== ETAT_INITIAL_BIEN) {
     const ok = await confirmerAction("Les modifications saisies seront perdues si vous fermez maintenant.", "Fermer sans enregistrer ?");
     if (!ok) return;
   }
@@ -1451,6 +1683,10 @@ document.getElementById("formulaire-bien").addEventListener("submit", async (ev)
     afficherMessage("zone-message-modale-bien", "Corrigez les champs indiqués en rouge avant d'enregistrer.", "erreur");
     return;
   }
+  if (TRANSFERTS_BIEN.length) {
+    afficherMessage("zone-message-modale-bien", "Attendez la fin de l'envoi des photos avant d'enregistrer.", "erreur");
+    return;
+  }
 
   const id = document.getElementById("bien-id").value;
   const categorie = document.getElementById("bien-categorie").value;
@@ -1478,6 +1714,9 @@ document.getElementById("formulaire-bien").addEventListener("submit", async (ev)
   const texteInitial = boutonEnregistrer.textContent;
   boutonEnregistrer.disabled = true;
   boutonEnregistrer.textContent = "Enregistrement…";
+  SAUVEGARDE_BIEN_EN_COURS = true; // bloque imports, ajouts par lien et retraits pendant l'envoi du formulaire
+  redessinerImagesBien();
+  const edition = EDITION_BIEN;
   try {
     if (id) {
       await appelAPI("/api/biens?id=" + id, { method: "PUT", body: JSON.stringify(payload) });
@@ -1487,12 +1726,13 @@ document.getElementById("formulaire-bien").addEventListener("submit", async (ev)
     ETAT_INITIAL_BIEN = etatFormulaireBien();
     afficherMessage("zone-message-modale-bien", id ? "Bien mis à jour ✓" : "Bien ajouté avec succès ✓", "succes");
     await chargerTableBiens();
-    setTimeout(fermerModaleBien, 800);
+    setTimeout(() => { if (edition === EDITION_BIEN) fermerModaleBien(); }, 800);
   } catch (e) {
     afficherMessage("zone-message-modale-bien", e.message, "erreur");
   } finally {
-    boutonEnregistrer.disabled = false;
+    SAUVEGARDE_BIEN_EN_COURS = false;
     boutonEnregistrer.textContent = texteInitial;
+    redessinerImagesBien(); // réactive le bouton (sauf envoi de photo en cours)
   }
 });
 
@@ -2316,25 +2556,30 @@ function ouvrirModaleProfilCompte(id) {
   document.getElementById("profil-compte-poste").value = m.poste || "";
   document.getElementById("profil-compte-specialite").value = m.specialite || "";
   document.getElementById("profil-compte-bio").value = m.bio || "";
-  PHOTO_PROFIL_COMPTE = m.photo || "";
-  majApercuPhotoProfilCompte();
+  EDITEUR_PHOTO_PROFIL_COMPTE.charger(m.photo || "");
   majCompteurBioProfilCompte();
   afficherMessage("zone-message-modale-profil-compte", "", null);
   document.getElementById("modale-profil-compte").classList.remove("cache");
 }
 
 function fermerModaleProfilCompte() {
+  // Annule un envoi de photo en cours : terminé après coup, il ne pourra pas
+  // s'afficher sur le profil d'un autre membre ouvert entre-temps.
+  EDITEUR_PHOTO_PROFIL_COMPTE.fermer();
   document.getElementById("modale-profil-compte").classList.add("cache");
 }
 
-function majApercuPhotoProfilCompte() {
-  const apercu = document.getElementById("profil-compte-photo-apercu");
-  const m = CACHE_MEMBRES.find((x) => x.id === Number(document.getElementById("profil-compte-id").value));
-  apercu.innerHTML = PHOTO_PROFIL_COMPTE
-    ? `<img src="${PHOTO_PROFIL_COMPTE}" alt="Photo de profil">`
-    : `<span>${initialesPseudo(m ? m.pseudo : "?")}</span>`;
-  document.getElementById("bouton-profil-compte-photo-retirer").classList.toggle("cache", !PHOTO_PROFIL_COMPTE);
-}
+const EDITEUR_PHOTO_PROFIL_COMPTE = creerEditeurPhotoProfil({
+  idApercu: "profil-compte-photo-apercu",
+  idBoutonChanger: "bouton-profil-compte-photo",
+  idBoutonRetirer: "bouton-profil-compte-photo-retirer",
+  idErreur: "erreur-profil-compte-photo",
+  bouton: () => document.querySelector('#formulaire-profil-compte button[type="submit"]'),
+  pseudo: () => {
+    const m = CACHE_MEMBRES.find((x) => x.id === Number(document.getElementById("profil-compte-id").value));
+    return m ? m.pseudo : "?";
+  },
+});
 
 function majCompteurBioProfilCompte() {
   const n = document.getElementById("profil-compte-bio").value.length;
@@ -2350,34 +2595,27 @@ document.getElementById("bouton-profil-compte-photo").addEventListener("click", 
   document.getElementById("profil-compte-photo-fichier").click();
 });
 
-document.getElementById("profil-compte-photo-fichier").addEventListener("change", async (ev) => {
+document.getElementById("profil-compte-photo-fichier").addEventListener("change", (ev) => {
   const fichier = (ev.target.files || [])[0];
   ev.target.value = "";
-  if (!fichier) return;
-  const erreur = document.getElementById("erreur-profil-compte-photo");
-  erreur.classList.add("cache");
-  try {
-    PHOTO_PROFIL_COMPTE = await redimensionnerImage(fichier, 480, 0.82);
-    majApercuPhotoProfilCompte();
-  } catch (e) {
-    erreur.textContent = e.message;
-    erreur.classList.remove("cache");
-  }
+  if (fichier) EDITEUR_PHOTO_PROFIL_COMPTE.importer(fichier);
 });
 
-document.getElementById("bouton-profil-compte-photo-retirer").addEventListener("click", () => {
-  PHOTO_PROFIL_COMPTE = "";
-  majApercuPhotoProfilCompte();
-});
+document.getElementById("bouton-profil-compte-photo-retirer").addEventListener("click", () => EDITEUR_PHOTO_PROFIL_COMPTE.retirer());
 
 document.getElementById("formulaire-profil-compte").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   afficherMessage("zone-message-modale-profil-compte", "", null);
+  if (EDITEUR_PHOTO_PROFIL_COMPTE.enCours()) {
+    afficherMessage("zone-message-modale-profil-compte", "Attendez la fin de l'envoi de la photo avant d'enregistrer.", "erreur");
+    return;
+  }
   const id = document.getElementById("profil-compte-id").value;
   const bouton = document.querySelector('#formulaire-profil-compte button[type="submit"]');
   const texteInitial = bouton.textContent;
   bouton.disabled = true;
   bouton.textContent = "Enregistrement…";
+  EDITEUR_PHOTO_PROFIL_COMPTE.debutEnregistrement();
   try {
     await appelAPI("/api/membres?id=" + id, {
       method: "PATCH",
@@ -2385,9 +2623,10 @@ document.getElementById("formulaire-profil-compte").addEventListener("submit", a
         poste: document.getElementById("profil-compte-poste").value.trim(),
         specialite: document.getElementById("profil-compte-specialite").value.trim(),
         bio: document.getElementById("profil-compte-bio").value.trim(),
-        photo: PHOTO_PROFIL_COMPTE,
+        photo: EDITEUR_PHOTO_PROFIL_COMPTE.valeur(),
       }),
     });
+    EDITEUR_PHOTO_PROFIL_COMPTE.finEnregistrement();
     fermerModaleProfilCompte();
     chargerTableMembres();
   } catch (e) {
@@ -2395,6 +2634,7 @@ document.getElementById("formulaire-profil-compte").addEventListener("submit", a
   } finally {
     bouton.disabled = false;
     bouton.textContent = texteInitial;
+    EDITEUR_PHOTO_PROFIL_COMPTE.finEnregistrement();
   }
 });
 

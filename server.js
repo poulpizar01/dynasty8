@@ -12,6 +12,8 @@ import { fileURLToPath } from "node:url";
 import worker from "./src/index.js";
 import { creerPool, creerAdaptateurDB } from "./src/db-pg.js";
 import { synchroniserSheetSansErreur } from "./src/google-sheets.js";
+import { lireCorpsLimite, limiteCorpsPour, ErreurCorpsTropGros } from "./src/corps-requete.js";
+import { lireConfigMedias, creerClientDepuisConfig, nettoyerMedias } from "./src/medias.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -110,9 +112,55 @@ function construireEnv() {
     FOLKOS_ID_BASE: process.env.FOLKOS_ID_BASE,
     FOLKOS_CLIENT_ID: process.env.FOLKOS_CLIENT_ID,
     FOLKOS_CLIENT_SECRET: process.env.FOLKOS_CLIENT_SECRET,
-    // Stockage externe des photos de biens (storage.fbfa.fr) — voir bienPhotoUpload() dans src/index.js.
+    // Stockage externe des photos (storage.fbfa.fr) — voir src/medias.js.
+    // Le jeton reste côté serveur : jamais renvoyé au navigateur ni journalisé.
     FBFA_STORAGE_TOKEN: process.env.FBFA_STORAGE_TOKEN,
+    FBFA_STORAGE_BASE: process.env.FBFA_STORAGE_BASE,
+    FBFA_STORAGE_PREFIXE: process.env.FBFA_STORAGE_PREFIXE,
+    FBFA_STORAGE_DELAI_MS: process.env.FBFA_STORAGE_DELAI_MS,
+    FBFA_PHOTO_TAILLE_MAX: process.env.FBFA_PHOTO_TAILLE_MAX,
+    FBFA_IMPORTS_EN_ATTENTE_MAX: process.env.FBFA_IMPORTS_EN_ATTENTE_MAX,
+    FBFA_NETTOYAGE: process.env.FBFA_NETTOYAGE,
+    FBFA_NETTOYAGE_DELAI_HEURES: process.env.FBFA_NETTOYAGE_DELAI_HEURES,
   };
+}
+
+// Nettoyage différé des photos (imports abandonnés, photos retirées) : voir
+// nettoyerMedias() dans src/medias.js. FBFA_NETTOYAGE vaut « simulation » par
+// défaut : la tâche journalise ce qu'elle FERAIT, sans rien écrire ni
+// supprimer. « actif » applique réellement, « desactive » coupe la tâche.
+const INTERVALLE_NETTOYAGE_MEDIAS_MS = 60 * 60 * 1000;
+async function nettoyerMediasSansErreur() {
+  const env = construireEnv();
+  const config = lireConfigMedias(env);
+  if (config.modeNettoyage === "desactive") return;
+  if (config.modeNettoyage === "actif" && !config.token) {
+    console.error("[medias] nettoyage actif demandé mais FBFA_STORAGE_TOKEN absent : passe ignorée.");
+    return;
+  }
+  try {
+    const rapport = await nettoyerMedias({
+      db: env.DB,
+      client: creerClientDepuisConfig(config),
+      mode: config.modeNettoyage,
+      delaiSecondes: config.delaiNettoyageHeures * 3600,
+    });
+    const total = rapport.abandonnes.length + rapport.suppressions.length + rapport.reactives.length + rapport.conflits.length + rapport.erreurs.length;
+    if (total) {
+      console.log(
+        `[medias] nettoyage (${rapport.mode}) : ${rapport.abandonnes.length} import(s) abandonné(s), ` +
+        `${rapport.suppressions.length} suppression(s)${rapport.mode === "simulation" ? " prévue(s)" : ""}, ` +
+        `${rapport.reactives.length} réactivé(s), ${rapport.conflits.length} conflit(s), ${rapport.erreurs.length} erreur(s)` +
+        (rapport.interrompu ? ` — interrompu (${rapport.interrompu})` : "")
+      );
+    }
+  } catch (e) {
+    console.error("[medias] nettoyage impossible :", (e && e.message) || e);
+  }
+}
+function demarrerNettoyageMedias() {
+  nettoyerMediasSansErreur();
+  setInterval(nettoyerMediasSansErreur, INTERVALLE_NETTOYAGE_MEDIAS_MS);
 }
 
 // Synchro Google Sheets ("Mon profil") : une fois au démarrage, puis toutes
@@ -141,9 +189,14 @@ app.use("/api", async (req, res) => {
 
     let body;
     if (req.method !== "GET" && req.method !== "HEAD") {
-      const morceaux = [];
-      for await (const morceau of req) morceaux.push(morceau);
-      body = Buffer.concat(morceaux);
+      try {
+        body = await lireCorpsLimite(req, limiteCorpsPour(new URL(url).pathname, process.env));
+      } catch (e) {
+        if (!(e instanceof ErreurCorpsTropGros)) throw e;
+        // Le reste du corps n'est pas lu : on ferme la connexion après la réponse.
+        res.status(413).set("Connection", "close").json({ erreur: "Fichier ou formulaire trop volumineux." });
+        return;
+      }
     }
 
     const requeteWeb = new Request(url, { method: req.method, headers, body });
@@ -178,6 +231,7 @@ app.use((req, res) => {
 appliquerSchema()
   .then(() => amorcerPremierAdmin())
   .then(() => demarrerSyncSheet())
+  .then(() => demarrerNettoyageMedias())
   .catch((e) => {
     console.error("Impossible d'appliquer le schéma PostgreSQL au démarrage :", e);
   })

@@ -16,6 +16,9 @@ COPY server.js ./
 COPY src ./src
 COPY public ./public
 COPY schema.postgres.sql ./
+# Scripts d'administration lancés à la main (docker compose exec app node scripts/…),
+# jamais au démarrage : migration et nettoyage des photos, diagnostic du stockage.
+COPY scripts ./scripts
 
 ENV NODE_ENV=production
 EXPOSE 3000

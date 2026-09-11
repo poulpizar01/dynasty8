@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 echo.
 echo [1/2] Envoi des fichiers vers le VPS...
-scp -r public src server.js package.json package-lock.json schema.postgres.sql dynasty8-vps:/opt/dynasty8/
+scp -r public src scripts server.js package.json package-lock.json schema.postgres.sql dynasty8-vps:/opt/dynasty8/
 scp deploy/vps/Caddyfile deploy/vps/compose.yaml deploy/vps/Dockerfile dynasty8-vps:/opt/dynasty8/deploy/vps/
 if errorlevel 1 goto erreur
 echo.

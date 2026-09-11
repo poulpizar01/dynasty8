@@ -24,6 +24,12 @@
 import { enc, b64url, unb64url } from "./util-crypto.js";
 import * as statsCalc from "./stats-calc.js";
 import { synchroniserSheetSansErreur } from "./google-sheets.js";
+import { ErreurStockage } from "./fbfa-storage.js";
+import { TYPES_IMAGE, decoderDataUrl, estDataUrlImage } from "./images.js";
+import {
+  ErreurMedia, lireConfigMedias, creerClientDepuisConfig, importerImage, reponseErreurImport,
+  synchroniserReferences, detacherCible, planifierOrphelins, etatMedias,
+} from "./medias.js";
 
 const COOKIE = "d8_session";
 
@@ -151,10 +157,10 @@ function poserCookie(nom, valeur, secondes, env) {
   return `${nom}=${encodeURIComponent(valeur)}; Path=/; HttpOnly; ${insecure ? "SameSite=Lax" : "Secure; SameSite=None"}; Max-Age=${secondes}`;
 }
 
-function json(d, s = 200) {
+function json(d, s = 200, entetes) {
   return new Response(JSON.stringify(d), {
     status: s,
-    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...(entetes || {}) },
   });
 }
 
@@ -190,7 +196,9 @@ export default {
       if (chemin === "/api/folkos") return await folkosCallback(url, env);
       if (chemin === "/api/deconnexion") return deconnexion(env);
       if (chemin === "/api/moi") return await moi(request, env);
-      if (chemin === "/api/biens/photo") return await bienPhotoUpload(request, env);
+      if (chemin === "/api/biens/photo") return await importerPhoto(request, env, "bien");
+      if (chemin === "/api/profil/photo") return await importerPhoto(request, env, "profil");
+      if (chemin === "/api/medias/etat") return await mediasEtat(request, env);
       if (chemin === "/api/biens") return await biens(request, url, env);
       if (chemin === "/api/membres") return await comptes(request, url, env);
       if (chemin === "/api/equipe") return await equipe(env);
@@ -540,10 +548,29 @@ function validerProfil(b) {
   if (String(b.poste || "").length > 80) return "L'intitulé du poste est trop long (80 caractères maximum).";
   if (String(b.specialite || "").length > 100) return "La spécialité est trop longue (100 caractères maximum).";
   if (String(b.bio || "").length > 1000) return "La biographie est trop longue (1000 caractères maximum).";
-  if (b.photo && (typeof b.photo !== "string" || b.photo.length > 1_500_000)) {
+  if (b.photo && (typeof b.photo !== "string" || !valeurImageValide(b.photo.trim(), 1_500_000))) {
     return "La photo est invalide ou trop volumineuse.";
   }
   return null;
+}
+
+// Photo de profil + rattachement du média dans UNE transaction : si
+// l'enregistrement échoue, la photo importée reste temporaire ; l'ancienne
+// photo (base64 historique, lien, ou avatar Discord affiché à défaut) n'est
+// jamais modifiée tant que le profil n'est pas réellement enregistré.
+async function enregistrerPhotoProfil(tx, env, membreId, photo, autresChamps) {
+  const actuel = await tx.prepare("SELECT id, photo FROM membres WHERE id = ?1 FOR UPDATE").bind(membreId).first();
+  if (!actuel) return false;
+  if (estDataUrlImage(photo) && photo !== (actuel.photo || "")) {
+    throw new ErreurMedia(400, "Les nouvelles photos doivent être importées avec le bouton « Changer la photo ».", "base64_refuse");
+  }
+  await autresChamps();
+  await synchroniserReferences(tx, { type: "membre", id: actuel.id }, [photo], { delaiSecondes: delaiGraceMedias(env) });
+  return true;
+}
+
+function photoNormalisee(photo) {
+  return typeof photo === "string" ? photo.trim() : "";
 }
 
 async function modifierMonProfil(request, env, s) {
@@ -554,9 +581,17 @@ async function modifierMonProfil(request, env, s) {
   const specialite = txt(b.specialite, 100).trim();
   const bio = txt(b.bio, 1000).trim();
   const photo = typeof b.photo === "string" ? b.photo.trim() : "";
-  await env.DB.prepare(
-    "UPDATE membres SET poste=?2, specialite=?3, bio=?4, photo=?5 WHERE id=?1"
-  ).bind(s.id, poste, specialite, bio, photo).run();
+  try {
+    await env.DB.transaction((tx) =>
+      enregistrerPhotoProfil(tx, env, s.id, photo, () =>
+        tx.prepare("UPDATE membres SET poste=?2, specialite=?3, bio=?4, photo=?5 WHERE id=?1")
+          .bind(s.id, poste, specialite, bio, photo).run()
+      )
+    );
+  } catch (e) {
+    if (e instanceof ErreurMedia) return json({ erreur: e.message }, e.status);
+    throw e;
+  }
   return json({ ok: true });
 }
 
@@ -2034,18 +2069,52 @@ function validerBien(b) {
     }
   }
   const images = Array.isArray(b.images) ? b.images : [];
-  if (images.length > 10) return "10 photos maximum par bien.";
-  if (images.some((u) => typeof u !== "string" || u.length > 2_000_000)) {
-    return "Une des photos est invalide ou trop volumineuse.";
-  }
+  if (images.length > MAX_PHOTOS_BIEN) return `${MAX_PHOTOS_BIEN} photos maximum par bien.`;
+  const invalide = images.findIndex((u) => typeof u !== "string" || !valeurImageValide(u.trim(), 2_000_000));
+  if (invalide !== -1) return `La photo n° ${invalide + 1} est invalide (lien http(s) attendu) ou trop volumineuse.`;
   return null;
+}
+
+const MAX_PHOTOS_BIEN = 10;
+
+// Valeurs acceptées pour une photo (annonce ou profil) :
+//   - un lien http(s) sans espace, guillemet ni chevron (import FBFA ou lien collé) ;
+//   - une ancienne image « data:image/…;base64,… » déjà enregistrée en base
+//     (compatibilité — les nouvelles sont refusées plus loin, voir
+//     base64Nouvelles()).
+const RE_LIEN_IMAGE = /^https?:\/\/[^\s"'<>\\`]+$/i;
+const RE_DATA_URL_IMAGE = /^data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/i;
+function valeurImageValide(v, tailleMaxDataUrl) {
+  if (!v) return false;
+  if (estDataUrlImage(v)) return v.length <= tailleMaxDataUrl && RE_DATA_URL_IMAGE.test(v);
+  return v.length <= 2048 && RE_LIEN_IMAGE.test(v);
+}
+
+// Une annonce existante peut garder ses anciennes photos base64, mais aucune
+// NOUVELLE photo ne doit plus être stockée en base : elle passe par l'import.
+function base64Nouvelles(images, imagesActuelles) {
+  const connues = new Set((imagesActuelles || []).filter(estDataUrlImage));
+  return images.some((u) => estDataUrlImage(u) && !connues.has(u));
+}
+
+function lireImagesStockees(texte) {
+  try {
+    const arr = JSON.parse(texte || "[]");
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function delaiGraceMedias(env) {
+  return lireConfigMedias(env).delaiNettoyageHeures * 3600;
 }
 
 function normaliserBien(b) {
   let images = [];
   try {
     const arr = Array.isArray(b.images) ? b.images : JSON.parse(b.images || "[]");
-    images = arr.filter((u) => typeof u === "string" && u.trim()).slice(0, 10).map((u) => u.trim());
+    images = arr.filter((u) => typeof u === "string" && u.trim()).slice(0, MAX_PHOTOS_BIEN).map((u) => u.trim());
   } catch (e) {
     images = [];
   }
@@ -2082,53 +2151,96 @@ function normaliserBien(b) {
   };
 }
 
-// ---- Upload d'une photo de bien vers le stockage externe storage.fbfa.fr --
-// Remplace le stockage en base (image encodée en base64 directement dans la
-// colonne "images", jusqu'à 2 Mo par photo) : le navigateur redimensionne et
-// compresse déjà l'image (voir redimensionnerImage() dans admin.js) puis
-// l'envoie ici en data: URL ; on la décode et on la transmet telle quelle à
-// l'opérateur, qui renvoie une URL publique courte à stocker à la place. Les
-// biens créés avant ce changement gardent leurs photos en base64 : un data:
-// URL reste un <img src> valide, aucune migration n'est nécessaire.
-async function bienPhotoUpload(request, env) {
+// ---- Import d'une photo (annonce ou profil) vers storage.fbfa.fr ----------
+// Le navigateur réduit et compresse l'image (voir redimensionnerImage() dans
+// admin.js) puis l'envoie ici en BINAIRE (Content-Type image/jpeg|png|webp).
+// Le serveur vérifie la session et les droits, contrôle réellement le
+// contenu du fichier, l'envoie au stockage et renvoie son URL publique. Le
+// fichier reste « temporaire » tant que l'annonce ou le profil qui l'utilise
+// n'est pas enregistré (voir src/medias.js). La taille du corps est déjà
+// bornée avant lecture par server.js (src/corps-requete.js).
+//   usage "bien"   -> grades Direction / Commercial (comme l'édition d'annonces)
+//   usage "profil" -> tout membre connecté (son profil ; la Direction, ceux des autres)
+async function importerPhoto(request, env, usage) {
+  if (request.method !== "POST") return json({ erreur: "Méthode non gérée." }, 405, { Allow: "POST" });
   const s = await session(request, env);
   if (!s) return json({ erreur: "Non connecté." }, 401);
-  if (!peutGererAnnonces(s)) {
+  if (usage === "bien" && !peutGererAnnonces(s)) {
     return json({ erreur: "Votre grade ne permet pas de gérer les annonces." }, 403);
   }
-  if (!env.FBFA_STORAGE_TOKEN) {
-    return json({ erreur: "Le stockage des photos n'est pas configuré sur le serveur." }, 500);
+  const config = lireConfigMedias(env);
+  if (!config.token) {
+    return json({ erreur: "Le stockage des photos n'est pas configuré sur le serveur." }, 503);
   }
 
-  const b = await request.json().catch(() => null);
-  const dataUrl = b && typeof b.image === "string" ? b.image : "";
-  const correspond = /^data:(image\/[a-zA-Z0-9+.-]+);base64,([a-zA-Z0-9+/=]+)$/.exec(dataUrl);
-  if (!correspond) return json({ erreur: "Image invalide." }, 400);
-  const [, mime, base64] = correspond;
-  const extension = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
-  const octets = Buffer.from(base64, "base64");
-  if (!octets.length) return json({ erreur: "Image invalide." }, 400);
-  if (octets.length > 15 * 1024 * 1024) return json({ erreur: "Image trop volumineuse (15 Mo maximum)." }, 400);
+  const type = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+  let octets;
+  let mimeDeclare;
+  if (TYPES_IMAGE[type]) {
+    const annonce = Number(request.headers.get("Content-Length"));
+    if (annonce > config.tailleMax) {
+      return json({ erreur: `Photo trop volumineuse (${Math.ceil(config.tailleMax / 1024 / 1024)} Mo maximum).` }, 413);
+    }
+    octets = new Uint8Array(await request.arrayBuffer());
+    mimeDeclare = type;
+  } else if (type === "application/json") {
+    // Ancien format (admin.js resté en cache d'avant cette version) :
+    // { image: "data:image/…;base64,…" }.
+    const b = await request.json().catch(() => null);
+    const decode = decoderDataUrl(b && b.image);
+    if (!decode) return json({ erreur: "Image invalide." }, 400);
+    ({ octets, mimeDeclare } = decode);
+  } else {
+    return json({ erreur: "Format non pris en charge : envoyez une image JPEG, PNG ou WebP." }, 415);
+  }
+  if (!octets.length) return json({ erreur: "Fichier vide." }, 400);
 
-  const cle = `biens/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${extension}`;
-  let reponse;
   try {
-    reponse = await fetch(`https://storage.fbfa.fr/api/object/${cle}`, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${env.FBFA_STORAGE_TOKEN}`, "Content-Type": mime },
-      body: octets,
+    const r = await importerImage({
+      db: env.DB,
+      client: creerClientDepuisConfig(config),
+      config,
+      octets,
+      mimeDeclare,
+      usage,
+      auteurId: s.id,
     });
+    return json({ url: r.url, media_id: r.mediaId }, 201);
   } catch (e) {
-    return json({ erreur: "Service de stockage des photos injoignable. Réessayez." }, 502);
+    const reponse = reponseErreurImport(e);
+    if (!reponse) throw e;
+    if (e instanceof ErreurStockage) {
+      // Jamais le jeton ni le corps de la réponse : seulement les codes.
+      console.error(`[medias] import refusé (${usage}, membre ${s.id}) : ${e.code}${e.status ? " HTTP " + e.status : ""}${e.codeDistant ? " " + e.codeDistant : ""}`);
+    }
+    return json({ erreur: reponse.erreur }, reponse.status);
   }
-  if (!reponse.ok) {
-    return json({ erreur: "Échec de l'envoi de la photo au stockage." }, 502);
-  }
-  const resultat = await reponse.json().catch(() => null);
-  if (!resultat || !resultat.url) {
-    return json({ erreur: "Réponse inattendue du service de stockage." }, 502);
-  }
-  return json({ url: resultat.url });
+}
+
+// État du suivi des médias, réservé à la Direction. Uniquement des chiffres
+// issus de la base : le format de /api/usage du service n'étant pas
+// confirmé, il n'est volontairement ni lu ni affiché ici
+// (voir scripts/fbfa-diagnostic.js pour le relever).
+async function mediasEtat(request, env) {
+  if (request.method !== "GET") return json({ erreur: "Méthode non gérée." }, 405, { Allow: "GET" });
+  const s = await session(request, env);
+  if (!s) return json({ erreur: "Non connecté." }, 401);
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const config = lireConfigMedias(env);
+  const etat = await etatMedias(env.DB);
+  return json({
+    configure: !!config.token,
+    prefixe: config.prefixe,
+    nettoyage: { mode: config.modeNettoyage, delai_heures: config.delaiNettoyageHeures },
+    par_statut: etat.parStatut,
+    suppressions_echues: etat.suppressionsEchues,
+    usage_distant: "non_confirme",
+  });
+}
+
+function reponseErreurMedia(e) {
+  if (e instanceof ErreurMedia) return json({ erreur: e.message }, e.status);
+  throw e;
 }
 
 async function biens(request, url, env) {
@@ -2201,60 +2313,98 @@ async function biens(request, url, env) {
     return json({ erreur: "Votre grade ne permet pas de gérer les annonces." }, 403);
   }
 
+  // Écritures : l'annonce et le rattachement de ses photos (src/medias.js)
+  // sont validés ENSEMBLE dans une transaction — un échec d'enregistrement
+  // laisse les photos importées temporaires et l'annonce inchangée.
+  const delaiSecondes = delaiGraceMedias(env);
+
   if (m === "POST") {
     const b = await request.json().catch(() => null);
     const erreur = validerBien(b);
     if (erreur) return json({ erreur }, 400);
     const n = normaliserBien(b);
-    const r = await env.DB.prepare(
-      `INSERT INTO biens (categorie, sous_categorie, titre, zone, prix, prix_location, dispo_vente,
-                          dispo_location, transaction_type, places,
-                          description, images, coup_de_coeur, disponible, vendu, vendu_le,
-                          meuble, coherence, coffre_kg, vip, standing, auteur, cree_le, maj)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15,
-               CASE WHEN ?15 = 1 THEN datetime('now') ELSE NULL END,
-               ?16, ?17, ?18, ?19, ?20, ?21, datetime('now'), datetime('now'))`
-    ).bind(
-      n.categorie, n.sous_categorie, n.titre, n.zone, n.prix, n.prix_location, n.dispo_vente,
-      n.dispo_location, n.transaction_type, n.places,
-      n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu,
-      n.meuble, n.coherence, n.coffre_kg, n.vip, n.standing, s.pseudo
-    ).run();
-    return json({ id: r.meta.last_row_id });
+    const images = JSON.parse(n.images);
+    if (base64Nouvelles(images, [])) {
+      return json({ erreur: "Les nouvelles photos doivent être importées avec « Parcourir » ou ajoutées par lien." }, 400);
+    }
+    try {
+      const nouvelId = await env.DB.transaction(async (tx) => {
+        const r = await tx.prepare(
+          `INSERT INTO biens (categorie, sous_categorie, titre, zone, prix, prix_location, dispo_vente,
+                              dispo_location, transaction_type, places,
+                              description, images, coup_de_coeur, disponible, vendu, vendu_le,
+                              meuble, coherence, coffre_kg, vip, standing, auteur, cree_le, maj)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15,
+                   CASE WHEN ?15 = 1 THEN datetime('now') ELSE NULL END,
+                   ?16, ?17, ?18, ?19, ?20, ?21, datetime('now'), datetime('now'))`
+        ).bind(
+          n.categorie, n.sous_categorie, n.titre, n.zone, n.prix, n.prix_location, n.dispo_vente,
+          n.dispo_location, n.transaction_type, n.places,
+          n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu,
+          n.meuble, n.coherence, n.coffre_kg, n.vip, n.standing, s.pseudo
+        ).run();
+        await synchroniserReferences(tx, { type: "bien", id: r.meta.last_row_id }, images, { delaiSecondes });
+        return r.meta.last_row_id;
+      });
+      return json({ id: nouvelId });
+    } catch (e) {
+      return reponseErreurMedia(e);
+    }
   }
 
   if (m === "PUT") {
     if (!id) return json({ erreur: "Identifiant manquant." }, 400);
-    const existe = await env.DB.prepare("SELECT id FROM biens WHERE id = ?1").bind(id).first();
-    if (!existe) return json({ erreur: "Introuvable." }, 404);
+    if (!/^\d+$/.test(id)) return json({ erreur: "Introuvable." }, 404);
     const b = await request.json().catch(() => null);
     const erreur = validerBien(b);
     if (erreur) return json({ erreur }, 400);
     const n = normaliserBien(b);
-    await env.DB.prepare(
-      `UPDATE biens SET categorie=?2, sous_categorie=?3, titre=?4, zone=?5, prix=?6,
-              prix_location=?7, dispo_vente=?8, dispo_location=?9, transaction_type=?10,
-              places=?11, description=?12, images=?13, coup_de_coeur=?14,
-              disponible=?15, vendu=?16,
-              vendu_le = CASE
-                WHEN ?16 = 1 AND vendu = 0 THEN datetime('now')
-                WHEN ?16 = 0 THEN NULL
-                ELSE vendu_le
-              END,
-              meuble=?17, coherence=?18, coffre_kg=?19, vip=?20, standing=?21,
-              maj=datetime('now') WHERE id=?1`
-    ).bind(
-      id, n.categorie, n.sous_categorie, n.titre, n.zone, n.prix,
-      n.prix_location, n.dispo_vente, n.dispo_location, n.transaction_type,
-      n.places, n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu,
-      n.meuble, n.coherence, n.coffre_kg, n.vip, n.standing
-    ).run();
-    return json({ ok: true });
+    const images = JSON.parse(n.images);
+    try {
+      const trouve = await env.DB.transaction(async (tx) => {
+        const existant = await tx.prepare("SELECT id, images FROM biens WHERE id = ?1 FOR UPDATE").bind(id).first();
+        if (!existant) return false;
+        if (base64Nouvelles(images, lireImagesStockees(existant.images))) {
+          throw new ErreurMedia(400, "Les nouvelles photos doivent être importées avec « Parcourir » ou ajoutées par lien.", "base64_refuse");
+        }
+        await tx.prepare(
+          `UPDATE biens SET categorie=?2, sous_categorie=?3, titre=?4, zone=?5, prix=?6,
+                  prix_location=?7, dispo_vente=?8, dispo_location=?9, transaction_type=?10,
+                  places=?11, description=?12, images=?13, coup_de_coeur=?14,
+                  disponible=?15, vendu=?16,
+                  vendu_le = CASE
+                    WHEN ?16 = 1 AND vendu = 0 THEN datetime('now')
+                    WHEN ?16 = 0 THEN NULL
+                    ELSE vendu_le
+                  END,
+                  meuble=?17, coherence=?18, coffre_kg=?19, vip=?20, standing=?21,
+                  maj=datetime('now') WHERE id=?1`
+        ).bind(
+          id, n.categorie, n.sous_categorie, n.titre, n.zone, n.prix,
+          n.prix_location, n.dispo_vente, n.dispo_location, n.transaction_type,
+          n.places, n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu,
+          n.meuble, n.coherence, n.coffre_kg, n.vip, n.standing
+        ).run();
+        await synchroniserReferences(tx, { type: "bien", id: existant.id }, images, { delaiSecondes });
+        return true;
+      });
+      if (!trouve) return json({ erreur: "Introuvable." }, 404);
+      return json({ ok: true });
+    } catch (e) {
+      return reponseErreurMedia(e);
+    }
   }
 
   if (m === "DELETE") {
     if (!id) return json({ erreur: "Identifiant manquant." }, 400);
-    await env.DB.prepare("DELETE FROM biens WHERE id = ?1").bind(id).run();
+    if (!/^\d+$/.test(id)) return json({ ok: true });
+    await env.DB.transaction(async (tx) => {
+      const existant = await tx.prepare("SELECT id FROM biens WHERE id = ?1 FOR UPDATE").bind(id).first();
+      if (!existant) return;
+      const medias = await detacherCible(tx, { type: "bien", id: existant.id });
+      await tx.prepare("DELETE FROM biens WHERE id = ?1").bind(existant.id).run();
+      await planifierOrphelins(tx, medias, delaiSecondes);
+    });
     return json({ ok: true });
   }
 
@@ -2378,7 +2528,7 @@ async function comptes(request, url, env) {
       if (b.poste !== undefined) { binds.push(txt(b.poste, 80).trim()); champs.push(`poste = ?${binds.length}`); }
       if (b.specialite !== undefined) { binds.push(txt(b.specialite, 100).trim()); champs.push(`specialite = ?${binds.length}`); }
       if (b.bio !== undefined) { binds.push(txt(b.bio, 1000).trim()); champs.push(`bio = ?${binds.length}`); }
-      if (b.photo !== undefined) { binds.push(typeof b.photo === "string" ? b.photo.trim() : ""); champs.push(`photo = ?${binds.length}`); }
+      if (b.photo !== undefined) { binds.push(photoNormalisee(b.photo)); champs.push(`photo = ?${binds.length}`); }
     }
     // Nom exact "Nom Prénom" dans le Google Sheets de recap des primes (voir
     // src/google-sheets.js) — sert uniquement à l'appariement automatique,
@@ -2399,7 +2549,18 @@ async function comptes(request, url, env) {
       champs.push(`nom_sheet = ?${binds.length}`);
     }
     if (!champs.length) return json({ erreur: "Aucune modification envoyée." }, 400);
-    await env.DB.prepare(`UPDATE membres SET ${champs.join(", ")} WHERE id = ?1`).bind(...binds).run();
+    const miseAJour = (executant) => executant.prepare(`UPDATE membres SET ${champs.join(", ")} WHERE id = ?1`).bind(...binds).run();
+    if (b.photo === undefined) {
+      await miseAJour(env.DB);
+      return json({ ok: true });
+    }
+    // Photo modifiée : même mécanisme que « Mon profil » (rattachement du
+    // média importé dans la transaction de l'enregistrement).
+    try {
+      await env.DB.transaction((tx) => enregistrerPhotoProfil(tx, env, cible.id, photoNormalisee(b.photo), () => miseAJour(tx)));
+    } catch (e) {
+      return reponseErreurMedia(e);
+    }
     return json({ ok: true });
   }
 
@@ -2408,7 +2569,14 @@ async function comptes(request, url, env) {
     if (String(id) === String(s.id)) {
       return json({ erreur: "Vous ne pouvez pas supprimer votre propre accès." }, 400);
     }
-    await env.DB.prepare("DELETE FROM membres WHERE id = ?1").bind(id).run();
+    if (!/^\d+$/.test(id)) return json({ ok: true });
+    await env.DB.transaction(async (tx) => {
+      const existant = await tx.prepare("SELECT id FROM membres WHERE id = ?1 FOR UPDATE").bind(id).first();
+      if (!existant) return;
+      const medias = await detacherCible(tx, { type: "membre", id: existant.id });
+      await tx.prepare("DELETE FROM membres WHERE id = ?1").bind(existant.id).run();
+      await planifierOrphelins(tx, medias, delaiGraceMedias(env));
+    });
     return json({ ok: true });
   }
 

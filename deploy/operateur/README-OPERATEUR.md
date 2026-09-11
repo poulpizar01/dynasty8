@@ -6,8 +6,10 @@ jeu (FolkOS). Contact : Thomas (Dynasty 8 / Roxwood Network).
 
 ## En deux mots
 - **Stack** : Node.js 22 (Express) + PostgreSQL 17, le tout en Docker Compose.
-  Aucun fichier persistant hors de la base (les photos sont stockées en base
-  ou par lien) → un seul volume à sauvegarder : `postgres_data`.
+  Aucun fichier persistant sur ce serveur → un seul volume à sauvegarder :
+  `postgres_data`. Les nouvelles photos (annonces, profils) sont hébergées sur
+  **storage.fbfa.fr** (voir « Photos » plus bas) ; les anciennes restent en
+  base (base64) ou sous forme de lien tant qu'elles ne sont pas migrées.
 - **Pack à utiliser** : `deploy/operateur/` (sans Caddy — votre reverse proxy
   termine le HTTPS). Le pack `deploy/vps/` est l'ancien déploiement autonome.
 - **Port** : l'app écoute en local sur `127.0.0.1:3010` (réglable, `PORT_LOCAL`).
@@ -36,9 +38,11 @@ docker compose exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 - **Ne pas** ajouter `X-Frame-Options`, **ne pas** écraser `Content-Security-Policy` :
   l'app pose sur chaque réponse
   `Content-Security-Policy: frame-ancestors 'self' https://*.fbfa.fr https://fbfa.fr https://cfx-nui-external-iframe nui://game nui:`
-- Taille de requête : les photos d'annonces sont envoyées en base64 par l'espace
-  agents (jusqu'à 10 photos) → prévoir `client_max_body_size 30m` (nginx) ou
-  équivalent.
+- Taille de requête : une photo est envoyée seule, en binaire (8 Mo maximum
+  par défaut), mais une annonce qui contient encore d'anciennes photos base64
+  peut peser jusqu'à ~30 Mo à l'enregistrement → garder `client_max_body_size 32m`
+  (nginx) ou équivalent tant que la migration n'est pas faite. L'application
+  refuse elle-même tout corps plus gros (413) avant de le lire en entier.
 - WebSockets : non utilisés.
 
 Exemple nginx :
@@ -47,7 +51,7 @@ server {
     listen 443 ssl http2;
     server_name dynasty8.fbfa.fr;
     # ssl_certificate ... ;
-    client_max_body_size 30m;
+    client_max_body_size 32m;
     location / {
         proxy_pass http://127.0.0.1:3010;
         proxy_set_header Host $host;
@@ -64,6 +68,8 @@ server {
 | `DISCORD_CLIENT_ID/SECRET`, `STATS_BOT_SECRET` | déjà renseignés dans `.env` | connexion Discord de l'espace agents, bot de ventes |
 | `DISCORD_REDIRECT_URI` | fixe | `https://dynasty8.fbfa.fr/api/auth/discord/callback` |
 | `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | vous | SSO « Se connecter IG » |
+| `FBFA_STORAGE_TOKEN` | vous (jeton `storage.fbfa.fr`) | import des photos d'annonces et de profils |
+| `FBFA_NETTOYAGE` (+ réglages `FBFA_*` facultatifs, voir `.env.example`) | Dynasty 8 | `simulation` par défaut — ne passer à `actif` qu'avec l'accord de la Direction |
 
 `id` écoutant en `127.0.0.1` sur l'hôte, l'app le joint via
 `host.docker.internal` (déclaré dans `compose.yaml`) :
@@ -89,7 +95,62 @@ sur postgres) — dites-nous ce que vous préférez.
 2. Le port de `id` et la méthode retenue (host.docker.internal ou network host).
 3. Le slug déclaré dans le broker.
 
+## Photos : stockage storage.fbfa.fr
+Fonctionnement (détails dans `src/medias.js`) :
+- L'espace agents réduit chaque photo dans le navigateur, puis l'envoie à
+  `POST /api/biens/photo` ou `POST /api/profil/photo`. Le serveur vérifie la
+  session et les droits, contrôle réellement le fichier (JPEG/PNG/WebP), le
+  dépose sous `dynasty8/{biens|profils}/AAAA/MM/{uuid}.{ext}` et renvoie son URL
+  publique `https://storage.fbfa.fr/view/{id}`. Le jeton ne quitte jamais le serveur.
+- Chaque fichier est suivi en base (tables `medias`, `medias_references`). Il
+  reste **temporaire** tant que l'annonce ou le profil n'est pas enregistré ;
+  le rattachement se fait dans la même transaction que l'enregistrement.
+- Une photo retirée n'est supprimée du stockage qu'après l'enregistrement
+  validé, s'il ne reste aucune autre référence, et après un délai de grâce
+  (24 h). Les imports jamais enregistrés sont traités après 24 h. La suppression
+  se fait **par clé**. Les liens collés, les anciennes photos base64 et les
+  fichiers envoyés avant ce suivi ne sont **jamais** supprimés.
+- Tâche horaire intégrée au serveur, pilotée par `FBFA_NETTOYAGE` :
+  `simulation` (défaut : écrit dans les journaux ce qu'elle ferait),
+  `actif`, `desactive`. Lancement manuel avec compte rendu :
+  ```bash
+  docker compose exec app node scripts/nettoyer-medias-fbfa.js            # simulation
+  docker compose exec app node scripts/nettoyer-medias-fbfa.js --apply    # réel (après accord)
+  ```
+- Suivi : `GET /api/medias/etat` (Direction) donne le nombre et le volume de
+  médias par état, en lecture de la base uniquement.
+
+### Points du service à confirmer avec le vrai jeton
+Le contrat ne précise ni le format de `GET /api/usage`, ni si
+`GET /api/objects` renvoie la clé des objets, ni les champs de
+`GET /api/object/{clé}`. Le site ne s'appuie sur aucun de ces points. Pour les
+relever (lecture seule, le jeton n'est pas affiché) :
+```bash
+docker compose exec app node scripts/fbfa-diagnostic.js --prefix dynasty8/
+```
+Le suivi du quota distant ne sera ajouté à l'espace Direction qu'une fois ce
+format confirmé.
+
+### Migration des anciennes photos base64 (sur accord de la Direction)
+Ne concerne que les images `data:image/…;base64` stockées en base (annonces et
+profils) ; jamais `public/img` ni les liens externes.
+1. **Sauvegarde** : `docker compose exec -T postgres pg_dump -Fc -U dynasty8 dynasty8 > avant-migration_$(date +%F).dump`
+2. **Simulation** (aucune écriture, compte rendu JSON dans `rapports/`) :
+   `docker compose exec app node scripts/migrer-images-fbfa.js`
+3. **Essai limité** : `docker compose exec app node scripts/migrer-images-fbfa.js --apply --limite 5`
+4. **Migration** : `docker compose exec app node scripts/migrer-images-fbfa.js --apply`
+   (relançable : une coupure ou une erreur n'altère rien, la relance reprend ;
+   une image n'est remplacée qu'après confirmation de son envoi).
+5. **Retour arrière** si besoin : `… migrer-images-fbfa.js --annuler` (simulation)
+   puis `--annuler --apply`. Les valeurs d'origine sont restaurées depuis la
+   table `medias_migration_sauvegarde` ; les copies distantes deviennent
+   orphelines et suivent le nettoyage différé. En dernier recours : restaurer
+   le dump de l'étape 1.
+
+Les comptes rendus sont écrits dans le conteneur (`/app/rapports/`) : les
+récupérer avec `docker compose cp app:/app/rapports ./rapports`.
+
 ## Exploitation
-- Journaux : `docker compose logs -f app`
+- Journaux : `docker compose logs -f app` (nettoyage des photos : lignes `[medias]`)
 - Mise à jour : `git pull && docker compose up -d --build app`
 - Sauvegarde : `docker compose exec -T postgres pg_dump -Fc -U dynasty8 dynasty8 > dynasty8_$(date +%F).dump`

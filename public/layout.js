@@ -320,10 +320,15 @@ function formaterPrix(valeur) {
   return (n < 0 ? "-" : "") + chiffres + " $ HT";
 }
 
+// Échappe aussi les guillemets : le résultat est souvent inséré dans un
+// attribut (src="…", value="…"), où un " non échappé fermerait l'attribut.
 function echapper(texte) {
-  const d = document.createElement("div");
-  d.textContent = texte == null ? "" : String(texte);
-  return d.innerHTML;
+  return (texte == null ? "" : String(texte))
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // Mise en forme simple des descriptions de biens : **gras** et *italique*,

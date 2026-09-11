@@ -307,3 +307,81 @@ CREATE TABLE IF NOT EXISTS sync_sheet_etat (
   nb_lignes INTEGER NOT NULL DEFAULT 0,
   nb_apparies INTEGER NOT NULL DEFAULT 0
 );
+
+-- ---- Médias hébergés sur storage.fbfa.fr (sept. 2026) ---------------------
+-- Suivi de chaque fichier envoyé au stockage externe par ce site (photos
+-- d'annonces et de profils) — voir src/medias.js pour le cycle de vie.
+-- N'enregistre QUE les fichiers envoyés via ce mécanisme : une URL collée à
+-- la main, une ancienne photo base64 ou une photo envoyée avant ce suivi ne
+-- figure jamais ici, et ne peut donc jamais être supprimée par le nettoyage.
+--
+-- statut :
+--   envoi        ligne créée juste AVANT l'envoi : l'objet distant existe peut-être
+--   echec        envoi refusé par le service (rien n'a été stocké)
+--   temporaire   envoyé, pas encore rattaché à un contenu enregistré
+--   attache      référencé par au moins une annonce ou un profil
+--   a_supprimer  plus aucune référence : suppression distante prévue à suppression_prevue_le
+--   suppression  suppression distante en cours (plus aucun rattachement possible)
+--   supprime     objet supprimé du stockage (ligne gardée pour l'historique)
+--   conflit      l'objet distant ne correspond plus à cette ligne : jamais supprimé automatiquement
+CREATE TABLE IF NOT EXISTS medias (
+  id SERIAL PRIMARY KEY,
+  cle TEXT NOT NULL,
+  fbfa_id TEXT,
+  url TEXT,
+  taille INTEGER,
+  mime TEXT,
+  usage TEXT NOT NULL CHECK (usage IN ('bien', 'profil')),
+  origine TEXT NOT NULL DEFAULT 'import' CHECK (origine IN ('import', 'migration')),
+  statut TEXT NOT NULL DEFAULT 'envoi'
+    CHECK (statut IN ('envoi', 'echec', 'temporaire', 'attache', 'a_supprimer', 'suppression', 'supprime', 'conflit')),
+  auteur_id INTEGER REFERENCES membres(id) ON DELETE SET NULL,
+  empreinte TEXT,
+  cree_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')),
+  maj TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')),
+  envoye_le TEXT,
+  attache_le TEXT,
+  suppression_prevue_le TEXT,
+  supprime_le TEXT,
+  tentatives_suppression INTEGER NOT NULL DEFAULT 0,
+  derniere_erreur TEXT NOT NULL DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_medias_cle ON medias(cle);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_medias_url ON medias(url) WHERE url IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_medias_statut ON medias(statut, suppression_prevue_le);
+CREATE INDEX IF NOT EXISTS idx_medias_auteur ON medias(auteur_id, statut);
+
+-- Rattachement d'un média à une annonce OU à un profil. Un même média peut
+-- avoir plusieurs lignes (même URL dans deux annonces, ou annonce + profil) :
+-- il ne devient supprimable qu'une fois la DERNIÈRE ligne retirée.
+CREATE TABLE IF NOT EXISTS medias_references (
+  id SERIAL PRIMARY KEY,
+  media_id INTEGER NOT NULL REFERENCES medias(id) ON DELETE CASCADE,
+  bien_id INTEGER REFERENCES biens(id) ON DELETE CASCADE,
+  membre_id INTEGER REFERENCES membres(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL DEFAULT 0,
+  cree_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')),
+  CHECK ((bien_id IS NULL) <> (membre_id IS NULL))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_medias_ref_bien ON medias_references(media_id, bien_id) WHERE bien_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_medias_ref_membre ON medias_references(media_id, membre_id) WHERE membre_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_medias_ref_bien_seul ON medias_references(bien_id);
+CREATE INDEX IF NOT EXISTS idx_medias_ref_membre_seul ON medias_references(membre_id);
+
+-- Sauvegarde des anciennes images base64 remplacées par la migration
+-- (scripts/migrer-images-fbfa.js) : permet un retour arrière exact
+-- (--annuler) sans dépendre d'un dump. Aucune clé étrangère vers biens /
+-- membres : la sauvegarde survit même si l'annonce est supprimée ensuite.
+CREATE TABLE IF NOT EXISTS medias_migration_sauvegarde (
+  id SERIAL PRIMARY KEY,
+  table_cible TEXT NOT NULL CHECK (table_cible IN ('biens', 'membres')),
+  ligne_id INTEGER NOT NULL,
+  position INTEGER,
+  ancienne_valeur TEXT NOT NULL,
+  empreinte TEXT NOT NULL,
+  nouvelle_url TEXT NOT NULL,
+  media_id INTEGER REFERENCES medias(id) ON DELETE SET NULL,
+  migre_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')),
+  annule_le TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_medias_migration_cible ON medias_migration_sauvegarde(table_cible, ligne_id);

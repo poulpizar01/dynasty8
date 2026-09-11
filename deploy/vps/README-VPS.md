@@ -27,6 +27,13 @@ bash backup.sh            # première sauvegarde de test
 ```
 Le serveur applique lui-même son schéma (`schema.postgres.sql`) au démarrage.
 
+## Photos (storage.fbfa.fr)
+Renseigner `FBFA_STORAGE_TOKEN` dans `.env` pour activer l'import des photos.
+Fonctionnement, nettoyage (`FBFA_NETTOYAGE`, en simulation par défaut),
+diagnostic du service et migration des anciennes photos base64 : voir la
+section « Photos » de `../operateur/README-OPERATEUR.md` (mêmes commandes,
+précédées de `sudo`). Faire `bash backup.sh` avant toute migration.
+
 ## Exploitation
 - Journaux : `sudo docker compose logs -f app`
 - Sauvegarde : `bash backup.sh` (fichiers dans `backups/`, exclus de Git)

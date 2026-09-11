@@ -278,7 +278,10 @@ DISCORD_CLIENT_ID=...
 DISCORD_CLIENT_SECRET=...
 DISCORD_REDIRECT_URI=...
 STATS_BOT_SECRET=...
+FBFA_STORAGE_TOKEN=...        # stockage des photos sur storage.fbfa.fr
 ```
+
+Réglages facultatifs du stockage des photos (valeurs par défaut dans `deploy/*/.env.example`) : `FBFA_STORAGE_PREFIXE`, `FBFA_PHOTO_TAILLE_MAX`, `FBFA_STORAGE_DELAI_MS`, `FBFA_IMPORTS_EN_ATTENTE_MAX`, `FBFA_NETTOYAGE` (`simulation` par défaut, `actif`, `desactive`) et `FBFA_NETTOYAGE_DELAI_HEURES`. `API_TAILLE_CORPS_MAX` borne la taille des requêtes `/api/*` (32 Mo par défaut).
 
 Option PostgreSQL disponible pour certains environnements :
 
@@ -292,7 +295,15 @@ ou
 PGSSL=require
 ```
 
-`SESSION_SECRET`, les identifiants Discord, les mots de passe de base de données et `STATS_BOT_SECRET` sont des **secrets** : ils ne doivent jamais être ajoutés au dépôt Git.
+`SESSION_SECRET`, les identifiants Discord, les mots de passe de base de données, `STATS_BOT_SECRET` et `FBFA_STORAGE_TOKEN` sont des **secrets** : ils ne doivent jamais être ajoutés au dépôt Git.
+
+---
+
+## Photos — stockage storage.fbfa.fr
+
+Les photos d'annonces et de profils importées depuis l'espace agents sont envoyées au serveur (`POST /api/biens/photo`, `POST /api/profil/photo`), contrôlées, puis déposées sur `storage.fbfa.fr` ; seule leur URL publique est enregistrée. Chaque fichier est suivi en base (`medias`, `medias_references`) : temporaire jusqu'à l'enregistrement du contenu, puis rattaché ; une photo retirée n'est supprimée à distance qu'après validation en base, sans autre référence et après un délai de grâce. Les anciennes photos base64 et les liens collés restent affichés et ne sont jamais supprimés.
+
+Code : `src/fbfa-storage.js` (client de l'API), `src/images.js` (validation des fichiers), `src/medias.js` (cycle de vie, nettoyage), `src/migration-medias.js`. Procédures (nettoyage, migration des photos base64, diagnostic du service) : section « Photos » de [`deploy/operateur/README-OPERATEUR.md`](deploy/operateur/README-OPERATEUR.md).
 
 ---
 
@@ -343,7 +354,12 @@ Dynasty8/
 ├── public/                    # Site et interface agents
 ├── src/
 │   ├── index.js               # API / logique applicative principale
-│   └── db-pg.js               # Adaptateur PostgreSQL
+│   ├── db-pg.js               # Adaptateur PostgreSQL (+ transactions)
+│   ├── fbfa-storage.js        # Client du stockage storage.fbfa.fr
+│   ├── images.js              # Validation des fichiers image
+│   ├── medias.js              # Suivi, rattachement et nettoyage des photos
+│   ├── migration-medias.js    # Migration des anciennes photos base64
+│   └── corps-requete.js       # Limite de taille des requêtes /api/*
 ├── deploy/
 │   ├── vps/                   # Docker Compose autonome (app + PostgreSQL + Caddy)
 │   └── operateur/             # Docker Compose pour le serveur FlashbackFA (proxy externe, SSO FolkOS)
@@ -370,6 +386,15 @@ Avant une modification importante :
 5. ne jamais utiliser les données de production comme terrain d'essai.
 
 Le dépôt contient des tests automatisés pour plusieurs comportements critiques, notamment la compatibilité PostgreSQL, la robustesse de connexion et la prévention des doublons statistiques.
+
+Tests : `npm test`. Les tests des photos qui ont besoin d'une vraie base PostgreSQL (droits, rattachement, nettoyage, migration — avec un faux service de stockage, jamais le vrai) sont ignorés sans `TEST_DATABASE_URL` :
+
+```bash
+docker run -d --name d8-test-pg -e POSTGRES_USER=d8 -e POSTGRES_PASSWORD=d8test -p 127.0.0.1:55432:5432 postgres:17-alpine
+TEST_DATABASE_URL=postgres://d8:d8test@127.0.0.1:55432/postgres npm test
+```
+
+Une base jetable est créée puis supprimée pour chaque fichier de test.
 
 ---
 
