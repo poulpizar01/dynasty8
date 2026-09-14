@@ -30,6 +30,10 @@ import {
   ErreurMedia, lireConfigMedias, creerClientDepuisConfig, importerImage, reponseErreurImport,
   synchroniserReferences, detacherCible, planifierOrphelins, etatMedias,
 } from "./medias.js";
+import {
+  lireSecretsRoxwood, verifierSignatureRoxwood, validerEvenementRoxwood, cleObjetRoxwood, empreinteCorps,
+  TYPES_EVENEMENTS_ROXWOOD, LIBELLES_EVENEMENTS_ROXWOOD,
+} from "./bot-roxwood.js";
 
 const COOKIE = "d8_session";
 
@@ -207,6 +211,8 @@ export default {
       if (chemin.startsWith("/api/comptabilite/")) return await comptabilite(request, url, env);
       if (chemin.startsWith("/api/stats/")) return await statistiques(request, url, env);
       if (chemin.startsWith("/api/sync-sheet/")) return await syncSheet(request, url, env);
+      if (chemin === "/api/bot-roxwood/webhook") return await botRoxwoodWebhook(request, env);
+      if (chemin.startsWith("/api/bot-roxwood/")) return await botRoxwood(request, url, env);
       if (chemin === WEBMAP_PREFIXE || chemin.startsWith(WEBMAP_PREFIXE + "/")) return await carteProxy(request, url);
       return json({ erreur: "Adresse inconnue." }, 404);
     } catch (e) {
@@ -2620,6 +2626,128 @@ async function syncSheet(request, url, env) {
   const route = url.pathname.slice("/api/sync-sheet".length); // "/etat" | "/synchroniser"
   if (route === "/etat" && request.method === "GET") return syncSheetEtat(env, s);
   if (route === "/synchroniser" && request.method === "POST") return syncSheetSynchroniser(request, env, s);
+  return json({ erreur: "Adresse inconnue." }, 404);
+}
+
+
+// ---- Bot « Roxwood Network Entreprise » (lecture seule) --------------------
+// Voir src/bot-roxwood.js pour le principe. Deux adresses :
+//   POST /api/bot-roxwood/webhook  — appelée PAR LE BOT (signature HMAC, pas de session)
+//   GET  /api/bot-roxwood/apercu   — appelée par l'espace agents (Direction uniquement)
+// Aucune autre : le site n'envoie jamais rien au bot.
+
+const BOT_ROXWOOD_LIMITE_OBJETS = 100; // dernier état connu : candidatures / absences / commandes
+const BOT_ROXWOOD_LIMITE_MONITORING = 150;
+const BOT_ROXWOOD_LIMITE_JOURNAL = 60;
+
+async function botRoxwoodWebhook(request, env) {
+  if (request.method !== "POST") return json({ erreur: "Méthode non autorisée." }, 405);
+  const secrets = lireSecretsRoxwood(env);
+  if (!secrets.length) {
+    // 503 (et pas 4xx) : le bot considère un 5xx comme transitoire et
+    // réessaiera plus tard — l'événement n'est pas perdu le temps de
+    // renseigner ROXWOOD_WEBHOOK_SECRETS sur le serveur.
+    return json({ erreur: "Réception du bot Roxwood non configurée (ROXWOOD_WEBHOOK_SECRETS)." }, 503);
+  }
+  // Signature calculée sur le corps BRUT, avant tout parsing JSON : un corps
+  // re-sérialisé pourrait ne plus correspondre octet pour octet.
+  const corps = new Uint8Array(await request.arrayBuffer());
+  const signature = request.headers.get("X-Signature-256") || "";
+  if (!verifierSignatureRoxwood(secrets, corps, signature)) {
+    console.error("[bot-roxwood] signature refusée (secret inconnu ou corps altéré).");
+    return json({ erreur: "Signature invalide." }, 401);
+  }
+  let objet;
+  try {
+    objet = JSON.parse(new TextDecoder().decode(corps));
+  } catch (e) {
+    return json({ erreur: "JSON invalide." }, 400);
+  }
+  const ev = validerEvenementRoxwood(objet, corps.byteLength);
+  if (ev.erreur) return json({ erreur: ev.erreur }, 400);
+
+  const r = await env.DB.prepare(
+    `INSERT INTO bot_roxwood_evenements (guild_id, type_evenement, cle_objet, charge, empreinte, envoye_le, recu_le)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'))
+     ON CONFLICT (empreinte) DO NOTHING`
+  ).bind(ev.guildId, ev.eventType, cleObjetRoxwood(ev.eventType, ev.payload), JSON.stringify(ev.payload), empreinteCorps(corps), ev.sentAt).run();
+  const dejaRecu = !(r.meta && r.meta.changes);
+  return json(dejaRecu ? { ok: true, dejaRecu: true } : { ok: true });
+}
+
+// Dernier état connu de chaque objet (une ligne par ticketId / requestId /
+// orderId), le plus récent d'abord.
+async function botRoxwoodDerniersEtats(env, type) {
+  const r = await env.DB.prepare(
+    `SELECT * FROM (
+       SELECT DISTINCT ON (cle_objet) id, guild_id, cle_objet, charge, envoye_le, recu_le
+         FROM bot_roxwood_evenements
+        WHERE type_evenement = ?1 AND cle_objet IS NOT NULL
+        ORDER BY cle_objet, id DESC
+     ) t ORDER BY id DESC LIMIT ${BOT_ROXWOOD_LIMITE_OBJETS}`
+  ).bind(type).all();
+  return r.results || [];
+}
+
+async function botRoxwoodApercu(env, s) {
+  if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const [compteursR, guildesR, membresR, candidatures, absences, commandes, monitoringR, journalR] = await Promise.all([
+    env.DB.prepare(
+      `SELECT type_evenement, COUNT(*) AS nb, MAX(recu_le) AS dernier
+         FROM bot_roxwood_evenements GROUP BY type_evenement`
+    ).all(),
+    env.DB.prepare(`SELECT guild_id, COUNT(*) AS nb, MAX(recu_le) AS dernier FROM bot_roxwood_evenements GROUP BY guild_id`).all(),
+    // Pour afficher un pseudo à la place d'un identifiant Discord brut quand
+    // la personne a un compte sur le site (le bot ne transmet que des ids).
+    env.DB.prepare(`SELECT discord_id, pseudo, discord_pseudo FROM membres WHERE discord_id IS NOT NULL AND discord_id <> ''`).all(),
+    botRoxwoodDerniersEtats(env, "recruitment.updated"),
+    botRoxwoodDerniersEtats(env, "absence.updated"),
+    botRoxwoodDerniersEtats(env, "order.updated"),
+    env.DB.prepare(
+      `SELECT id, guild_id, type_evenement, charge, envoye_le, recu_le
+         FROM bot_roxwood_evenements WHERE type_evenement LIKE 'monitoring.%'
+        ORDER BY id DESC LIMIT ${BOT_ROXWOOD_LIMITE_MONITORING}`
+    ).all(),
+    env.DB.prepare(
+      `SELECT id, guild_id, type_evenement, cle_objet, charge, envoye_le, recu_le
+         FROM bot_roxwood_evenements ORDER BY id DESC LIMIT ${BOT_ROXWOOD_LIMITE_JOURNAL}`
+    ).all(),
+  ]);
+  const compteurs = {};
+  let total = 0;
+  let dernierRecu = null;
+  for (const c of compteursR.results || []) {
+    compteurs[c.type_evenement] = { nb: Number(c.nb), dernier: c.dernier };
+    total += Number(c.nb);
+    if (!dernierRecu || c.dernier > dernierRecu) dernierRecu = c.dernier;
+  }
+  const membres = {};
+  for (const m of membresR.results || []) membres[m.discord_id] = m.pseudo || m.discord_pseudo;
+  return json({
+    etat: {
+      configure: lireSecretsRoxwood(env).length > 0,
+      nb_secrets: lireSecretsRoxwood(env).length,
+      total,
+      dernier_recu: dernierRecu,
+      compteurs,
+      guildes: guildesR.results || [],
+      types: TYPES_EVENEMENTS_ROXWOOD,
+      libelles: LIBELLES_EVENEMENTS_ROXWOOD,
+    },
+    membres,
+    candidatures,
+    absences,
+    commandes,
+    monitoring: monitoringR.results || [],
+    journal: journalR.results || [],
+  });
+}
+
+async function botRoxwood(request, url, env) {
+  const s = await session(request, env);
+  if (!s) return json({ erreur: "Non connecté." }, 401);
+  const route = url.pathname.slice("/api/bot-roxwood".length); // "/apercu"
+  if (route === "/apercu" && request.method === "GET") return botRoxwoodApercu(env, s);
   return json({ erreur: "Adresse inconnue." }, 404);
 }
 

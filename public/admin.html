@@ -32,6 +32,7 @@
   <symbol id="ico-book" viewBox="0 0 24 24"><path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/></symbol>
   <symbol id="ico-sheet" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M4 9h16M4 15h16M10 9v12"/></symbol>
   <symbol id="ico-sync" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.3M3 12a9 9 0 0 1 15.5-6.3"/><path d="M18 2v4h-4M6 22v-4h4"/></symbol>
+  <symbol id="ico-bot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M9 4h6"/><circle cx="9" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/><path d="M2 13v4M22 13v4"/></symbol>
   <symbol id="ico-map" viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></symbol>
   <symbol id="ico-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
   <symbol id="ico-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
@@ -96,6 +97,7 @@
     <a href="https://docs.google.com/spreadsheets/d/11510OMupYPv0GgwIQxqhGkdh3JV9avt3cF3rg2bhRRE/edit" target="_blank" rel="noopener" class="lien-onglet" id="lien-coherence-sheet" title="Tableau des cohérences (Google Sheets, lecture seule)"><svg class="ico"><use href="#ico-sheet"></use></svg><span>Cohérence</span></a>
     <a href="/api/carte/" target="_blank" rel="noopener" class="lien-onglet cache" id="lien-webmap"><svg class="ico"><use href="#ico-map"></use></svg><span>WebMap</span></a>
     <button class="lien-onglet cache" data-onglet="parametres" id="onglet-parametres"><svg class="ico"><use href="#ico-sync"></use></svg><span>Synchro Sheets</span></button>
+    <button class="lien-onglet cache" data-onglet="bot-roxwood" id="onglet-bot-roxwood"><img src="/img/roxwood-network-logo.png" alt="" class="ico ico-logo-roxwood"><span>Bot Roxwood Network</span></button>
 
     <div class="admin-bas">
       <div class="admin-aide">
@@ -626,6 +628,105 @@
           </thead>
           <tbody id="corps-table-sync-sheet"><tr><td colspan="5">Chargement…</td></tr></tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- Onglet Bot Roxwood Network : panneau d'administration EN LECTURE SEULE du bot
+         Discord « Roxwood Network Entreprise » (recrutement, absences,
+         commandes, monitoring FiveM). Le bot pousse ses événements au site
+         (webhooks signés) ; ici on ne fait qu'afficher ce qui a été reçu —
+         aucune action n'est renvoyée vers le bot ou vers Discord. Réservé à
+         la Direction. -->
+    <section id="panneau-bot-roxwood" class="cache">
+      <div class="entete-admin">
+        <div>
+          <h2 style="margin-bottom:2px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><img src="/img/roxwood-network-logo.png" alt="" class="logo-roxwood-titre">Bot Roxwood Network <span class="puce puce-or" title="Ce panneau affiche uniquement ce que le bot a envoyé : rien n'est modifiable ici.">Lecture seule</span></h2>
+          <p style="margin:0;font-size:0.88rem;">État et journal du bot Discord « Roxwood Network Entreprise » (candidatures, absences, commandes, monitoring en jeu) — réservé à la Direction.</p>
+        </div>
+        <button type="button" class="btn btn-fantome btn-petit" id="bouton-rafraichir-bot-roxwood">🔄 Actualiser</button>
+      </div>
+      <div id="zone-message-bot-roxwood"></div>
+
+      <div id="bot-roxwood-non-configure" class="etat-vide cache">
+        <p><strong>Réception non configurée.</strong> Le serveur n'a pas encore de secret de webhook (variable <code>ROXWOOD_WEBHOOK_SECRETS</code>). Voir <code>notes/bot-roxwood-configuration.md</code> dans le projet pour brancher le bot.</p>
+      </div>
+
+      <div class="admin-stats" id="bot-roxwood-cartes">
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--or">🤖</span>
+          <div><div class="stat-valeur" id="bot-roxwood-etat">—</div><div class="stat-libelle">Liaison</div><div class="stat-sous-libelle" id="bot-roxwood-etat-detail"></div></div>
+        </div>
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--vert">📨</span>
+          <div><div class="stat-valeur" id="bot-roxwood-total">0</div><div class="stat-libelle">Événements reçus</div><div class="stat-sous-libelle" id="bot-roxwood-dernier"></div></div>
+        </div>
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--ambre">📝</span>
+          <div><div class="stat-valeur" id="bot-roxwood-nb-candidatures">0</div><div class="stat-libelle">Candidatures</div><div class="stat-sous-libelle" id="bot-roxwood-candidatures-attente"></div></div>
+        </div>
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--mauve">🧾</span>
+          <div><div class="stat-valeur" id="bot-roxwood-nb-commandes">0</div><div class="stat-libelle">Commandes</div><div class="stat-sous-libelle" id="bot-roxwood-commandes-impayees"></div></div>
+        </div>
+      </div>
+
+      <div class="compta-sous-onglets" role="tablist">
+        <button type="button" class="compta-sous-onglet actif" data-bot-onglet="candidatures">📝 Candidatures</button>
+        <button type="button" class="compta-sous-onglet" data-bot-onglet="absences">🏖️ Absences</button>
+        <button type="button" class="compta-sous-onglet" data-bot-onglet="commandes">🧾 Commandes</button>
+        <button type="button" class="compta-sous-onglet" data-bot-onglet="monitoring">📡 Monitoring</button>
+        <button type="button" class="compta-sous-onglet" data-bot-onglet="journal">📜 Journal</button>
+      </div>
+
+      <div id="bot-panneau-candidatures">
+        <p class="champ-aide" style="margin:14px 0 10px;">Dernier état connu de chaque candidature (formulaire rempli dans un ticket Discord). Le statut se change depuis Discord, jamais ici.</p>
+        <div style="overflow-x:auto;">
+          <table class="table-admin">
+            <thead><tr><th>Candidat</th><th>Statut</th><th>Recruteur</th><th>Soumise le</th><th>Réponses</th><th>Pièces</th><th>Mise à jour</th></tr></thead>
+            <tbody id="corps-bot-candidatures"><tr><td colspan="7">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="bot-panneau-absences" class="cache">
+        <p class="champ-aide" style="margin:14px 0 10px;">Demandes d'absence déclarées avec <code>/absence</code> sur Discord, et leur traitement par les approbateurs.</p>
+        <div style="overflow-x:auto;">
+          <table class="table-admin">
+            <thead><tr><th>Membre</th><th>Du</th><th>Au</th><th>Motif</th><th>Statut</th><th>Traitée par</th><th>Mise à jour</th></tr></thead>
+            <tbody id="corps-bot-absences"><tr><td colspan="7">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="bot-panneau-commandes" class="cache">
+        <p class="champ-aide" style="margin:14px 0 10px;">Commandes passées par les clients dans les tickets « Service client », avec leur facture générée par le bot.</p>
+        <div style="overflow-x:auto;">
+          <table class="table-admin">
+            <thead><tr><th>Facture</th><th>Client</th><th>Articles</th><th style="text-align:right;">Total</th><th>Statut</th><th>Paiement</th><th>Mise à jour</th></tr></thead>
+            <tbody id="corps-bot-commandes"><tr><td colspan="7">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="bot-panneau-monitoring" class="cache">
+        <p class="champ-aide" style="margin:14px 0 10px;">Logs du script FiveM relayés par le bot : prises de service, recrutements en jeu, coffre, factures, ventes run (les 150 derniers).</p>
+        <div style="overflow-x:auto;">
+          <table class="table-admin">
+            <thead><tr><th>Type</th><th>Joueur</th><th>Détail</th><th>Reçu le</th></tr></thead>
+            <tbody id="corps-bot-monitoring"><tr><td colspan="4">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="bot-panneau-journal" class="cache">
+        <p class="champ-aide" style="margin:14px 0 10px;">Tous les événements reçus, du plus récent au plus ancien (les 60 derniers). Cliquez sur « Détails » pour voir les données brutes envoyées par le bot.</p>
+        <div id="bot-roxwood-compteurs" class="bot-compteurs"></div>
+        <div style="overflow-x:auto;">
+          <table class="table-admin">
+            <thead><tr><th>#</th><th>Type</th><th>Objet</th><th>Envoyé le</th><th>Reçu le</th><th></th></tr></thead>
+            <tbody id="corps-bot-journal"><tr><td colspan="6">Chargement…</td></tr></tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>

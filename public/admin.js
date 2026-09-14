@@ -143,6 +143,7 @@ function demarrerEspaceAdmin() {
     document.getElementById("onglet-comptabilite").classList.remove("cache");
     document.getElementById("onglet-statistiques").classList.remove("cache");
     document.getElementById("onglet-parametres").classList.remove("cache");
+    document.getElementById("onglet-bot-roxwood").classList.remove("cache");
   }
   // Le lien Webmap est réservé au Patron, au Co Patron, et au Développeur web
   // (qui a exactement les mêmes accès que le Patron, y compris ici).
@@ -167,6 +168,7 @@ function basculerOnglet(nom) {
   document.getElementById("panneau-comptabilite").classList.toggle("cache", nom !== "comptabilite");
   document.getElementById("panneau-statistiques").classList.toggle("cache", nom !== "statistiques");
   document.getElementById("panneau-parametres").classList.toggle("cache", nom !== "parametres");
+  document.getElementById("panneau-bot-roxwood").classList.toggle("cache", nom !== "bot-roxwood");
   // L'agenda a besoin de toute la largeur disponible (voir style.css) : le
   // reste des onglets garde la mise en page habituelle, limitée en largeur.
   document.getElementById("admin-contenu").classList.toggle("admin-contenu--pleine", nom === "agenda");
@@ -176,6 +178,7 @@ function basculerOnglet(nom) {
   if (nom === "comptabilite") chargerTablette();
   if (nom === "statistiques") { chargerStatistiques(); chargerAgentsStats(); }
   if (nom === "parametres") chargerSyncSheet();
+  if (nom === "bot-roxwood") chargerBotRoxwood();
 }
 
 // ---------------------------------------------------------------------------
@@ -3082,4 +3085,216 @@ document.getElementById("bouton-synchroniser-sheet")?.addEventListener("click", 
     bouton.disabled = false;
     bouton.textContent = texteInitial;
   }
+});
+
+// ---------------------------------------------------------------------------
+// Onglet « Bot Roxwood Network » — panneau d'administration EN LECTURE SEULE du bot
+// Discord « Roxwood Network Entreprise ». Le bot n'a pas d'API de lecture :
+// il POUSSE ses événements au site (webhooks signés, reçus par
+// POST /api/bot-roxwood/webhook côté serveur) et cet écran affiche ce qui a
+// été reçu (GET /api/bot-roxwood/apercu, Direction uniquement). Aucun bouton
+// ici n'envoie quoi que ce soit au bot ni à Discord : toute action (changer
+// un statut, accepter une absence, marquer une commande payée) se fait dans
+// Discord, et le bot renvoie alors le nouvel état, qui apparaît ici.
+// ---------------------------------------------------------------------------
+
+let CACHE_BOT_ROXWOOD = null;
+
+const BOT_ROXWOOD_STATUTS = {
+  // Candidatures (ApplicationStatus côté bot)
+  PENDING: { texte: "En attente", classe: "puce-or" },
+  INTERVIEW: { texte: "Entretien", classe: "puce-or" },
+  ACCEPTED: { texte: "Accepté", classe: "puce-ok" },
+  REJECTED: { texte: "Refusé", classe: "puce-off" },
+  REFUSED: { texte: "Refusé", classe: "puce-off" },
+  // Commandes (OrderStatus) / paiement (PaymentStatus)
+  PREPARING: { texte: "En préparation", classe: "puce-or" },
+  DELIVERED: { texte: "Livrée", classe: "puce-ok" },
+  CANCELLED: { texte: "Annulée", classe: "puce-off" },
+  PAID: { texte: "Payée", classe: "puce-ok" },
+  UNPAID: { texte: "Impayée", classe: "puce-off" },
+};
+
+function puceBotRoxwood(statut) {
+  const s = BOT_ROXWOOD_STATUTS[String(statut || "").toUpperCase()];
+  if (!s) return `<span class="puce puce-masquee">${echapper(statut || "—")}</span>`;
+  return `<span class="puce ${s.classe}">${s.texte}</span>`;
+}
+
+// Le bot ne transmet que des identifiants Discord : on affiche le pseudo du
+// compte du site s'il existe (membres.discord_id), sinon l'identifiant brut.
+function nomDiscordBotRoxwood(discordId) {
+  if (!discordId) return "—";
+  const membres = (CACHE_BOT_ROXWOOD && CACHE_BOT_ROXWOOD.membres) || {};
+  const pseudo = membres[String(discordId)];
+  if (pseudo) return `<span title="Discord ${echapper(discordId)}">${echapper(pseudo)}</span>`;
+  return `<code class="bot-id" title="Identifiant Discord (aucun compte du site associé)">${echapper(discordId)}</code>`;
+}
+
+function dateBotRoxwood(iso) {
+  return iso ? formaterDateAdmin(String(iso)) : "—";
+}
+
+function montantBotRoxwood(valeur) {
+  const n = Number(valeur);
+  if (!Number.isFinite(n)) return "—";
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " $";
+}
+
+// Résumé lisible d'un log de monitoring FiveM (voir monitoringParsers.ts côté bot).
+function resumeMonitoringBotRoxwood(type, p) {
+  const parsed = p.parsed || null;
+  if (!parsed) return `<span class="champ-aide" title="${echapper(p.description || "")}">Format non reconnu par le bot — ${echapper(String(p.description || "").slice(0, 120))}</span>`;
+  switch (type) {
+    case "monitoring.duty":
+      return parsed.direction === "in" ? "🟢 Prise de service" : "🔴 Fin de service";
+    case "monitoring.recruitment":
+      if (parsed.action === "hired") return `✅ Embauche${p.targetPlayerDiscord ? " de " + nomDiscordBotRoxwood(p.targetPlayerDiscord) : ""}`;
+      if (parsed.action === "fired") return `❌ Licenciement${p.targetPlayerDiscord ? " de " + nomDiscordBotRoxwood(p.targetPlayerDiscord) : ""}`;
+      if (parsed.action === "grade_change") return `🔁 Grade → ${echapper(parsed.grade)}`;
+      return echapper(p.description || "");
+    case "monitoring.storage":
+      return `${parsed.direction === "in" ? "📥 Dépôt" : "📤 Retrait"} ${echapper(parsed.quantity)} × ${echapper(parsed.itemLabel)}` +
+        (parsed.stockAfter != null ? ` <span class="champ-aide">(stock : ${echapper(parsed.stockAfter)})</span>` : "");
+    case "monitoring.invoice":
+      return `💵 ${montantBotRoxwood(parsed.amount)} payés par ${echapper(parsed.payerName)}` + (parsed.taxPercent ? ` <span class="champ-aide">(taxe ${echapper(parsed.taxPercent)} %)</span>` : "");
+    case "monitoring.sale":
+      return `🛒 ${echapper(parsed.quantity)} × ${echapper(parsed.itemLabel)} — ${montantBotRoxwood(parsed.totalPrice)}` +
+        (parsed.companyShare != null ? ` <span class="champ-aide">(part entreprise : ${montantBotRoxwood(parsed.companyShare)})</span>` : "") +
+        (parsed.sellerName ? ` par ${echapper(parsed.sellerName)}` : "");
+    default:
+      return echapper(p.description || "");
+  }
+}
+
+function libelleTypeBotRoxwood(type) {
+  const lib = (CACHE_BOT_ROXWOOD && CACHE_BOT_ROXWOOD.etat && CACHE_BOT_ROXWOOD.etat.libelles) || {};
+  return lib[type] || type;
+}
+
+function afficherBotRoxwood(r) {
+  CACHE_BOT_ROXWOOD = r;
+  const etat = r.etat || {};
+  document.getElementById("bot-roxwood-non-configure").classList.toggle("cache", !!etat.configure);
+  document.getElementById("bot-roxwood-etat").textContent = etat.configure ? (etat.total ? "Active" : "Prête") : "Non configurée";
+  document.getElementById("bot-roxwood-etat-detail").textContent = etat.configure
+    ? `${etat.nb_secrets} secret(s) — ${(etat.guildes || []).length} serveur(s) Discord vu(s)`
+    : "Aucun secret de webhook sur le serveur";
+  document.getElementById("bot-roxwood-total").textContent = etat.total || 0;
+  document.getElementById("bot-roxwood-dernier").textContent = etat.dernier_recu ? "Dernier : " + formaterDateAdmin(etat.dernier_recu) : "Rien reçu pour le moment";
+
+  const candidatures = r.candidatures || [];
+  const nbAttente = candidatures.filter((c) => ["PENDING", "INTERVIEW"].includes(String(c.charge.status || "").toUpperCase())).length;
+  document.getElementById("bot-roxwood-nb-candidatures").textContent = candidatures.length;
+  document.getElementById("bot-roxwood-candidatures-attente").textContent = nbAttente ? `${nbAttente} à traiter` : "Aucune en cours";
+
+  const commandes = r.commandes || [];
+  const nbImpayees = commandes.filter((c) => String(c.charge.paymentStatus || "").toUpperCase() !== "PAID" && String(c.charge.status || "").toUpperCase() !== "CANCELLED").length;
+  document.getElementById("bot-roxwood-nb-commandes").textContent = commandes.length;
+  document.getElementById("bot-roxwood-commandes-impayees").textContent = nbImpayees ? `${nbImpayees} impayée(s)` : "Tout est réglé";
+
+  // --- Candidatures ---
+  const corpsCand = document.getElementById("corps-bot-candidatures");
+  corpsCand.innerHTML = candidatures.length ? candidatures.map((l) => {
+    const p = l.charge || {};
+    const reponses = (p.answers || []).map((a) => `<div class="bot-reponse"><strong>${echapper(a.question)}</strong><br>${echapper(a.answer)}</div>`).join("");
+    const pieces = (p.attachments || []).map((a) => echapper(a.filename)).join(", ");
+    return `<tr>
+      <td>${nomDiscordBotRoxwood(p.candidateId)}</td>
+      <td>${puceBotRoxwood(p.status)}</td>
+      <td>${p.recruiterId ? nomDiscordBotRoxwood(p.recruiterId) : "—"}</td>
+      <td>${dateBotRoxwood(p.submittedAt)}</td>
+      <td>${reponses ? `<details class="bot-details"><summary>${(p.answers || []).length} réponse(s)</summary>${reponses}</details>` : "—"}</td>
+      <td>${pieces || "—"}</td>
+      <td>${dateBotRoxwood(l.envoye_le || l.recu_le)}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="7">Aucune candidature reçue pour le moment.</td></tr>`;
+
+  // --- Absences ---
+  const absences = r.absences || [];
+  const corpsAbs = document.getElementById("corps-bot-absences");
+  corpsAbs.innerHTML = absences.length ? absences.map((l) => {
+    const p = l.charge || {};
+    const jour = (iso) => (iso ? new Date(iso).toLocaleDateString("fr-FR") : "—");
+    return `<tr>
+      <td>${nomDiscordBotRoxwood(p.requesterId)}</td>
+      <td>${jour(p.startDate)}</td>
+      <td>${jour(p.endDate)}</td>
+      <td>${echapper(p.reason || "—")}</td>
+      <td>${puceBotRoxwood(p.status)}</td>
+      <td>${p.resolverId ? nomDiscordBotRoxwood(p.resolverId) + (p.resolvedAt ? ` <span class="champ-aide">${dateBotRoxwood(p.resolvedAt)}</span>` : "") : "—"}</td>
+      <td>${dateBotRoxwood(l.envoye_le || l.recu_le)}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="7">Aucune demande d'absence reçue pour le moment.</td></tr>`;
+
+  // --- Commandes ---
+  const corpsCmd = document.getElementById("corps-bot-commandes");
+  corpsCmd.innerHTML = commandes.length ? commandes.map((l) => {
+    const p = l.charge || {};
+    const articles = (p.items || []).map((i) => `<div>${echapper(i.quantity)} × ${echapper(i.name)} <span class="champ-aide">(${montantBotRoxwood(i.unitPrice)} l'unité)</span></div>`).join("");
+    const details = [];
+    if (p.deliveryFee) details.push(`livraison ${montantBotRoxwood(p.deliveryFee)}`);
+    if (p.discountPercent) details.push(`remise ${echapper(p.discountPercent)} % (−${montantBotRoxwood(p.discountAmount)})`);
+    return `<tr>
+      <td>${p.invoiceNumber != null ? "n° " + echapper(p.invoiceNumber) : '<span class="champ-aide">pas encore de facture</span>'}${p.confirmed === false ? ' <span class="puce puce-masquee">en composition</span>' : ""}</td>
+      <td>${nomDiscordBotRoxwood(p.customerId)}</td>
+      <td>${articles || "—"}</td>
+      <td style="text-align:right;"><strong>${montantBotRoxwood(p.total)}</strong>${details.length ? `<div class="champ-aide">${details.join(", ")}</div>` : ""}</td>
+      <td>${puceBotRoxwood(p.status)}</td>
+      <td>${puceBotRoxwood(p.paymentStatus)}</td>
+      <td>${dateBotRoxwood(l.envoye_le || l.recu_le)}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="7">Aucune commande reçue pour le moment.</td></tr>`;
+
+  // --- Monitoring ---
+  const monitoring = r.monitoring || [];
+  const corpsMon = document.getElementById("corps-bot-monitoring");
+  corpsMon.innerHTML = monitoring.length ? monitoring.map((l) => {
+    const p = l.charge || {};
+    const joueur = p.playerName ? echapper(p.playerName) + (p.playerDiscord ? ` <span class="champ-aide">${nomDiscordBotRoxwood(p.playerDiscord)}</span>` : "") : nomDiscordBotRoxwood(p.playerDiscord);
+    return `<tr>
+      <td>${echapper(libelleTypeBotRoxwood(l.type_evenement))}</td>
+      <td>${joueur}</td>
+      <td>${resumeMonitoringBotRoxwood(l.type_evenement, p)}</td>
+      <td>${dateBotRoxwood(l.envoye_le || l.recu_le)}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="4">Aucun log de monitoring reçu pour le moment.</td></tr>`;
+
+  // --- Journal brut ---
+  const compteurs = etat.compteurs || {};
+  document.getElementById("bot-roxwood-compteurs").innerHTML = (etat.types || []).filter((t) => compteurs[t]).map((t) =>
+    `<span class="puce puce-masquee" title="Dernier : ${echapper(formaterDateAdmin(compteurs[t].dernier))}">${echapper(libelleTypeBotRoxwood(t))} : ${compteurs[t].nb}</span>`
+  ).join(" ") || '<span class="champ-aide">Aucun événement.</span>';
+  const journal = r.journal || [];
+  const corpsJournal = document.getElementById("corps-bot-journal");
+  corpsJournal.innerHTML = journal.length ? journal.map((l) => `<tr>
+      <td>${l.id}</td>
+      <td>${echapper(libelleTypeBotRoxwood(l.type_evenement))} <span class="champ-aide">${echapper(l.type_evenement)}</span></td>
+      <td>${l.cle_objet ? `<code class="bot-id">${echapper(l.cle_objet)}</code>` : "—"}</td>
+      <td>${dateBotRoxwood(l.envoye_le)}</td>
+      <td>${dateBotRoxwood(l.recu_le)}</td>
+      <td><details class="bot-details"><summary>Détails</summary><pre class="bot-json">${echapper(JSON.stringify(l.charge, null, 2))}</pre></details></td>
+    </tr>`).join("") : `<tr><td colspan="6">Aucun événement reçu pour le moment.</td></tr>`;
+}
+
+async function chargerBotRoxwood() {
+  afficherMessage("zone-message-bot-roxwood", "", null);
+  try {
+    const r = await appelAPI("/api/bot-roxwood/apercu");
+    afficherBotRoxwood(r);
+  } catch (e) {
+    afficherMessage("zone-message-bot-roxwood", "Impossible de charger l'état du bot : " + e.message, "erreur");
+  }
+}
+
+document.getElementById("bouton-rafraichir-bot-roxwood")?.addEventListener("click", chargerBotRoxwood);
+
+document.querySelectorAll(".compta-sous-onglet[data-bot-onglet]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".compta-sous-onglet[data-bot-onglet]").forEach((b) => b.classList.toggle("actif", b === btn));
+    const nom = btn.dataset.botOnglet;
+    ["candidatures", "absences", "commandes", "monitoring", "journal"].forEach((n) => {
+      document.getElementById("bot-panneau-" + n).classList.toggle("cache", n !== nom);
+    });
+  });
 });

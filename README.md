@@ -161,6 +161,12 @@ L'espace Statistiques permet ensuite d'obtenir :
 
 Les événements envoyés par le bot possèdent un identifiant unique afin d'éviter qu'une même vente soit comptabilisée deux fois lors d'un renvoi réseau.
 
+### Bot Roxwood Network — Direction (lecture seule)
+
+L'onglet **Outils → Bot Roxwood Network** affiche l'état et le journal du bot Discord [Roxwood Network Entreprise](https://github.com/poulpizar01/roxwood-network-entreprise) : candidatures (dernier statut, recruteur, réponses au formulaire), demandes d'absence, commandes clients (facture, total, paiement) et logs de monitoring FiveM (prises de service, coffre, factures, ventes run).
+
+Le bot n'a pas d'API de lecture : il **pousse** ses événements au site (webhooks signés HMAC-SHA256, `POST /api/bot-roxwood/webhook`), le site les stocke (`bot_roxwood_evenements`) et l'onglet les affiche. **Rien n'est modifiable depuis le site** : toute action se fait dans Discord. Configuration : [`notes/bot-roxwood-configuration.md`](notes/bot-roxwood-configuration.md) (variable `ROXWOOD_WEBHOOK_SECRETS`).
+
 ### Comptes & accès — Direction
 
 La Direction peut :
@@ -278,6 +284,7 @@ DISCORD_CLIENT_ID=...
 DISCORD_CLIENT_SECRET=...
 DISCORD_REDIRECT_URI=...
 STATS_BOT_SECRET=...
+ROXWOOD_WEBHOOK_SECRETS=...   # secrets des webhooks du bot Roxwood (séparés par des virgules)
 FBFA_STORAGE_TOKEN=...        # stockage des photos sur storage.fbfa.fr
 ```
 
@@ -295,7 +302,7 @@ ou
 PGSSL=require
 ```
 
-`SESSION_SECRET`, les identifiants Discord, les mots de passe de base de données, `STATS_BOT_SECRET` et `FBFA_STORAGE_TOKEN` sont des **secrets** : ils ne doivent jamais être ajoutés au dépôt Git.
+`SESSION_SECRET`, les identifiants Discord, les mots de passe de base de données, `STATS_BOT_SECRET`, `ROXWOOD_WEBHOOK_SECRETS` et `FBFA_STORAGE_TOKEN` sont des **secrets** : ils ne doivent jamais être ajoutés au dépôt Git.
 
 ---
 
@@ -359,6 +366,7 @@ Dynasty8/
 │   ├── images.js              # Validation des fichiers image
 │   ├── medias.js              # Suivi, rattachement et nettoyage des photos
 │   ├── migration-medias.js    # Migration des anciennes photos base64
+│   ├── bot-roxwood.js         # Réception signée des webhooks du bot Roxwood (lecture seule)
 │   └── corps-requete.js       # Limite de taille des requêtes /api/*
 ├── deploy/
 │   ├── vps/                   # Docker Compose autonome (app + PostgreSQL + Caddy)

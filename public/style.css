@@ -2483,7 +2483,7 @@ section.section.serre {
 }
 
 .d8-select-flottant {
-  position: fixed; z-index: 500; max-height: 260px; overflow-y: auto; overflow-x: hidden;
+  position: fixed; z-index: 100100; /* au-dessus des modales (100000) — sinon la liste s'ouvre derrière */ max-height: 260px; overflow-y: auto; overflow-x: hidden;
   background: var(--bg-card); border: 1px solid var(--d8-gold-400); border-radius: var(--radius-sm);
   box-shadow: var(--shadow); padding: 6px;
   scrollbar-width: thin; scrollbar-color: var(--d8-gold-400) transparent;
@@ -3045,3 +3045,12 @@ tr:hover .compta-supprimer-ligne, .compta-supprimer-ligne:focus-visible { opacit
 .dot-copie-outils { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .dot-copie-libelle { font-family: var(--d8-font-ui); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
 .dot-copie-ligne { width: 72px; text-align: center; }
+
+/* ---------- Onglet Bot Roxwood (lecture seule) ---------- */
+.bot-id { font-size: 0.78rem; color: var(--text-faint); word-break: break-all; }
+.bot-details summary { cursor: pointer; color: var(--gold-strong); font-size: 0.85rem; }
+.bot-reponse { margin: 8px 0 0; font-size: 0.85rem; max-width: 420px; white-space: pre-wrap; }
+.bot-json { margin: 8px 0 0; font-size: 0.75rem; max-width: 520px; max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-word; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.bot-compteurs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+.ico-logo-roxwood { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 0 3px rgba(120, 140, 255, 0.5)); }
+.logo-roxwood-titre { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(120, 140, 255, 0.45)); }

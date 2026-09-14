@@ -102,6 +102,9 @@ function construireEnv() {
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
     DISCORD_REDIRECT_URI: process.env.DISCORD_REDIRECT_URI,
     STATS_BOT_SECRET: process.env.STATS_BOT_SECRET,
+    // Secrets des webhooks du bot Roxwood Network Entreprise (un par
+    // abonnement, séparés par des virgules) — voir src/bot-roxwood.js.
+    ROXWOOD_WEBHOOK_SECRETS: process.env.ROXWOOD_WEBHOOK_SECRETS,
     // Transmet le réglage "cookies en HTTP simple" (voir poserCookie() dans
     // src/index.js) -- sans cette ligne, la variable .env COOKIES_HTTP=1 est
     // ignorée : le cookie de connexion reste marqué "Secure" et le navigateur
