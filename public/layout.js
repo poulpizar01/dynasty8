@@ -215,10 +215,15 @@ function ajusterCadre() {
 // ---------------------------------------------------------------------------
 const FOLKOS_HOTE = "https://computer.game.fbfa.fr";
 
+// Vrai quand le site est affiché dans l'iframe de l'ordinateur en jeu. Sert au
+// SDK FolkOS ci-dessous, et à couper les effets WebGL : dans la CEF de FiveM,
+// le GPU est partagé avec le jeu, et une animation plein écran fait chuter les
+// FPS du joueur. Exposé pour les pages qui n'ont pas layout.js.
+const EN_JEU = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+window.D8_EN_JEU = EN_JEU;
+
 function initialiserFolkOS() {
-  let dansIframe = false;
-  try { dansIframe = window.self !== window.top; } catch (e) { dansIframe = true; }
-  if (!dansIframe) return;
+  if (!EN_JEU) return;
   const script = document.createElement("script");
   script.src = FOLKOS_HOTE + "/fbfa-game.js";
   script.async = true;
@@ -618,6 +623,9 @@ function habillerCartesHub() {
 
 function demarrerPoussiereOr() {
   if (document.body.classList.contains("page-agents")) return;
+  // Ordinateur en jeu : pas de WebGL (voir EN_JEU plus haut) — le site reste
+  // identique, sans la poussière d'or.
+  if (EN_JEU) return;
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   if (document.querySelector(".d8-poussiere")) return;
   import("/vendor/three.module.min.js").then((THREE) => {

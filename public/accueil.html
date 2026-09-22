@@ -380,10 +380,15 @@
 //   - le soleil a des rayons lents et un halo chaud plus large ;
 //   - une nappe de lumière au sol reflète le logo.
 // ---------------------------------------------------------------------------
-import * as THREE from 'three';
-(function(){
+// Ordinateur en jeu (FolkOS / FiveM) : le rendu WebGL partagerait le GPU avec
+// le jeu et ferait chuter les FPS du joueur. Dans l'iframe in-game, on ne
+// charge donc même pas Three.js (670 Ko) et on garde un visuel statique.
+const enJeu = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+(async function(){
   const canvas = document.getElementById('hero-logo');
   if (!canvas) return;
+  if (enJeu) { canvas.remove(); return; }
+  const THREE = await import('three');
   let renderer;
   try { renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'}); }
   catch (e) { canvas.remove(); return; }
