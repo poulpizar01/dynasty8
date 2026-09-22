@@ -1,12 +1,15 @@
 // ============================================================================
 // Diagnostic du stockage FBFA — SCRIPT MANUEL, LECTURE SEULE
 // ----------------------------------------------------------------------------
-// Sert à confirmer, avec le vrai jeton, les points du contrat que la
-// documentation ne précise pas, avant de s'en servir dans le site :
+// Sert à confirmer, avec le vrai jeton, les deux points que la documentation
+// du service ne précise toujours pas, avant de s'en servir dans le site :
 //   - le format exact de GET /api/usage (champs de quota et d'usage) ;
 //   - si les éléments de GET /api/objects contiennent la CLÉ de l'objet
-//     (nécessaire pour retrouver/supprimer d'anciens fichiers par clé) ;
-//   - les champs renvoyés par GET /api/object/{clé}.
+//     (seuls id et url sont documentés ; la clé est nécessaire pour retrouver
+//     ou supprimer d'anciens fichiers).
+// Les champs de GET /api/object/{clé} sont désormais documentés
+// ({ id, url, size, mimeType }) : c'est sur « id » que repose le garde-fou
+// avant suppression (src/medias.js).
 // Aucune écriture, aucune suppression. Le jeton n'est jamais affiché.
 //
 //   node scripts/fbfa-diagnostic.js [--prefix dynasty8/] [--cle dynasty8/biens/…/x.jpg]

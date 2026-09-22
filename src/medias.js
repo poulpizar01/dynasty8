@@ -391,8 +391,9 @@ export async function nettoyerMedias({ db, client, mode = "simulation", delaiSec
     if (!pris) continue;
 
     try {
-      // Garde-fou : si le service associe cette clé à un autre identifiant
-      // que celui enregistré, ce n'est plus notre fichier — on ne supprime pas.
+      // Garde-fou : GET /api/object/{clé} renvoie { id, url, size, mimeType }.
+      // Si le service associe cette clé à un autre identifiant que celui
+      // enregistré, ce n'est plus notre fichier — on ne supprime pas.
       const meta = await client.metadonnees(pris.cle);
       if (meta && pris.fbfa_id && meta.id != null && String(meta.id) !== String(pris.fbfa_id)) {
         await db.prepare(

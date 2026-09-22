@@ -162,11 +162,13 @@ Fonctionnement (détails dans `src/medias.js`) :
 - Suivi : `GET /api/medias/etat` (Direction) donne le nombre et le volume de
   médias par état, en lecture de la base uniquement.
 
-### Points du service à confirmer avec le vrai jeton
-Le contrat ne précise ni le format de `GET /api/usage`, ni si
-`GET /api/objects` renvoie la clé des objets, ni les champs de
-`GET /api/object/{clé}`. Le site ne s'appuie sur aucun de ces points. Pour les
-relever (lecture seule, le jeton n'est pas affiché) :
+### Points du service encore à confirmer avec le vrai jeton
+Le contrat précise les champs de `PUT` et `GET /api/object/{clé}`
+(`{ id, url, size, mimeType }`) — c'est sur `id` que repose le garde-fou
+avant suppression. Restent inconnus : le **format de `GET /api/usage`** et le
+fait que `GET /api/objects` renvoie ou non la **clé** des objets (seuls `id`
+et `url` sont documentés). Le site ne s'appuie sur aucun de ces deux points.
+Pour les relever (lecture seule, le jeton n'est jamais affiché) :
 ```bash
 docker compose exec app node scripts/fbfa-diagnostic.js --prefix dynasty8/
 ```

@@ -8,7 +8,7 @@
 //
 // Contrat connu de l'API (toutes les routes /api/* : Authorization: Bearer) :
 //   PUT    /api/object/{clé}   corps binaire -> { id, url, size, mimeType }
-//   GET    /api/object/{clé}   -> métadonnées (champs exacts non documentés)
+//   GET    /api/object/{clé}   -> métadonnées { id, url, size, mimeType }
 //   DELETE /api/object/{clé}   -> suppression (par CLÉ, jamais par id public)
 //   GET    /api/objects?prefix=&limit=&cursor= -> { items: [...], nextCursor }
 //   GET    /api/usage          -> quota et usage (format NON confirmé)
@@ -226,7 +226,9 @@ export function creerClientFbfa({ token, base, delaiMs, fetchImpl } = {}) {
       };
     },
 
-    // Métadonnées brutes (format non documenté) ; null si l'objet n'existe pas.
+    // Métadonnées { id, url, size, mimeType } ; null si l'objet n'existe pas.
+    // Renvoyées telles quelles : c'est l'appelant qui décide quoi en faire
+    // (voir le garde-fou avant suppression, dans src/medias.js).
     async metadonnees(cle) {
       const r = await appeler("GET", cheminObjet(cle));
       if (r.status === 404) return null;
