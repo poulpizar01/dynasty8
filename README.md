@@ -271,6 +271,46 @@ Il contient :
 
 La procédure détaillée se trouve dans [`deploy/vps/README-VPS.md`](deploy/vps/README-VPS.md).
 
+### Déploiement systemd (sans Docker)
+
+Pour un serveur où les applications tournent sous un compte Linux dédié (`dev`)
+derrière nginx : [`deploy/systemd/`](deploy/systemd/README-SYSTEMD.md). Le
+script `deploy/systemd/deploy.sh` n'appelle jamais `sudo` et sépare
+explicitement les commandes du compte applicatif et celles de root :
+
+```bash
+# dev
+git pull && npm ci --omit=dev && npm run migrate
+# root
+systemctl restart dynasty8-api
+```
+
+Le service est généré à partir de `dynasty8-api.service.modele` : `User=dev`
+(jamais root), `ExecStart` avec le chemin absolu de Node (`/usr/bin/node` par
+défaut, configurable via `NODE_BIN`), `EnvironmentFile` sur le `.env`, et
+`Restart=always`.
+
+### Derrière nginx
+
+Dans les trois cas, Node écoute en local (`127.0.0.1:3010` par défaut,
+`PORT_LOCAL` / `PORT`) et nginx proxifie tout, pages comprises. Configuration
+complète : [`deploy/vps/nginx-dynasty8.conf`](deploy/vps/nginx-dynasty8.conf).
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:3010;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host  $host;
+}
+```
+
+L'application est en `app.set("trust proxy", true)` et se sert de
+`X-Forwarded-Proto` et `X-Forwarded-Host` pour reconstruire ses URL (retour
+OAuth Discord, cookies de session) — voir `src/entetes-proxy.js`.
+
 ---
 
 ## Variables d'environnement
@@ -281,7 +321,7 @@ Selon le mode utilisé, l'application peut nécessiter les variables suivantes :
 DATABASE_URL=postgresql://...   # compte APPLICATIF restreint (pas d'admin)
 DB_SCHEMA_AUTO=0                # le serveur ne crée aucune table (recommandé)
 SESSION_SECRET=...
-DISCORD_CLIENT_ID=...
+DISCORD_CLIENT_ID=1546523997980852294   # application Discord « RoxwoodLegal »
 DISCORD_CLIENT_SECRET=...
 DISCORD_REDIRECT_URI=...
 STATS_BOT_SECRET=...
@@ -389,7 +429,8 @@ Dynasty8/
 │   └── corps-requete.js       # Limite de taille des requêtes /api/*
 ├── deploy/
 │   ├── vps/                   # Docker Compose autonome (app + PostgreSQL, derrière nginx)
-│   └── operateur/             # Docker Compose pour le serveur FlashbackFA (proxy externe, SSO FolkOS)
+│   ├── operateur/             # Docker Compose pour le serveur FlashbackFA (proxy externe, SSO FolkOS)
+│   └── systemd/               # Déploiement systemd + nginx, sans Docker (compte « dev »)
 ├── notes/                     # Documentation technique complémentaire
 ├── scripts/                   # Scripts d'administration (à lancer à la main)
 ├── tests/                     # Tests automatisés (`npm test`)

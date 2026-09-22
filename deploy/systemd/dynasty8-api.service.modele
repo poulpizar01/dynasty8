@@ -1,0 +1,59 @@
+# ============================================================================
+# Modèle d'unité systemd pour Dynasty 8 (site + API Node.js).
+# ----------------------------------------------------------------------------
+# NE PAS copier ce fichier tel quel : les @@…@@ sont remplacés par
+# deploy/systemd/deploy.sh (commandes « unite » puis « installer »), qui
+# vérifie au passage l'utilisateur, le binaire Node, le port et le .env.
+# ============================================================================
+[Unit]
+Description=Dynasty 8 — site public et espace agents (Node.js)
+Documentation=file://@@APP_DIR@@/deploy/systemd/README-SYSTEMD.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Jamais root : compte applicatif dédié, sans privilège.
+User=@@USER@@
+Group=@@GROUP@@
+WorkingDirectory=@@APP_DIR@@
+
+# Secrets : fichier lisible par @@USER@@ uniquement (chmod 600).
+EnvironmentFile=@@ENV_FILE@@
+# Réglages imposés par le déploiement (placés APRÈS EnvironmentFile : ils
+# l'emportent sur le .env, pour éviter toute divergence).
+Environment=NODE_ENV=production
+Environment=PORT=@@PORT@@
+# Le serveur ne crée aucune table : le schéma est appliqué séparément par
+# « npm run migrate » avec le compte administrateur PostgreSQL.
+Environment=DB_SCHEMA_AUTO=0
+
+# Chemin ABSOLU du binaire Node (jamais $(command -v node) : un Node installé
+# par nvm sous /root n'est pas lisible par @@USER@@ -> status=203/EXEC).
+ExecStart=@@NODE_BIN@@ @@APP_DIR@@/server.js
+
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGTERM
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=@@SERVICE@@
+
+# ---- durcissement (compatible avec ce que l'application écrit) ----
+# L'app n'écrit sur disque que dans @@APP_DIR@@/rapports (comptes rendus des
+# scripts) ; tout le reste passe par PostgreSQL et le stockage distant.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectControlGroups=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+ReadWritePaths=@@APP_DIR@@/rapports
+
+[Install]
+WantedBy=multi-user.target

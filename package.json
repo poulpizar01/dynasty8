@@ -9,7 +9,10 @@
   },
   "scripts": {
     "start": "node server.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "migrate": "node scripts/appliquer-schema.js --apply --exiger-compte-applicatif",
+    "migrate:verifier": "node scripts/appliquer-schema.js",
+    "verifier-env": "bash deploy/verifier-env.sh"
   },
   "dependencies": {
     "express": "^5.2.1",
