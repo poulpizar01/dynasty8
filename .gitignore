@@ -1,14 +1,20 @@
 node_modules/
 *.log
 
-# Pack VPS (deploy/vps) : secrets réels et sauvegardes, jamais dans Git
+# Secrets réels : JAMAIS dans Git, quel que soit le pack de déploiement.
+# Ils sont transmis à l'opérateur hors dépôt (message privé chiffré).
 deploy/vps/.env
+deploy/operateur/.env
 deploy/vps/backups/
+
+# Sauvegardes et dumps de la base : données réelles des membres et des ventes
+# (noms RP, journaux). Transmis hors dépôt, jamais commités — voir
+# deploy/operateur/README-OPERATEUR.md, section « Reprise des données ».
+*.dump
+*.sql.gz
+*.backup
+
 Claude outputs/
 _a-envoyer/
 # Comptes rendus des scripts (migration / nettoyage des photos)
 rapports/
-# Sauvegarde de la base à restaurer par l opérateur (choix de Thomas : dans le dépôt)
-!deploy/operateur/*.dump
-!deploy/operateur/.env
-

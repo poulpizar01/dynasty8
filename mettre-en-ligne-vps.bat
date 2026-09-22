@@ -5,6 +5,7 @@ echo.
 echo [1/2] Envoi des fichiers vers le VPS...
 scp -r public src scripts server.js package.json package-lock.json schema.postgres.sql dynasty8-vps:/opt/dynasty8/
 scp deploy/vps/Caddyfile deploy/vps/compose.yaml deploy/vps/Dockerfile dynasty8-vps:/opt/dynasty8/deploy/vps/
+scp deploy/verifier-env.sh dynasty8-vps:/opt/dynasty8/deploy/
 if errorlevel 1 goto erreur
 echo.
 echo [2/2] Reconstruction du site sur le VPS (1 a 2 minutes)...

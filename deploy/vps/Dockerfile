@@ -17,12 +17,21 @@ COPY src ./src
 COPY public ./public
 COPY schema.postgres.sql ./
 # Scripts d'administration lancés à la main (docker compose exec app node scripts/…),
-# jamais au démarrage : migration et nettoyage des photos, diagnostic du stockage.
+# jamais au démarrage : migration du schéma, migration et nettoyage des photos,
+# diagnostic du stockage.
 COPY scripts ./scripts
+
+# L'application ne tourne JAMAIS en root : l'image node fournit déjà un
+# utilisateur "node" (uid 1000) sans privilège. Seul /app/rapports doit être
+# écrivable (comptes rendus des scripts) ; le reste du code reste en lecture.
+RUN mkdir -p /app/rapports && chown -R node:node /app
+USER node
 
 ENV NODE_ENV=production
 EXPOSE 3000
 
-# Le serveur applique lui-même son schéma PostgreSQL au démarrage (server.js) :
-# aucune étape de migration séparée à lancer ici.
+# Le schéma PostgreSQL n'est PAS appliqué par ce conteneur quand
+# DB_SCHEMA_AUTO=0 : il est appliqué une fois, avec le compte admin, par le
+# service "migration" du compose (scripts/appliquer-schema.js). Le serveur se
+# contente alors de vérifier que le schéma attendu est présent.
 CMD ["node", "server.js"]

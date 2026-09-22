@@ -15,6 +15,24 @@
 #     l'app pose elle-même « frame-ancestors … nui://game … » sur chaque réponse.
 
 services:
+  # Migration de la base : SEUL service à utiliser le compte administrateur
+  # PostgreSQL. Il applique schema.postgres.sql puis crée/ajuste le compte
+  # applicatif restreint (SELECT, INSERT, UPDATE, DELETE — jamais CREATE).
+  # Tourne une fois à chaque « docker compose up » (idempotent), puis s'arrête.
+  # À relancer à la main après une restauration de sauvegarde :
+  #     docker compose run --rm migration
+  migration:
+    build:
+      context: ../..
+      dockerfile: deploy/vps/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL_ADMIN: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    command: ["node", "scripts/appliquer-schema.js", "--apply", "--exiger-compte-applicatif"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
   app:
     build:
       context: ../..
@@ -23,7 +41,12 @@ services:
     env_file: .env
     environment:
       PORT: "3000"
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # Compte RESTREINT (créé par le service « migration ») : l'application
+      # n'a aucun droit de création ni de suppression de table.
+      DATABASE_URL: postgres://${APP_DB_USER}:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # Le serveur ne crée plus le schéma lui-même : il vérifie seulement
+      # qu'il est appliqué, et refuse de démarrer sinon.
+      DB_SCHEMA_AUTO: "0"
     ports:
       - "127.0.0.1:${PORT_LOCAL:-3010}:3000"
     # Permet à l'app de joindre le validateur SSO `id` qui écoute en 127.0.0.1
@@ -34,6 +57,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migration:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s

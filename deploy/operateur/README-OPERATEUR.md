@@ -18,23 +18,42 @@ jeu (FolkOS). Contact : Thomas (Dynasty 8 / Roxwood Network).
 ```bash
 git clone <dépôt> /opt/dynasty8      # ou copie du dossier fourni
 cd /opt/dynasty8/deploy/operateur
-# le fichier .env est déjà fourni dans ce dossier : ne reste qu'à remplir les 3 lignes FOLKOS_*
+cp .env.example .env                 # puis remplir TOUTES les valeurs
+chmod 600 .env                       # secrets : lisible par vous seul
+bash ../verifier-env.sh .env         # contrôle des droits et du propriétaire
 docker compose up -d --build
 ```
-Le serveur crée/met à jour lui-même son schéma au démarrage : aucune migration
-à lancer à la main.
+Le fichier `.env` n'est **plus** fourni dans le dépôt : il contient des secrets
+et doit rester hors de Git. Il vous est transmis par message privé.
+
+`docker compose up` lance d'abord le service **migration** (compte
+administrateur PostgreSQL), qui applique le schéma et crée le compte
+applicatif restreint, puis l'application. Voir « Base de données » ci-dessous.
+
+Le conteneur applicatif tourne sous l'utilisateur non privilégié `node`
+(uid 1000), jamais en root. Si votre compte est membre du groupe `docker`,
+aucune de ces commandes n'a besoin de `sudo`.
 
 ## Reprise des données actuelles
-La sauvegarde `pg_dump -Fc` de la base actuelle est fournie dans ce dossier
-(`deploy/operateur/dynasty8_AAAAMMJJ_HHMMSS.dump`). Pour la charger (écrase la base vide fraîchement créée) :
+La sauvegarde `pg_dump -Fc` de la base **n'est plus dans le dépôt** : elle
+contient des données réelles (membres, ventes avec noms RP, journaux). Elle
+vous est transmise séparément, par un canal privé, et ne doit jamais être
+commitée (les `*.dump` sont ignorés par Git). Pour la charger (écrase la base
+vide fraîchement créée) :
 ```bash
 cd /opt/dynasty8/deploy/operateur
 set -a; source .env; set +a
 docker compose exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists < dynasty8_XXXX.dump
+# pg_restore recrée les tables : il faut réaccorder les droits du compte applicatif
+docker compose run --rm migration
+docker compose up -d app
 ```
 
 ## Reverse proxy (https://dynasty8.fbfa.fr → http://127.0.0.1:3010)
-- Transmettre `Host` et `X-Forwarded-Proto: https` (l'app est en `trust proxy`).
+- Transmettre `Host`, `X-Forwarded-Proto: https` et `X-Forwarded-Host` (l'app est
+  en `trust proxy` : elle reconstruit les URL d'API — retour OAuth Discord,
+  cookies de session — à partir de `X-Forwarded-Host` s'il est présent, sinon
+  de `Host`).
 - **Ne pas** ajouter `X-Frame-Options`, **ne pas** écraser `Content-Security-Policy` :
   l'app pose sur chaque réponse
   `Content-Security-Policy: frame-ancestors 'self' https://*.fbfa.fr https://fbfa.fr https://cfx-nui-external-iframe nui://game nui:`
@@ -55,6 +74,7 @@ server {
     location / {
         proxy_pass http://127.0.0.1:3010;
         proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Proto https;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
@@ -64,8 +84,10 @@ server {
 ## Variables `.env`
 | Variable | Qui la fournit | Rôle |
 |---|---|---|
-| `POSTGRES_*`, `SESSION_SECRET` | vous (valeurs aléatoires) | base et signature des sessions |
-| `DISCORD_CLIENT_ID/SECRET`, `STATS_BOT_SECRET` | déjà renseignés dans `.env` | connexion Discord de l'espace agents, bot de ventes |
+| `POSTGRES_*` | vous (valeurs aléatoires) | compte **administrateur** de la base : sert uniquement au service `migration` |
+| `APP_DB_USER`, `APP_DB_PASSWORD` | vous (valeurs aléatoires) | compte **applicatif restreint** avec lequel le site tourne (créé par `migration`) |
+| `SESSION_SECRET` | vous (valeur aléatoire) | signature des cookies de session |
+| `DISCORD_CLIENT_ID/SECRET`, `STATS_BOT_SECRET` | Dynasty 8, transmis hors dépôt | connexion Discord de l'espace agents, bot de ventes |
 | `DISCORD_REDIRECT_URI` | fixe | `https://dynasty8.fbfa.fr/api/auth/discord/callback` |
 | `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | vous | SSO « Se connecter IG » |
 | `FBFA_STORAGE_TOKEN` | vous (jeton `storage.fbfa.fr`) | import des photos d'annonces et de profils |
@@ -94,6 +116,25 @@ sur postgres) — dites-nous ce que vous préférez.
 1. L'hôte FolkOS exact (`FOLKOS_HOTE`) et que le site s'ouvre bien comme page (sinon `escape: true`).
 2. Le port de `id` et la méthode retenue (host.docker.internal ou network host).
 3. Le slug déclaré dans le broker.
+
+## Base de données : migration et droits
+- Le site **ne crée plus aucune table au démarrage**. Le schéma est appliqué
+  une fois, par le service `migration` (compte administrateur), qui :
+  1. applique `schema.postgres.sql` (idempotent, jamais destructif) ;
+  2. crée le compte `APP_DB_USER` s'il n'existe pas, ou met à jour son mot de passe ;
+  3. lui accorde `SELECT`, `INSERT`, `UPDATE`, `DELETE` sur les tables et
+     `USAGE` sur les séquences, et lui **retire** le droit de créer quoi que ce soit ;
+  4. vérifie que ce compte ne peut effectivement pas créer de table.
+- L'application démarre avec `DB_SCHEMA_AUTO=0` : elle vérifie que les tables
+  et colonnes attendues sont là et **refuse de démarrer** sinon, avec un
+  message indiquant la commande à lancer.
+- À relancer à la main après une mise à jour du code ou une restauration :
+  ```bash
+  docker compose run --rm migration            # applique schéma + droits
+  docker compose exec app node scripts/appliquer-schema.js   # vérifie, sans rien écrire
+  ```
+- En cas d'oubli, le conteneur `app` s'arrête avec :
+  « Démarrage refusé : schéma PostgreSQL incomplet (…) ».
 
 ## Photos : stockage storage.fbfa.fr
 Fonctionnement (détails dans `src/medias.js`) :

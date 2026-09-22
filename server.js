@@ -13,6 +13,8 @@ import worker from "./src/index.js";
 import { creerPool, creerAdaptateurDB } from "./src/db-pg.js";
 import { synchroniserSheetSansErreur } from "./src/google-sheets.js";
 import { lireCorpsLimite, limiteCorpsPour, ErreurCorpsTropGros } from "./src/corps-requete.js";
+import { lireSchema, appliquerSchema as appliquerSchemaSQL, verifierSchema } from "./src/schema.js";
+import { choisirHote } from "./src/entetes-proxy.js";
 import { lireConfigMedias, creerClientDepuisConfig, nettoyerMedias } from "./src/medias.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -44,14 +46,43 @@ if (!process.env.DATABASE_URL) {
 const pool = creerPool(process.env.DATABASE_URL);
 const adaptateurDB = creerAdaptateurDB();
 
-// Applique le schéma (création des tables) au démarrage. Sans danger de le
-// relancer à chaque déploiement : tout est écrit en "si ça n'existe pas déjà"
-// (CREATE TABLE IF NOT EXISTS, ON CONFLICT DO NOTHING) — jamais destructif.
-async function appliquerSchema() {
-  const chemin = path.join(__dirname, "schema.postgres.sql");
-  const sql = fs.readFileSync(chemin, "utf8");
-  await pool.query(sql);
-  console.log("Schéma PostgreSQL vérifié/appliqué avec succès.");
+// Préparation de la base au démarrage.
+//
+// DB_SCHEMA_AUTO=0 (recommandé, et réglé par les packs de déploiement) :
+// l'application tourne avec un compte PostgreSQL restreint (SELECT, INSERT,
+// UPDATE, DELETE) et ne crée RIEN. Le schéma est appliqué séparément, avec un
+// compte administrateur, par scripts/appliquer-schema.js (service
+// « migration » du compose). Le serveur se contente de vérifier que tables et
+// colonnes attendues sont là, et refuse de démarrer sinon.
+//
+// DB_SCHEMA_AUTO=1 (valeur par défaut, comportement historique) : le serveur
+// applique lui-même schema.postgres.sql, ce qui exige un compte ayant le
+// droit de créer des tables. À n'utiliser qu'en développement local.
+class SchemaIncomplet extends Error {}
+
+const SCHEMA_AUTO = !["0", "false", "off", "non"].includes(
+  String(process.env.DB_SCHEMA_AUTO ?? "1").trim().toLowerCase()
+);
+
+async function preparerBase() {
+  const sql = lireSchema();
+  if (SCHEMA_AUTO) {
+    await appliquerSchemaSQL(pool, sql);
+    console.log("Schéma PostgreSQL vérifié/appliqué avec succès (DB_SCHEMA_AUTO=1).");
+    return;
+  }
+  const resultat = await verifierSchema(pool, sql);
+  if (!resultat.ok) {
+    const manquant = [
+      resultat.tablesManquantes.length ? `tables : ${resultat.tablesManquantes.join(", ")}` : "",
+      resultat.colonnesManquantes.length ? `colonnes : ${resultat.colonnesManquantes.join(", ")}` : "",
+    ].filter(Boolean).join(" ; ");
+    throw new SchemaIncomplet(
+      `schéma PostgreSQL incomplet (${manquant}) — appliquer la migration avec le compte admin : ` +
+      "docker compose run --rm migration (ou node scripts/appliquer-schema.js --apply)"
+    );
+  }
+  console.log("Schéma PostgreSQL vérifié (aucune création : DB_SCHEMA_AUTO=0).");
 }
 
 // Amorçage du tout premier compte Direction : si AUCUN compte Direction
@@ -178,10 +209,25 @@ function demarrerSyncSheet() {
   setInterval(() => synchroniserSheetSansErreur(construireEnv()), INTERVALLE_SYNC_SHEET_MS);
 }
 
+// Nom d'hôte public du site. Derrière un reverse proxy (nginx chez
+// l'opérateur, Caddy sur le VPS), l'en-tête Host peut porter l'adresse
+// interne : X-Forwarded-Host, quand le proxy le transmet, donne l'adresse
+// réellement demandée par le visiteur — nécessaire pour reconstruire les
+// URL d'API (retour OAuth, cookies). N'est pris en compte que si l'on fait
+// confiance au proxy (trust proxy), et seulement s'il ressemble à un nom
+// d'hôte valide (jamais recopié tel quel dans une URL sinon).
+function hotePublic(req) {
+  return choisirHote({
+    host: req.get("host"),
+    xForwardedHost: req.get("x-forwarded-host"),
+    confiance: !!app.get("trust proxy"),
+  });
+}
+
 // ---- /api/* : transmis tel quel au Worker (Request web standard entrant, Response web standard sortant) ----
 app.use("/api", async (req, res) => {
   try {
-    const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+    const url = `${req.protocol}://${hotePublic(req)}${req.originalUrl}`;
 
     const headers = new Headers();
     for (const [cle, valeur] of Object.entries(req.headers)) {
@@ -231,12 +277,19 @@ app.use((req, res) => {
   });
 });
 
-appliquerSchema()
+preparerBase()
   .then(() => amorcerPremierAdmin())
   .then(() => demarrerSyncSheet())
   .then(() => demarrerNettoyageMedias())
   .catch((e) => {
-    console.error("Impossible d'appliquer le schéma PostgreSQL au démarrage :", e);
+    if (e instanceof SchemaIncomplet) {
+      // Sans schéma, l'application ne peut rien servir de correct : on
+      // s'arrête avec un message clair plutôt que de créer les tables
+      // nous-mêmes (le compte applicatif n'en a volontairement pas le droit).
+      console.error("Démarrage refusé :", e.message);
+      process.exit(1);
+    }
+    console.error("Impossible de préparer la base PostgreSQL au démarrage :", e);
   })
   .finally(() => {
     app.listen(PORT, () => {

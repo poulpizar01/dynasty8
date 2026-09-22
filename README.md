@@ -278,7 +278,8 @@ La procédure détaillée se trouve dans [`deploy/vps/README-VPS.md`](deploy/vps
 Selon le mode utilisé, l'application peut nécessiter les variables suivantes :
 
 ```env
-DATABASE_URL=postgresql://...
+DATABASE_URL=postgresql://...   # compte APPLICATIF restreint (pas d'admin)
+DB_SCHEMA_AUTO=0                # le serveur ne crée aucune table (recommandé)
 SESSION_SECRET=...
 DISCORD_CLIENT_ID=...
 DISCORD_CLIENT_SECRET=...
@@ -316,9 +317,24 @@ Code : `src/fbfa-storage.js` (client de l'API), `src/images.js` (validation des 
 
 ## Base de données
 
-Un seul fichier de schéma : `schema.postgres.sql`. Le serveur l'applique automatiquement au démarrage, avec des opérations non destructives (`CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`…) prévues pour être rejouées à chaque déploiement : une nouvelle table ou colonne s'ajoute simplement à ce fichier.
+Un seul fichier de schéma : `schema.postgres.sql`, écrit en opérations non destructives (`CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`…) et rejouable : une nouvelle table ou colonne s'ajoute simplement à ce fichier.
 
-Sauvegarde / restauration : `deploy/vps/backup.sh` et `restore.sh` (`pg_dump` / `pg_restore`).
+**Deux comptes PostgreSQL, deux rôles** (depuis sept. 2026) :
+
+| | Compte admin (`POSTGRES_USER`) | Compte applicatif (`APP_DB_USER`) |
+|---|---|---|
+| Utilisé par | le service `migration` du compose, à la demande | le site, en permanence |
+| Droits | propriétaire de la base | `SELECT`, `INSERT`, `UPDATE`, `DELETE` + `USAGE` sur les séquences |
+| Peut créer des tables | oui | **non** |
+
+```bash
+node scripts/appliquer-schema.js            # vérifie, n'écrit rien
+node scripts/appliquer-schema.js --apply    # applique le schéma + les droits (compte admin)
+```
+
+Le serveur, lui, démarre avec `DB_SCHEMA_AUTO=0` : il **vérifie** que les tables et colonnes attendues existent (liste déduite du fichier SQL, `src/schema.js`) et refuse de démarrer sinon, en indiquant la commande à lancer. `DB_SCHEMA_AUTO=1` (défaut historique) applique le schéma au démarrage — pratique en développement local, mais le compte doit alors être administrateur.
+
+Sauvegarde / restauration : `deploy/vps/backup.sh` et `restore.sh` (`pg_dump` / `pg_restore`). Après une restauration, relancer la migration pour réaccorder les droits du compte applicatif.
 
 ---
 
@@ -343,7 +359,10 @@ La documentation spécifique au bot est disponible dans le dossier `notes/`.
 
 Quelques règles essentielles :
 
-- ne jamais commiter de fichier `.env` contenant de vraies valeurs ;
+- ne jamais commiter de fichier `.env` ni de sauvegarde de base (`*.dump`) : ils sont ignorés par Git et transmis hors dépôt (les anciens commits en contiennent encore — voir `scripts/purger-historique-secrets.sh`) ;
+- protéger les `.env` sur le serveur : `chmod 600`, propriétaire = compte qui lance le service (`bash deploy/verifier-env.sh <chemin>`) ;
+- faire tourner le site avec le compte PostgreSQL restreint, jamais avec le compte administrateur ;
+- le conteneur applicatif tourne sous l'utilisateur `node` (uid 1000), jamais en root ;
 - ne jamais exposer `SESSION_SECRET` ;
 - ne jamais exposer `DISCORD_CLIENT_SECRET` ;
 - ne jamais exposer `STATS_BOT_SECRET` ;
