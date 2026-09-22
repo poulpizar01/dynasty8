@@ -1,4 +1,4 @@
-// Choix du nom d'hôte public derrière nginx/Caddy (src/entetes-proxy.js).
+// Choix du nom d'hôte public derrière nginx (src/entetes-proxy.js).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { choisirHote } from "../src/entetes-proxy.js";

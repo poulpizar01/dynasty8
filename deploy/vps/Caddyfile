@@ -1,8 +1,0 @@
-# VPS Dynasty 8 (51.255.173.188) : servi en HTTP simple sur l'adresse IP.
-# Le domaine dynasty8.fbfa.fr est hébergé chez l'opérateur FlashbackFA
-# (voir deploy/operateur/), pas ici — ne pas mettre de nom de domaine dans ce
-# fichier tant que le DNS ne pointe pas vers ce VPS.
-:80 {
-	reverse_proxy app:3000
-	encode gzip
-}

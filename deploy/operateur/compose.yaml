@@ -1,6 +1,6 @@
 # Dynasty 8 — pack pour l'hébergeur (serveur FlashbackFA / FolkOS)
 # ---------------------------------------------------------------------------
-# Variante SANS Caddy : le HTTPS et le nom de domaine (dynasty8.fbfa.fr) sont
+# Le HTTPS et le nom de domaine (dynasty8.fbfa.fr) sont
 # gérés par le reverse proxy déjà en place sur votre serveur. L'application
 # n'est exposée qu'en local, sur 127.0.0.1:${PORT_LOCAL} (3010 par défaut).
 #

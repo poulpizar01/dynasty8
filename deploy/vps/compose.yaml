@@ -2,7 +2,8 @@
 # Usage : cd deploy/vps && cp .env.example .env (remplir les vraies valeurs)
 #         puis : docker compose up -d --build
 #
-# Domaine : dynasty8.fbfa.fr (voir Caddyfile).
+# Reverse proxy : nginx, sur l'HÔTE (voir nginx-dynasty8.conf et README-VPS.md).
+# L'application n'est publiée que sur 127.0.0.1 : jamais exposée directement.
 
 services:
   # Migration de la base : SEUL service à utiliser le compte administrateur
@@ -46,8 +47,10 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-    # Pas de "ports:" ici : c'est Caddy qui expose le site publiquement (voir
-    # plus bas) — l'app n'est joignable que depuis le réseau interne Docker.
+    # Publié UNIQUEMENT sur la boucle locale : c'est nginx (sur l'hôte) qui
+    # expose le site au public, en proxifiant vers ce port.
+    ports:
+      - "127.0.0.1:${PORT_LOCAL:-3010}:3000"
 
   postgres:
     image: postgres:17-alpine
@@ -66,20 +69,5 @@ services:
     # Volontairement AUCUN "ports:" : la base n'est jamais exposée en dehors
     # du réseau Docker interne (uniquement joignable par le service "app").
 
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - app
-
 volumes:
   postgres_data:
-  caddy_data:
-  caddy_config:

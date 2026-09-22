@@ -19,8 +19,8 @@ import { lireConfigMedias, creerClientDepuisConfig, nettoyerMedias } from "./src
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-// Le site tourne toujours derrière un reverse proxy (Caddy sur le VPS, ou le
-// proxy de l'opérateur FlashbackFA) qui termine le HTTPS : on lui fait
+// Le site tourne toujours derrière un reverse proxy (nginx sur le VPS comme
+// chez l'opérateur FlashbackFA) qui termine le HTTPS : on lui fait
 // confiance pour X-Forwarded-Proto / X-Forwarded-For, sinon req.protocol vaut
 // "http" et l'URL reconstruite pour /api (redirections OAuth, cookies Secure)
 // est fausse.
@@ -210,7 +210,7 @@ function demarrerSyncSheet() {
 }
 
 // Nom d'hôte public du site. Derrière un reverse proxy (nginx chez
-// l'opérateur, Caddy sur le VPS), l'en-tête Host peut porter l'adresse
+// l'opérateur comme sur le VPS), l'en-tête Host peut porter l'adresse
 // interne : X-Forwarded-Host, quand le proxy le transmet, donne l'adresse
 // réellement demandée par le visiteur — nécessaire pour reconstruire les
 // URL d'API (retour OAuth, cookies). N'est pris en compte que si l'on fait

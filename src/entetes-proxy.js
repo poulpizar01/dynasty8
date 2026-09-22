@@ -1,7 +1,8 @@
 // ============================================================================
 // Nom d'hôte public du site, derrière un reverse proxy
 // ----------------------------------------------------------------------------
-// nginx (opérateur) ou Caddy (VPS) proxifient tout vers le serveur Node. Selon
+// nginx (chez l'opérateur comme sur le VPS) proxifie tout vers le serveur
+// Node, pages comprises. Selon
 // leur configuration, l'en-tête Host reçu peut porter l'adresse INTERNE
 // (127.0.0.1:3010, app:3000…). X-Forwarded-Host, quand le proxy le transmet,
 // donne l'adresse réellement demandée par le visiteur : c'est elle qu'il faut

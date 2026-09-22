@@ -265,7 +265,7 @@ Il contient :
 - un `Dockerfile` pour l'application ;
 - `compose.yaml` ;
 - PostgreSQL avec volume persistant ;
-- Caddy pour le reverse proxy et HTTPS ;
+- un exemple de configuration nginx (reverse proxy, HTTPS via certbot) ;
 - un modèle `.env.example` ;
 - des scripts de sauvegarde et restauration PostgreSQL.
 
@@ -388,7 +388,7 @@ Dynasty8/
 │   ├── bot-roxwood.js         # Réception signée des webhooks du bot Roxwood (lecture seule)
 │   └── corps-requete.js       # Limite de taille des requêtes /api/*
 ├── deploy/
-│   ├── vps/                   # Docker Compose autonome (app + PostgreSQL + Caddy)
+│   ├── vps/                   # Docker Compose autonome (app + PostgreSQL, derrière nginx)
 │   └── operateur/             # Docker Compose pour le serveur FlashbackFA (proxy externe, SSO FolkOS)
 ├── notes/                     # Documentation technique complémentaire
 ├── scripts/                   # Scripts d'administration (à lancer à la main)

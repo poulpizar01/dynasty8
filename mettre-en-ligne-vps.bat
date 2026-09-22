@@ -4,7 +4,7 @@ cd /d "%~dp0"
 echo.
 echo [1/2] Envoi des fichiers vers le VPS...
 scp -r public src scripts server.js package.json package-lock.json schema.postgres.sql dynasty8-vps:/opt/dynasty8/
-scp deploy/vps/Caddyfile deploy/vps/compose.yaml deploy/vps/Dockerfile dynasty8-vps:/opt/dynasty8/deploy/vps/
+scp deploy/vps/nginx-dynasty8.conf deploy/vps/compose.yaml deploy/vps/Dockerfile dynasty8-vps:/opt/dynasty8/deploy/vps/
 scp deploy/verifier-env.sh dynasty8-vps:/opt/dynasty8/deploy/
 if errorlevel 1 goto erreur
 echo.
