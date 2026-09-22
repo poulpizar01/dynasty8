@@ -1575,16 +1575,44 @@ async function statsSemaines(env, s) {
   const semaineRecente = semaines[0] || null;
   const compteursSemaineRecente = semaineRecente ? (parSemaine.get(semaineRecente.code) || { ventes: 0, locations: 0 }) : { ventes: 0, locations: 0 };
 
-  // La semaine EN COURS est toujours proposée, même sans aucune vente encore
-  // enregistrée (sinon, en début de semaine, impossible de préparer la
-  // déclaration DOT ou de consulter le récap tant que personne n'a vendu).
+  // Toutes les semaines sont proposées SANS TROU, de la plus ancienne ayant
+  // des données jusqu'à la semaine EN COURS incluse — y compris les semaines
+  // vides (0 vente), affichées avec des zéros. Avant (sept. 2026), seule la
+  // semaine en cours était ajoutée d'office : une semaine passée sans aucune
+  // vente disparaissait purement et simplement du sélecteur, ce qui donnait
+  // l'impression d'une semaine « perdue » (ex : S37-26 absente entre S36 et
+  // S38) et empêchait de préparer sa déclaration DOT à zéro.
   const iso = statsCalc.semaineISO(new Date());
-  const codeCourant = `S${iso.numero}-${String(iso.anneeIso).slice(-2)}`;
-  if (!semaines.some((w) => w.code === codeCourant)) {
-    const lundi = statsCalc.lundiDeSemaineISO(iso.anneeIso, iso.numero);
-    const dimanche = new Date(lundi);
-    dimanche.setUTCDate(lundi.getUTCDate() + 6);
-    semaines.unshift({ code: codeCourant, debut: lundi.toISOString().slice(0, 10), fin: dimanche.toISOString().slice(0, 10), lignes: 0 });
+  const ordreCourant = iso.anneeIso * 100 + iso.numero;
+  const ordresConnus = semaines
+    .map((w) => statsCalc.analyserCodeSemaine(w.code))
+    .filter(Boolean)
+    .map((a) => a.anneeIso * 100 + a.numero);
+  const ordreMin = ordresConnus.length ? Math.min(...ordresConnus, ordreCourant) : ordreCourant;
+  const codesPresents = new Set(semaines.map((w) => w.code));
+  // On avance semaine ISO par semaine ISO à partir du lundi de la plus
+  // ancienne (plutôt que d'incrémenter un numéro : une année compte 52 ou
+  // 53 semaines selon les cas, seul le calendrier le sait).
+  const curseur = statsCalc.lundiDeSemaineISO(Math.floor(ordreMin / 100), ordreMin % 100);
+  const ajoutees = [];
+  for (let garde = 0; garde < 520; garde++) { // 10 ans max, par sécurité
+    const w = statsCalc.semaineISO(curseur);
+    const ordre = w.anneeIso * 100 + w.numero;
+    if (ordre > ordreCourant) break;
+    const code = `S${w.numero}-${String(w.anneeIso).slice(-2)}`;
+    if (!codesPresents.has(code)) {
+      const dimanche = new Date(curseur);
+      dimanche.setUTCDate(curseur.getUTCDate() + 6);
+      ajoutees.push({ code, debut: curseur.toISOString().slice(0, 10), fin: dimanche.toISOString().slice(0, 10), lignes: 0, ordre });
+    }
+    curseur.setUTCDate(curseur.getUTCDate() + 7);
+  }
+  if (ajoutees.length) {
+    const avecOrdre = semaines.map((w) => {
+      const a = statsCalc.analyserCodeSemaine(w.code);
+      return { ...w, ordre: a ? a.anneeIso * 100 + a.numero : -1 };
+    });
+    semaines.splice(0, semaines.length, ...avecOrdre.concat(ajoutees).sort((a, b) => b.ordre - a.ordre).map(({ ordre, ...reste }) => reste));
   }
 
   return json({

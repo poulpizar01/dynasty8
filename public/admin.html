@@ -647,8 +647,57 @@
       </div>
       <div id="zone-message-bot-roxwood"></div>
 
+      <!-- Guide d'installation : replié par défaut, ouvert automatiquement
+           tant que le serveur n'a aucun secret de webhook (voir
+           afficherBotRoxwood dans admin.js). Même contenu que
+           notes/bot-roxwood-configuration.md, en version courte. -->
+      <details class="bot-guide" id="bot-roxwood-guide">
+        <summary>📖 Guide d'installation — brancher le bot au site (une seule fois)</summary>
+        <div class="bot-guide-corps">
+          <p class="champ-aide" style="margin:0 0 14px;">Le bot ne peut pas être interrogé : il <strong>envoie</strong> lui-même ses événements au site. Il faut donc lui donner l'adresse du site, et donner au site les secrets du bot. Trois étapes, à faire une seule fois.</p>
+
+          <div class="bot-guide-etape">
+            <span class="bot-guide-numero">1</span>
+            <div>
+              <strong>Dans Discord — créer les abonnements du bot</strong>
+              <p>Dans le salon du panneau d'administration du bot, message <strong>Monitoring</strong> → bouton <strong>Ajouter un webhook</strong>. À répéter pour chaque type voulu :</p>
+              <ul>
+                <li><code>recruitment.updated</code> (Candidatures) → sous-onglet <em>Candidatures</em></li>
+                <li><code>absence.updated</code> (Absences) → sous-onglet <em>Absences</em></li>
+                <li><code>order.updated</code> (Commandes) → sous-onglet <em>Commandes</em></li>
+                <li><code>monitoring.duty</code>, <code>monitoring.recruitment</code>, <code>monitoring.storage</code>, <code>monitoring.invoice</code>, <code>monitoring.sale</code> → sous-onglet <em>Monitoring</em></li>
+              </ul>
+              <p>URL de destination à saisir à chaque fois (toujours la même) :</p>
+              <p><code class="bot-guide-code" id="bot-roxwood-url-webhook">https://dynasty8.fbfa.fr/api/bot-roxwood/webhook</code></p>
+              <p>Le bot affiche alors un <strong>secret, une seule fois</strong> : copiez-le immédiatement dans un endroit privé (jamais dans un salon Discord). Un secret par abonnement.</p>
+            </div>
+          </div>
+
+          <div class="bot-guide-etape">
+            <span class="bot-guide-numero">2</span>
+            <div>
+              <strong>Sur le serveur — donner les secrets au site</strong>
+              <p>Dans le fichier <code>.env</code> du serveur (<code>deploy/vps/.env</code> ou <code>deploy/operateur/.env</code>, jamais mis sur GitHub), ajouter tous les secrets séparés par des virgules :</p>
+              <p><code class="bot-guide-code">ROXWOOD_WEBHOOK_SECRETS=secret_candidatures,secret_absences,secret_commandes,secret_monitoring</code></p>
+              <p>Puis relancer le site : <code class="bot-guide-code">sudo docker compose up -d --build app</code></p>
+              <p>Résultat attendu : la carte <strong>Liaison</strong> ci-dessous passe de « Non configurée » à « Prête ». Tant que ce n'est pas fait, le bot garde ses événements et réessaie pendant environ 2 h — rien n'est perdu.</p>
+            </div>
+          </div>
+
+          <div class="bot-guide-etape">
+            <span class="bot-guide-numero">3</span>
+            <div>
+              <strong>Vérifier</strong>
+              <p>Provoquer un événement dans Discord (par exemple <code>/absence</code>, ou passer une candidature à « Entretien »), puis cliquer sur <strong>Actualiser</strong> en haut de cette page : la carte « Événements reçus » doit passer à 1 et la ligne apparaître dans le bon sous-onglet.</p>
+              <p><strong>Si rien n'arrive :</strong> sur le serveur, <code class="bot-guide-code">sudo docker compose logs -f app</code>. Une ligne <code>[bot-roxwood] signature refusée</code> = un secret mal copié ou une virgule manquante dans <code>.env</code>. Aucune ligne du tout = l'URL saisie dans le bot est fausse, ou l'abonnement n'existe pas encore pour ce type d'événement.</p>
+              <p class="champ-aide" style="margin:8px 0 0;">Rappel : ce panneau est en lecture seule. Changer un statut, accepter une absence ou marquer une commande payée se fait dans Discord ; le bot renvoie alors le nouvel état, qui s'affiche ici. Version détaillée : <code>notes/bot-roxwood-configuration.md</code> dans le projet.</p>
+            </div>
+          </div>
+        </div>
+      </details>
+
       <div id="bot-roxwood-non-configure" class="etat-vide cache">
-        <p><strong>Réception non configurée.</strong> Le serveur n'a pas encore de secret de webhook (variable <code>ROXWOOD_WEBHOOK_SECRETS</code>). Voir <code>notes/bot-roxwood-configuration.md</code> dans le projet pour brancher le bot.</p>
+        <p><strong>Réception non configurée.</strong> Le serveur n'a pas encore de secret de webhook (variable <code>ROXWOOD_WEBHOOK_SECRETS</code>). Suivez le guide d'installation ci-dessus.</p>
       </div>
 
       <div class="admin-stats" id="bot-roxwood-cartes">
@@ -1132,9 +1181,14 @@ TOTAL    -    0    0    0    0    0    -"></textarea>
   // Fond animé « aurore » de l'espace agents. Isolé dans un try/catch : si le
   // WebGL est indisponible (vieux GPU, pilote bloqué...), on retombe simplement
   // sur le fond sombre habituel, sans la moindre erreur visible pour l'agent.
-  import * as THREE from 'three';
-  import { mountAurora } from '/aurora.js';
-  try {
+  // Dans l'ordinateur en jeu (FolkOS), on ne charge ni Three.js (670 Ko) ni
+  // l'aurore : le GPU est partagé avec FiveM. Le fond sombre habituel suffit.
+  if (window.D8_EN_JEU) {
+    const fond = document.getElementById('aurora-bg');
+    if (fond) fond.style.display = 'none';
+  } else try {
+    const THREE = await import('three');
+    const { mountAurora } = await import('/aurora.js');
     window.__aurora = mountAurora(THREE, {
       canvas: document.getElementById('aurora-bg'),
       intensity: 0.5,   // discret : c'est un outil de travail

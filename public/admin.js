@@ -3176,6 +3176,13 @@ function afficherBotRoxwood(r) {
   CACHE_BOT_ROXWOOD = r;
   const etat = r.etat || {};
   document.getElementById("bot-roxwood-non-configure").classList.toggle("cache", !!etat.configure);
+  // Guide d'installation ouvert tout seul tant que rien n'est configuré ;
+  // ensuite replié (mais toujours consultable d'un clic).
+  const guide = document.getElementById("bot-roxwood-guide");
+  if (guide && !guide.dataset.touche) guide.open = !etat.configure;
+  // L'URL à donner au bot dépend du site où l'on se trouve (VPS ou opérateur).
+  const urlWebhook = document.getElementById("bot-roxwood-url-webhook");
+  if (urlWebhook) urlWebhook.textContent = `${window.location.origin}/api/bot-roxwood/webhook`;
   document.getElementById("bot-roxwood-etat").textContent = etat.configure ? (etat.total ? "Active" : "Prête") : "Non configurée";
   document.getElementById("bot-roxwood-etat-detail").textContent = etat.configure
     ? `${etat.nb_secrets} secret(s) — ${(etat.guildes || []).length} serveur(s) Discord vu(s)`
@@ -3288,6 +3295,9 @@ async function chargerBotRoxwood() {
 }
 
 document.getElementById("bouton-rafraichir-bot-roxwood")?.addEventListener("click", chargerBotRoxwood);
+// Une fois que la personne a ouvert/fermé le guide elle-même, on ne le
+// rouvre/referme plus automatiquement à chaque rechargement des données.
+document.getElementById("bot-roxwood-guide")?.addEventListener("toggle", (ev) => { ev.currentTarget.dataset.touche = "1"; });
 
 document.querySelectorAll(".compta-sous-onglet[data-bot-onglet]").forEach((btn) => {
   btn.addEventListener("click", () => {

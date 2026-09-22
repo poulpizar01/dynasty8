@@ -3054,3 +3054,15 @@ tr:hover .compta-supprimer-ligne, .compta-supprimer-ligne:focus-visible { opacit
 .bot-compteurs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
 .ico-logo-roxwood { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 0 3px rgba(120, 140, 255, 0.5)); }
 .logo-roxwood-titre { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(120, 140, 255, 0.45)); }
+.bot-guide { margin: 0 0 22px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); }
+.bot-guide > summary { cursor: pointer; padding: 14px 18px; font-weight: 600; color: var(--gold-strong); list-style: none; }
+.bot-guide > summary::-webkit-details-marker { display: none; }
+.bot-guide > summary::before { content: "▸"; display: inline-block; margin-right: 8px; transition: transform 0.15s; }
+.bot-guide[open] > summary::before { transform: rotate(90deg); }
+.bot-guide-corps { padding: 4px 18px 18px; border-top: 1px solid var(--border); font-size: 0.88rem; }
+.bot-guide-etape { display: flex; gap: 14px; margin-top: 16px; }
+.bot-guide-etape p { margin: 6px 0; }
+.bot-guide-etape ul { margin: 6px 0; padding-left: 20px; }
+.bot-guide-etape li { margin: 3px 0; }
+.bot-guide-numero { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--or-grad); color: var(--or-contrast); font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.bot-guide-code { display: inline-block; padding: 4px 10px; border-radius: 6px; background: rgba(0,0,0,0.25); border: 1px solid var(--border); font-size: 0.82rem; word-break: break-all; user-select: all; }
