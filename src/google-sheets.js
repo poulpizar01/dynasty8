@@ -72,8 +72,12 @@ export function analyserCSV(texte) {
   return lignes;
 }
 
+// Sans délai, une synchro bloquée resterait en vol jusqu au prochain
+// redémarrage, et les passes suivantes (toutes les 20 min) s empileraient.
+const DELAI_SHEET_MS = 20_000;
+
 async function lireCSV() {
-  const r = await fetch(urlExportCSV());
+  const r = await fetch(urlExportCSV(), { signal: AbortSignal.timeout(DELAI_SHEET_MS) });
   const texte = await r.text();
   // Un classeur non partagé publiquement renvoie la page de connexion Google
   // (HTML, statut 200 après redirection) plutôt qu'une vraie erreur HTTP —

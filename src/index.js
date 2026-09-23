@@ -49,6 +49,14 @@ const COOKIE_ETAT_OAUTH = "d8_oauth_state"; // protection anti-CSRF pendant l'al
 const DUREE = 60 * 60 * 12; // 12 heures, en secondes
 const CATEGORIES = ["habitation", "garage"];
 
+// Délais maximaux des appels sortants. « fetch » n'en a AUCUN par défaut : un
+// service qui accepte la connexion sans jamais répondre retiendrait la requête
+// indéfiniment (et, pour le proxy de carte, qui est public, autant de requêtes
+// suspendues que quelqu'un voudrait en ouvrir).
+const DELAI_DISCORD_MS = 10_000;
+const DELAI_FOLKOS_MS = 10_000;
+const DELAI_CARTE_MS = 20_000;
+
 // Sous-catégories autorisées pour la catégorie "habitation" (la catégorie "garage"
 // reste simple et n'en a pas). La liste vient directement du fonctionnement du
 // serveur RP : chaque nom correspond à un immeuble/type de logement précis.
@@ -176,6 +184,43 @@ function redirection(location, setCookies) {
   return new Response(null, { status: 302, headers });
 }
 
+// ---- protection contre les requêtes déclenchées par un site tiers (CSRF) ----
+// Les cookies de session sont posés en « SameSite=None » — indispensable pour
+// que l'espace agents fonctionne dans l'iframe de l'ordinateur en jeu — donc
+// le navigateur les envoie AUSSI quand la requête part d'un autre site. Sans
+// contrôle, une page piégée pouvait déclencher une écriture au nom de l'agent
+// connecté : un corps « text/plain » contenant du JSON passe la vérification
+// CORS préalable du navigateur, et request.json() le lit sans broncher.
+//
+// Règle : toute requête qui écrit doit venir de NOTRE hôte.
+//   - en-tête Origin absent  -> accepté : ce n'est pas un navigateur (bot de
+//     ventes, webhook Roxwood, curl), et ces appels ont leur propre secret ;
+//   - Origin illisible ou « null » (iframe bac à sable, page data:) -> refusé ;
+//   - comparaison sur l'HÔTE seulement : derrière un proxy mal réglé, le
+//     schéma reconstruit peut différer de celui vu par le navigateur, alors
+//     que l'hôte, lui, distingue vraiment un site tiers.
+// ORIGINES_AUTORISEES (facultatif) ajoute des hôtes séparés par des virgules.
+const METHODES_LECTURE = ["GET", "HEAD", "OPTIONS"];
+
+function origineAutorisee(request, url, env) {
+  if (METHODES_LECTURE.includes(request.method)) return true;
+  const brut = request.headers.get("Origin");
+  if (!brut) return true;
+  let hote;
+  try {
+    hote = new URL(brut).host;
+  } catch (e) {
+    return false;
+  }
+  if (!hote) return false;
+  if (hote === url.host) return true;
+  return String(env.ORIGINES_AUTORISEES || "")
+    .split(",")
+    .map((h) => h.trim())
+    .filter(Boolean)
+    .includes(hote);
+}
+
 function txt(v, max) {
   return v == null ? "" : String(v).slice(0, max);
 }
@@ -190,6 +235,12 @@ export default {
       if (!env.DB) return json({ erreur: "Base de données non reliée." }, 500);
       if (!env.SESSION_SECRET) {
         return json({ erreur: "SESSION_SECRET n'est pas configuré sur le serveur." }, 500);
+      }
+      // Un seul endroit pour toutes les écritures : aucune route ajoutée plus
+      // tard ne peut oublier ce contrôle.
+      if (!origineAutorisee(request, url, env)) {
+        console.error("[csrf] " + request.method + " " + chemin + " refusé : origine " + String(request.headers.get("Origin")).slice(0, 80));
+        return json({ erreur: "Origine non autorisée." }, 403);
       }
       // "await" est indispensable ici (et pas juste "return xxx(...)") : sans lui,
       // une erreur survenant DANS une de ces fonctions passerait au travers du
@@ -295,6 +346,7 @@ async function discordCallback(request, url, env) {
   try {
     const reponseJeton = await fetch("https://discord.com/api/oauth2/token", {
       method: "POST",
+      signal: AbortSignal.timeout(DELAI_DISCORD_MS),
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         client_id: env.DISCORD_CLIENT_ID,
@@ -318,6 +370,7 @@ async function discordCallback(request, url, env) {
   let discordUser;
   try {
     const reponseUser = await fetch("https://discord.com/api/users/@me", {
+      signal: AbortSignal.timeout(DELAI_DISCORD_MS),
       headers: { Authorization: `${jetonDiscord.token_type || "Bearer"} ${jetonDiscord.access_token}` },
     });
     if (!reponseUser.ok) return echec("user_" + reponseUser.status);
@@ -402,6 +455,7 @@ async function folkosCallback(url, env) {
   try {
     const r = await fetch(String(env.FOLKOS_ID_BASE).replace(/\/$/, "") + "/sso/verify", {
       method: "POST",
+      signal: AbortSignal.timeout(DELAI_FOLKOS_MS),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ client_id: env.FOLKOS_CLIENT_ID, client_secret: env.FOLKOS_CLIENT_SECRET, token: ticket }),
     });
@@ -2851,7 +2905,13 @@ async function carteProxy(request, url) {
 
   let reponseDistante;
   try {
-    reponseDistante = await fetch(cible, { method: request.method, headers: entetes, body: corps, redirect: "manual" });
+    reponseDistante = await fetch(cible, {
+      method: request.method,
+      headers: entetes,
+      body: corps,
+      redirect: "manual",
+      signal: AbortSignal.timeout(DELAI_CARTE_MS),
+    });
   } catch (e) {
     console.error("[carte-proxy] Injoignable :", e);
     return new Response("La carte est momentanement indisponible.", { status: 502 });
