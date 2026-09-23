@@ -155,6 +155,9 @@ function construireEnv() {
     FOLKOS_ID_BASE: process.env.FOLKOS_ID_BASE,
     FOLKOS_CLIENT_ID: process.env.FOLKOS_CLIENT_ID,
     FOLKOS_CLIENT_SECRET: process.env.FOLKOS_CLIENT_SECRET,
+    // Adresse réelle de la WebMap, proxifiée par /api/carte : elle vit dans le
+    // .env et jamais dans le code, qui est public.
+    WEBMAP_ORIGIN: process.env.WEBMAP_ORIGIN,
     // Stockage externe des photos (storage.fbfa.fr) — voir src/medias.js.
     // Le jeton reste côté serveur : jamais renvoyé au navigateur ni journalisé.
     FBFA_STORAGE_TOKEN: process.env.FBFA_STORAGE_TOKEN,

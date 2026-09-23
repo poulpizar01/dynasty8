@@ -39,13 +39,28 @@ import {
 const COOKIE = "d8_session";
 
 // ---- proxy de la WebMap : cache complètement l'adresse réelle -------------
-// Le navigateur ne contacte jamais webmap.dynasty8.fbfa.fr : toutes les
+// Le navigateur ne contacte jamais la WebMap (adresse dans WEBMAP_ORIGIN) : toutes les
 // requêtes (page, scripts, images, appels internes...) passent par
 // /api/carte/* sur NOTRE domaine, et c'est ce serveur qui va chercher la
 // vraie carte en coulisses. Résultat : l'adresse réelle n'apparaît nulle
 // part dans le code envoyé au navigateur, ni dans les outils de dev.
-const WEBMAP_ORIGIN = "https://webmap.dynasty8.fbfa.fr";
 const WEBMAP_PREFIXE = "/api/carte";
+
+// L'adresse réelle de la WebMap vient de WEBMAP_ORIGIN (.env) et n'est
+// VOLONTAIREMENT écrite nulle part dans le code : le dépôt est public, et
+// tout l'intérêt du proxy /api/carte est que cette adresse n'apparaisse ni
+// dans les sources, ni dans ce que reçoit le navigateur. Sans réglage, la
+// carte est simplement indisponible — jamais une adresse devinée.
+function origineWebmap(env) {
+  const brut = String((env && env.WEBMAP_ORIGIN) || "").trim().replace(/[/]+$/, "");
+  if (!brut) return null;
+  try {
+    const u = new URL(brut);
+    return u.protocol === "https:" || u.protocol === "http:" ? u.origin : null;
+  } catch (e) {
+    return null;
+  }
+}
 const COOKIE_ETAT_OAUTH = "d8_oauth_state"; // protection anti-CSRF pendant l'aller-retour vers Discord
 const DUREE = 60 * 60 * 12; // 12 heures, en secondes
 const CATEGORIES = ["habitation", "garage"];
@@ -301,7 +316,7 @@ export default {
       if (chemin.startsWith("/api/sync-sheet/")) return await syncSheet(request, url, env);
       if (chemin === "/api/bot-roxwood/webhook") return await botRoxwoodWebhook(request, env);
       if (chemin.startsWith("/api/bot-roxwood/")) return await botRoxwood(request, url, env);
-      if (chemin === WEBMAP_PREFIXE || chemin.startsWith(WEBMAP_PREFIXE + "/")) return await carteProxy(request, url);
+      if (chemin === WEBMAP_PREFIXE || chemin.startsWith(WEBMAP_PREFIXE + "/")) return await carteProxy(request, url, env);
       return json({ erreur: "Adresse inconnue." }, 404);
     } catch (e) {
       // DIAGNOSTIC : journalise l'erreur complète côté serveur (jamais de
@@ -2904,7 +2919,7 @@ async function botRoxwood(request, url, env) {
 
 // Cookies : le navigateur envoie un seul en-tete Cookie qui melange le cookie
 // de session Dynasty 8 (d8_session) et, si la WebMap en pose, les siens. On
-// ne transmet a webmap.dynasty8.fbfa.fr QUE les cookies qu'elle a elle-meme
+// ne transmet a la WebMap (adresse dans WEBMAP_ORIGIN) QUE les cookies qu'elle a elle-meme
 // poses (prefixes "wm_" quand on les relaie au navigateur, voir plus bas) :
 // d8_session ne quitte donc jamais ce serveur.
 function cookiesVersWebmap(request) {
@@ -2921,12 +2936,12 @@ function cookiesVersWebmap(request) {
   return versDistant.join("; ");
 }
 
-// Ramene une adresse (absolue vers webmap.dynasty8.fbfa.fr, ou relative a sa
+// Ramene une adresse (absolue vers la WebMap (adresse dans WEBMAP_ORIGIN), ou relative a sa
 // racine) vers son equivalent sous /api/carte sur notre propre domaine.
-function reecrireAdresseWebmap(lienBrut) {
+function reecrireAdresseWebmap(lienBrut, origine) {
   try {
-    const u = new URL(lienBrut, WEBMAP_ORIGIN);
-    if (u.origin === new URL(WEBMAP_ORIGIN).origin) {
+    const u = new URL(lienBrut, origine);
+    if (u.origin === origine) {
       return WEBMAP_PREFIXE + u.pathname + u.search + u.hash;
     }
   } catch (e) { /* lien mal forme : laisse tel quel plus bas */ }
@@ -2937,7 +2952,7 @@ function reecrireAdresseWebmap(lienBrut) {
 // toutes les adresses qui pointeraient vers son vrai domaine, pour qu'elles
 // passent elles aussi par /api/carte. Trois filets, du plus precis au plus
 // large :
-//  1) adresses completes ("https://webmap.dynasty8.fbfa.fr/...") -> prefixe.
+//  1) adresses completes ("https://la WebMap (adresse dans WEBMAP_ORIGIN)/...") -> prefixe.
 //  2) chemins commencant par un seul "/" a l'interieur de guillemets (les
 //     appels d'API ou ressources codes "en dur" par l'application) ->
 //     prefixes eux aussi (le filtre negatif evite de re-prefixer un chemin
@@ -2945,8 +2960,8 @@ function reecrireAdresseWebmap(lienBrut) {
 //  3) une balise <base> posee en secours pour les chemins RELATIFS "normaux"
 //     (sans "/" au depart) : le navigateur les resout alors automatiquement
 //     par rapport a /api/carte/, sans qu'on ait besoin d'y toucher.
-function reecrireContenuWebmap(texte, typeContenu) {
-  texte = texte.split(WEBMAP_ORIGIN).join(WEBMAP_PREFIXE);
+function reecrireContenuWebmap(texte, typeContenu, origine) {
+  texte = texte.split(origine).join(WEBMAP_PREFIXE);
   texte = texte.replace(/(["'])\/(?!\/)(?!api\/carte\/)/g, `$1${WEBMAP_PREFIXE}/`);
   if (typeContenu.includes("text/html") && /<head[^>]*>/i.test(texte)) {
     texte = texte.replace(/<head([^>]*)>/i, `<head$1><base href="${WEBMAP_PREFIXE}/">`);
@@ -2954,9 +2969,14 @@ function reecrireContenuWebmap(texte, typeContenu) {
   return texte;
 }
 
-async function carteProxy(request, url) {
+async function carteProxy(request, url, env) {
+  const origine = origineWebmap(env);
+  if (!origine) {
+    console.error("[carte-proxy] WEBMAP_ORIGIN n'est pas configuré : la carte est indisponible.");
+    return new Response("La carte n'est pas configurée sur ce serveur.", { status: 503 });
+  }
   const sousChemin = url.pathname.slice(WEBMAP_PREFIXE.length) || "/";
-  const cible = WEBMAP_ORIGIN + sousChemin + url.search;
+  const cible = origine + sousChemin + url.search;
 
   const entetes = new Headers();
   for (const nom of ["accept", "accept-language", "content-type", "range"]) {
@@ -2988,7 +3008,7 @@ async function carteProxy(request, url) {
   // d'adresse ou l'en-tete Location du navigateur.
   if ([301, 302, 303, 307, 308].includes(reponseDistante.status)) {
     const brut = reponseDistante.headers.get("location") || "/";
-    return new Response(null, { status: 302, headers: { location: reecrireAdresseWebmap(brut) } });
+    return new Response(null, { status: 302, headers: { location: reecrireAdresseWebmap(brut, origine) } });
   }
 
   const typeContenu = reponseDistante.headers.get("content-type") || "";
@@ -3011,7 +3031,7 @@ async function carteProxy(request, url) {
   const reecriture = typeContenu.includes("text/html") || typeContenu.includes("javascript")
     || typeContenu.includes("text/css") || typeContenu.includes("json");
   if (reecriture) {
-    const texte = reecrireContenuWebmap(await reponseDistante.text(), typeContenu);
+    const texte = reecrireContenuWebmap(await reponseDistante.text(), typeContenu, origine);
     return new Response(texte, { status: reponseDistante.status, headers: entetesSortie });
   }
   return new Response(reponseDistante.body, { status: reponseDistante.status, headers: entetesSortie });
