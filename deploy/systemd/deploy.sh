@@ -10,8 +10,8 @@
 #
 #   ./deploy.sh verifier     (dev)   controles : utilisateur, Node, .env — n'ecrit rien
 #   ./deploy.sh unite        (dev)   affiche l'unite systemd generee (--sortie F pour l'ecrire)
-#   ./deploy.sh installer    (root)  installe l'unite, daemon-reload, enable
-#   ./deploy.sh maj          (dev)   git pull + npm ci
+#   ./deploy.sh installer    (root)  installe l'unite, daemon-reload, enable   [alias : setup]
+#   ./deploy.sh maj          (dev)   git pull + npm ci                        [alias : update]
 #   ./deploy.sh migrer       (dev)   applique le schema avec le compte admin
 #   ./deploy.sh etat|logs|redemarrer (root) raccourcis systemctl / journalctl
 #
@@ -230,6 +230,11 @@ cmd_logs()       { exiger_root logs; journalctl -u "$SERVICE_NAME" -n "${1:-80}"
 commande="${1:-aide}"
 shift || true
 case "$commande" in
+  # Alias des noms utilises par les autres projets heberges sur ce serveur
+  # (web-map-multipoints) : « setup » pour la premiere installation, « update »
+  # pour une mise a jour. Memes commandes, noms familiers.
+  setup)       cmd_installer ;;
+  update)      cmd_maj ;;
   verifier)    cmd_verifier ;;
   unite)       cmd_unite "$@" ;;
   installer)   cmd_installer ;;

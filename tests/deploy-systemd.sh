@@ -50,6 +50,8 @@ printf 'DATABASE_URL=\nSESSION_SECRET=x\n' > /tmp/app/.env; chmod 600 /tmp/app/.
 verifier "refuse une variable essentielle vide" 1 "DATABASE_URL" env DEPLOY_USER=dev NODE_BIN="$(command -v node)" bash $D verifier
 verifier "refuse 'installer' hors root" 1 "en root" runuser -u dev -- env DEPLOY_USER=dev bash $D installer
 verifier "refuse 'maj' en root" 1 "pas en root" env DEPLOY_USER=dev NODE_BIN="$(command -v node)" bash $D maj
+verifier "alias setup = installer (refuse hors root)" 1 "en root" runuser -u dev -- env DEPLOY_USER=dev bash $D setup
+verifier "alias update = maj (refuse en root)" 1 "pas en root" env DEPLOY_USER=dev NODE_BIN="$(command -v node)" bash $D update
 
 echo
 echo "appels reels a sudo (hors commentaires) : $(grep -v "^[[:space:]]*#" $D | grep -c "sudo " || true)"
