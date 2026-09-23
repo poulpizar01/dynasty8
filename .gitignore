@@ -21,3 +21,6 @@ rapports/
 
 # Réglages locaux du déploiement systemd (chemins, utilisateur)
 deploy/systemd/deploy.conf
+
+# Serveur cible du script de mise en ligne (adresse SSH du VPS du moment)
+deploy/vps/cible.bat
