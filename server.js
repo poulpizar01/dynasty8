@@ -142,6 +142,10 @@ function construireEnv() {
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
     DISCORD_REDIRECT_URI: process.env.DISCORD_REDIRECT_URI,
     STATS_BOT_SECRET: process.env.STATS_BOT_SECRET,
+    // Hotes supplementaires acceptes en ecriture (controle d'origine, voir
+    // origineAutorisee() dans src/index.js). Sans cette ligne, la variable du
+    // .env est ignoree et seules les requetes venant du site lui-meme passent.
+    ORIGINES_AUTORISEES: process.env.ORIGINES_AUTORISEES,
     // Secrets des webhooks du bot Roxwood Network Entreprise (un par
     // abonnement, séparés par des virgules) — voir src/bot-roxwood.js.
     ROXWOOD_WEBHOOK_SECRETS: process.env.ROXWOOD_WEBHOOK_SECRETS,
