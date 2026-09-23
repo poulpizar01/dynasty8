@@ -37,6 +37,12 @@ const CSP_FRAME_ANCESTORS =
 app.use((req, res, next) => {
   res.setHeader("Content-Security-Policy", CSP_FRAME_ANCESTORS);
   res.removeHeader("X-Frame-Options");
+  // Un navigateur ne doit jamais « deviner » le type d'un fichier servi : une
+  // photo importée interprétée comme du HTML deviendrait une page exécutable.
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  // L'adresse complète des pages agents (identifiants d'annonce, de membre)
+  // ne part pas vers les sites externes ouverts depuis le site.
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   next();
 });
 
@@ -128,6 +134,9 @@ async function amorcerPremierAdmin() {
 function construireEnv() {
   return {
     DB: adaptateurDB,
+    // Sert à décider si le détail technique des erreurs est renvoyé au
+    // navigateur (jamais en production) — voir le catch de src/index.js.
+    NODE_ENV: process.env.NODE_ENV,
     SESSION_SECRET: process.env.SESSION_SECRET,
     DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,

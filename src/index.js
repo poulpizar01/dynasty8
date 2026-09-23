@@ -25,6 +25,7 @@ import { enc, b64url, unb64url } from "./util-crypto.js";
 import * as statsCalc from "./stats-calc.js";
 import { synchroniserSheetSansErreur } from "./google-sheets.js";
 import { ErreurStockage } from "./fbfa-storage.js";
+import { consommer, adresseAppelant } from "./limite-debit.js";
 import { TYPES_IMAGE, decoderDataUrl, estDataUrlImage } from "./images.js";
 import {
   ErreurMedia, lireConfigMedias, creerClientDepuisConfig, importerImage, reponseErreurImport,
@@ -125,7 +126,9 @@ async function signer(secret, texte) {
 }
 
 async function creerSession(secret, donnees) {
-  const charge = b64url(enc.encode(JSON.stringify(donnees)));
+  // « iat » (issued at) : sans lui, impossible de distinguer une session émise
+  // avant une déconnexion d'une session émise après.
+  const charge = b64url(enc.encode(JSON.stringify({ iat: maintenant(), ...donnees })));
   return charge + "." + (await signer(secret, charge));
 }
 
@@ -221,6 +224,38 @@ function origineAutorisee(request, url, env) {
     .includes(hote);
 }
 
+// ---- limites de débit (voir src/limite-debit.js) ---------------------------
+// Garde-fous contre l'emballement : une boucle qui part en vrac, un script
+// qui insiste, un onglet resté ouvert. Les valeurs sont larges : un usage
+// normal ne doit jamais les atteindre.
+const LIMITES = [
+  // Connexion : chaque tentative déclenche un aller-retour vers Discord ou
+  // vers le validateur FolkOS, tous deux hors de notre contrôle.
+  { test: (c) => c.startsWith("/api/auth/") || c === "/api/folkos", max: 20, fenetreMs: 60_000 },
+  // Webhook du bot : la signature protège déjà, ceci borne le bruit.
+  { test: (c) => c === "/api/bot-roxwood/webhook", max: 60, fenetreMs: 60_000 },
+  // Proxy de la carte : route PUBLIQUE, celle qui coûte le plus cher.
+  { test: (c) => c.startsWith(WEBMAP_PREFIXE), max: 600, fenetreMs: 60_000 },
+];
+const LIMITE_ECRITURES = { max: 120, fenetreMs: 60_000 };
+
+// Renvoie une réponse 429 si la limite est franchie, sinon null.
+function limiteDepassee(request, chemin) {
+  const appelant = adresseAppelant(request);
+  const regle = LIMITES.find((r) => r.test(chemin));
+  const aVerifier = regle
+    ? { cle: `route:${chemin.split("/").slice(0, 4).join("/")}:${appelant}`, ...regle }
+    : (METHODES_LECTURE.includes(request.method) ? null : { cle: `ecriture:${appelant}`, ...LIMITE_ECRITURES });
+  if (!aVerifier) return null;
+  const r = consommer(aVerifier.cle, aVerifier.max, aVerifier.fenetreMs);
+  if (r.autorise) return null;
+  return json(
+    { erreur: "Trop de requêtes en peu de temps. Réessayez dans un instant." },
+    429,
+    { "Retry-After": String(r.reessayerDansSecondes) }
+  );
+}
+
 function txt(v, max) {
   return v == null ? "" : String(v).slice(0, max);
 }
@@ -242,6 +277,8 @@ export default {
         console.error("[csrf] " + request.method + " " + chemin + " refusé : origine " + String(request.headers.get("Origin")).slice(0, 80));
         return json({ erreur: "Origine non autorisée." }, 403);
       }
+      const trop = limiteDepassee(request, chemin);
+      if (trop) return trop;
       // "await" est indispensable ici (et pas juste "return xxx(...)") : sans lui,
       // une erreur survenant DANS une de ces fonctions passerait au travers du
       // "catch" ci-dessous et ferait planter tout le Worker (page Cloudflare
@@ -249,7 +286,7 @@ export default {
       if (chemin === "/api/auth/discord") return await discordAutoriser(request, env);
       if (chemin === "/api/auth/discord/callback") return await discordCallback(request, url, env);
       if (chemin === "/api/folkos") return await folkosCallback(url, env);
-      if (chemin === "/api/deconnexion") return deconnexion(env);
+      if (chemin === "/api/deconnexion") return await deconnexion(request, env);
       if (chemin === "/api/moi") return await moi(request, env);
       if (chemin === "/api/biens/photo") return await importerPhoto(request, env, "bien");
       if (chemin === "/api/profil/photo") return await importerPhoto(request, env, "profil");
@@ -272,7 +309,11 @@ export default {
       // `docker compose logs app` sur le VPS, sans avoir besoin des outils de
       // développement du navigateur.
       console.error(`[erreur-api] ${chemin} :`, e);
-      return json({ erreur: "Erreur interne", detail: String((e && e.message) || e) }, 500);
+      // Le détail (message d'erreur de PostgreSQL, nom de colonne, chemin de
+      // fichier…) reste dans les journaux du serveur : il aide au diagnostic,
+      // mais n'apprend rien d'utile à un visiteur — et beaucoup à un curieux.
+      const detail = env.NODE_ENV === "production" ? undefined : String((e && e.message) || e);
+      return json({ erreur: "Erreur interne", ...(detail ? { detail } : {}) }, 500);
     }
   },
 };
@@ -487,7 +528,24 @@ async function folkosCallback(url, env) {
   }
 }
 
-function deconnexion(env) {
+async function deconnexion(request, env) {
+  // Marque l'instant : toutes les sessions déjà émises pour ce membre — y
+  // compris un cookie copié ailleurs — cessent d'être acceptées.
+  try {
+    const s = await session(request, env);
+    if (s) {
+      await env.DB.prepare(
+        "UPDATE membres SET sessions_invalides_avant = datetime('now') WHERE id = ?1"
+      ).bind(s.id).run();
+    }
+  } catch (e) {
+    // Base indisponible : on efface quand même le cookie côté navigateur.
+    console.error("[deconnexion] invalidation impossible :", (e && e.message) || e);
+  }
+  return effacerCookieSession();
+}
+
+function effacerCookieSession() {
   // On efface le cookie dans ses DEUX variantes (HTTPS « Secure; SameSite=None »
   // et HTTP « SameSite=Lax ») : ainsi la déconnexion marche même si le réglage
   // COOKIES_HTTP a changé depuis la connexion (sinon le navigateur refuse
@@ -508,9 +566,18 @@ async function session(request, env) {
   const s = await lireSession(env.SESSION_SECRET, cookies(request)[COOKIE]);
   if (!s || !s.id) return null;
   const m = await env.DB.prepare(
-    "SELECT id, pseudo, grade, statut, actif FROM membres WHERE id = ?1"
+    "SELECT id, pseudo, grade, statut, actif, sessions_invalides_avant FROM membres WHERE id = ?1"
   ).bind(s.id).first();
   if (!m || m.statut !== "valide" || !m.actif) return null;
+  // Déconnexion (ou suspension) plus récente que l'émission de ce cookie : on
+  // refuse, même si sa signature et sa date d'expiration sont valables.
+  if (m.sessions_invalides_avant) {
+    const emiseLe = Number(s.iat) || 0;
+    const invalideAvant = Math.floor(Date.parse(m.sessions_invalides_avant + "Z") / 1000);
+    // « <= » et non « < » : l horodatage est à la seconde, une session émise
+    // dans la seconde même de la déconnexion est refusée par prudence.
+    if (!emiseLe || (Number.isFinite(invalideAvant) && emiseLe <= invalideAvant)) return null;
+  }
   return { id: m.id, pseudo: m.pseudo, grade: m.grade, exp: s.exp };
 }
 
@@ -801,7 +868,6 @@ async function chatContacts(env, s) {
     dernier_message_le: m.dernier_le || null,
     non_lus: Number(m.non_lus) || 0,
   }));
-  console.error(`[chat] contacts pour membre ${s.id} : ${contacts.length} trouvé(s).`);
   return json({ statut: (moi && moi.statut) || "disponible", contacts });
 }
 

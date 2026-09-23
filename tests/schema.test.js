@@ -35,7 +35,13 @@ test("le vrai schéma du projet est analysable et contient les tables connues", 
     assert.ok(tables.includes(attendue), `table ${attendue} attendue`);
   }
   assert.ok(!tables.includes("roxwood_config"), "les tables supprimées par le schéma ne sont pas attendues");
-  assert.deepEqual(colonnesAttendues(lireSchema()), ["membres.nom_sheet", "stats_logs_ventes.event_id"]);
+  // Les colonnes ajoutées après coup (ALTER TABLE ... ADD COLUMN IF NOT EXISTS)
+  // doivent toutes être vérifiées au démarrage : on contrôle leur présence,
+  // sans figer la liste, qui s allonge à chaque évolution du schéma.
+  const colonnes = colonnesAttendues(lireSchema());
+  for (const attendue of ["membres.nom_sheet", "stats_logs_ventes.event_id", "membres.sessions_invalides_avant"]) {
+    assert.ok(colonnes.includes(attendue), `colonne ${attendue} attendue`);
+  }
 });
 
 let admin;

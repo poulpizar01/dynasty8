@@ -79,8 +79,12 @@ export function dataUrl(octets, mime = "image/jpeg") {
 
 const b64url = (buf) => Buffer.from(buf).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 export const SECRET_TEST = "secret-de-test-uniquement";
-export function cookieSession(membre) {
-  const charge = b64url(JSON.stringify({ id: membre.id, pseudo: membre.pseudo, grade: membre.grade, exp: Math.floor(Date.now() / 1000) + 3600 }));
+// `sansIat` reproduit un cookie émis AVANT l ajout de l horodatage d émission
+// (sept. 2026) : ces cookies existent encore chez les agents connectés.
+export function cookieSession(membre, { sansIat = false } = {}) {
+  const donnees = { id: membre.id, pseudo: membre.pseudo, grade: membre.grade, exp: Math.floor(Date.now() / 1000) + 3600 };
+  if (!sansIat) donnees.iat = Math.floor(Date.now() / 1000);
+  const charge = b64url(JSON.stringify(donnees));
   const sig = b64url(createHmac("sha256", SECRET_TEST).update(charge).digest());
   return `d8_session=${charge}.${sig}`;
 }

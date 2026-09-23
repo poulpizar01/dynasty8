@@ -2387,7 +2387,7 @@ function avatarHtml(m) {
   if (m.discord_avatar) {
     return `<img src="${echapper(m.discord_avatar)}" alt="" class="admin-avatar-img" loading="lazy">`;
   }
-  return `<span class="admin-avatar">${initialesPseudo(m.pseudo)}</span>`;
+  return `<span class="admin-avatar">${echapper(initialesPseudo(m.pseudo))}</span>`;
 }
 
 async function chargerTableMembres() {
@@ -2710,7 +2710,7 @@ function secouerElement(el) {
 
 function avatarHtmlMessagerie(c) {
   if (c.avatar) return `<img src="${echapper(c.avatar)}" alt="" class="messagerie-avatar-img">`;
-  return `<span class="messagerie-avatar">${initialesPseudo(c.pseudo)}</span>`;
+  return `<span class="messagerie-avatar">${echapper(initialesPseudo(c.pseudo))}</span>`;
 }
 
 // ---- liste de contacts (« buddy list ») -----------------------------------

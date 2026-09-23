@@ -37,6 +37,10 @@ CREATE TABLE IF NOT EXISTS membres (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_membres_discord_id ON membres(discord_id);
 
+-- Héritage de l ancien système de code d accès (avant la connexion Discord) :
+-- plus aucune ligne de code ne lit ni n écrit cette table. Conservée pour ne
+-- pas perdre de données par surprise ; la limite de débit actuelle vit en
+-- mémoire du processus (src/limite-debit.js).
 CREATE TABLE IF NOT EXISTS tentatives (
   ip TEXT PRIMARY KEY,
   nombre INTEGER NOT NULL,
@@ -283,6 +287,14 @@ DROP TABLE IF EXISTS roxwood_config CASCADE;
 -- Statistiques (stats_baremes_primes), pour n'avoir qu'un seul endroit où
 -- régler un montant de prime.
 ALTER TABLE membres ADD COLUMN IF NOT EXISTS nom_sheet TEXT;
+
+-- ---- Déconnexion réellement effective (sept. 2026) ----------------------
+-- Le cookie de session est signé et vaut 12 h : jusqu'ici, « Se déconnecter »
+-- ne faisait que l'effacer du navigateur. Un cookie copié avant restait donc
+-- valable. Cette colonne note l'instant à partir duquel les sessions émises
+-- AVANT ne sont plus acceptées (déconnexion, suspension d'un compte par la
+-- Direction). Vide = aucune invalidation, comportement d'origine.
+ALTER TABLE membres ADD COLUMN IF NOT EXISTS sessions_invalides_avant TEXT;
 
 CREATE TABLE IF NOT EXISTS sync_sheet_agents (
   id SERIAL PRIMARY KEY,
