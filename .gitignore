@@ -24,3 +24,6 @@ deploy/systemd/deploy.conf
 
 # Serveur cible du script de mise en ligne (adresse SSH du VPS du moment)
 deploy/vps/cible.bat
+
+# Reglages personnels du lancement en local (identifiants Discord, jetons)
+local.bat

@@ -32,6 +32,17 @@ Les packs de déploiement règlent `DB_SCHEMA_AUTO=0` — le serveur se contente
 alors de **vérifier** le schéma et refuse de démarrer s'il manque une table ou
 une colonne, en indiquant la commande à lancer.
 
+Sous Windows, `lancer-en-local.bat` fait tout d'un double-clic : base
+PostgreSQL dans un conteneur Docker (`dynasty8-local-pg`, données
+conservées), dépendances, serveur, navigateur. Passer un fichier de
+sauvegarde en argument le restaure d'abord. Identifiants Discord et jetons
+facultatifs : copier `local.exemple.bat` en `local.bat` (non versionné).
+
+La connexion à l'espace agents passe uniquement par Discord : pour l'utiliser
+en local, déclarer `http://localhost:3000/api/auth/discord/callback` dans le
+portail Discord (RoxwoodLegal → OAuth2 → Redirects), qui accepte plusieurs
+URL de redirection.
+
 Tests : `npm test` (voir [Tests](#tests)).
 
 ---
