@@ -210,6 +210,10 @@ section « Photos » de [`deploy/operateur/README-OPERATEUR.md`](deploy/operateu
   dans `WEBMAP_ORIGIN`, jamais dans le dépôt, qui est public ; sans elle, le
   bouton affiche « carte indisponible » et le reste du site fonctionne.
 
+Les deux adresses qui suffiraient, à elles seules, à lire des données de
+l'agence — la WebMap et le classeur — sont pour cette raison hors du dépôt,
+et un test vérifie qu'elles n'y reviennent pas.
+
 ---
 
 ## Déploiement
@@ -273,6 +277,8 @@ Ces en-têtes ne sont pas décoratifs : l'application reconstruit ses URL
 | `ROXWOOD_WEBHOOK_SECRETS` | secrets des webhooks du bot Roxwood, séparés par des virgules |
 | `FBFA_STORAGE_TOKEN` | stockage des photos ; vide = import désactivé, le reste fonctionne |
 | `WEBMAP_ORIGIN` | adresse réelle de la WebMap ; vide = carte indisponible |
+| `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_GID` | classeur de la Direction ; vide = synchronisation du tableur désactivée |
+| `COHERENCES_SHEET_URL` | tableau des cohérences, servi aux seuls comptes connectés ; vide = onglet masqué |
 | `FOLKOS_ID_BASE` / `FOLKOS_CLIENT_ID` / `FOLKOS_CLIENT_SECRET` | SSO de l'ordinateur en jeu |
 | `ORIGINES_AUTORISEES` | origines admises en écriture, en plus du site lui-même |
 | `PORT` / `PORT_LOCAL` | port d'écoute |

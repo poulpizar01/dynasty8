@@ -11,7 +11,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import worker from "./src/index.js";
 import { creerPool, creerAdaptateurDB } from "./src/db-pg.js";
-import { synchroniserSheetSansErreur } from "./src/google-sheets.js";
+import { synchroniserSheetSansErreur, lireConfigSheet } from "./src/google-sheets.js";
 import { lireCorpsLimite, limiteCorpsPour, ErreurCorpsTropGros } from "./src/corps-requete.js";
 import { lireSchema, appliquerSchema as appliquerSchemaSQL, verifierSchema } from "./src/schema.js";
 import { choisirHote } from "./src/entetes-proxy.js";
@@ -162,6 +162,14 @@ function construireEnv() {
     // Adresse réelle de la WebMap, proxifiée par /api/carte : elle vit dans le
     // .env et jamais dans le code, qui est public.
     WEBMAP_ORIGIN: process.env.WEBMAP_ORIGIN,
+    // Classeur Google de la Direction (récap des ventes par agent). Même
+    // raison que ci-dessus : partagé « toute personne disposant du lien »,
+    // donc son identifiant seul suffit à le lire — il reste hors du dépôt.
+    GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID,
+    GOOGLE_SHEET_GID: process.env.GOOGLE_SHEET_GID,
+    // Tableau des cohérences (lien de l'onglet « Cohérence » de l'espace
+    // agents) : servi par /api/moi aux seuls comptes connectés.
+    COHERENCES_SHEET_URL: process.env.COHERENCES_SHEET_URL,
     // Stockage externe des photos (storage.fbfa.fr) — voir src/medias.js.
     // Le jeton reste côté serveur : jamais renvoyé au navigateur ni journalisé.
     FBFA_STORAGE_TOKEN: process.env.FBFA_STORAGE_TOKEN,
@@ -221,6 +229,13 @@ function demarrerNettoyageMedias() {
 // reste du site.
 const INTERVALLE_SYNC_SHEET_MS = 20 * 60 * 1000;
 function demarrerSyncSheet() {
+  // Sans GOOGLE_SHEET_ID, rien à synchroniser : on le dit une fois et on ne
+  // programme aucune passe, plutôt que de réveiller la tâche toutes les 20
+  // minutes pour échouer à l'identique.
+  if (!lireConfigSheet(construireEnv())) {
+    console.log("[sync-sheet] GOOGLE_SHEET_ID absent : synchronisation du tableur désactivée.");
+    return;
+  }
   synchroniserSheetSansErreur(construireEnv());
   setInterval(() => synchroniserSheetSansErreur(construireEnv()), INTERVALLE_SYNC_SHEET_MS);
 }

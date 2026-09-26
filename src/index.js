@@ -656,6 +656,21 @@ async function mesPrimesSheet(env, membreId) {
   };
 }
 
+// Lien vers le tableau des cohérences (outil interne de la Direction, partagé
+// en lecture par lien). Il vit dans le .env et n'est servi qu'aux comptes
+// connectés : dans la page, il aurait été lisible par n'importe quel visiteur,
+// et dans le dépôt, désormais public, par n'importe qui.
+function lienCoherences(env) {
+  const brut = String((env && env.COHERENCES_SHEET_URL) || "").trim();
+  if (!brut) return "";
+  try {
+    const u = new URL(brut);
+    return u.protocol === "https:" ? u.toString() : "";
+  } catch (e) {
+    return "";
+  }
+}
+
 async function moi(request, env) {
   const s = await session(request, env);
   if (!s) return json({ connecte: false }, 401);
@@ -675,6 +690,7 @@ async function moi(request, env) {
     specialite: (m && m.specialite) || "",
     bio: (m && m.bio) || "",
     photo: (m && m.photo) || "",
+    lien_coherences: lienCoherences(env),
     primes,
   });
 }

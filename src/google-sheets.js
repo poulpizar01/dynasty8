@@ -24,13 +24,30 @@
 
 import { normaliserTexte } from "./stats-calc.js";
 
-// Identifiant du classeur et de l'onglet (gid dans l'URL) — voir la demande
-// initiale de la Direction. Fixes en dur : ce module ne sert QUE ce Sheet-là.
-const SPREADSHEET_ID = "10pHrJVYfdhIeWkdMsm5RRtDMW04vlDs9GEJ9h81x1iw";
-const GID_ONGLET = "1211846791";
+// Identifiant du classeur et de l'onglet (gid dans l'URL). Volontairement
+// ABSENTS du code : le dépôt est public, et ce classeur est partagé « toute
+// personne disposant du lien — Lecteur », donc son identifiant suffit à le
+// lire. Il vit dans le .env du serveur, comme WEBMAP_ORIGIN.
+// Vide = synchronisation désactivée (le site fonctionne, l'onglet le dit).
+export class SheetNonConfigure extends Error {
+  constructor() {
+    super("Synchronisation non configurée sur le serveur : renseignez GOOGLE_SHEET_ID dans le .env.");
+    this.name = "SheetNonConfigure";
+  }
+}
 
-function urlExportCSV() {
-  return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID_ONGLET}`;
+// Renvoie { id, gid } ou null si le réglage est absent ou illisible — jamais
+// une valeur devinée.
+export function lireConfigSheet(env) {
+  const id = String((env && env.GOOGLE_SHEET_ID) || "").trim();
+  const gid = String((env && env.GOOGLE_SHEET_GID) || "").trim();
+  if (!/^[A-Za-z0-9_-]{20,}$/.test(id)) return null;
+  if (gid && !/^[0-9]+$/.test(gid)) return null;
+  return { id, gid: gid || "0" };
+}
+
+function urlExportCSV(config) {
+  return `https://docs.google.com/spreadsheets/d/${config.id}/export?format=csv&gid=${config.gid}`;
 }
 
 // Analyseur CSV minimal mais correct (guillemets, virgules et retours à la
@@ -76,8 +93,8 @@ export function analyserCSV(texte) {
 // redémarrage, et les passes suivantes (toutes les 20 min) s empileraient.
 const DELAI_SHEET_MS = 20_000;
 
-async function lireCSV() {
-  const r = await fetch(urlExportCSV(), { signal: AbortSignal.timeout(DELAI_SHEET_MS) });
+async function lireCSV(config) {
+  const r = await fetch(urlExportCSV(config), { signal: AbortSignal.timeout(DELAI_SHEET_MS) });
   const texte = await r.text();
   // Un classeur non partagé publiquement renvoie la page de connexion Google
   // (HTML, statut 200 après redirection) plutôt qu'une vraie erreur HTTP —
@@ -133,7 +150,9 @@ async function enregistrerEtat(env, etat) {
 //      nom écrit dans le Sheet ;
 //   3. le pseudo du compte lui-même, s'il est identique au nom du Sheet.
 export async function synchroniserSheet(env) {
-  const brut = await lireCSV();
+  const config = lireConfigSheet(env);
+  if (!config) throw new SheetNonConfigure();
+  const brut = await lireCSV(config);
   const lignes = analyserLignesSheet(brut.slice(1)); // ligne 1 = en-têtes
 
   const [comptesR, fichesR] = await Promise.all([
@@ -188,9 +207,12 @@ export async function synchroniserSheetSansErreur(env) {
   try {
     return await synchroniserSheet(env);
   } catch (e) {
+    // Réglage absent : ce n'est pas une panne, on ne remplit pas les journaux
+    // toutes les 20 minutes pour autant. L'onglet affiche l'explication.
+    const nonConfigure = e instanceof SheetNonConfigure;
     const etat = {
       derniere_sync: new Date().toISOString(),
-      statut: "erreur",
+      statut: nonConfigure ? "desactive" : "erreur",
       erreur: String((e && e.message) || e),
       nb_lignes: 0,
       nb_apparies: 0,
@@ -200,7 +222,7 @@ export async function synchroniserSheetSansErreur(env) {
     } catch (e2) {
       console.error("[sync-sheet] Échec de l'enregistrement de l'état d'erreur :", e2);
     }
-    console.error("[sync-sheet] Échec de synchronisation :", e);
+    if (!nonConfigure) console.error("[sync-sheet] Échec de synchronisation :", e);
     return etat;
   }
 }

@@ -82,6 +82,13 @@ async function demarrer() {
         direction: !!moi.direction,
         peutGererAnnonces: !!moi.peut_gerer_annonces,
       };
+      // Le lien du tableau des cohérences n'est pas dans la page : le serveur
+      // ne le donne qu'aux comptes connectés (voir lienCoherences côté API).
+      const lienCoherences = document.getElementById("lien-coherence-sheet");
+      if (lienCoherences && moi.lien_coherences) {
+        lienCoherences.href = moi.lien_coherences;
+        lienCoherences.hidden = false;
+      }
       return demarrerEspaceAdmin();
     }
   } catch (e) {
@@ -3047,6 +3054,8 @@ async function chargerSyncSheet() {
 
     if (!r.etat) {
       etatLigne.textContent = "Pas encore synchronisé.";
+    } else if (r.etat.statut === "desactive") {
+      etatLigne.textContent = "Synchronisation non configurée sur le serveur : renseignez GOOGLE_SHEET_ID dans le .env (identifiant du classeur de la Direction).";
     } else if (r.etat.statut === "erreur") {
       etatLigne.textContent = `Dernière tentative en échec (${formaterDateAdmin(r.etat.derniere_sync)}) : ${r.etat.erreur}`;
     } else {
