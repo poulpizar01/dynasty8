@@ -1000,7 +1000,12 @@ section.section.serre {
   text-align: center;
 }
 
-.vitrine-exception-image { position: relative; min-height: 340px; }
+/* overflow: hidden — au survol, la photo est agrandie (scale 1.03, plus bas
+   dans la partie « accueil ») : sans ce rognage elle débordait de 8,5 px sur
+   le panneau de texte, par-dessus le fondu, ce qui dessinait un liseré clair
+   le long de la couture. Les autres vignettes du site (carte-bien,
+   carte-membre, fiche-visuel) rognent déjà de la même façon. */
+.vitrine-exception-image { position: relative; min-height: 340px; overflow: hidden; }
 .vitrine-exception-image img {
   width: 100%; height: 100%; object-fit: cover; display: block;
 }
@@ -2876,6 +2881,10 @@ body.page-agents .ecran-connexion {
 .page-accueil .vitrine-exception { border-radius: 8px; }
 .page-accueil .vitrine-exception-image img { transition: transform 1.2s var(--d8-ease); }
 .page-accueil .vitrine-exception:hover .vitrine-exception-image img { transform: scale(1.03); }
+@media (prefers-reduced-motion: reduce) {
+  .page-accueil .vitrine-exception-image img { transition: none; }
+  .page-accueil .vitrine-exception:hover .vitrine-exception-image img { transform: none; }
+}
 
 /* ---- 4. cohérences : quatre cartes sur une seule rangée dès qu'il y a la place ---- */
 @media (min-width: 1000px) { .grille-hub--4 { grid-template-columns: repeat(4, 1fr); } }
