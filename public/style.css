@@ -942,7 +942,14 @@ section.section.serre {
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr) et non 1fr : « 1fr » vaut « minmax(auto, 1fr) », donc la
+     colonne de texte ne descend jamais sous la largeur minimale de son
+     contenu — au-delà d'un certain zoom elle grossissait et volait la place
+     de la photo (450 px contre 353 px à 150 %), qui cessait d'être à moitié
+     de la carte et dont le fondu se coupait net. Avec minmax(0, …) les deux
+     colonnes restent égales à tous les zooms et le texte se contente de
+     passer à la ligne. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;
   border-radius: var(--radius);
   background: #05070f;
@@ -951,7 +958,8 @@ section.section.serre {
 }
 
 .vitrine-exception-texte {
-  padding: 56px 48px;
+  /* fluide : à 150 % de zoom, 56/48 px fixes serraient le texte contre les bords */
+  padding: clamp(36px, 4.4vw, 56px) clamp(26px, 3.8vw, 48px);
   position: relative;
   z-index: 1;
   display: flex;
@@ -972,6 +980,25 @@ section.section.serre {
 .vitrine-exception-texte h2 { color: var(--text); max-width: 420px; }
 .vitrine-exception-texte p { color: var(--text-muted); max-width: 440px; margin: 16px 0 28px; }
 .vitrine-exception-texte .btn { align-self: flex-start; }
+
+/* Boutons des deux bandeaux (Standing et Partenaire) : leur libellé peut être
+   long (« Rejoindre Terra Home Deco sur Discord »). Avec le « nowrap » de
+   .btn, il élargissait la colonne de texte — et, une fois les colonnes
+   verrouillées à moitié-moitié, il débordait carrément de la carte au-delà de
+   130 % de zoom. On l'autorise à passer à la ligne dans sa pastille. */
+.vitrine-exception-texte .btn,
+.partenaire-bandeau-texte .btn {
+  max-width: 100%;
+  white-space: normal;
+  /* pas de flex-wrap : le libellé se coupe tout seul, et la flèche reste à
+     côté du texte au lieu de partir seule sur une ligne. */
+  height: auto;
+  min-height: 52px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  line-height: 1.35;
+  text-align: center;
+}
 
 .vitrine-exception-image { position: relative; min-height: 340px; }
 .vitrine-exception-image img {
@@ -1003,7 +1030,9 @@ section.section.serre {
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, …) : même raison que .vitrine-exception ci-dessus — sinon la
+     colonne de texte vole la place de l'image aux zooms élevés. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;
   border-radius: var(--radius);
   background: #05070f;
@@ -1012,7 +1041,8 @@ section.section.serre {
 }
 
 .partenaire-bandeau-texte {
-  padding: 56px 48px;
+  /* fluide, même raison que .vitrine-exception-texte ci-dessus */
+  padding: clamp(36px, 4.4vw, 56px) clamp(26px, 3.8vw, 48px);
   position: relative;
   z-index: 1;
   display: flex;
