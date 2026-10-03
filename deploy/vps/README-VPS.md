@@ -20,19 +20,17 @@ de domaine ne figurent dans le dépôt. Voir « Changer de serveur » plus bas.
 - `nginx-dynasty8.conf` — configuration du reverse proxy, à copier dans `/etc/nginx/sites-available/`. `server_name _` : elle accepte n'importe quelle adresse, donc rien à y changer en cas de déménagement.
 - `installer-vps.sh` — installation (ou reprise) sur un serveur neuf : contrôle les outils, le `.env` et les droits, puis construit et démarre. N'appelle jamais `sudo` lui-même et ne touche jamais à la base.
 - `.env.example` — modèle des variables (copier en `.env`, jamais commité). En HTTP simple, garder `COOKIES_HTTP=1`.
-- `cible.exemple.bat` — modèle de `cible.bat` (non versionné) : le serveur visé par `mettre-en-ligne-vps.bat`.
 - `backup.sh` / `restore.sh` — sauvegarde/restauration de la base (`pg_dump`/`pg_restore`). Lancer avec `bash backup.sh`.
 
 ## Mise en ligne au quotidien
-Depuis le PC : double-clic sur `mettre-en-ligne-vps.bat` à la racine du projet
-(copie les fichiers par `scp` puis reconstruit le conteneur `app`), puis Ctrl+F5.
-Le script affiche le serveur visé avant d'envoyer quoi que ce soit.
-
-Le serveur visé vient de `deploy/vps/cible.bat` (copie de `cible.exemple.bat`,
-exclue de Git). Changer de machine = modifier ce fichier — ou simplement le
-`HostName` de l'alias `dynasty8-vps` dans `%USERPROFILE%\.ssh\config`. À
-défaut de `cible.bat`, les variables d'environnement `D8_VPS`, `D8_VPSURL` et
-`D8_RACINE` sont utilisées, puis les valeurs par défaut.
+Sur le serveur, dans un dossier installé par `git clone` (voir « Première
+installation ») :
+```bash
+cd /opt/dynasty8 && git pull
+cd deploy/vps && sudo docker compose up -d --build app
+```
+Le serveur tourne alors exactement sur ce qui est dans le dépôt. Puis Ctrl+F5
+dans le navigateur.
 
 ## Première installation
 ```bash
@@ -120,17 +118,15 @@ et `nginx-dynasty8.conf` sont identiques d'un serveur à l'autre.
 6. **Discord** : ajouter la nouvelle URL de redirection dans le portail
    développeur (RoxwoodLegal → OAuth2 → Redirects). Garder l'ancienne tant que
    l'ancien serveur sert encore : les deux peuvent coexister.
-7. **PC** : mettre à jour `deploy/vps/cible.bat` (ou le `HostName` de l'alias
-   SSH) pour que `mettre-en-ligne-vps.bat` vise la nouvelle machine.
-8. **En jeu (FolkOS)** : l'ordinateur en jeu pointe vers l'ancienne adresse —
+7. **En jeu (FolkOS)** : l'ordinateur en jeu pointe vers l'ancienne adresse —
    prévenir l'opérateur FlashbackFA. Le SSO FolkOS n'écoute que sur
    `127.0.0.1` : le site doit tourner sur la machine FolkOS elle-même, sinon
    « Se connecter IG » restera indisponible (le reste fonctionne).
-9. **Photos** : rien à déplacer, elles sont chez `storage.fbfa.fr`. Seules les
+8. **Photos** : rien à déplacer, elles sont chez `storage.fbfa.fr`. Seules les
    anciennes photos encore en base64 vivent dans la base, donc dans le dump.
-10. **Vérifier avant de couper l'ancien serveur** : connexion Discord, ajout
-    d'une photo d'annonce, WebMap, `/api/medias/etat`, et une dernière
-    sauvegarde côté ancien serveur.
+9. **Vérifier avant de couper l'ancien serveur** : connexion Discord, ajout
+   d'une photo d'annonce, WebMap, `/api/medias/etat`, et une dernière
+   sauvegarde côté ancien serveur.
 
 ## Exploitation
 - Journaux : `sudo docker compose logs -f app`

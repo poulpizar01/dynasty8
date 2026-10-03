@@ -32,18 +32,11 @@ Les packs de déploiement règlent `DB_SCHEMA_AUTO=0` — le serveur se contente
 alors de **vérifier** le schéma et refuse de démarrer s'il manque une table ou
 une colonne, en indiquant la commande à lancer.
 
-Sous Windows, `lancer-en-local.bat` fait tout d'un double-clic : base
-PostgreSQL dans un conteneur Docker (`dynasty8-local-pg`, données
-conservées), dépendances, serveur, navigateur. Passer un fichier de
-sauvegarde en argument le restaure d'abord. Identifiants Discord et jetons
-facultatifs : copier `local.exemple.bat` en `local.bat` (non versionné).
-
 La connexion à l'espace agents passe uniquement par Discord. Pour l'utiliser
-en local : renseigner `DISCORD_CLIENT_SECRET` dans `local.bat` et déclarer
-`http://localhost:3005/api/auth/discord/callback` dans le portail Discord
-(RoxwoodLegal → OAuth2 → Redirects, qui accepte plusieurs URL). Le port est
-fixé à 3005 dans `local.bat` pour que cette URL reste valable ; le script
-affiche au démarrage l'URL exacte à déclarer.
+en local, définir aussi `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` et
+`DISCORD_REDIRECT_URI=http://localhost:3000/api/auth/discord/callback`, et
+déclarer cette même URL dans le portail Discord (RoxwoodLegal → OAuth2 →
+Redirects), qui accepte plusieurs URL de redirection.
 
 Tests : `npm test` (voir [Tests](#tests)).
 
@@ -240,9 +233,14 @@ bash deploy/vps/installer-vps.sh installer    # construit et démarre
 sudo bash deploy/vps/installer-vps.sh nginx   # reverse proxy
 ```
 
-Mise à jour au quotidien depuis Windows : `mettre-en-ligne-vps.bat`. Le
-serveur visé vient de `deploy/vps/cible.bat` (non versionné, modèle :
-`cible.exemple.bat`) et s'affiche avant tout envoi. Marche à suivre complète
+Mise à jour au quotidien, sur le serveur :
+
+```bash
+cd /opt/dynasty8 && git pull
+cd deploy/vps && sudo docker compose up -d --build app
+```
+
+Marche à suivre complète
 pour déménager (sauvegarde, restauration, redirection Discord, FolkOS,
 vérifications) : section « Changer de serveur » du
 [README VPS](deploy/vps/README-VPS.md).
@@ -378,8 +376,7 @@ dynasty8/
 │   └── verifier-env.sh         # contrôle des droits d'un .env
 ├── notes/                      # configuration des bots
 ├── server.js                   # serveur Express
-├── schema.postgres.sql         # schéma PostgreSQL (rejouable)
-└── mettre-en-ligne-vps.bat     # mise en ligne depuis Windows
+└── schema.postgres.sql         # schéma PostgreSQL (rejouable)
 ```
 
 ---
