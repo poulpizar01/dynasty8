@@ -18,9 +18,7 @@ de domaine ne figurent dans le dépôt. Voir « Changer de serveur » plus bas.
 - `Dockerfile` — construit l'application Node.js.
 - `compose.yaml` — les 3 services (`migration`, `app`, `postgres`).
 - `nginx-dynasty8.conf` — configuration du reverse proxy, à copier dans `/etc/nginx/sites-available/`. `server_name _` : elle accepte n'importe quelle adresse, donc rien à y changer en cas de déménagement.
-- `installer-vps.sh` — installation (ou reprise) sur un serveur neuf : contrôle les outils, le `.env` et les droits, puis construit et démarre. N'appelle jamais `sudo` lui-même et ne touche jamais à la base.
 - `.env.example` — modèle des variables (copier en `.env`, jamais commité). En HTTP simple, garder `COOKIES_HTTP=1`.
-- `backup.sh` / `restore.sh` — sauvegarde/restauration de la base (`pg_dump`/`pg_restore`). Lancer avec `bash backup.sh`.
 
 ## Mise en ligne au quotidien
 Sur le serveur, dans un dossier installé par `git clone` (voir « Première
@@ -37,20 +35,15 @@ dans le navigateur.
 cd /opt/dynasty8/deploy/vps
 cp .env.example .env            # puis remplir les vraies valeurs
 chmod 600 .env                  # secrets : lisible par vous seul
-cd /opt/dynasty8
-bash deploy/vps/installer-vps.sh verifier    # outils, .env, droits — ne modifie rien
-bash deploy/vps/installer-vps.sh installer   # construit et démarre
-sudo bash deploy/vps/installer-vps.sh nginx  # pose le reverse proxy
-bash deploy/vps/backup.sh                    # première sauvegarde de test
+bash ../verifier-env.sh .env    # contrôle des droits et du propriétaire
+sudo docker compose up -d --build
 ```
-Les étapes restent faisables à la main (`sudo docker compose up -d --build`) :
-le script ne fait rien d'autre, il vérifie seulement avant.
 `docker compose up` lance d'abord le service **migration** (compte
 administrateur PostgreSQL) : il applique `schema.postgres.sql` et crée le
 compte applicatif restreint (`APP_DB_USER`), avec lequel le site tourne
 ensuite — l'application ne crée plus aucune table elle-même et refuse de
 démarrer si le schéma n'est pas appliqué. Après une restauration
-(`restore.sh`), relancer `sudo docker compose run --rm migration` pour
+de sauvegarde, relancer `sudo docker compose run --rm migration` pour
 réaccorder les droits.
 
 Le conteneur tourne sous l'utilisateur non privilégié `node`. Si votre compte
@@ -61,7 +54,8 @@ Renseigner `FBFA_STORAGE_TOKEN` dans `.env` pour activer l'import des photos.
 Fonctionnement, nettoyage (`FBFA_NETTOYAGE`, en simulation par défaut),
 diagnostic du service et migration des anciennes photos base64 : voir la
 section « Photos » de `../operateur/README-OPERATEUR.md` (mêmes commandes,
-précédées de `sudo`). Faire `bash backup.sh` avant toute migration.
+précédées de `sudo`). Faire une sauvegarde (voir « Exploitation ») avant
+toute opération sur la base.
 
 ## Reverse proxy nginx (sur l'hôte)
 ```bash
@@ -71,8 +65,6 @@ sudo ln -s /etc/nginx/sites-available/dynasty8 /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default             # si le site par défaut gêne
 sudo nginx -t && sudo systemctl reload nginx
 ```
-Raccourci équivalent : `sudo bash deploy/vps/installer-vps.sh nginx`.
-
 Le fichier fourni écoute en HTTP sur n'importe quel nom d'hôte (`server_name _` :
 adresse IP comme domaine, donc rien à changer en cas de déménagement) et
 proxifie vers `127.0.0.1:3010` (`PORT_LOCAL` dans `.env`). Il transmet `Host`,
@@ -101,18 +93,17 @@ Une seule valeur dépend de la machine : `DISCORD_REDIRECT_URI` dans le `.env`
 (et `COOKIES_HTTP` / `PGSSL` si l'on passe en HTTPS). Le code, `compose.yaml`
 et `nginx-dynasty8.conf` sont identiques d'un serveur à l'autre.
 
-1. **Ancien serveur** : `bash deploy/vps/backup.sh`, puis rapatrier sur le PC
-   le `.dump` créé dans `backups/` **et** le fichier `.env` (il contient les
+1. **Ancien serveur** : faire une sauvegarde (voir « Exploitation »), puis
+   rapatrier sur le PC le `.dump` **et** le fichier `.env` (il contient les
    secrets ; jamais par Git, jamais par Discord en clair).
 2. **Nouveau serveur** : docker + plugin compose + nginx, un compte non root,
    puis `git clone https://github.com/poulpizar01/dynasty8 /opt/dynasty8`.
    Le dépôt étant public, le clone suffit : aucune clé à installer.
 3. Déposer le `.env` dans `deploy/vps/`, `chmod 600 .env`, et y corriger
    `DISCORD_REDIRECT_URI` avec la nouvelle adresse publique.
-4. `bash deploy/vps/installer-vps.sh verifier` puis `installer`, puis
-   `sudo bash deploy/vps/installer-vps.sh nginx`.
-5. **Données** : copier le `.dump` dans `deploy/vps/backups/`, puis
-   `bash deploy/vps/restore.sh backups/le_fichier.dump` et enfin
+4. `bash deploy/verifier-env.sh deploy/vps/.env`, puis
+   `sudo docker compose up -d --build` et la configuration nginx.
+5. **Données** : restaurer le `.dump` (voir « Exploitation ») puis
    `sudo docker compose run --rm migration` (la restauration écrase les
    droits du compte applicatif : cette commande les réaccorde).
 6. **Discord** : ajouter la nouvelle URL de redirection dans le portail
@@ -130,4 +121,6 @@ et `nginx-dynasty8.conf` sont identiques d'un serveur à l'autre.
 
 ## Exploitation
 - Journaux : `sudo docker compose logs -f app`
-- Sauvegarde : `bash backup.sh` (fichiers dans `backups/`, exclus de Git)
+- Sauvegarde : `sudo docker compose exec -T postgres pg_dump -Fc -U dynasty8 dynasty8 > dynasty8_$(date +%F).dump`
+- Restauration (écrase la base) : `sudo docker compose exec -T postgres pg_restore -U dynasty8 -d dynasty8 --clean --if-exists < fichier.dump`,
+  puis `sudo docker compose run --rm migration` pour réaccorder les droits

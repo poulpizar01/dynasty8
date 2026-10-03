@@ -2404,8 +2404,7 @@ async function importerPhoto(request, env, usage) {
 
 // État du suivi des médias, réservé à la Direction. Uniquement des chiffres
 // issus de la base : le format de /api/usage du service n'étant pas
-// confirmé, il n'est volontairement ni lu ni affiché ici
-// (voir scripts/fbfa-diagnostic.js pour le relever).
+// confirmé, il n'est volontairement ni lu ni affiché ici.
 async function mediasEtat(request, env) {
   if (request.method !== "GET") return json({ erreur: "Méthode non gérée." }, 405, { Allow: "GET" });
   const s = await session(request, env);

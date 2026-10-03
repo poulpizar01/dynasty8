@@ -224,8 +224,8 @@ garder **hors du dépôt**, dans un emplacement privé et sauvegardé.
 - service sous `dev`, jamais root ; `.env` en `chmod 600` appartenant à `dev` ;
 - compte PostgreSQL applicatif sans droit de création ;
 - secrets jamais commités (`.env`, `*.dump`, `*.sql.gz`, `*.backup` ignorés) ;
-- l'historique Git contient encore d'anciens secrets : voir
-  `scripts/purger-historique-secrets.sh`, et changer les secrets concernés ;
+- l'historique Git a été purgé des anciens `.env` et dumps (sept. 2026) ;
+  les secrets qu'ils contenaient restent à changer s'ils ne l'ont pas été ;
 - PostgreSQL et Node n'écoutent que sur `127.0.0.1` : seul nginx est exposé.
 
 ## Discord OAuth

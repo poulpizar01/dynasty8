@@ -16,9 +16,8 @@ COPY server.js ./
 COPY src ./src
 COPY public ./public
 COPY schema.postgres.sql ./
-# Scripts d'administration lancés à la main (docker compose exec app node scripts/…),
-# jamais au démarrage : migration du schéma, migration et nettoyage des photos,
-# diagnostic du stockage.
+# Application du schéma et des droits de la base, lancée par le service
+# « migration » du compose, jamais par le serveur lui-même.
 COPY scripts ./scripts
 
 # L'application ne tourne JAMAIS en root : l'image node fournit déjà un

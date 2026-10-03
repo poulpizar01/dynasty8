@@ -154,11 +154,7 @@ Fonctionnement (détails dans `src/medias.js`) :
   fichiers envoyés avant ce suivi ne sont **jamais** supprimés.
 - Tâche horaire intégrée au serveur, pilotée par `FBFA_NETTOYAGE` :
   `simulation` (défaut : écrit dans les journaux ce qu'elle ferait),
-  `actif`, `desactive`. Lancement manuel avec compte rendu :
-  ```bash
-  docker compose exec app node scripts/nettoyer-medias-fbfa.js            # simulation
-  docker compose exec app node scripts/nettoyer-medias-fbfa.js --apply    # réel (après accord)
-  ```
+  `actif`, `desactive`.
 - Suivi : `GET /api/medias/etat` (Direction) donne le nombre et le volume de
   médias par état, en lecture de la base uniquement.
 
@@ -168,31 +164,13 @@ Le contrat précise les champs de `PUT` et `GET /api/object/{clé}`
 avant suppression. Restent inconnus : le **format de `GET /api/usage`** et le
 fait que `GET /api/objects` renvoie ou non la **clé** des objets (seuls `id`
 et `url` sont documentés). Le site ne s'appuie sur aucun de ces deux points.
-Pour les relever (lecture seule, le jeton n'est jamais affiché) :
-```bash
-docker compose exec app node scripts/fbfa-diagnostic.js --prefix dynasty8/
-```
 Le suivi du quota distant ne sera ajouté à l'espace Direction qu'une fois ce
 format confirmé.
 
-### Migration des anciennes photos base64 (sur accord de la Direction)
-Ne concerne que les images `data:image/…;base64` stockées en base (annonces et
-profils) ; jamais `public/img` ni les liens externes.
-1. **Sauvegarde** : `docker compose exec -T postgres pg_dump -Fc -U dynasty8 dynasty8 > avant-migration_$(date +%F).dump`
-2. **Simulation** (aucune écriture, compte rendu JSON dans `rapports/`) :
-   `docker compose exec app node scripts/migrer-images-fbfa.js`
-3. **Essai limité** : `docker compose exec app node scripts/migrer-images-fbfa.js --apply --limite 5`
-4. **Migration** : `docker compose exec app node scripts/migrer-images-fbfa.js --apply`
-   (relançable : une coupure ou une erreur n'altère rien, la relance reprend ;
-   une image n'est remplacée qu'après confirmation de son envoi).
-5. **Retour arrière** si besoin : `… migrer-images-fbfa.js --annuler` (simulation)
-   puis `--annuler --apply`. Les valeurs d'origine sont restaurées depuis la
-   table `medias_migration_sauvegarde` ; les copies distantes deviennent
-   orphelines et suivent le nettoyage différé. En dernier recours : restaurer
-   le dump de l'étape 1.
-
-Les comptes rendus sont écrits dans le conteneur (`/app/rapports/`) : les
-récupérer avec `docker compose cp app:/app/rapports ./rapports`.
+### Anciennes photos base64
+Les images `data:image/…;base64` déjà stockées en base (annonces et
+profils) restent affichées telles quelles. Leur transfert vers
+storage.fbfa.fr n'est pas outillé dans le dépôt.
 
 ## Exploitation
 - Journaux : `docker compose logs -f app` (nettoyage des photos : lignes `[medias]`)

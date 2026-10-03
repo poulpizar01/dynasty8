@@ -380,10 +380,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_medias_ref_membre ON medias_references(med
 CREATE INDEX IF NOT EXISTS idx_medias_ref_bien_seul ON medias_references(bien_id);
 CREATE INDEX IF NOT EXISTS idx_medias_ref_membre_seul ON medias_references(membre_id);
 
--- Sauvegarde des anciennes images base64 remplacées par la migration
--- (scripts/migrer-images-fbfa.js) : permet un retour arrière exact
--- (--annuler) sans dépendre d'un dump. Aucune clé étrangère vers biens /
--- membres : la sauvegarde survit même si l'annonce est supprimée ensuite.
+-- Sauvegarde des anciennes images base64 remplacées par une migration vers
+-- storage.fbfa.fr, pour un retour arrière exact sans dépendre d'un dump.
+-- Plus utilisée par le code depuis le retrait de l'outil de migration ;
+-- conservée car elle peut contenir des données. Aucune clé étrangère vers
+-- biens / membres : la sauvegarde survit à la suppression d'une annonce.
 CREATE TABLE IF NOT EXISTS medias_migration_sauvegarde (
   id SERIAL PRIMARY KEY,
   table_cible TEXT NOT NULL CHECK (table_cible IN ('biens', 'membres')),

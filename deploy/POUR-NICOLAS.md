@@ -279,10 +279,9 @@ journaux) : ils restent **hors du dépôt**, dans un emplacement privé.
 2. le port du validateur SSO `id` et la méthode d'accès retenue, pour remplir
    `FOLKOS_ID_BASE` ;
 3. le slug déclaré dans le broker `access` (suggestion : `dynasty8`) ;
-4. un jeton pour `storage.fbfa.fr` (hébergement des photos), et si possible la
-   sortie de `node scripts/fbfa-diagnostic.js --prefix dynasty8/` : elle est en
-   lecture seule, n'affiche jamais le jeton, et nous permet de finir le suivi
-   du quota côté Direction.
+4. un jeton pour `storage.fbfa.fr` (hébergement des photos), et si possible le
+   format de la réponse de `GET /api/usage`, pour finir le suivi du quota
+   côté Direction.
 
 ## Pour aller plus loin
 

@@ -126,7 +126,6 @@ tâches de fond (nettoyage des photos, synchronisation du tableur).
 | `src/fbfa-storage.js` | client du stockage d'objets `storage.fbfa.fr` |
 | `src/images.js` | validation réelle des fichiers image (JPEG, PNG, WebP) |
 | `src/medias.js` | cycle de vie des photos : envoi, rattachement, nettoyage |
-| `src/migration-medias.js` | migration des anciennes photos base64 |
 | `src/stats-calc.js` | calculs de primes, quotas et semaines ISO |
 | `src/google-sheets.js` | lecture du tableur de la Direction (export CSV) |
 | `src/bot-roxwood.js` | réception signée des webhooks du bot Roxwood |
@@ -160,8 +159,8 @@ node scripts/appliquer-schema.js            # vérifie, n'écrit rien
 node scripts/appliquer-schema.js --apply    # applique le schéma et les droits
 ```
 
-Sauvegarde et restauration : `deploy/vps/backup.sh` et `restore.sh`
-(`pg_dump -Fc` / `pg_restore`). Une restauration écrase les droits du compte
+Sauvegarde et restauration : `pg_dump -Fc` / `pg_restore` dans le conteneur
+`postgres` (commandes dans le README VPS, section « Exploitation »). Une restauration écrase les droits du compte
 applicatif : relancer la migration juste après.
 
 ---
@@ -228,9 +227,8 @@ Installation ou reprise sur une machine neuve :
 git clone https://github.com/poulpizar01/dynasty8 /opt/dynasty8
 cd /opt/dynasty8/deploy/vps && cp .env.example .env && chmod 600 .env   # puis remplir
 cd /opt/dynasty8
-bash deploy/vps/installer-vps.sh verifier     # outils, .env, droits — ne modifie rien
-bash deploy/vps/installer-vps.sh installer    # construit et démarre
-sudo bash deploy/vps/installer-vps.sh nginx   # reverse proxy
+bash deploy/verifier-env.sh .env              # droits du .env
+sudo docker compose up -d --build             # construit et démarre
 ```
 
 Mise à jour au quotidien, sur le serveur :
@@ -361,12 +359,8 @@ déploiement.
 dynasty8/
 ├── public/                     # site et espace agents (HTML, CSS, JS natif)
 ├── src/                        # API et logique métier (voir Architecture)
-├── scripts/                    # administration, à lancer à la main
-│   ├── appliquer-schema.js     # vérifie ou applique le schéma et les droits
-│   ├── fbfa-diagnostic.js      # état du service de stockage des photos
-│   ├── migrer-images-fbfa.js   # migration des photos base64 (simulation par défaut)
-│   ├── nettoyer-medias-fbfa.js # nettoyage des photos orphelines
-│   └── …                       # outils ponctuels (doublons de ventes, purge de secrets)
+├── scripts/
+│   └── appliquer-schema.js     # schéma et droits de la base (service « migration »)
 ├── tests/                      # tests automatisés (npm test)
 ├── deploy/
 │   ├── vps/                    # Docker Compose autonome + nginx

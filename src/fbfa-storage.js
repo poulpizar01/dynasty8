@@ -259,7 +259,7 @@ export function creerClientFbfa({ token, base, delaiMs, fetchImpl } = {}) {
     },
 
     // Renvoie l'objet JSON tel quel : ses champs ne sont pas documentés, on
-    // ne les interprète donc pas ici (voir scripts/fbfa-diagnostic.js).
+    // ne les interprète donc pas ici.
     async usage() {
       const r = await appeler("GET", "/api/usage");
       if (!r.ok) throw erreurDepuisStatut(r.status, r.texte);

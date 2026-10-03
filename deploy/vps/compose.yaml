@@ -10,7 +10,7 @@ services:
   # PostgreSQL. Il applique schema.postgres.sql puis crée/ajuste le compte
   # applicatif restreint (SELECT, INSERT, UPDATE, DELETE — jamais CREATE).
   # Tourne une fois à chaque « docker compose up » (idempotent), puis s'arrête.
-  # À relancer à la main après une restauration (restore.sh) :
+  # À relancer à la main après une restauration de sauvegarde :
   #     sudo docker compose run --rm migration
   migration:
     build:
