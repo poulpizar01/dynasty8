@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="application-name" content="{{nom}}">
+  <meta name="robots" content="noindex">
+  <title>Connexion — {{nom}}</title>
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/gestion/gestion.css">
+  <script src="/socle/socle.js"></script>
+</head>
+<body>
+  <!-- Page de connexion (nom imposé par le socle : gestion/index.html). Contenu et apparence libres ; le bouton mène à
+       /auth/discord. Déjà connecté : le serveur redirige vers l'accueil sans afficher cette page. -->
+  <main class="seul">
+    <div class="carte">
+      <img src="/assets/logo.png" alt="" width="72" height="72">
+      <p class="surtitre">Espace employés</p>
+      <h1>{{nom}}</h1>
+      <p class="muet">Connecte-toi avec ton compte Discord. Il doit faire partie du serveur Discord de l'entreprise.</p>
+      <p class="message" id="erreur" hidden></p>
+      <a class="btn btn--accent" href="/auth/discord">Se connecter avec Discord</a>
+      <p><a href="/">← Retour au site</a></p>
+    </div>
+  </main>
+  <script>
+    // ?erreur=… posé par le serveur au retour de Discord (routes/auth.ts)
+    const ERREURS = {
+      'pas-membre': 'Ce compte Discord ne fait pas partie du serveur de l’entreprise.',
+      oauth: 'La connexion a été interrompue. Réessaie.',
+      jeton: 'Discord a refusé la connexion. Réessaie.',
+      discord: 'Discord ne répond pas pour le moment. Réessaie dans un instant.',
+      serveur: 'Erreur du site pendant la connexion. Réessaie.',
+    };
+    const code = new URLSearchParams(location.search).get('erreur');
+    if (code) { const el = document.getElementById('erreur'); el.hidden = false; el.textContent = ERREURS[code] || ERREURS.serveur; }
+  </script>
+</body>
+</html>

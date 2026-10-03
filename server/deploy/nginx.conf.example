@@ -1,0 +1,57 @@
+# SOCLE — site nginx. Copier dans /etc/nginx/sites-available/<SITE_ID> (voir .env), remplacer __DOMAIN__ (domaine),
+# __PORT__ (HOST_PORT du .env) et __SITE_ID__ (SITE_ID du .env, tirets remplacés par des _), activer (lien dans
+# sites-enabled), nginx -t, recharger.
+# HTTPS : ensuite `certbot --nginx -d __DOMAIN__`, qui ajoute le certificat et la redirection.
+# Une route qui garde la connexion ouverte (flux SSE) ou qui dure plus de 60 s se déclare dans un bloc location à part,
+# sur le modèle de celui des envois d'images (voir docs/nginx.md).
+
+# Limite de débit par adresse IP, devant le site : 30 requêtes par seconde (une page charge une vingtaine de fichiers),
+# rafales absorbées plus bas par « burst ». Le site a ses propres limites sur l'API ; celle-ci couvre aussi les pages
+# et les fichiers, qu'il ne compte pas. Une zone par site : son nom doit être unique sur la machine.
+limit_req_zone $binary_remote_addr zone=__SITE_ID__:10m rate=30r/s;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMAIN__;
+
+    server_tokens off;                 # ne pas annoncer la version de nginx
+    client_max_body_size 16m;          # images envoyées : 15 Mo max côté site
+
+    # compression : par défaut nginx ne compresse que le HTML ; CSS, JS et réponses de l'API (JSON) en profitent
+    # aussi (≈ 4× moins lourds). Pas text/event-stream : un flux temps réel doit partir sans attendre.
+    gzip on;
+    gzip_vary on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types text/css application/javascript text/javascript application/json image/svg+xml text/plain application/xml;
+
+    location / {
+        limit_req zone=__SITE_ID__ burst=120 nodelay;
+        limit_req_status 429;
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # contrôle de santé : réservé à Docker, qui interroge le conteneur directement (chaque appel lit la base)
+    location = /healthz { return 404; }
+
+    # Exemple à décommenter et adapter : route d'envoi d'image de l'entreprise (traitement puis dépôt sur le stockage,
+    # parfois plus d'une minute ; délai par défaut de nginx : 60 s, au-delà duquel l'utilisateur verrait une erreur
+    # alors que son image est enregistrée).
+    # location ~ ^/api/articles/\d+/photo$ {
+    #     limit_req zone=__SITE_ID__ burst=120 nodelay;
+    #     limit_req_status 429;
+    #     proxy_pass http://127.0.0.1:__PORT__;
+    #     proxy_http_version 1.1;
+    #     proxy_set_header Host $host;
+    #     proxy_set_header X-Real-IP $remote_addr;
+    #     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    #     proxy_set_header X-Forwarded-Proto $scheme;
+    #     proxy_read_timeout 120s;
+    # }
+}

@@ -1,0 +1,123 @@
+// SOCLE — connexion Discord (OAuth2), connexion de dev locale et déconnexion.
+import crypto from 'node:crypto';
+import { Router, type Request } from 'express';
+import { config } from '../config.js';
+import { prisma } from '../db.js';
+import { tousLesGrades } from '../droits.js';
+
+const DISCORD_API = 'https://discord.com/api/v10';
+const REDIRECT_URI = `${config.baseUrl}/auth/discord/callback`;
+const SCOPES = 'identify guilds guilds.members.read';   // guilds : savoir si l'utilisateur est propriétaire du serveur
+// pages où mènent la connexion (noms imposés aux sites : voir CLAUDE.md)
+export const PAGE_ACCUEIL = '/gestion/accueil.html', PAGE_ATTENTE = '/gestion/attente.html', PAGE_CONNEXION = '/gestion/';
+
+type DiscordUser = { id: string; username: string; global_name: string | null; avatar: string | null };
+type GuildMember = { nick: string | null; roles: string[] };
+type UserGuild = { id: string; owner: boolean };
+
+export const auth = Router();
+
+// nouvelle session à chaque connexion (évite la fixation de session), puis rattachement du compte
+const ouvrirSession = (req: Request, compteId: number) => new Promise<void>((ok, ko) =>
+  req.session.regenerate(err => { if (err) ko(err); else { req.session.compteId = compteId; ok(); } }));
+
+// Connexion de dev : seulement pour une requête arrivée directement sur la machine (adresse localhost, sans passer par
+// un proxy). Derrière nginx, le Host est le domaine et nginx ajoute X-Forwarded-For : refusée même si DEV_LOGIN était
+// activé par erreur en production.
+const requeteLocale = (req: Request) =>
+  /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.host ?? '') && !req.headers['x-forwarded-for'] && !req.headers['x-forwarded-host'];
+
+auth.get('/auth/discord', async (req, res) => {
+  if (config.devLogin) {
+    if (!requeteLocale(req)) { res.status(403).send('Connexion de dev réservée à la machine locale.'); return; }
+    // dev : ?compte=<ID Discord> ouvre la session d'un compte existant, pour essayer chaque niveau d'accès
+    const autre = typeof req.query.compte === 'string' ? await prisma.compte.findUnique({ where: { discordId: req.query.compte } }) : null;
+    if (autre) {
+      await ouvrirSession(req, autre.id);
+      res.redirect(autre.statut === 'valide' ? PAGE_ACCUEIL : PAGE_ATTENTE);
+      return;
+    }
+    const c = await prisma.compte.upsert({
+      where: { discordId: config.devDiscordId },
+      create: { discordId: config.devDiscordId, pseudo: 'dev', nom: 'Dev local', proprietaire: true, statut: 'valide', valideLe: new Date(), connecteLe: new Date() },
+      update: { proprietaire: true, connecteLe: new Date() },
+    });
+    await ouvrirSession(req, c.id);
+    res.redirect(PAGE_ACCUEIL);
+    return;
+  }
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.oauthState = state;
+  const url = new URL(`${DISCORD_API}/oauth2/authorize`);
+  url.search = new URLSearchParams({ client_id: config.discord.clientId, redirect_uri: REDIRECT_URI, response_type: 'code', scope: SCOPES, state, prompt: 'none' }).toString();
+  res.redirect(url.toString());
+});
+
+auth.get('/auth/discord/callback', async (req, res) => {
+  try {
+    const { code, state, error } = req.query;
+    // state obligatoire : sans connexion lancée depuis ce navigateur (rien en session), un retour forgé est refusé
+    if (error || typeof code !== 'string' || typeof state !== 'string' || !state || state !== req.session.oauthState) { res.redirect(`${PAGE_CONNEXION}?erreur=oauth`); return; }
+    delete req.session.oauthState;
+
+    // 1. code → jeton (10 s au plus par appel : un Discord qui ne répond pas ne laisse pas la connexion pendue)
+    const delai = () => AbortSignal.timeout(10000);
+    const tokenRes = await fetch(`${DISCORD_API}/oauth2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: config.discord.clientId, client_secret: config.discord.clientSecret, grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI }),
+      signal: delai(),
+    });
+    if (!tokenRes.ok) { res.redirect(`${PAGE_CONNEXION}?erreur=jeton`); return; }
+    const { access_token } = await tokenRes.json() as { access_token: string };
+    const discord = (path: string) => fetch(`${DISCORD_API}${path}`, { headers: { Authorization: `Bearer ${access_token}` }, signal: delai() });
+
+    // 2. identité, appartenance au serveur (+ rôles), propriété du serveur. Une réponse en erreur de Discord (limite,
+    // panne) interrompt la connexion sans toucher au compte : la lire comme « pas propriétaire » ou « pas membre »
+    // retirerait ses droits à quelqu'un qui les a.
+    const [userRes, memberRes, guildsRes] = [await discord('/users/@me'), await discord(`/users/@me/guilds/${config.discord.guildId}/member`), await discord('/users/@me/guilds')];
+    if (memberRes.status === 404) { res.redirect(`${PAGE_CONNEXION}?erreur=pas-membre`); return; }
+    if (!userRes.ok || !memberRes.ok || !guildsRes.ok) { res.redirect(`${PAGE_CONNEXION}?erreur=discord`); return; }
+    const user = await userRes.json() as DiscordUser, guildMember = await memberRes.json() as GuildMember, guilds = await guildsRes.json() as UserGuild[];
+    // formes attendues : ces valeurs servent à construire l'adresse de l'avatar, insérée dans les pages
+    if (!/^\d{5,32}$/.test(String(user.id)) || !Array.isArray(guildMember.roles) || !Array.isArray(guilds)) { res.redirect(`${PAGE_CONNEXION}?erreur=discord`); return; }
+    if (user.avatar && !/^(a_)?[0-9a-f]{32}$/.test(user.avatar)) user.avatar = null;
+    const proprietaire = guilds.some(g => g.id === config.discord.guildId && g.owner === true);
+
+    // 3. grade : le plus élevé dont le rôle Discord est porté. Un grade lié à un rôle que le compte ne porte plus est
+    // retiré (rétrogradé ou parti sur Discord) ; un grade sans rôle Discord (attribué à la main) est conservé.
+    const grades = tousLesGrades();
+    const gradeParRole = grades.find(g => g.roleDiscordId && guildMember.roles.includes(g.roleDiscordId))?.cle;
+    const existant = await prisma.compte.findUnique({ where: { discordId: user.id } });
+    const actuel = grades.find(g => g.cle === existant?.gradeCle);
+    const gradeConserve = actuel?.roleDiscordId && !guildMember.roles.includes(actuel.roleDiscordId) ? null : existant?.gradeCle ?? null;
+    const grade = gradeParRole ?? gradeConserve;
+
+    // 4. statut : nouveau compte en attente de validation ; validé d'office pour le propriétaire, et pour qui reçoit un
+    // grade par son rôle Discord (l'entreprise l'a déjà reconnu sur Discord). Un compte refusé le reste.
+    const valideOffice = proprietaire || (!!gradeParRole && existant?.statut !== 'refuse');
+    const c = await prisma.compte.upsert({
+      where: { discordId: user.id },
+      create: {
+        discordId: user.id, pseudo: user.username, avatar: user.avatar,
+        nom: guildMember.nick || user.global_name || user.username,
+        gradeCle: grade, proprietaire, connecteLe: new Date(),
+        statut: valideOffice ? 'valide' : 'attente', valideLe: valideOffice ? new Date() : null,
+      },
+      update: {
+        pseudo: user.username, avatar: user.avatar, proprietaire, gradeCle: grade, connecteLe: new Date(),
+        ...(valideOffice && existant?.statut !== 'valide' && { statut: 'valide' as const, valideLe: new Date() }),
+      },
+    });
+
+    await ouvrirSession(req, c.id);
+    res.redirect(c.statut === 'valide' ? PAGE_ACCUEIL : PAGE_ATTENTE);
+  } catch (e) {
+    console.error(e);
+    res.redirect(`${PAGE_CONNEXION}?erreur=serveur`);
+  }
+});
+
+auth.post('/auth/logout', (req, res) => {
+  req.session.destroy(() => res.clearCookie('site.sid').json({ ok: true }));
+});

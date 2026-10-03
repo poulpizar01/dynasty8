@@ -1,0 +1,90 @@
+// SOCLE (mutualisé) — tables communes à tous les sites entreprise : comptes, grades, réglages, sessions, webhooks reçus.
+// Ne pas modifier dans un site : les modèles propres à l'entreprise vont dans entreprise.prisma (même dossier).
+// Toute modification passe par une migration :
+//   docker compose exec app npx prisma migrate dev --name <description>
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum StatutCompte {
+  attente
+  valide
+  refuse
+}
+
+// Compte de la partie gestion, créé à la première connexion Discord.
+// Les tables de l'entreprise y font référence par `compteId Int` SANS relation Prisma (une relation obligerait à
+// modifier ce fichier) : le nettoyage à la suppression d'un compte passe par avantSuppressionCompte (entreprise/index.ts).
+model Compte {
+  id           Int          @id @default(autoincrement())
+  discordId    String       @unique @map("discord_id") @db.VarChar(32)
+  pseudo       String       @db.VarChar(64) // pseudo Discord
+  avatar       String?      @db.VarChar(128) // empreinte de l'avatar Discord
+  nom          String?      @db.VarChar(64) // nom RP
+  gradeCle     String?      @map("grade") @db.VarChar(20) // null = sans grade
+  statut       StatutCompte @default(attente)
+  proprietaire Boolean      @default(false) // propriétaire du serveur Discord (revérifié à chaque connexion)
+  creeLe       DateTime     @default(now()) @map("cree_le") @db.Timestamptz(6)
+  connecteLe   DateTime?    @map("connecte_le") @db.Timestamptz(6)
+  valideLe     DateTime?    @map("valide_le") @db.Timestamptz(6)
+  valideParId  Int?         @map("valide_par")
+
+  grade     Grade?   @relation(fields: [gradeCle], references: [cle], onDelete: Restrict)
+  validePar Compte?  @relation("Validations", fields: [valideParId], references: [id], onDelete: SetNull)
+  valides   Compte[] @relation("Validations")
+
+  @@index([gradeCle])
+  @@map("comptes")
+}
+
+// Grade de l'entreprise (poste), paramétré depuis la gestion. Les permissions sont des clés : celles du socle
+// (comptes, grades) et celles que déclare le site (entreprise/index.ts). Une clé inconnue est ignorée.
+model Grade {
+  cle           String   @id @db.VarChar(20) // identifiant technique, fixé à la création
+  libelle       String   @db.VarChar(40)
+  position      Int      @default(0) // 0 = sommet
+  couleur       String?  @db.VarChar(7)
+  permissions   String[] @default([])
+  roleDiscordId String?  @unique @map("role_discord_id") @db.VarChar(32) // rôle Discord qui donne ce grade à la connexion
+
+  comptes Compte[]
+
+  @@map("grades")
+}
+
+// Réglages modifiables depuis la gestion, clé → valeur (le socle et le site y rangent leurs propres clés)
+model Reglage {
+  cle    String @id @db.VarChar(40)
+  valeur String
+
+  @@map("reglages")
+}
+
+// Événement reçu du bot Discord entreprise (webhook signé). L'empreinte du corps rend chaque livraison unique :
+// une nouvelle tentative du bot pour le même événement n'est pas traitée deux fois. Effacé après 30 jours.
+model WebhookRecu {
+  id       Int      @id @default(autoincrement())
+  empreinte String  @unique @db.Char(64) // SHA-256 du corps brut
+  type     String   @db.VarChar(64)
+  contenu  Json
+  recuLe   DateTime @default(now()) @map("recu_le") @db.Timestamptz(6)
+  traite   Boolean  @default(false) // le site l'a traité sans erreur
+
+  @@index([recuLe])
+  @@map("webhooks_recus")
+}
+
+// Sessions de connexion (gérées par connect-pg-simple, déclarées ici pour les migrations)
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "idx_session_expire")
+  @@map("session")
+}

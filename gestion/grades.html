@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="application-name" content="{{nom}}">
+  <meta name="robots" content="noindex">
+  <title>Grades — {{nom}}</title>
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/gestion/gestion.css">
+  <script src="/socle/socle.js"></script>
+  <script src="/gestion/gestion.js"></script>
+</head>
+<body>
+  <!-- Grades et permissions (API du socle : /api/grades, /api/permissions, docs/api.md). Apparence libre. Le serveur
+       applique les règles : on ne touche qu'aux grades sous le sien, et on n'accorde que des permissions qu'on détient. -->
+  <main class="contenu">
+    <p class="surtitre">Gestion</p>
+    <h1 class="page-titre">Grades</h1>
+    <p class="intro">Du sommet à la base de l'entreprise. Un grade lié à un rôle Discord est donné à la connexion à qui porte ce rôle, et retiré à qui ne le porte plus.</p>
+    <p class="message" id="msg" hidden></p>
+    <div id="liste"></div>
+    <section class="carte">
+      <h2 id="formTitre">Nouveau grade</h2>
+      <form id="form">
+        <div class="grille">
+          <div class="champ"><label for="libelle">Libellé</label><input type="text" id="libelle" maxlength="40" required></div>
+          <div class="champ"><label for="couleur">Couleur</label><input type="color" id="couleur" value="#888888"></div>
+          <div class="champ"><label for="role">Rôle Discord lié (identifiant, facultatif)</label><input type="text" id="role" inputmode="numeric" pattern="\d{5,32}" placeholder="123456789012345678"></div>
+        </div>
+        <label>Permissions</label>
+        <div class="cases" id="cases"></div>
+        <div class="ligne" style="margin-top:16px">
+          <button class="btn btn--accent" id="enregistrer">Créer le grade</button>
+          <button class="btn" type="button" id="annuler" hidden>Annuler</button>
+        </div>
+      </form>
+    </section>
+  </main>
+  <script>
+    let moi, grades = [], permissions = [], edition = null;
+    const msg = document.getElementById('msg'), liste = document.getElementById('liste'), $ = id => document.getElementById(id);
+    const rang = cle => { const i = grades.findIndex(g => g.cle === cle); return i < 0 ? grades.length : i; };
+    const gerable = g => moi.proprietaire || (!!moi.grade && rang(g.cle) > rang(moi.grade.cle));
+    const libellePerm = cle => permissions.find(p => p.cle === cle)?.libelle || cle;
+
+    function afficher() {
+      liste.innerHTML = grades.length ? grades.map((g, i) => `
+        <article class="carte" data-cle="${socle.esc(g.cle)}">
+          <div class="ligne">
+            <span class="badge" style="background:${g.couleur || 'var(--bg3)'};color:#fff">${i + 1}</span>
+            <strong style="flex:1">${socle.esc(g.libelle)}</strong>
+            ${gerable(g) ? `
+              <button class="btn btn--petit" data-action="monter" ${i === 0 || !gerable(grades[i - 1]) ? 'disabled' : ''} aria-label="Monter">↑</button>
+              <button class="btn btn--petit" data-action="descendre" ${i === grades.length - 1 ? 'disabled' : ''} aria-label="Descendre">↓</button>
+              <button class="btn btn--petit" data-action="modifier">Modifier</button>
+              <button class="btn btn--petit btn--danger" data-action="supprimer">Supprimer</button>` : ''}
+          </div>
+          <p class="muet" style="margin:8px 0 0">${g.permissions.length ? g.permissions.map(p => socle.esc(libellePerm(p))).join(' · ') : 'Aucune permission'}${g.roleDiscordId ? ` · rôle Discord ${socle.esc(g.roleDiscordId)}` : ''}</p>
+        </article>`).join('') : '<p class="vide">Aucun grade : crée le premier ci-dessous.</p>';
+      // cases : seulement les permissions que l'on détient (le serveur refuserait les autres)
+      $('cases').innerHTML = permissions.map(p => `
+        <label class="case"><input type="checkbox" value="${socle.esc(p.cle)}" ${socle.peut(moi, p.cle) ? '' : 'disabled'}>
+          <span>${socle.esc(p.libelle)}${p.description ? `<small>${socle.esc(p.description)}</small>` : ''}</span></label>`).join('');
+    }
+
+    function formulaire(g) {
+      edition = g?.cle ?? null;
+      $('formTitre').textContent = g ? `Modifier « ${g.libelle} »` : 'Nouveau grade';
+      $('enregistrer').textContent = g ? 'Enregistrer' : 'Créer le grade';
+      $('annuler').hidden = !g;
+      $('libelle').value = g?.libelle ?? '';
+      $('couleur').value = g?.couleur ?? '#888888';
+      $('role').value = g?.roleDiscordId ?? '';
+      document.querySelectorAll('#cases input').forEach(c => { c.checked = !!g?.permissions.includes(c.value); });
+      if (g) $('form').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function charger() {
+      [grades, permissions] = await Promise.all([socle.api('/api/grades'), socle.api('/api/permissions')]);
+      afficher();
+    }
+
+    liste.addEventListener('click', async e => {
+      const b = e.target.closest('[data-action]'), cle = e.target.closest('[data-cle]')?.dataset.cle;
+      if (!b || !cle) return;
+      const g = grades.find(x => x.cle === cle), i = grades.indexOf(g);
+      try {
+        if (b.dataset.action === 'modifier') return formulaire(g);
+        if (b.dataset.action === 'supprimer') {
+          if (!confirm(`Supprimer le grade « ${g.libelle} » ?`)) return;
+          grades = await socle.api(`/api/grades/${encodeURIComponent(cle)}`, { method: 'DELETE' });
+        } else {
+          const ordre = grades.map(x => x.cle), j = b.dataset.action === 'monter' ? i - 1 : i + 1;
+          [ordre[i], ordre[j]] = [ordre[j], ordre[i]];
+          grades = await socle.api('/api/grades/ordre', { method: 'PUT', body: { ordre } });
+        }
+        gestion.message(msg, ''); afficher();
+      } catch (err) { gestion.message(msg, err.message); }
+    });
+
+    $('annuler').addEventListener('click', () => formulaire(null));
+    $('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const corps = {
+        libelle: $('libelle').value, couleur: $('couleur').value, roleDiscordId: $('role').value.trim(),
+        permissions: [...document.querySelectorAll('#cases input:checked')].map(c => c.value),
+      };
+      try {
+        grades = edition
+          ? await socle.api(`/api/grades/${encodeURIComponent(edition)}`, { method: 'PATCH', body: corps })
+          : await socle.api('/api/grades', { method: 'POST', body: corps });
+        afficher(); formulaire(null); gestion.message(msg, 'Grade enregistré.', true);
+      } catch (err) { gestion.message(msg, err.message); }
+    });
+
+    gestion.coque().then(m => { moi = m; return charger(); }).catch(e => gestion.message(msg, e.message));
+  </script>
+</body>
+</html>

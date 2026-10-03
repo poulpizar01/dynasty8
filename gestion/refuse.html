@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="application-name" content="{{nom}}">
+  <meta name="robots" content="noindex">
+  <title>Accès refusé — {{nom}}</title>
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/gestion/gestion.css">
+</head>
+<body>
+  <!-- Envoyée par le serveur (403) quand une page de gestion demande une permission que le compte n'a pas
+       (nom imposé par le socle : gestion/refuse.html). Adresses absolues : elle remplace n'importe quelle page. -->
+  <main class="seul">
+    <div class="carte">
+      <img src="/assets/logo.png" alt="" width="72" height="72">
+      <p class="surtitre">{{nom}}</p>
+      <h1>Accès refusé</h1>
+      <p class="muet">Ton grade ne donne pas accès à cette page.</p>
+      <a class="btn btn--accent" href="/gestion/accueil.html">Retour à l'accueil</a>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,164 @@
+# SOCLE — site (vitrine + gestion) + base + sauvegardes, le même fichier en dev et en prod.
+#   dev  : docker compose up   (compose.override.yaml est ajouté automatiquement, aucun .env)
+#   prod : docker compose up -d --build   avec un .env à la racine (voir .env.example), dont
+#          COMPOSE_FILE=compose.yaml écarte les réglages de dev
+# Le site n'écoute que sur 127.0.0.1 : en prod, c'est nginx sur la machine qui l'expose en HTTPS.
+# SITE_ID (.env) nomme le projet, les conteneurs et les volumes : plusieurs sites cohabitent sur un même VPS
+name: ${SITE_ID:-site}
+# logs Docker limités à 3 fichiers de 10 Mo par service (sans ça, ils grossissent sans fin sur le disque)
+x-logs: &logs
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+services:
+  app:
+    container_name: ${SITE_ID:-site}-app
+    # plafonds de ressources (réglables dans .env) : un site ne peut pas accaparer le VPS
+    mem_limit: ${APP_MEMORY:-512m}
+    cpus: ${APP_CPUS:-1}
+    pids_limit: 256
+    init: true                 # relaie les signaux d'arrêt jusqu'au serveur, quel que soit ce qui le lance
+    logging: *logs
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: .env             # DATABASE_URL est déduite de POSTGRES_PASSWORD par l'app
+        required: false        # absent en dev : compose.override.yaml fournit les valeurs
+    environment:
+      PORT: 3000               # port interne au conteneur ; celui de la machine est HOST_PORT
+      # mémoire JavaScript de Node, sous le plafond du conteneur (le reste sert au traitement des images)
+      NODE_OPTIONS: --max-old-space-size=${APP_NODE_HEAP:-320}
+    ports:
+      - "127.0.0.1:${HOST_PORT:-3000}:3000"
+    volumes:
+      - uploads:/app/uploads   # images envoyées, sur disque : en dev seulement (stockage distant obligatoire en prod)
+    # santé : le serveur répond et joint la base (route /healthz). « unhealthy » apparaît dans `docker compose ps`
+    # et les journaux ; Docker ne redémarre pas seul un conteneur malade, seulement un conteneur arrêté (voir server/README.md)
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      db:
+        condition: service_healthy
+      db-roles:
+        condition: service_completed_successfully
+  db:
+    container_name: ${SITE_ID:-site}-db
+    mem_limit: ${DB_MEMORY:-256m}
+    cpus: ${DB_CPUS:-1}
+    pids_limit: 256
+    logging: *logs
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file:
+      - path: .env             # fournit POSTGRES_PASSWORD
+        required: false
+    environment:
+      POSTGRES_DB: site
+      POSTGRES_USER: site
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U site -d site"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  # Compte de base du site : « site » (créé par l'image postgres) est super-utilisateur ; le site se connecte donc
+  # avec « site_app », simple propriétaire des tables (il lui faut ce droit pour appliquer les migrations), sans accès
+  # aux fichiers ni aux commandes de la machine. Ce service passe avant chaque démarrage du site et ne fait rien
+  # s'il n'y a rien à faire : il crée le compte s'il manque et lui rend toute table ou type qui ne lui appartient pas.
+  # Même mot de passe que « site » : la base n'est joignable que du réseau Docker du site, le risque couvert est
+  # une requête détournée à travers le site, pas une connexion directe.
+  db-roles:
+    container_name: ${SITE_ID:-site}-db-roles
+    mem_limit: 64m
+    pids_limit: 64
+    logging: *logs
+    image: postgres:17-alpine
+    restart: "no"
+    env_file:
+      - path: .env             # fournit POSTGRES_PASSWORD
+        required: false
+    environment:
+      PGHOST: db
+      PGUSER: site
+      PGDATABASE: site
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        export PGPASSWORD="$$POSTGRES_PASSWORD"
+        psql -q -v ON_ERROR_STOP=1 -v pw="$$POSTGRES_PASSWORD" <<'SQL'
+        SELECT 'CREATE ROLE site_app' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'site_app') \gexec
+        ALTER ROLE site_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD :'pw';
+        -- la première migration commence par CREATE SCHEMA IF NOT EXISTS "public", qui exige ce droit même si le schéma existe
+        GRANT CREATE ON DATABASE site TO site_app;
+        ALTER SCHEMA public OWNER TO site_app;
+        SELECT format('ALTER TABLE public.%I OWNER TO site_app', tablename) FROM pg_tables
+          WHERE schemaname = 'public' AND tableowner <> 'site_app' \gexec
+        SELECT format('ALTER TYPE public.%I OWNER TO site_app', t.typname) FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE n.nspname = 'public' AND t.typtype = 'e' AND pg_get_userbyid(t.typowner) <> 'site_app' \gexec
+        SQL
+  # Sauvegarde de la base : au démarrage puis toutes les 24 h, dans ./backups sur la machine
+  # (un dossier, pas un volume Docker : il survit à un `docker compose down -v`), 7 jours conservés.
+  # Les sessions n'y sont pas (table vide dans la copie) : inutiles une fois restaurées, et une
+  # restauration déconnecte simplement tout le monde. Fichiers lisibles par leur seul propriétaire, celui du dossier
+  # backups/ (créé à l'installation, voir server/README.md ; sinon root).
+  # Restauration : voir server/README.md. Désactivé en dev (compose.override.yaml).
+  backup:
+    container_name: ${SITE_ID:-site}-backup
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    logging: *logs
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file:
+      - path: .env             # fournit POSTGRES_PASSWORD
+        required: false
+    environment:
+      PGHOST: db
+      PGUSER: site
+      PGDATABASE: site
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_INTERVAL: 86400   # secondes
+      TZ: Europe/Paris         # heure des noms de fichiers
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        export PGPASSWORD="$$POSTGRES_PASSWORD"
+        umask 077
+        # pipefail : sans lui, seul gzip serait jugé, et une sauvegarde vide (pg_dump en échec) passerait pour réussie
+        set -o pipefail
+        proprio="$$(stat -c %u:%g /backups)"
+        while true; do
+          f="/backups/site-$$(date +%Y-%m-%d_%Hh%M).sql.gz"
+          # réussie = pg_dump sans erreur, archive lisible, et le marqueur de fin que pg_dump écrit en dernier
+          if pg_dump --clean --if-exists --no-owner --exclude-table-data=session | gzip > "$$f.tmp" \
+             && gzip -t "$$f.tmp" && gunzip -c "$$f.tmp" | tail -n 5 | grep -q 'PostgreSQL database dump complete'; then
+            mv "$$f.tmp" "$$f"; echo "sauvegarde : $$f"
+            # les anciennes ne partent que si celle du jour est bonne : une panne ne vide pas le dossier
+            find /backups -name 'site-*.sql.gz' -mtime +$$BACKUP_KEEP_DAYS -delete
+          else
+            rm -f "$$f.tmp"; echo "ÉCHEC de la sauvegarde : aucune copie écrite, les précédentes sont gardées" >&2
+          fi
+          # toutes les copies du dossier : lisibles par son seul propriétaire
+          chown "$$proprio" /backups/site-*.sql.gz 2>/dev/null; chmod 600 /backups/site-*.sql.gz 2>/dev/null
+          sleep "$$BACKUP_INTERVAL"
+        done
+volumes:
+  db:
+  uploads:
