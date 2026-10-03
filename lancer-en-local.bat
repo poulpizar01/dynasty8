@@ -57,6 +57,18 @@ echo [3/4] Dependances Node...
 if not exist "node_modules" call npm install --no-audit --no-fund
 if errorlevel 1 goto erreur
 
+rem Port : 3000 par defaut, mais un autre service peut deja l'occuper (un
+rem conteneur Docker, un autre projet). On prend le premier port libre.
+for /l %%p in (%PORT%,1,3015) do (
+  netstat -an | findstr /c:":%%p " | findstr /c:"LISTENING" >nul 2>&1
+  if errorlevel 1 (set "PORT=%%p" & goto port_libre)
+)
+echo *** Aucun port libre entre 3000 et 3015. ***
+goto erreur
+
+:port_libre
+echo       port retenu : %PORT%
+
 echo [4/4] Demarrage du site...
 echo.
 echo       Site      : http://localhost:%PORT%/
