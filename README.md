@@ -38,10 +38,12 @@ conservées), dépendances, serveur, navigateur. Passer un fichier de
 sauvegarde en argument le restaure d'abord. Identifiants Discord et jetons
 facultatifs : copier `local.exemple.bat` en `local.bat` (non versionné).
 
-La connexion à l'espace agents passe uniquement par Discord : pour l'utiliser
-en local, déclarer `http://localhost:3000/api/auth/discord/callback` dans le
-portail Discord (RoxwoodLegal → OAuth2 → Redirects), qui accepte plusieurs
-URL de redirection.
+La connexion à l'espace agents passe uniquement par Discord. Pour l'utiliser
+en local : renseigner `DISCORD_CLIENT_SECRET` dans `local.bat` et déclarer
+`http://localhost:3005/api/auth/discord/callback` dans le portail Discord
+(RoxwoodLegal → OAuth2 → Redirects, qui accepte plusieurs URL). Le port est
+fixé à 3005 dans `local.bat` pour que cette URL reste valable ; le script
+affiche au démarrage l'URL exacte à déclarer.
 
 Tests : `npm test` (voir [Tests](#tests)).
 

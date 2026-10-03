@@ -25,7 +25,7 @@ set "PORT=3000"
 rem Reglages personnels (identifiants Discord pour l'espace agents, jeton des
 rem photos, adresse de la WebMap) : copier local.exemple.bat en local.bat et le
 rem remplir. local.bat est exclu de Git : il contient des secrets.
-if exist "local.bat" call "local.bat"
+if exist "%~dp0local.bat" call "%~dp0local.bat"
 
 echo.
 echo [1/4] Verification de Docker...
@@ -68,6 +68,16 @@ goto erreur
 
 :port_libre
 echo       port retenu : %PORT%
+rem L'URL de retour Discord doit correspondre au port reellement utilise.
+if not defined DISCORD_REDIRECT_URI set "DISCORD_REDIRECT_URI=http://localhost:%PORT%/api/auth/discord/callback"
+if not defined DISCORD_CLIENT_SECRET (
+  echo.
+  echo       Connexion Discord NON configuree : l'espace agents restera ferme.
+  echo       Renseigner DISCORD_CLIENT_SECRET dans local.bat ^(voir local.exemple.bat^).
+) else (
+  echo       Connexion Discord : URL a declarer dans le portail Discord ^(RoxwoodLegal, OAuth2, Redirects^) :
+  echo       %DISCORD_REDIRECT_URI%
+)
 
 echo [4/4] Demarrage du site...
 echo.
