@@ -1,0 +1,60 @@
+# ============================================================================
+# Unité systemd de Dynasty 8 (site + API Node.js).
+# ----------------------------------------------------------------------------
+# Prête à installer telle quelle pour le cas standard : compte « dev »,
+# projet dans /opt/dynasty8, Node dans /usr/bin/node. Si l'un de ces trois
+# points diffère, adapter les lignes User/Group, WorkingDirectory,
+# EnvironmentFile et ExecStart avant l'installation (README-SYSTEMD.md).
+# ============================================================================
+[Unit]
+Description=Dynasty 8 — site public et espace agents (Node.js)
+Documentation=file:///opt/dynasty8/deploy/systemd/README-SYSTEMD.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Jamais root : compte applicatif dédié, sans privilège. C'est systemd qui
+# l'impose, à chaque démarrage.
+User=dev
+Group=dev
+WorkingDirectory=/opt/dynasty8
+
+# Secrets : fichier lisible par dev uniquement (chmod 600).
+EnvironmentFile=/opt/dynasty8/.env
+# Réglages imposés par le déploiement (placés APRÈS EnvironmentFile : ils
+# l'emportent sur le .env, pour éviter toute divergence).
+Environment=NODE_ENV=production
+Environment=PORT=3010
+# Le serveur ne crée aucune table : le schéma est appliqué séparément, avec
+# le compte administrateur PostgreSQL (psql, voir README-SYSTEMD.md).
+Environment=DB_SCHEMA_AUTO=0
+
+# Chemin ABSOLU du binaire Node (jamais $(command -v node) : un Node installé
+# par nvm sous /root n'est pas lisible par dev -> status=203/EXEC).
+ExecStart=/usr/bin/node /opt/dynasty8/server.js
+
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGTERM
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dynasty8-api
+
+# ---- durcissement ----
+# L'application n'écrit jamais sur disque : tout passe par PostgreSQL et le
+# stockage distant des photos.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectControlGroups=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

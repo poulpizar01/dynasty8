@@ -16,21 +16,17 @@ COPY server.js ./
 COPY src ./src
 COPY public ./public
 COPY schema.postgres.sql ./
-# Application du schéma et des droits de la base, lancée par le service
-# « migration » du compose, jamais par le serveur lui-même.
-COPY scripts ./scripts
 
 # L'application ne tourne JAMAIS en root : l'image node fournit déjà un
-# utilisateur "node" (uid 1000) sans privilège. Seul /app/rapports doit être
-# écrivable (comptes rendus des scripts) ; le reste du code reste en lecture.
-RUN mkdir -p /app/rapports && chown -R node:node /app
+# utilisateur "node" (uid 1000) sans privilège. Elle n'écrit jamais sur
+# disque : le code reste la propriété de root, en lecture seule pour elle.
 USER node
 
 ENV NODE_ENV=production
 EXPOSE 3000
 
 # Le schéma PostgreSQL n'est PAS appliqué par ce conteneur quand
-# DB_SCHEMA_AUTO=0 : il est appliqué une fois, avec le compte admin, par le
-# service "migration" du compose (scripts/appliquer-schema.js). Le serveur se
+# DB_SCHEMA_AUTO=0 : il est appliqué avec le compte admin par le service
+# "migration" du compose (psql de l'image postgres). Le serveur se
 # contente alors de vérifier que le schéma attendu est présent.
 CMD ["node", "server.js"]

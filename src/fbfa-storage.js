@@ -2,8 +2,8 @@
 // Client du stockage externe FlashbackFA (https://storage.fbfa.fr)
 // ----------------------------------------------------------------------------
 // Seul endroit du code qui parle à l'API de stockage. Utilisé par le serveur
-// (imports de photos, nettoyage différé, voir src/medias.js) et par les
-// scripts manuels (scripts/*.js). Jamais chargé côté navigateur : le jeton
+// (imports de photos, nettoyage différé, voir src/medias.js). Jamais chargé
+// côté navigateur : le jeton
 // FBFA_STORAGE_TOKEN reste exclusivement sur le serveur.
 //
 // Contrat connu de l'API (toutes les routes /api/* : Authorization: Bearer) :

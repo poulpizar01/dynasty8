@@ -5,14 +5,14 @@ derrière nginx, avec PostgreSQL installé sur la machine. Les deux autres packs
 restent disponibles : `../vps/` (Docker Compose) et `../operateur/` (serveur
 FlashbackFA).
 
-Tout passe par `deploy/systemd/deploy.sh`, qui **n'appelle jamais `sudo`** :
-chaque commande indique si elle se lance avec le compte applicatif ou en root,
-et refuse de s'exécuter sous la mauvaise identité.
+Aucun script : tout passe par les outils du système (`systemctl`, `psql`,
+`git`, `npm`). Chaque bloc de commandes indique s'il se lance avec le compte
+applicatif ou en root.
 
 | | Compte `dev` | root |
 |---|---|---|
-| Code, dépendances, migrations | `git pull`, `npm ci`, `npm run migrate` | — |
-| Service systemd | — | `systemctl` / `journalctl`, installation de l'unité |
+| Code, dépendances, schéma | `git pull`, `npm ci`, `psql` | — |
+| Service systemd | — | installation de l'unité, `systemctl` / `journalctl` |
 
 ---
 
@@ -21,14 +21,15 @@ et refuse de s'exécuter sous la mauvaise identité.
 - **Node.js 22+ installé à l'échelle du système** (`/usr/bin/node`), pas via
   nvm sous `/root` : un binaire dans `/root/.nvm/...` n'est pas lisible par
   `dev` et le service échouerait avec `status=203/EXEC` ;
-- PostgreSQL 14+ (17 conseillé) ;
+- PostgreSQL 14+ (17 conseillé), avec son client `psql` ;
 - `git`.
 
 Vérification rapide (en root) : `/usr/bin/node --version` doit afficher `v22`
 ou plus, et `runuser -u dev -- /usr/bin/node --version` doit fonctionner.
 
 ## Utilisateur Linux
-Le service tourne sous un compte **sans privilège**, jamais root.
+Le service tourne sous un compte **sans privilège**, jamais root : c'est
+l'unité systemd qui l'impose (`User=dev`), à chaque démarrage.
 
 ```bash
 # root
@@ -36,12 +37,7 @@ useradd --create-home --shell /bin/bash dev        # s'il n'existe pas déjà
 install -d -o dev -g dev /opt/dynasty8
 ```
 
-Le compte utilisé est explicite (`DEPLOY_USER`) : le script refuse `root`,
-refuse un compte d'uid 0, refuse un compte inexistant, et ne retombe jamais
-sur l'utilisateur courant.
-
-## Installation
-
+## Installation du code
 ```bash
 # dev
 git clone <URL-du-depot> /opt/dynasty8
@@ -52,27 +48,13 @@ chmod 600 .env
 nano .env                                    # remplir les valeurs
 ```
 
-Réglages du déploiement (valeurs par défaut entre parenthèses) :
-`DEPLOY_USER` (`dev`), `NODE_BIN` (`/usr/bin/node`), `SERVICE_NAME`
-(`dynasty8-api`), `APP_DIR` (racine du dépôt), `ENV_FILE` (`$APP_DIR/.env`),
-`PORT` (`3010`). Ils se passent en variables d'environnement, ou se fixent une
-fois pour toutes dans `deploy/systemd/deploy.conf` (ignoré par Git) :
-
-```bash
-# deploy/systemd/deploy.conf
-DEPLOY_USER=dev
-NODE_BIN=/usr/bin/node
-PORT=3010
-```
-
 ## Configuration `.env`
 Modèle commenté : [`.env.example`](.env.example). Variables indispensables :
 
 | Variable | Rôle |
 |---|---|
-| `DATABASE_URL` | compte PostgreSQL **applicatif** (droits restreints) |
-| `DATABASE_URL_ADMIN` | compte **administrateur**, utilisé seulement par les migrations |
-| `APP_DB_USER`, `APP_DB_PASSWORD` | compte applicatif créé/mis à jour par la migration |
+| `DATABASE_URL` | compte PostgreSQL **applicatif** (droits restreints) — le seul que lit le site |
+| `APP_DB_USER`, `APP_DB_PASSWORD` | ce même compte, créé/mis à jour par l'application du schéma |
 | `SESSION_SECRET` | signature des cookies de session (`openssl rand -hex 32`) |
 | `DISCORD_CLIENT_ID` | `1546523997980852294` (application **RoxwoodLegal**) |
 | `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI` | OAuth de l'espace agents |
@@ -82,56 +64,68 @@ Modèle commenté : [`.env.example`](.env.example). Variables indispensables :
 | `FBFA_STORAGE_TOKEN` | stockage externe des photos |
 
 `PORT`, `NODE_ENV` et `DB_SCHEMA_AUTO` sont imposés par l'unité systemd : ne
-pas les mettre dans `.env`.
+pas les mettre dans `.env`. Mot de passe `APP_DB_PASSWORD` : lettres et
+chiffres uniquement (il entre dans une URL et dans `PGOPTIONS`).
 
-## Permissions
+## Permissions du `.env`
 ```bash
 # dev
-chmod 600 .env
-./deploy/systemd/deploy.sh verifier
+stat -c '%a %U' .env       # attendu : « 600 dev »
+git check-ignore .env      # attendu : « .env » (exclu de Git)
 ```
-Le contrôle refuse de continuer si `.env` est lisible par d'autres comptes,
-s'il appartient à quelqu'un d'autre que `dev`, s'il est suivi par Git, ou s'il
-manque une variable essentielle. **Aucune valeur de secret n'est affichée.**
+Tout autre mode que `600` (ou `400`), ou un autre propriétaire que `dev`, est à
+corriger avant d'aller plus loin : le fichier contient tous les secrets.
 
 ## PostgreSQL
-Deux comptes, deux usages (voir `scripts/appliquer-schema.js`) :
+Deux comptes, deux usages :
 
 ```bash
 # root (une fois)
-su - postgres -c "createuser --pwprompt dynasty8_admin"
+su - postgres -c "createuser --createrole --pwprompt dynasty8_admin"   # --createrole : pour créer le compte du site
 su - postgres -c "createdb --owner dynasty8_admin dynasty8"
 ```
 
-Le compte **applicatif** n'est pas à créer à la main : la migration s'en charge
-à partir de `APP_DB_USER` / `APP_DB_PASSWORD`, avec uniquement `SELECT`,
-`INSERT`, `UPDATE`, `DELETE` et `USAGE` sur les séquences — jamais `CREATE`.
+Le compte **applicatif** n'est pas à créer à la main : le bloc final de
+`schema.postgres.sql` s'en charge, avec uniquement `SELECT`, `INSERT`,
+`UPDATE`, `DELETE` et `USAGE` sur les séquences — jamais `CREATE`.
 
-## Migrations
-Le serveur **ne crée plus aucune table au démarrage** : il vérifie le schéma et
-refuse de démarrer s'il est incomplet.
+## Application du schéma
+Le serveur **ne crée aucune table au démarrage** : il vérifie le schéma et
+refuse de démarrer s'il est incomplet. Le schéma s'applique avec `psql` et le
+compte administrateur, qui demande son mot de passe. Le nom et le mot de passe
+du compte applicatif lui sont transmis par `PGOPTIONS`, lus dans le `.env` :
 
 ```bash
-# dev — à chaque fois que le schéma change
-npm run migrate            # applique schema.postgres.sql + droits du compte applicatif
-npm run migrate:verifier   # contrôle seul, n'écrit rien
+# dev — à l'installation, à chaque changement du schéma, après une restauration
+cd /opt/dynasty8
+APP_DB_USER=$(grep -m1 '^APP_DB_USER=' .env | cut -d= -f2-)
+APP_DB_PASSWORD=$(grep -m1 '^APP_DB_PASSWORD=' .env | cut -d= -f2-)
+PGOPTIONS="-c dynasty8.compte_app=$APP_DB_USER -c dynasty8.mdp_app=$APP_DB_PASSWORD -c dynasty8.exiger_compte_app=on" \
+  psql -h 127.0.0.1 -U dynasty8_admin -d dynasty8 -v ON_ERROR_STOP=1 --quiet -f schema.postgres.sql
 ```
+Rejouable sans risque (tout est écrit « si ça n'existe pas déjà »). La commande
+échoue si `APP_DB_USER` est vide, si le compte est à créer sans mot de passe,
+ou si le compte applicatif peut encore créer des tables.
 
-## Installation systemd
+## Installation du service
+L'unité [`dynasty8-api.service`](dynasty8-api.service) s'installe telle quelle
+pour le cas standard (`dev`, `/opt/dynasty8`, `/usr/bin/node`). Si l'un de ces
+points diffère, adapter les lignes `User`/`Group`, `WorkingDirectory`,
+`EnvironmentFile` et `ExecStart` du fichier installé.
+
 ```bash
-# dev : vérifier et relire l'unité qui sera installée
-./deploy/systemd/deploy.sh verifier
-./deploy/systemd/deploy.sh unite
-
-# root : installer, activer
-cd /opt/dynasty8 && DEPLOY_USER=dev ./deploy/systemd/deploy.sh installer
-systemctl start dynasty8-api
+# root
+install -m 644 /opt/dynasty8/deploy/systemd/dynasty8-api.service /etc/systemd/system/
+systemd-analyze verify /etc/systemd/system/dynasty8-api.service    # aucune ligne = aucune erreur
+systemctl daemon-reload
+systemctl enable --now dynasty8-api
 systemctl status dynasty8-api
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3010/   # 200 attendu
 ```
-L'unité générée fixe `User=dev`, `WorkingDirectory`, `EnvironmentFile`, un
-`ExecStart` en chemin absolu, `Restart=always` / `RestartSec=5`, et un
-durcissement (`NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=full`,
-`ReadWritePaths` limité à `rapports/`). Modèle : `dynasty8-api.service.modele`.
+L'unité fixe `User=dev`, `WorkingDirectory`, `EnvironmentFile`, un `ExecStart`
+en chemin absolu, `Restart=always` / `RestartSec=5`, et un durcissement
+(`NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=full`…). L'application
+n'écrivant jamais sur disque, aucun dossier ne lui est ouvert en écriture.
 
 ## Configuration nginx
 nginx écoute en 80/443 et proxifie **tout** vers Node (pages comprises), sur le
@@ -162,29 +156,19 @@ et `X-Forwarded-Host` pour reconstruire ses URL (retour OAuth, cookies).
 **Ne jamais** ajouter `X-Frame-Options` ni écraser `Content-Security-Policy` :
 l'app pose elle-même `frame-ancestors` pour l'ordinateur en jeu.
 
-## Premier démarrage
-```bash
-# dev
-npm run migrate
-./deploy/systemd/deploy.sh verifier
-# root
-systemctl start dynasty8-api && systemctl status dynasty8-api
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3010/       # 200 attendu
-```
-
 ## Mise à jour
 ```bash
 # dev
 cd /opt/dynasty8
 git pull
 npm ci --omit=dev
-npm run migrate          # seulement si le schéma a changé
+# … puis la commande psql d'« Application du schéma », si le schéma a changé
 
 # root
 systemctl restart dynasty8-api
 ```
-Équivalent côté `dev` : `./deploy/systemd/deploy.sh maj` (elle rappelle la
-commande root à lancer ensuite).
+Si l'unité elle-même a changé dans le dépôt : la réinstaller (section
+« Installation du service ») avant le `restart`.
 
 ## Logs
 ```bash
@@ -205,23 +189,26 @@ npm ci --omit=dev
 # root
 systemctl restart dynasty8-api
 ```
-Les migrations étant additives, revenir en arrière sur le code ne casse pas le
-schéma. Pour annuler une migration, restaurer la sauvegarde correspondante.
+Le schéma n'évoluant que par ajouts, revenir en arrière sur le code ne le casse
+pas. Pour annuler une évolution du schéma, restaurer la sauvegarde
+correspondante.
 
 ## Backup / restauration
 ```bash
-# sauvegarde, avant toute migration
+# sauvegarde, avant toute évolution du schéma
 pg_dump -Fc -U dynasty8_admin -h 127.0.0.1 dynasty8 > ~/sauvegardes/dynasty8_$(date +%F).dump
 
 # restauration
 pg_restore -U dynasty8_admin -h 127.0.0.1 -d dynasty8 --clean --if-exists ~/sauvegardes/dynasty8_AAAA-MM-JJ.dump
-npm run migrate    # pg_restore recrée les tables : réaccorde les droits du compte applicatif
 ```
-Les dumps contiennent des données réelles (membres, ventes, noms RP) : les
-garder **hors du dépôt**, dans un emplacement privé et sauvegardé.
+`pg_restore` recrée les tables et efface donc les droits du compte applicatif :
+relancer ensuite la commande d'« Application du schéma ». Les dumps contiennent
+des données réelles (membres, ventes, noms RP) : les garder **hors du dépôt**,
+dans un emplacement privé et sauvegardé.
 
 ## Sécurité
-- service sous `dev`, jamais root ; `.env` en `chmod 600` appartenant à `dev` ;
+- service sous `dev`, jamais root ; `.env` en `chmod 600` appartenant à `dev`,
+  exclu de Git ;
 - compte PostgreSQL applicatif sans droit de création ;
 - secrets jamais commités (`.env`, `*.dump`, `*.sql.gz`, `*.backup` ignorés) ;
 - l'historique Git a été purgé des anciens `.env` et dumps (sept. 2026) ;

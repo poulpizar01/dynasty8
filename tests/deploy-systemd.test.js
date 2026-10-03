@@ -1,43 +1,50 @@
-// Déploiement systemd (deploy/systemd/deploy.sh) : les garde-fous sont joués
-// dans un vrai Linux (conteneur Docker), seul endroit où « utilisateur
-// inexistant », « fichier appartenant à root » ou « mode 600 » ont un sens.
-// Ignoré si Docker n'est pas disponible sur la machine.
+// Déploiement systemd : l'unité deploy/systemd/dynasty8-api.service est
+// installée telle quelle. Ces tests verrouillent les garanties qu'elle porte
+// (anciennement imposées par un script de déploiement) : jamais root, Node en
+// chemin absolu, réglages de production prioritaires sur le .env, durcissement.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync, execFile } from "node:child_process";
-import { promisify } from "node:util";
+import fs from "node:fs";
 import path from "node:path";
 import { RACINE } from "./aide-medias.js";
 
-const executer = promisify(execFile);
+const UNITE = fs.readFileSync(path.join(RACINE, "deploy/systemd/dynasty8-api.service"), "utf8");
+const lignes = UNITE.split(/\r?\n/).filter((l) => l && !l.startsWith("#"));
+const valeurs = (cle) => lignes.filter((l) => l.startsWith(cle + "=")).map((l) => l.slice(cle.length + 1));
+const position = (ligne) => lignes.indexOf(ligne);
 
-function dockerDisponible() {
-  try {
-    execFileSync("docker", ["version", "--format", "{{.Server.Version}}"], { stdio: "pipe" });
-    return true;
-  } catch (e) {
-    return false;
+test("le service ne tourne jamais en root", () => {
+  const [utilisateur] = valeurs("User");
+  const [groupe] = valeurs("Group");
+  assert.ok(utilisateur, "User= doit être défini (sinon systemd lance le service en root)");
+  assert.ok(groupe, "Group= doit être défini");
+  assert.notEqual(utilisateur, "root");
+  assert.notEqual(utilisateur, "0");
+});
+
+test("Node est appelé par un chemin absolu, hors de /root et de nvm", () => {
+  const [commande] = valeurs("ExecStart");
+  const [binaire, serveur] = commande.split(/\s+/);
+  assert.ok(binaire.startsWith("/"), "chemin absolu : jamais $(command -v node)");
+  assert.ok(!binaire.startsWith("/root/") && !binaire.includes(".nvm"),
+    "un Node installé par nvm sous /root est illisible pour le compte du service (status=203/EXEC)");
+  assert.ok(serveur && serveur.startsWith("/") && serveur.endsWith("/server.js"));
+});
+
+test("les réglages de production l'emportent sur le .env", () => {
+  const [fichier] = valeurs("EnvironmentFile");
+  assert.ok(fichier && fichier.startsWith("/"), "EnvironmentFile absolu");
+  for (const reglage of ["Environment=NODE_ENV=production", "Environment=DB_SCHEMA_AUTO=0"]) {
+    assert.ok(position(reglage) > position("EnvironmentFile=" + fichier),
+      `${reglage} doit suivre EnvironmentFile pour primer sur le .env`);
   }
-}
+});
 
-const ACTIF = dockerDisponible();
-
-test("garde-fous du script de déploiement systemd (utilisateur, Node, .env, root)", { skip: ACTIF ? false : "Docker indisponible", timeout: 600_000 }, async () => {
-  const { stdout } = await executer("docker", [
-    "run", "--rm",
-    "-v", `${RACINE}:/depot:ro`,
-    "-v", `${path.join(RACINE, "tests/deploy-systemd.sh")}:/essai.sh:ro`,
-    "node:22-bookworm", "bash", "/essai.sh",
-  ], { env: { ...process.env, MSYS_NO_PATHCONV: "1" }, maxBuffer: 10 * 1024 * 1024 });
-
-  // Le script d'essai s'arrête en erreur si un scénario échoue ; on vérifie
-  // en plus le contenu de l'unité générée et l'absence de sudo.
-  assert.match(stdout, /RESULTAT : \d+ réussis, 0 échoués/);
-  assert.match(stdout, /^User=dev$/m, "le service doit tourner sous l'utilisateur demandé");
-  assert.doesNotMatch(stdout, /^User=root$/m);
-  assert.match(stdout, /^ExecStart=\/usr\/local\/bin\/node \/tmp\/app\/server\.js$/m, "chemin absolu du binaire Node");
-  assert.match(stdout, /^EnvironmentFile=\/tmp\/app\/\.env$/m);
-  assert.match(stdout, /^Environment=DB_SCHEMA_AUTO=0$/m, "le site ne doit pas créer son schéma au démarrage");
-  assert.match(stdout, /^Restart=always$/m);
-  assert.match(stdout, /appels reels a sudo \(hors commentaires\) : 0/);
+test("unité complète et durcie", () => {
+  assert.doesNotMatch(UNITE, /@@/, "plus aucun trou à remplir");
+  assert.doesNotMatch(UNITE, /\bsudo\b/);
+  for (const directive of ["NoNewPrivileges=true", "PrivateTmp=true", "Restart=always"]) {
+    assert.ok(lignes.includes(directive), directive);
+  }
+  assert.ok(valeurs("ProtectSystem").length, "ProtectSystem=");
 });

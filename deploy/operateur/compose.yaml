@@ -21,14 +21,23 @@ services:
   # Tourne une fois à chaque « docker compose up » (idempotent), puis s'arrête.
   # À relancer à la main après une restauration de sauvegarde :
   #     docker compose run --rm migration
+  #
+  # Aucun code du projet n'est exécuté ici : c'est psql, le client fourni par
+  # l'image postgres, qui lit schema.postgres.sql. Le compte restreint y est
+  # créé par le bloc final du fichier, qui reçoit son nom et son mot de passe
+  # par PGOPTIONS (réglages de session, jamais écrits dans une instruction).
+  # Seules les variables nécessaires sont transmises, pas tout le .env.
   migration:
-    build:
-      context: ../..
-      dockerfile: deploy/vps/Dockerfile
-    env_file: .env
+    image: postgres:17-alpine
     environment:
-      DATABASE_URL_ADMIN: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    command: ["node", "scripts/appliquer-schema.js", "--apply", "--exiger-compte-applicatif"]
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      PGOPTIONS: "-c dynasty8.compte_app=${APP_DB_USER} -c dynasty8.mdp_app=${APP_DB_PASSWORD} -c dynasty8.exiger_compte_app=on"
+    volumes:
+      - ../../schema.postgres.sql:/schema.postgres.sql:ro
+    command: ["psql", "--no-psqlrc", "-v", "ON_ERROR_STOP=1", "--quiet", "-f", "/schema.postgres.sql"]
     restart: "no"
     depends_on:
       postgres:

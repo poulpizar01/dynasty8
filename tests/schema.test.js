@@ -4,14 +4,9 @@
 // (voir tests/medias-integration.test.js pour la commande Docker).
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import path from "node:path";
 import pg from "pg";
 import { tablesAttendues, colonnesAttendues, verifierSchema, appliquerSchema, lireSchema } from "../src/schema.js";
-import { RACINE } from "./aide-medias.js";
 
-const executer = promisify(execFile);
 const ACTIF = !!process.env.TEST_DATABASE_URL;
 const it = (nom, fn) => test(nom, { skip: ACTIF ? false : "TEST_DATABASE_URL non définie" }, fn);
 
@@ -80,20 +75,70 @@ it("base vide : la vérification échoue et liste ce qui manque", async () => {
   assert.ok(etat.tablesManquantes.includes("membres"));
 });
 
-it("le script de migration applique le schéma et crée un compte applicatif restreint", async () => {
-  const env = { ...process.env, DATABASE_URL_ADMIN: urlBase, APP_DB_USER: "d8_test_app", APP_DB_PASSWORD: "motdepassetest" };
-  const { stdout } = await executer("node", [path.join(RACINE, "scripts/appliquer-schema.js"), "--apply", "--exiger-compte-applicatif"], { env });
-  const rapport = JSON.parse(stdout);
-  assert.equal(rapport.schema_complet, true);
-  assert.equal(rapport.compte_applicatif, "créé");
-  assert.equal(rapport.droits.peut_creer_des_tables, false);
-  assert.deepEqual(rapport.droits.tables_sans_droits_complets, []);
+// Reproduit le service « migration » du compose : psql y lit schema.postgres.sql
+// en recevant le compte par PGOPTIONS. Ici, même paramètre de connexion
+// « options », transmis par pg au lieu de psql.
+async function migrer(reglages) {
+  const options = Object.entries(reglages).map(([cle, valeur]) => `-c dynasty8.${cle}=${valeur}`).join(" ");
+  const client = new pg.Client({ connectionString: urlBase, options });
+  await client.connect();
+  try {
+    await appliquerSchema(client);
+  } finally {
+    await client.end();
+  }
+}
+const COMPTE = { compte_app: "d8_test_app", mdp_app: "motdepassetest", exiger_compte_app: "on" };
+
+async function connexionApp(motDePasse) {
+  const u = new URL(urlBase);
+  u.username = "d8_test_app";
+  u.password = motDePasse;
+  const client = new pg.Client({ connectionString: u.toString() });
+  await client.connect();
+  return client;
+}
+
+it("la migration applique le schéma et crée un compte applicatif restreint", async () => {
+  await migrer(COMPTE);
   assert.equal((await verifierSchema(admin)).ok, true);
 
-  // Relance : idempotent.
-  const relance = JSON.parse((await executer("node", [path.join(RACINE, "scripts/appliquer-schema.js"), "--apply"], { env })).stdout);
-  assert.equal(relance.compte_applicatif, "mis à jour");
-  assert.equal(relance.schema_complet, true);
+  const r = await admin.query("SELECT has_schema_privilege('d8_test_app', 'public', 'CREATE') AS peut_creer");
+  assert.equal(r.rows[0].peut_creer, false, "le compte ne doit jamais pouvoir créer de table");
+  const sansDroits = await admin.query(
+    `SELECT t.nom FROM unnest($1::text[]) AS t(nom)
+      WHERE NOT (has_table_privilege('d8_test_app', 'public.' || t.nom, 'SELECT')
+             AND has_table_privilege('d8_test_app', 'public.' || t.nom, 'INSERT')
+             AND has_table_privilege('d8_test_app', 'public.' || t.nom, 'UPDATE')
+             AND has_table_privilege('d8_test_app', 'public.' || t.nom, 'DELETE'))`,
+    [tablesAttendues(lireSchema())]
+  );
+  assert.deepEqual(sansDroits.rows, [], "toutes les tables doivent être lisibles et modifiables");
+
+  // Relance : idempotent (chaque « docker compose up » la rejoue).
+  await migrer(COMPTE);
+  assert.equal((await verifierSchema(admin)).ok, true);
+});
+
+it("la migration échoue si le compte est oublié, ou à créer sans mot de passe", async () => {
+  await assert.rejects(() => migrer({ exiger_compte_app: "on" }), /APP_DB_USER/);
+  await assert.rejects(() => migrer({ compte_app: "d8_test_inconnu", exiger_compte_app: "on" }), /APP_DB_PASSWORD/);
+  const r = await admin.query("SELECT count(*)::int AS n FROM pg_roles WHERE rolname = 'd8_test_inconnu'");
+  assert.equal(r.rows[0].n, 0, "aucun compte ne doit être créé sans mot de passe");
+});
+
+it("sans réglage (serveur local avec DB_SCHEMA_AUTO=1), le bloc des droits ne fait rien", async () => {
+  await appliquerSchema(admin);
+  const r = await admin.query("SELECT count(*)::int AS n FROM pg_roles WHERE rolname LIKE 'd8_test_%' AND rolname <> 'd8_test_app'");
+  assert.equal(r.rows[0].n, 0);
+});
+
+it("changer APP_DB_PASSWORD puis relancer la migration change le mot de passe", async () => {
+  await migrer({ ...COMPTE, mdp_app: "nouveaumotdepasse" });
+  await assert.rejects(() => connexionApp("motdepassetest"), /password authentication failed/i);
+  const app = await connexionApp("nouveaumotdepasse");
+  await app.end();
+  await migrer(COMPTE); // retour au mot de passe des tests suivants
 });
 
 it("le compte applicatif peut lire et écrire, mais jamais créer ni supprimer une table", async () => {

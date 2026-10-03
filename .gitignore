@@ -5,6 +5,7 @@ node_modules/
 # Ils sont transmis à l'opérateur hors dépôt (message privé chiffré).
 deploy/vps/.env
 deploy/operateur/.env
+/.env
 deploy/vps/backups/
 
 # Sauvegardes et dumps de la base : données réelles des membres et des ventes
@@ -19,7 +20,5 @@ _a-envoyer/
 # Comptes rendus des scripts (migration / nettoyage des photos)
 rapports/
 
-# Réglages locaux du déploiement systemd (chemins, utilisateur)
-deploy/systemd/deploy.conf
 
 

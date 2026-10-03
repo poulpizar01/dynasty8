@@ -105,7 +105,7 @@ test("aucun identifiant de classeur codé en dur dans le dépôt", () => {
   const guillemets = String.fromCharCode(34, 39); // " et ' sans les ecrire ici
   const affectation = new RegExp("(SPREADSHEET|SHEET)[A-Z_]*ID[^=]{0,10}=[ ]*[" + guillemets + "][A-Za-z0-9_-]{15,}");
   const extensions = new RegExp("[.](js|html|md|css|sql|yaml|yml|example|sh|bat)$");
-  const aExaminer = ["src", "public", "tests", "scripts", "deploy", "server.js", "README.md", "schema.postgres.sql"];
+  const aExaminer = ["src", "public", "tests", "deploy", "server.js", "README.md", "schema.postgres.sql"];
   const fautifs = [];
   const parcourir = (relatif) => {
     const absolu = path.join(RACINE, relatif);

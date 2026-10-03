@@ -53,17 +53,16 @@ runuser -u dev -- /usr/bin/node --version  # doit fonctionner aussi
 
 ## Utilisateur Linux
 
-Le service tourne sous un compte sans privilège. Par défaut `dev` ; si vous
-utilisez un autre compte, tout se règle avec `DEPLOY_USER`.
+Le service tourne sous un compte sans privilège, `dev` par défaut : c'est
+l'unité systemd qui l'impose (`User=dev`), à chaque démarrage. Aucun script de
+déploiement : tout passe par les outils du système (`systemctl`, `psql`, `git`,
+`npm`).
 
 ```bash
 # root — seulement si le compte n'existe pas déjà
 useradd --create-home --shell /bin/bash dev
 install -d -o dev -g dev /opt/dynasty8
 ```
-
-Le script refuse `root`, refuse un compte d'uid 0, refuse un compte inexistant,
-et ne retombe jamais sur l'utilisateur courant.
 
 ## Installation
 
@@ -75,21 +74,10 @@ npm ci --omit=dev
 cp deploy/systemd/.env.example .env
 chmod 600 .env
 nano .env                                   # voir la section suivante
-./deploy/systemd/deploy.sh verifier         # contrôles, n'écrit rien
-
-# root
-cd /opt/dynasty8 && DEPLOY_USER=dev ./deploy/systemd/deploy.sh setup
-systemctl start dynasty8-api
-systemctl status dynasty8-api
 ```
 
-`setup` (alias de `installer`) affiche l'utilisateur, le binaire Node, le port
-et le fichier de secrets, puis demande confirmation avant d'écrire l'unité.
-
-Réglages disponibles, en variables d'environnement ou dans
-`deploy/systemd/deploy.conf` (ignoré par Git) : `DEPLOY_USER` (`dev`),
-`NODE_BIN` (`/usr/bin/node`), `SERVICE_NAME` (`dynasty8-api`), `APP_DIR`,
-`ENV_FILE`, `PORT` (`3010`).
+Puis, dans l'ordre : permissions du `.env`, base de données, application du
+schéma, service systemd (sections ci-dessous).
 
 ## Fichier `.env`
 
@@ -98,9 +86,8 @@ dépôt : Paul vous le transmet par message privé, déjà rempli.
 
 | Variable | Rôle |
 |---|---|
-| `DATABASE_URL` | compte PostgreSQL **applicatif** (droits restreints) |
-| `DATABASE_URL_ADMIN` | compte **administrateur**, migrations uniquement |
-| `APP_DB_USER`, `APP_DB_PASSWORD` | compte applicatif, créé par la migration |
+| `DATABASE_URL` | compte PostgreSQL **applicatif** (droits restreints) — le seul que lit le site |
+| `APP_DB_USER`, `APP_DB_PASSWORD` | ce même compte, créé par l'application du schéma |
 | `SESSION_SECRET` | signature des cookies (`openssl rand -hex 32`) |
 | `DISCORD_CLIENT_ID` | `1546523997980852294` (application « RoxwoodLegal ») |
 | `DISCORD_CLIENT_SECRET` | secret OAuth de cette application |
@@ -122,42 +109,46 @@ connexion échoue avec `invalid redirect_uri`.
 
 ```bash
 # dev
-chmod 600 .env
-./deploy/systemd/deploy.sh verifier
+stat -c '%a %U' .env       # attendu : « 600 dev »
+git check-ignore .env      # attendu : « .env » (exclu de Git)
 ```
 
-Le contrôle refuse de continuer si `.env` est lisible par d'autres comptes,
-s'il appartient à quelqu'un d'autre que `dev`, s'il est suivi par Git, ou s'il
-manque une variable essentielle. Aucune valeur de secret n'est affichée, ni à
-l'écran ni dans les journaux.
+Tout autre mode que `600` (ou `400`), ou un autre propriétaire que `dev`, est à
+corriger avant d'aller plus loin : le fichier contient tous les secrets.
 
 ## Base de données
 
 Deux comptes, deux usages :
 
-| | Compte admin (`POSTGRES_USER`) | Compte applicatif (`APP_DB_USER`) |
+| | Compte admin (`dynasty8_admin`) | Compte applicatif (`APP_DB_USER`) |
 |---|---|---|
-| Utilisé par | la migration, à la demande | le site, en permanence |
+| Utilisé par | l'application du schéma, à la demande | le site, en permanence |
 | Droits | propriétaire de la base | `SELECT`, `INSERT`, `UPDATE`, `DELETE` + `USAGE` sur les séquences |
 | Peut créer des tables | oui | **non** |
 
 ```bash
 # root, une seule fois
-su - postgres -c "createuser --pwprompt dynasty8_admin"
+su - postgres -c "createuser --createrole --pwprompt dynasty8_admin"   # --createrole : pour créer le compte du site
 su - postgres -c "createdb --owner dynasty8_admin dynasty8"
 ```
 
-Le compte applicatif n'est pas à créer à la main : la migration le crée à
-partir de `APP_DB_USER` / `APP_DB_PASSWORD`, lui accorde les droits ci-dessus,
-lui retire tout droit de création, puis vérifie qu'il ne peut effectivement
-plus créer de table.
+Le compte applicatif n'est pas à créer à la main : le bloc final de
+`schema.postgres.sql` le crée à partir de `APP_DB_USER` / `APP_DB_PASSWORD`,
+lui accorde les droits ci-dessus, lui retire tout droit de création, puis
+vérifie qu'il ne peut effectivement plus créer de table.
 
-## Migrations
+## Application du schéma
+
+Avec `psql` et le compte administrateur (il demande son mot de passe). Le nom et
+le mot de passe du compte applicatif lui sont transmis par `PGOPTIONS` :
 
 ```bash
-# dev — à chaque fois que le schéma change
-npm run migrate            # applique le schéma + les droits
-npm run migrate:verifier   # contrôle seul, n'écrit rien
+# dev — à l'installation, à chaque changement du schéma, après une restauration
+cd /opt/dynasty8
+APP_DB_USER=$(grep -m1 '^APP_DB_USER=' .env | cut -d= -f2-)
+APP_DB_PASSWORD=$(grep -m1 '^APP_DB_PASSWORD=' .env | cut -d= -f2-)
+PGOPTIONS="-c dynasty8.compte_app=$APP_DB_USER -c dynasty8.mdp_app=$APP_DB_PASSWORD -c dynasty8.exiger_compte_app=on" \
+  psql -h 127.0.0.1 -U dynasty8_admin -d dynasty8 -v ON_ERROR_STOP=1 --quiet -f schema.postgres.sql
 ```
 
 Il n'y a **pas de registre de migrations** façon `_applied_migrations` : le
@@ -165,29 +156,33 @@ schéma de Dynasty 8 tient dans un seul fichier (`schema.postgres.sql`) écrit
 entièrement en `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`. Le
 rejouer est sans effet, et sans risque sur les données. C'est plus simple à
 exploiter qu'une suite de fichiers numérotés, au prix de ne pas pouvoir
-« défaire » une migration — d'où la sauvegarde avant chaque opération.
+« défaire » une évolution — d'où la sauvegarde avant chaque opération.
 
 Au démarrage, le site **ne crée rien** : il vérifie que les tables et colonnes
-attendues sont là et refuse de démarrer sinon, en indiquant la commande à
-lancer. En cas d'oubli, le journal affiche :
-`Démarrage refusé : schéma PostgreSQL incomplet (…)`.
+attendues sont là et refuse de démarrer sinon. En cas d'oubli, le journal
+affiche : `Démarrage refusé : schéma PostgreSQL incomplet (…)`.
 
 ## Service systemd
 
-L'unité est générée à partir de `deploy/systemd/dynasty8-api.service.modele`,
-avec les chemins réels de la machine. Pour la relire avant installation :
+L'unité `deploy/systemd/dynasty8-api.service` s'installe telle quelle pour le
+cas standard (`dev`, `/opt/dynasty8`, `/usr/bin/node`) ; sinon, adapter
+`User`/`Group`, `WorkingDirectory`, `EnvironmentFile` et `ExecStart` du fichier
+installé.
 
 ```bash
-# dev
-./deploy/systemd/deploy.sh unite
+# root
+install -m 644 /opt/dynasty8/deploy/systemd/dynasty8-api.service /etc/systemd/system/
+systemd-analyze verify /etc/systemd/system/dynasty8-api.service    # aucune ligne = aucune erreur
+systemctl daemon-reload
+systemctl enable --now dynasty8-api
+systemctl status dynasty8-api
 ```
 
 Elle fixe `User=dev`, `WorkingDirectory`, `EnvironmentFile`, un `ExecStart` en
 chemin absolu (`/usr/bin/node /opt/dynasty8/server.js`), `Restart=always` /
-`RestartSec=5`, et un durcissement compatible avec ce que le site écrit :
-`NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=full`, et `ReadWritePaths`
-limité à `/opt/dynasty8/rapports` (comptes rendus des scripts). Elle est
-validée par `systemd-analyze verify`.
+`RestartSec=5`, et un durcissement : `NoNewPrivileges`, `PrivateTmp`,
+`ProtectSystem=full`. Le site n'écrivant jamais sur disque, aucun dossier ne
+lui est ouvert en écriture.
 
 ## nginx
 
@@ -223,14 +218,14 @@ ensuite `COOKIES_HTTP=1` du `.env` s'il y figure.
 cd /opt/dynasty8
 git pull
 npm ci --omit=dev
-npm run migrate          # seulement si le schéma a changé
+# … puis la commande d'« Application du schéma », si le schéma a changé
 
 # root
 systemctl restart dynasty8-api
 ```
 
-Équivalent en une commande côté `dev` : `./deploy/systemd/deploy.sh update`
-(alias de `maj`) — elle rappelle la commande root à lancer ensuite.
+Si l'unité elle-même a changé dans le dépôt, la réinstaller (section « Service
+systemd ») avant le `restart`.
 
 ## Logs
 
@@ -255,19 +250,21 @@ npm ci --omit=dev
 systemctl restart dynasty8-api
 ```
 
-Les migrations étant additives, revenir en arrière sur le code ne casse pas le
-schéma.
+Le schéma n'évoluant que par ajouts, revenir en arrière sur le code ne le casse
+pas.
 
 ## Sauvegarde et restauration
 
 ```bash
-# avant toute migration
+# avant toute évolution du schéma
 pg_dump -Fc -U dynasty8_admin -h 127.0.0.1 dynasty8 > ~/sauvegardes/dynasty8_$(date +%F).dump
 
 # restauration
 pg_restore -U dynasty8_admin -h 127.0.0.1 -d dynasty8 --clean --if-exists ~/sauvegardes/dynasty8_AAAA-MM-JJ.dump
-npm run migrate    # pg_restore recrée les tables : réaccorde les droits du compte applicatif
 ```
+
+`pg_restore` recrée les tables et efface les droits du compte applicatif :
+relancer ensuite la commande d'« Application du schéma ».
 
 Les dumps contiennent des données réelles (membres, ventes avec noms RP,
 journaux) : ils restent **hors du dépôt**, dans un emplacement privé.

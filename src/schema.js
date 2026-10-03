@@ -5,8 +5,9 @@
 // qui obligeait le compte utilisé par l'application à pouvoir créer des
 // tables (droits d'administration sur la base). Désormais :
 //
-//   - le schéma est appliqué UNE fois, par scripts/appliquer-schema.js, avec
-//     un compte administrateur (service « migration » du compose) ;
+//   - le schéma est appliqué par psql avec un compte administrateur
+//     (service « migration » du compose), qui crée aussi le compte
+//     restreint grâce au bloc final de schema.postgres.sql ;
 //   - l'application démarre avec un compte restreint (SELECT, INSERT, UPDATE,
 //     DELETE seulement) et se contente de VÉRIFIER que le schéma attendu est
 //     là (verifierSchema) : aucune instruction CREATE n'est exécutée.

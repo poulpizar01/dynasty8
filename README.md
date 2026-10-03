@@ -154,10 +154,15 @@ rejouable : une table ou une colonne s'ajoute simplement à ce fichier.
 | Droits | propriétaire de la base | `SELECT`, `INSERT`, `UPDATE`, `DELETE` + `USAGE` sur les séquences |
 | Peut créer une table | oui | **non** |
 
+Le compte applicatif est créé, et ses droits accordés, par le bloc final de
+`schema.postgres.sql`, exécuté par `psql` avec le compte administrateur :
+
 ```bash
-node scripts/appliquer-schema.js            # vérifie, n'écrit rien
-node scripts/appliquer-schema.js --apply    # applique le schéma et les droits
+docker compose run --rm migration    # packs Docker : applique le schéma et les droits
 ```
+
+En installation systemd, même fichier, même `psql` : commande dans
+[`deploy/systemd/README-SYSTEMD.md`](deploy/systemd/README-SYSTEMD.md).
 
 Sauvegarde et restauration : `pg_dump -Fc` / `pg_restore` dans le conteneur
 `postgres` (commandes dans le README VPS, section « Exploitation »). Une restauration écrase les droits du compte
@@ -227,7 +232,7 @@ Installation ou reprise sur une machine neuve :
 git clone https://github.com/poulpizar01/dynasty8 /opt/dynasty8
 cd /opt/dynasty8/deploy/vps && cp .env.example .env && chmod 600 .env   # puis remplir
 cd /opt/dynasty8
-bash deploy/verifier-env.sh .env              # droits du .env
+stat -c '%a %U' .env                 # attendu : 600 et votre compte
 sudo docker compose up -d --build             # construit et démarre
 ```
 
@@ -320,7 +325,7 @@ Ce qui est en place dans le code :
 
 Règles d'exploitation : ne jamais commiter de `.env` ni de sauvegarde
 (`*.dump`) ; protéger les `.env` du serveur (`chmod 600`, propriétaire =
-compte qui lance le service, contrôlé par `bash deploy/verifier-env.sh`) ;
+compte qui lance le service, à vérifier avec `stat -c '%a %U' .env`) ;
 garder PostgreSQL inaccessible depuis Internet ; sauvegarder avant toute
 migration.
 
@@ -359,15 +364,12 @@ déploiement.
 dynasty8/
 ├── public/                     # site et espace agents (HTML, CSS, JS natif)
 ├── src/                        # API et logique métier (voir Architecture)
-├── scripts/
-│   └── appliquer-schema.js     # schéma et droits de la base (service « migration »)
 ├── tests/                      # tests automatisés (npm test)
 ├── deploy/
 │   ├── vps/                    # Docker Compose autonome + nginx
 │   ├── operateur/              # serveur FlashbackFA (proxy externe, FolkOS)
 │   ├── systemd/                # service systemd, sans Docker
-│   ├── POUR-NICOLAS.md         # dossier d'hébergement remis à l'opérateur
-│   └── verifier-env.sh         # contrôle des droits d'un .env
+│   └── POUR-NICOLAS.md         # dossier d'hébergement remis à l'opérateur
 ├── notes/                      # configuration des bots
 ├── server.js                   # serveur Express
 └── schema.postgres.sql         # schéma PostgreSQL (rejouable)

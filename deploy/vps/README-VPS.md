@@ -35,7 +35,7 @@ dans le navigateur.
 cd /opt/dynasty8/deploy/vps
 cp .env.example .env            # puis remplir les vraies valeurs
 chmod 600 .env                  # secrets : lisible par vous seul
-bash ../verifier-env.sh .env    # contrôle des droits et du propriétaire
+stat -c '%a %U' .env     # attendu : 600 et votre compte
 sudo docker compose up -d --build
 ```
 `docker compose up` lance d'abord le service **migration** (compte
@@ -101,7 +101,7 @@ et `nginx-dynasty8.conf` sont identiques d'un serveur à l'autre.
    Le dépôt étant public, le clone suffit : aucune clé à installer.
 3. Déposer le `.env` dans `deploy/vps/`, `chmod 600 .env`, et y corriger
    `DISCORD_REDIRECT_URI` avec la nouvelle adresse publique.
-4. `bash deploy/verifier-env.sh deploy/vps/.env`, puis
+4. `stat -c '%a %U' deploy/vps/.env` (attendu : `600` et votre compte), puis
    `sudo docker compose up -d --build` et la configuration nginx.
 5. **Données** : restaurer le `.dump` (voir « Exploitation ») puis
    `sudo docker compose run --rm migration` (la restauration écrase les

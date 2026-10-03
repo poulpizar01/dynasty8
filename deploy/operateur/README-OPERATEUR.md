@@ -20,7 +20,7 @@ git clone <dépôt> /opt/dynasty8      # ou copie du dossier fourni
 cd /opt/dynasty8/deploy/operateur
 cp .env.example .env                 # puis remplir TOUTES les valeurs
 chmod 600 .env                       # secrets : lisible par vous seul
-bash ../verifier-env.sh .env         # contrôle des droits et du propriétaire
+stat -c '%a %U' .env                # attendu : 600 et votre compte
 docker compose up -d --build
 ```
 Le fichier `.env` n'est **plus** fourni dans le dépôt : il contient des secrets
@@ -132,7 +132,6 @@ sur postgres) — dites-nous ce que vous préférez.
 - À relancer à la main après une mise à jour du code ou une restauration :
   ```bash
   docker compose run --rm migration            # applique schéma + droits
-  docker compose exec app node scripts/appliquer-schema.js   # vérifie, sans rien écrire
   ```
 - En cas d'oubli, le conteneur `app` s'arrête avec :
   « Démarrage refusé : schéma PostgreSQL incomplet (…) ».

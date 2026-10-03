@@ -57,8 +57,8 @@ const adaptateurDB = creerAdaptateurDB();
 // DB_SCHEMA_AUTO=0 (recommandé, et réglé par les packs de déploiement) :
 // l'application tourne avec un compte PostgreSQL restreint (SELECT, INSERT,
 // UPDATE, DELETE) et ne crée RIEN. Le schéma est appliqué séparément, avec un
-// compte administrateur, par scripts/appliquer-schema.js (service
-// « migration » du compose). Le serveur se contente de vérifier que tables et
+// compte administrateur, par psql (service « migration » du compose, ou à la
+// main en installation systemd). Le serveur se contente de vérifier que tables et
 // colonnes attendues sont là, et refuse de démarrer sinon.
 //
 // DB_SCHEMA_AUTO=1 (valeur par défaut, comportement historique) : le serveur
@@ -85,7 +85,7 @@ async function preparerBase() {
     ].filter(Boolean).join(" ; ");
     throw new SchemaIncomplet(
       `schéma PostgreSQL incomplet (${manquant}) — appliquer la migration avec le compte admin : ` +
-      "docker compose run --rm migration (ou node scripts/appliquer-schema.js --apply)"
+      "docker compose run --rm migration (installation systemd : voir deploy/systemd/README-SYSTEMD.md)"
     );
   }
   console.log("Schéma PostgreSQL vérifié (aucune création : DB_SCHEMA_AUTO=0).");

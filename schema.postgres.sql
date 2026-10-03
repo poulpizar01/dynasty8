@@ -416,3 +416,60 @@ CREATE TABLE IF NOT EXISTS bot_roxwood_evenements (
 );
 CREATE INDEX IF NOT EXISTS idx_bot_roxwood_type ON bot_roxwood_evenements(type_evenement, id DESC);
 CREATE INDEX IF NOT EXISTS idx_bot_roxwood_objet ON bot_roxwood_evenements(type_evenement, cle_objet, id DESC);
+
+-- ============================================================================
+-- Compte applicatif restreint — À GARDER EN DERNIER DANS CE FICHIER
+-- ----------------------------------------------------------------------------
+-- Le site tourne avec un compte qui peut lire et écrire les données, mais
+-- jamais créer ni supprimer de table. Ce bloc le crée (ou met à jour son mot
+-- de passe) et lui accorde ses droits, avec le compte administrateur.
+--
+-- En production, il est exécuté par le service « migration » du compose :
+-- psql (image postgres) lit ce fichier, et reçoit le nom et le mot de passe
+-- du compte par PGOPTIONS, sous forme de réglages de session :
+--   -c dynasty8.compte_app=…  -c dynasty8.mdp_app=…  -c dynasty8.exiger_compte_app=on
+-- Le mot de passe n'apparaît donc jamais dans le texte d'une instruction (ni
+-- dans les journaux de PostgreSQL).
+--
+-- Sans ces réglages — serveur local qui applique lui-même ce fichier
+-- (DB_SCHEMA_AUTO=1), tests — le bloc ne fait rien.
+-- ============================================================================
+DO $$
+DECLARE
+  compte text := nullif(current_setting('dynasty8.compte_app', true), '');
+  mdp    text := nullif(current_setting('dynasty8.mdp_app', true), '');
+  exige  boolean := coalesce(current_setting('dynasty8.exiger_compte_app', true), '') = 'on';
+BEGIN
+  IF compte IS NULL THEN
+    IF exige THEN
+      RAISE EXCEPTION 'APP_DB_USER n''est pas défini : le site doit tourner avec un compte PostgreSQL restreint (voir .env.example).';
+    END IF;
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = compte) THEN
+    IF mdp IS NULL THEN
+      RAISE EXCEPTION 'APP_DB_PASSWORD est obligatoire pour créer le compte applicatif « % ».', compte;
+    END IF;
+    EXECUTE format('CREATE ROLE %I LOGIN PASSWORD %L', compte, mdp);
+  ELSIF mdp IS NOT NULL THEN
+    EXECUTE format('ALTER ROLE %I LOGIN PASSWORD %L', compte, mdp);
+  END IF;
+
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), compte);
+  EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', compte);
+  -- Jamais de droit de création : c'est tout l'intérêt de ce compte.
+  EXECUTE format('REVOKE CREATE ON SCHEMA public FROM %I', compte);
+  REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+  EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO %I', compte);
+  EXECUTE format('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO %I', compte);
+  -- Tables et séquences ajoutées plus tard par l'administrateur : droits d'office.
+  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I', current_user, compte);
+  EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO %I', current_user, compte);
+
+  -- Contrôle final : si le compte peut encore créer des tables, la migration
+  -- échoue, et le site (qui en dépend) ne démarre pas.
+  IF has_schema_privilege(compte, 'public', 'CREATE') THEN
+    RAISE EXCEPTION 'le compte applicatif « % » peut encore créer des tables : droits à revoir.', compte;
+  END IF;
+END $$;
