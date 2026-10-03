@@ -1,2 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Scripts shell : toujours en fins de ligne Unix, y compris dans une copie
+# Windows (core.autocrlf=true). Avec des CRLF, bash lit un retour chariot en
+# fin de chaque ligne et refuse le script, ce qui casse les tests lancés
+# dans un conteneur Linux.
+*.sh text eol=lf
