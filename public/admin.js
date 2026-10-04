@@ -183,7 +183,7 @@ function basculerOnglet(nom) {
   if (nom === "comptes") chargerTableMembres();
   if (nom === "agenda") chargerAgenda(true);
   if (nom === "comptabilite") chargerTablette();
-  if (nom === "statistiques") { chargerStatistiques(); chargerAgentsStats(); }
+  if (nom === "statistiques") { chargerStatistiques(); chargerTableur(); chargerAgentsStats(); }
   if (nom === "parametres") chargerSyncSheet();
   if (nom === "bot-roxwood") chargerBotRoxwood();
 }
@@ -266,8 +266,13 @@ async function chargerRecap(semaine) {
       const actions = a.id != null
         ? `<button type="button" class="actions-icone actions-icone--danger" data-recap-supprimer="${a.id}" title="Supprimer cet agent" aria-label="Supprimer cet agent">🗑️</button>`
         : "";
+      // Fiche créée depuis le tableur, sans pseudo Discord : on l'affiche
+      // sous son identité RP plutôt qu'avec un nom vide.
+      const nomAgent = a.identite
+        ? `<strong>${echapper(a.identite)}</strong>${a.identiteRp ? `<br><span style="font-size:0.82rem;color:var(--text-faint);">${echapper(a.identiteRp)}</span>` : ""}`
+        : `<strong>${echapper(a.identiteRp)}</strong><br><span style="font-size:0.82rem;color:var(--text-faint);">pseudo Discord à compléter</span>`;
       return `<tr>
-        <td><strong>${echapper(a.identite)}</strong>${a.identiteRp ? `<br><span style="font-size:0.82rem;color:var(--text-faint);">${echapper(a.identiteRp)}</span>` : ""}</td>
+        <td>${nomAgent}</td>
         <td>${grade}</td>
         <td>${a.nbAchats}</td>
         <td>${a.nbLocations}</td>
@@ -283,6 +288,52 @@ async function chargerRecap(semaine) {
     });
   } catch (e) {
     afficherMessage("zone-message-recap", "Impossible de charger le récapitulatif : " + e.message, "erreur");
+  }
+}
+
+// « Chiffres du tableur » : lignes du Google Sheets de la Direction, avec les
+// primes calculées côté serveur (mêmes montants que « Mon profil » et la DOT),
+// la fiche du référentiel reliée et le compte du site. Lecture seule.
+async function chargerTableur() {
+  afficherMessage("zone-message-tableur", "", null);
+  const etatLigne = document.getElementById("tableur-etat");
+  const vide = document.getElementById("tableur-vide");
+  const resultat = document.getElementById("tableur-resultat");
+  try {
+    const r = await appelAPI("/api/stats/tableur");
+    etatLigne.textContent = !r.configure
+      ? "Synchronisation non configurée sur ce serveur (GOOGLE_SHEET_ID absent du .env)."
+      : r.derniereSync
+        ? `Dernière lecture du tableur : ${formaterDateAdmin(r.derniereSync)}${r.statut === "erreur" ? " (échec — voir Paramètres)" : ""}.`
+        : "Tableur pas encore lu — « Synchroniser maintenant » dans Paramètres.";
+    if (!r.lignes.length) {
+      vide.classList.remove("cache");
+      resultat.classList.add("cache");
+      return;
+    }
+    vide.classList.add("cache");
+    resultat.classList.remove("cache");
+    document.getElementById("corps-table-tableur").innerHTML = r.lignes.map((l) => {
+      const fiche = !l.fiche
+        ? '<span class="champ-aide">— aucune —</span>'
+        : l.fiche.discordPseudo
+          ? echapper(l.fiche.discordPseudo)
+          : '<span class="puce puce-or" title="Fiche créée depuis le tableur : renseignez le pseudo Discord dans « Gérer les agents » ci-dessous.">pseudo à compléter</span>';
+      return `<tr>
+        <td><strong>${echapper(l.nom)}</strong></td>
+        <td>${echapper(l.grade || "—")}</td>
+        <td style="text-align:right;">${l.ventes}</td>
+        <td style="text-align:right;">${l.locations}</td>
+        <td>${formaterArgentStats(l.primeVente)}</td>
+        <td>${formaterArgentStats(l.primeLocations)}</td>
+        <td><strong>${formaterArgentStats(l.primeTotale)}</strong></td>
+        <td>${fiche}</td>
+        <td>${l.compte ? echapper(l.compte) : '<span class="champ-aide">— aucun —</span>'}</td>
+      </tr>`;
+    }).join("");
+  } catch (e) {
+    etatLigne.textContent = "";
+    afficherMessage("zone-message-tableur", "Impossible de charger les chiffres du tableur : " + e.message, "erreur");
   }
 }
 
@@ -327,7 +378,7 @@ async function chargerAgentsStats() {
     nettoyerSelectsPortee("agents-stats");
     document.getElementById("corps-table-agents").innerHTML = CACHE_AGENTS_STATS.map((a) => `
       <tr data-ligne="${a.id}">
-        <td><input type="text" class="table-input" value="${echapper(a.discord_pseudo)}" data-agent-pseudo="${a.id}" maxlength="100"></td>
+        <td><input type="text" class="table-input" value="${echapper(a.discord_pseudo)}" data-agent-pseudo="${a.id}" maxlength="100" placeholder="à compléter"></td>
         <td><input type="text" class="table-input" value="${echapper(a.identite_rp)}" data-agent-rp="${a.id}" maxlength="100" placeholder="—"></td>
         <td><select class="table-select" data-agent-grade="${a.id}" style="border-color:${couleurGrade(a.grade)};">${OPTIONS_GRADES_STATS_HTML}</select></td>
         <td><button type="button" class="actions-icone actions-icone--danger" data-agent-supprimer="${a.id}" title="Supprimer" aria-label="Supprimer">🗑️</button></td>
@@ -3096,8 +3147,12 @@ document.getElementById("bouton-synchroniser-sheet")?.addEventListener("click", 
   bouton.disabled = true;
   bouton.textContent = "Synchronisation…";
   try {
-    await appelAPI("/api/sync-sheet/synchroniser", { method: "POST" });
-    afficherMessage("zone-message-sync-sheet", "Synchronisation terminée ✓", "succes");
+    const r = await appelAPI("/api/sync-sheet/synchroniser", { method: "POST" });
+    const ref = (r.etat && r.etat.referentiel) || {};
+    const detail = ref.crees || ref.gradesMisAJour
+      ? ` — Ventes & statistiques : ${ref.crees || 0} fiche(s) agent créée(s), ${ref.gradesMisAJour || 0} grade(s) mis à jour.`
+      : "";
+    afficherMessage("zone-message-sync-sheet", "Synchronisation terminée ✓" + detail, "succes");
     chargerSyncSheet();
   } catch (e) {
     afficherMessage("zone-message-sync-sheet", "Échec de la synchronisation : " + e.message, "erreur");

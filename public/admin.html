@@ -470,7 +470,7 @@
       <div class="entete-admin">
         <div>
           <h2 style="margin-bottom:2px;">Statistiques</h2>
-          <p style="margin:0;font-size:0.88rem;">Ventes et locations reçues automatiquement du bot — réservé à la Direction.</p>
+          <p style="margin:0;font-size:0.88rem;">Ventes et locations reçues automatiquement du bot, et chiffres du tableur de la Direction — réservé à la Direction.</p>
         </div>
       </div>
       <div id="zone-message-statistiques"></div>
@@ -532,6 +532,36 @@
               </tr>
             </thead>
             <tbody id="corps-table-recap"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Chiffres du tableur : chaque ligne du Google Sheets de la Direction
+           (Synchro Google Sheets), avec ses primes calculées par les barèmes
+           du site — les mêmes montants que « Mon profil » et la DOT. Séparé
+           du récapitulatif ci-dessus, qui compte les ventes du bot : les deux
+           sources ne se mélangent pas. Affiché même sans aucune vente du bot. -->
+      <div id="statistiques-tableur" style="margin-top:36px;">
+        <div class="entete-admin">
+          <div>
+            <h3 style="margin-bottom:2px;">Chiffres du tableur</h3>
+            <p style="margin:0;font-size:0.88rem;">Ventes et locations lues dans le Google Sheets de la Direction ; primes calculées avec les barèmes du site, comme dans « Mon profil » et la DOT.</p>
+          </div>
+        </div>
+        <div id="zone-message-tableur"></div>
+        <p class="champ-aide" id="tableur-etat" style="margin:0 0 10px;"></p>
+        <div id="tableur-vide" class="etat-vide cache">
+          <p id="tableur-vide-texte">Aucune ligne lue pour le moment.</p>
+        </div>
+        <div id="tableur-resultat" class="cache" style="overflow-x:auto;">
+          <table class="table-admin">
+            <thead>
+              <tr>
+                <th>Agent</th><th>Grade</th><th style="text-align:right;">Ventes</th><th style="text-align:right;">Locations</th>
+                <th>Prime vente</th><th>Prime locations</th><th>Total primes</th><th>Fiche agent</th><th>Compte du site</th>
+              </tr>
+            </thead>
+            <tbody id="corps-table-tableur"></tbody>
           </table>
         </div>
       </div>
@@ -614,7 +644,7 @@
            site. -->
       <h3 class="comptes-sous-titre" style="margin-top:34px;">📊 État de la synchronisation</h3>
       <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">
-        Récupère automatiquement, toutes les 20 minutes (+ à la demande ci-dessous), les ventes et locations de chaque membre depuis le Google Sheets de recap (partagé en lecture seule). Le compte du site est retrouvé tout seul : par l'identité RP de la fiche agent (Ventes &amp; statistiques → Agents) ou par un pseudo identique au nom du Sheet. Une ligne sans compte n'empêche rien pour la comptabilité ; seul « Mon profil » de la personne reste vide tant que sa fiche agent n'existe pas.
+        Récupère automatiquement, toutes les 20 minutes (+ à la demande ci-dessous), les ventes et locations de chaque membre depuis le Google Sheets de recap (partagé en lecture seule). Le compte du site est retrouvé tout seul : par l'identité RP de la fiche agent (Ventes &amp; statistiques → Agents) ou par un pseudo identique au nom du Sheet. Chaque agent du Sheet a aussi sa fiche dans Ventes &amp; statistiques : créée au besoin (pseudo Discord à compléter), avec le grade écrit dans le Sheet. Une ligne sans compte n'empêche rien pour la comptabilité ; seul « Mon profil » de la personne reste vide tant qu'aucun compte du site n'y est relié.
       </p>
       <div id="zone-message-sync-sheet"></div>
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;">

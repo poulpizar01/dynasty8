@@ -138,6 +138,11 @@ CREATE TABLE IF NOT EXISTS stats_agents (
   maj TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_stats_agents_pseudo_normalise ON stats_agents(discord_pseudo_normalise);
+-- Fiches créées automatiquement depuis le tableur de la Direction (voir
+-- alignerReferentiel, src/google-sheets.js) : leur pseudo Discord n'est pas
+-- connu, il est à compléter dans « Gérer les agents ». NULL plutôt que '' :
+-- l'index unique ci-dessus accepte plusieurs NULL, pas plusieurs ''.
+ALTER TABLE stats_agents ALTER COLUMN discord_pseudo_normalise DROP NOT NULL;
 
 CREATE TABLE IF NOT EXISTS stats_baremes_primes (
   id SERIAL PRIMARY KEY,

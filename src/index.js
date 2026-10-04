@@ -1810,7 +1810,11 @@ async function calculerRecapSemaine(env, semaine) {
     env.DB.prepare("SELECT * FROM stats_taux_commission").all(),
     env.DB.prepare("SELECT valeur FROM stats_config WHERE cle = 'formateur_compte_dans_quota'").first(),
   ]);
-  const agentsParPseudo = new Map((agentsR.results || []).map((a) => [a.discord_pseudo_normalise, a]));
+  // Fiche sans pseudo Discord (créée depuis le Sheet, voir alignerReferentiel) :
+  // une clé à elle, pour qu'elle apparaisse une fois. Aucune vente du bot ne
+  // peut s'y rattacher tant que son pseudo n'est pas renseigné.
+  const cleFiche = (a) => a.discord_pseudo_normalise || `fiche:${a.id}`;
+  const agentsParPseudo = new Map((agentsR.results || []).map((a) => [cleFiche(a), a]));
   const baremeVentes = (baremesR.results || []).filter((b) => b.type === "vente");
   const baremeLocations = (baremesR.results || []).filter((b) => b.type === "location");
   const tauxParGrade = new Map((tauxR.results || []).map((t) => [t.grade, t]));
@@ -1822,7 +1826,7 @@ async function calculerRecapSemaine(env, semaine) {
   // pas seulement ceux qui ont vendu, comme avant. On y ajoute aussi les
   // pseudos qui ont vendu/loué cette semaine sans être (encore) déclarés dans
   // stats_agents (fiche facultative, voir plus haut).
-  const pseudosActifsReferentiel = (agentsR.results || []).filter((a) => a.actif).map((a) => a.discord_pseudo_normalise);
+  const pseudosActifsReferentiel = (agentsR.results || []).filter((a) => a.actif).map(cleFiche);
   const tousPseudos = new Set([...pseudosActifsReferentiel, ...identitesNormalisees]);
 
   const agents = Array.from(tousPseudos).map((pseudoNorm) => {
@@ -1927,6 +1931,56 @@ function remplacerPrimesParSheet(agents, primesParPseudo) {
       totalAVerser: salaireVerse + p.primeTotale,
       totalGagne: (a.totalGagne - a.primeTotale) + p.primeTotale,
     };
+  });
+}
+
+// « Chiffres du tableur » (Ventes & statistiques) : chaque ligne du Google
+// Sheets de la Direction, avec ses primes — calculées avec les barèmes du
+// site, exactement comme « Mon profil » et la DOT — la fiche du référentiel
+// qui lui correspond (par identité RP) et le compte du site relié. Lecture
+// seule : ces chiffres ne se mélangent pas au récapitulatif ci-dessus, qui
+// compte les ventes envoyées par le bot.
+async function statsTableur(env, s) {
+  if (!statsPeutVoirTous(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  const [lignesR, fichesR, baremesR, etatR] = await Promise.all([
+    env.DB.prepare(
+      `SELECT ssa.nom_sheet, ssa.nom_normalise, ssa.grade_sheet, ssa.nb_ventes, ssa.nb_locations, m.pseudo AS compte
+         FROM sync_sheet_agents ssa LEFT JOIN membres m ON m.id = ssa.membre_id
+        ORDER BY ssa.ligne_sheet`
+    ).all(),
+    env.DB.prepare("SELECT id, discord_pseudo, identite_rp, grade FROM stats_agents").all(),
+    env.DB.prepare("SELECT * FROM stats_baremes_primes").all(),
+    env.DB.prepare("SELECT derniere_sync, statut FROM sync_sheet_etat WHERE id = 1").first(),
+  ]);
+  const baremes = baremesR.results || [];
+  const baremeVentes = baremes.filter((b) => b.type === "vente");
+  const baremeLocations = baremes.filter((b) => b.type === "location");
+  const fichesParRp = new Map();
+  for (const f of fichesR.results || []) {
+    const cle = statsCalc.normaliserTexte(f.identite_rp || "");
+    if (cle && (!fichesParRp.has(cle) || (!fichesParRp.get(cle).discord_pseudo && f.discord_pseudo))) fichesParRp.set(cle, f);
+  }
+  const lignes = (lignesR.results || []).map((l) => {
+    const primeVente = statsCalc.montantPalier(baremeVentes, l.nb_ventes);
+    const primeLocations = statsCalc.montantPalier(baremeLocations, l.nb_locations);
+    const fiche = fichesParRp.get(l.nom_normalise) || null;
+    return {
+      nom: l.nom_sheet,
+      grade: l.grade_sheet,
+      ventes: l.nb_ventes,
+      locations: l.nb_locations,
+      primeVente,
+      primeLocations,
+      primeTotale: primeVente + primeLocations,
+      fiche: fiche ? { id: fiche.id, discordPseudo: fiche.discord_pseudo || "" } : null,
+      compte: l.compte || null,
+    };
+  });
+  return json({
+    configure: !!lireConfigSheet(env),
+    derniereSync: (etatR && etatR.derniere_sync) || null,
+    statut: (etatR && etatR.statut) || null,
+    lignes,
   });
 }
 
@@ -2163,6 +2217,7 @@ async function statistiques(request, url, env) {
   if (route === "/semaines" && m === "GET") return statsSemaines(env, s);
   if (route === "/anomalies" && m === "GET") return statsAnomalies(env, url, s);
   if (route === "/recap" && m === "GET") return statsRecap(env, url, s);
+  if (route === "/tableur" && m === "GET") return statsTableur(env, s);
   if (route === "/agents" && m === "GET") return statsListerAgents(env, s);
   if (route === "/agents" && m === "POST") return statsCreerAgent(request, env, s);
   if (route === "/ventes" && m === "POST") {

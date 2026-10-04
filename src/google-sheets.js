@@ -22,7 +22,10 @@
 // prime, comme demandé par la Direction.
 // ============================================================================
 
-import { normaliserTexte } from "./stats-calc.js";
+import { normaliserTexte, GRADES_STATS } from "./stats-calc.js";
+
+// Grade écrit dans le Sheet -> grade du site (majuscules/accents ignorés).
+const GRADE_PAR_NORMALISE = new Map(GRADES_STATS.map((g) => [normaliserTexte(g), g]));
 
 // Identifiant du classeur et de l'onglet (gid dans l'URL). Volontairement
 // ABSENTS du code : le dépôt est public, et ce classeur est partagé « toute
@@ -119,11 +122,16 @@ export function analyserLignesSheet(lignesBrutes) {
   (lignesBrutes || []).forEach((ligne, index) => {
     const nom = String(ligne[3] ?? "").trim(); // colonne D
     if (!nom) return; // ligne vide (pas de nom en colonne D) : ignorée, jamais une anomalie
+    // Titres de section du Sheet (« Informations », « Directions »…) et ligne
+    // d'en-tête (« Identité RP » / « Grade ») : pas de grade connu en colonne
+    // E, donc pas un agent.
+    const grade = GRADE_PAR_NORMALISE.get(normaliserTexte(String(ligne[4] ?? "")));
+    if (!grade) return;
     lignes.push({
       ligneSheet: index + 2, // +2 : la ligne 1 du fichier CSV = en-têtes
       nom,
       nomNormalise: normaliserTexte(nom),
-      grade: String(ligne[4] ?? "").trim(), // colonne E
+      grade, // colonne E, écrit comme les grades du site
       nbVentes: nombreEntier(ligne[11]), // colonne L
       nbLocations: nombreEntier(ligne[12]), // colonne M
     });
@@ -149,11 +157,63 @@ async function enregistrerEtat(env, etat) {
 //      fiche agent relie ce pseudo à l'identité RP, et l'identité RP est le
 //      nom écrit dans le Sheet ;
 //   3. le pseudo du compte lui-même, s'il est identique au nom du Sheet.
-export async function synchroniserSheet(env) {
+//
+// Deux synchros ne tournent jamais en même temps (passe automatique + bouton) :
+// la seconde attend la première, sans quoi la création des fiches du
+// référentiel pourrait produire des doublons.
+let synchroEnCours = null;
+export function synchroniserSheet(env) {
+  if (!synchroEnCours) {
+    synchroEnCours = synchroniserSheetUneFois(env).finally(() => { synchroEnCours = null; });
+  }
+  return synchroEnCours;
+}
+
+// Le Sheet fait foi pour l'équipe : chaque agent qu'il liste a sa fiche dans
+// le référentiel de Ventes & statistiques (stats_agents), et le grade de
+// cette fiche est celui du Sheet. Une fiche absente est créée sans pseudo
+// Discord (à compléter dans « Gérer les agents »). Rien n'est jamais
+// supprimé ici : un agent retiré du Sheet garde sa fiche.
+// Rapprochement par identité RP, égalité exacte (majuscules/accents ignorés).
+export async function alignerReferentiel(env, lignes) {
+  const r = await env.DB.prepare("SELECT id, identite_rp, grade, discord_pseudo FROM stats_agents").all();
+  const parRp = new Map();
+  for (const f of r.results || []) {
+    const cle = normaliserTexte(f.identite_rp || "");
+    if (!cle) continue;
+    const deja = parRp.get(cle);
+    // Deux fiches pour la même identité RP : on retient celle qui a un pseudo.
+    if (!deja || (!deja.discord_pseudo && f.discord_pseudo)) parRp.set(cle, f);
+  }
+  let crees = 0;
+  let gradesMisAJour = 0;
+  for (const l of lignes) {
+    const fiche = parRp.get(l.nomNormalise);
+    if (!fiche) {
+      await env.DB.prepare(
+        `INSERT INTO stats_agents (discord_pseudo, discord_pseudo_normalise, identite_rp, grade)
+         VALUES ('', NULL, ?1, ?2)`
+      ).bind(l.nom, l.grade).run();
+      parRp.set(l.nomNormalise, { identite_rp: l.nom, grade: l.grade, discord_pseudo: "" });
+      crees++;
+    } else if (fiche.grade !== l.grade) {
+      await env.DB.prepare("UPDATE stats_agents SET grade = ?2, maj = datetime('now') WHERE id = ?1").bind(fiche.id, l.grade).run();
+      fiche.grade = l.grade;
+      gradesMisAJour++;
+    }
+  }
+  return { crees, gradesMisAJour };
+}
+
+async function synchroniserSheetUneFois(env) {
   const config = lireConfigSheet(env);
   if (!config) throw new SheetNonConfigure();
   const brut = await lireCSV(config);
   const lignes = analyserLignesSheet(brut.slice(1)); // ligne 1 = en-têtes
+  const referentiel = await alignerReferentiel(env, lignes);
+  if (referentiel.crees || referentiel.gradesMisAJour) {
+    console.log(`[sync-sheet] Référentiel : ${referentiel.crees} fiche(s) créée(s), ${referentiel.gradesMisAJour} grade(s) mis à jour.`);
+  }
 
   const [comptesR, fichesR] = await Promise.all([
     env.DB.prepare("SELECT id, pseudo, discord_pseudo, nom_sheet FROM membres WHERE statut != 'desactive'").all(),
@@ -196,7 +256,7 @@ export async function synchroniserSheet(env) {
     nb_apparies: nbApparies,
   };
   await enregistrerEtat(env, etat);
-  return etat;
+  return { ...etat, referentiel };
 }
 
 // Même chose, mais n'expose jamais l'exception à l'appelant (utilisé pour la
