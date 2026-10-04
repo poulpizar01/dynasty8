@@ -40,14 +40,9 @@ docker compose up -d --build
 Vérifier : `docker compose ps` (les trois services `Up`, la base `healthy`) et `docker logs <SITE_ID>-app`, qui doit finir par `<nom du site> en écoute sur le port 3000 (https://<domaine>)`. Le premier démarrage crée les tables (migrations Prisma).
 
 ### 4. nginx et HTTPS
-```bash
-sudo cp server/deploy/nginx.conf.example /etc/nginx/sites-available/<SITE_ID>
-sudo nano /etc/nginx/sites-available/<SITE_ID>          # remplacer __DOMAIN__, __PORT__ (= HOST_PORT) et __SITE_ID__
-sudo ln -s /etc/nginx/sites-available/<SITE_ID> /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d <domaine>                      # certificat + redirection http → https, renouvelé automatiquement
-```
-**Ne pas tester la connexion avant certbot** : avec `BASE_URL` en `https://`, le cookie de session n'est envoyé qu'en HTTPS, la connexion Discord échoue donc en `http://`. Rôle de chaque réglage nginx, plusieurs sites, dépannage : [docs/nginx.md](../docs/nginx.md).
+Un fichier `/etc/nginx/sites-available/<domaine>.conf` tiré de [`server/deploy/nginx.conf.example`](deploy/nginx.conf.example) : un bloc HTTP réservé au défi ACME (certificat) et un bloc HTTPS pour le site. Au premier déploiement, le bloc HTTPS n'est ajouté qu'une fois le certificat obtenu (`certbot certonly --webroot`) : commandes dans l'ordre dans [docs/nginx.md](../docs/nginx.md#mise-en-place).
+
+**Ne pas tester la connexion avant le certificat** : avec `BASE_URL` en `https://`, le cookie de session n'est envoyé qu'en HTTPS, la connexion Discord échoue donc en `http://`. Rôle de chaque réglage nginx, plusieurs sites, dépannage : [docs/nginx.md](../docs/nginx.md).
 
 ### 5. Première connexion
 La base de prod démarre **vide** (rien n'est repris du dev). Dans cet ordre :

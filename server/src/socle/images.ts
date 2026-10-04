@@ -13,8 +13,13 @@ import sharp, { type Metadata } from 'sharp';
 import { limits } from './security.js';
 import { storage } from './storage.js';
 
-// pic mesuré : ~210 Mo pour une image de 25 Mpx — à garder sous le plafond mémoire du conteneur (APP_MEMORY)
+// à garder sous le plafond mémoire du conteneur (APP_MEMORY)
 const MAX_PIXELS = 25_000_000;
+// Mémoire de sharp : ni cache d'opérations (chaque image n'est traitée qu'une fois) ni plusieurs fils par image.
+// Mesuré sur 25 Mpx, pic du processus : JPEG 125 Mo, PNG 16 bits avec transparence 156 à 191 Mo — contre 175 et 348 Mo
+// avec les réglages par défaut de sharp, trop près du plafond du conteneur (512 Mo).
+sharp.cache(false);
+sharp.concurrency(1);
 const FORMATS_ACCEPTES = ['jpeg', 'png', 'webp'];
 
 const multerUn = multer({

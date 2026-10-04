@@ -53,7 +53,7 @@ Les grandes listes renvoyées par ces routes restent à la taille d'une entrepri
 | Webhooks `/webhooks/bot` | 120 par minute et par adresse IP |
 | Envoi d'images (`...recevoirImage`) | 20 par compte toutes les 10 minutes |
 
-Au-delà : `429` avec un message lisible. Les en-têtes `RateLimit` et `RateLimit-Policy` indiquent le quota restant. Une route de l'entreprise peut ajouter sa propre limite : `limiter(minutes, nombre, message, parCompte)` (`socle/security.ts`).
+Au-delà : `429` avec un message lisible. Les en-têtes `RateLimit` et `RateLimit-Policy` indiquent le quota restant. Toutes les réponses de `/api` et `/auth` portent `Cache-Control: no-store` (rien de personnel gardé par le navigateur). Une route de l'entreprise peut ajouter sa propre limite : `limiter(minutes, nombre, message, parCompte)` (`socle/security.ts`).
 
 ## Ajouter les routes de l'entreprise
 ```ts

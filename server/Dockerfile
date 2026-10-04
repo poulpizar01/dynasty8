@@ -16,7 +16,8 @@ COPY server/package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY . /app
 COPY --from=build /app/server/dist ./dist
-# utilisateur sans privilèges ; seul le dossier des fichiers envoyés (volume uploads) lui est inscriptible
+# utilisateur sans privilèges ; seul le dossier des fichiers envoyés sur disque lui est inscriptible (dev ; en prod,
+# aucun volume : les images vont au stockage distant)
 RUN mkdir -p /app/uploads && chown node:node /app/uploads
 USER node
 EXPOSE 3000

@@ -53,6 +53,17 @@ auth.get('/auth/discord', async (req, res) => {
   res.redirect(url.toString());
 });
 
+// Comptes encore marqués propriétaires alors qu'un autre l'est devenu (serveur transféré) : plus de permissions
+// d'office, et un grade sans rôle Discord (qu'il a pu s'attribuer lui-même) est retiré. Un grade lié à un rôle est
+// gardé, revérifié à leur prochaine connexion.
+async function retirerProprietaires(saufDiscordId: string) {
+  const anciens = await prisma.compte.findMany({ where: { proprietaire: true, discordId: { not: saufDiscordId } }, select: { id: true, gradeCle: true } });
+  for (const a of anciens) {
+    const lie = !!tousLesGrades().find(g => g.cle === a.gradeCle)?.roleDiscordId;
+    await prisma.compte.update({ where: { id: a.id }, data: { proprietaire: false, ...(!lie && { gradeCle: null }) } });
+  }
+}
+
 auth.get('/auth/discord/callback', async (req, res) => {
   try {
     const { code, state, error } = req.query;
@@ -85,12 +96,17 @@ auth.get('/auth/discord/callback', async (req, res) => {
     const proprietaire = guilds.some(g => g.id === config.discord.guildId && g.owner === true);
 
     // 3. grade : le plus élevé dont le rôle Discord est porté. Un grade lié à un rôle que le compte ne porte plus est
-    // retiré (rétrogradé ou parti sur Discord) ; un grade sans rôle Discord (attribué à la main) est conservé.
+    // retiré (rétrogradé ou parti sur Discord) ; un grade sans rôle Discord (attribué à la main) est conservé, sauf
+    // pour un ancien propriétaire (serveur transféré) : il a pu se l'attribuer lui-même.
     const grades = tousLesGrades();
     const gradeParRole = grades.find(g => g.roleDiscordId && guildMember.roles.includes(g.roleDiscordId))?.cle;
     const existant = await prisma.compte.findUnique({ where: { discordId: user.id } });
     const actuel = grades.find(g => g.cle === existant?.gradeCle);
-    const gradeConserve = actuel?.roleDiscordId && !guildMember.roles.includes(actuel.roleDiscordId) ? null : existant?.gradeCle ?? null;
+    const roleRetire = !!actuel?.roleDiscordId && !guildMember.roles.includes(actuel.roleDiscordId);
+    const exProprio = !!existant?.proprietaire && !proprietaire && !actuel?.roleDiscordId;
+    const gradeConserve = roleRetire || exProprio ? null : existant?.gradeCle ?? null;
+    // nouveau propriétaire : l'ancien perd aussitôt ce que la propriété lui donnait, sans attendre sa reconnexion
+    if (proprietaire) await retirerProprietaires(user.id);
     const grade = gradeParRole ?? gradeConserve;
 
     // 4. statut : nouveau compte en attente de validation ; validé d'office pour le propriétaire, et pour qui reçoit un

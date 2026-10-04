@@ -51,6 +51,9 @@ const sessions = session({
   cookie: { httpOnly: true, sameSite: 'lax', secure: config.baseUrl.startsWith('https'), maxAge: 7 * 24 * 3600 * 1000 },
 });
 app.use(['/api', '/auth'], sessions);
+// Réponses propres à un compte : jamais gardées par le navigateur, qui les laisserait lisibles sur un ordinateur
+// partagé après la déconnexion
+app.use(['/api', '/auth'], (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
 // Requêtes qui modifient quelque chose : acceptées seulement depuis les pages du site. Le cookie SameSite=Lax arrête
 // les autres sites, pas un voisin du même domaine (a.exemple.fr → b.exemple.fr), qui pourrait sinon agir au nom d'un
