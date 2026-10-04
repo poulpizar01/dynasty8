@@ -23,6 +23,7 @@
 // ============================================================================
 
 import { normaliserTexte, GRADES_STATS, semaineISO, montantPalier } from "./stats-calc.js";
+import { indexParNom, nomComplet } from "./rh.js";
 
 // Grade écrit dans le Sheet -> grade du site (majuscules/accents ignorés).
 const GRADE_PAR_NORMALISE = new Map(GRADES_STATS.map((g) => [normaliserTexte(g), g]));
@@ -149,60 +150,29 @@ async function enregistrerEtat(env, etat) {
 
 // Synchronisation complète : relit tout le Sheet et REMPLACE entièrement le
 // contenu de sync_sheet_agents (table dérivée, jamais éditée à la main).
-// Appariement compte <-> ligne du Sheet, dans cet ordre, toujours par
-// égalité EXACTE de nom (majuscules/accents ignorés — jamais de « ressemblance »,
-// qui reliait autrefois les mauvaises personnes) :
+//
+// RH fait foi : le Sheet ne crée aucune fiche et ne change aucun grade.
+// Chaque ligne est rattachée à SA fiche RH (employe_id). Le Sheet n'ayant pas
+// d'ID employé, la correspondance se fait une fois, ici, par égalité EXACTE
+// entre le nom écrit et le « Prénom Nom » de la fiche (majuscules/accents
+// ignorés, jamais de ressemblance) ; c'est ensuite la clé de la fiche qui est
+// enregistrée et utilisée partout. Une ligne sans fiche est signalée dans RH
+// (« À rattacher »).
+//
+// Compte du site relié à la ligne (« Mon profil »), dans cet ordre :
 //   1. membres.nom_sheet (forçage manuel depuis Comptes & accès, s'il existe) ;
-//   2. le référentiel agents : le compte est relié à son pseudo Discord, la
-//      fiche agent relie ce pseudo à l'identité RP, et l'identité RP est le
-//      nom écrit dans le Sheet ;
-//   3. le pseudo du compte lui-même, s'il est identique au nom du Sheet.
+//   2. le compte de l'employé : même ID Discord que sa fiche RH ;
+//   3. à défaut d'ID Discord, même pseudo Discord que sa fiche RH ;
+//   4. le pseudo du compte lui-même, s'il est identique au nom du Sheet.
 //
 // Deux synchros ne tournent jamais en même temps (passe automatique + bouton) :
-// la seconde attend la première, sans quoi la création des fiches du
-// référentiel pourrait produire des doublons.
+// la seconde attend la première.
 let synchroEnCours = null;
 export function synchroniserSheet(env) {
   if (!synchroEnCours) {
     synchroEnCours = synchroniserSheetUneFois(env).finally(() => { synchroEnCours = null; });
   }
   return synchroEnCours;
-}
-
-// Le Sheet fait foi pour l'équipe : chaque agent qu'il liste a sa fiche dans
-// le référentiel de Ventes & statistiques (stats_agents), et le grade de
-// cette fiche est celui du Sheet. Une fiche absente est créée sans pseudo
-// Discord (à compléter dans « Gérer les agents »). Rien n'est jamais
-// supprimé ici : un agent retiré du Sheet garde sa fiche.
-// Rapprochement par identité RP, égalité exacte (majuscules/accents ignorés).
-export async function alignerReferentiel(env, lignes) {
-  const r = await env.DB.prepare("SELECT id, identite_rp, grade, discord_pseudo FROM stats_agents").all();
-  const parRp = new Map();
-  for (const f of r.results || []) {
-    const cle = normaliserTexte(f.identite_rp || "");
-    if (!cle) continue;
-    const deja = parRp.get(cle);
-    // Deux fiches pour la même identité RP : on retient celle qui a un pseudo.
-    if (!deja || (!deja.discord_pseudo && f.discord_pseudo)) parRp.set(cle, f);
-  }
-  let crees = 0;
-  let gradesMisAJour = 0;
-  for (const l of lignes) {
-    const fiche = parRp.get(l.nomNormalise);
-    if (!fiche) {
-      await env.DB.prepare(
-        `INSERT INTO stats_agents (discord_pseudo, discord_pseudo_normalise, identite_rp, grade)
-         VALUES ('', NULL, ?1, ?2)`
-      ).bind(l.nom, l.grade).run();
-      parRp.set(l.nomNormalise, { identite_rp: l.nom, grade: l.grade, discord_pseudo: "" });
-      crees++;
-    } else if (fiche.grade !== l.grade) {
-      await env.DB.prepare("UPDATE stats_agents SET grade = ?2, maj = datetime('now') WHERE id = ?1").bind(fiche.id, l.grade).run();
-      fiche.grade = l.grade;
-      gradesMisAJour++;
-    }
-  }
-  return { crees, gradesMisAJour };
 }
 
 async function synchroniserSheetUneFois(env) {
@@ -215,53 +185,55 @@ async function synchroniserSheetUneFois(env) {
   await archiverSemaineSiDue(env, { grace: 60_000 });
   const brut = await lireCSV(config);
   const lignes = analyserLignesSheet(brut.slice(1)); // ligne 1 = en-têtes
-  const referentiel = await alignerReferentiel(env, lignes);
-  if (referentiel.crees || referentiel.gradesMisAJour) {
-    console.log(`[sync-sheet] Référentiel : ${referentiel.crees} fiche(s) créée(s), ${referentiel.gradesMisAJour} grade(s) mis à jour.`);
-  }
 
-  const [comptesR, fichesR] = await Promise.all([
-    env.DB.prepare("SELECT id, pseudo, discord_pseudo, nom_sheet FROM membres WHERE statut != 'desactive'").all(),
-    env.DB.prepare("SELECT discord_pseudo_normalise, identite_rp FROM stats_agents").all(),
+  const [comptesR, employesR] = await Promise.all([
+    env.DB.prepare("SELECT id, pseudo, discord_id, discord_pseudo, nom_sheet FROM membres WHERE statut != 'desactive'").all(),
+    env.DB.prepare("SELECT id, prenom, nom, discord_id, discord_pseudo_normalise FROM employes").all(),
   ]);
+  const employeParNom = indexParNom(employesR.results || []);
   const comptes = comptesR.results || [];
-  const parNomSheet = new Map();      // 1. forçage manuel
-  const parIdentiteRp = new Map();    // 2. via le référentiel agents
-  const parPseudo = new Map();        // 3. pseudo du compte
-  const compteParDiscord = new Map();
+  const parNomSheet = new Map();          // 1. forçage manuel
+  const compteParDiscordId = new Map();   // 2.
+  const compteParPseudoDiscord = new Map(); // 3.
+  const parPseudo = new Map();            // 4. pseudo du compte
   comptes.forEach((c) => {
     if (c.nom_sheet) parNomSheet.set(normaliserTexte(c.nom_sheet), c.id);
-    if (c.discord_pseudo) compteParDiscord.set(normaliserTexte(c.discord_pseudo), c.id);
+    if (c.discord_id) compteParDiscordId.set(String(c.discord_id), c.id);
+    if (c.discord_pseudo) compteParPseudoDiscord.set(normaliserTexte(c.discord_pseudo), c.id);
     if (c.pseudo) parPseudo.set(normaliserTexte(c.pseudo), c.id);
   });
-  (fichesR.results || []).forEach((f) => {
-    const idCompte = compteParDiscord.get(f.discord_pseudo_normalise || "");
-    const rp = normaliserTexte(f.identite_rp || "");
-    if (idCompte && rp && !parIdentiteRp.has(rp)) parIdentiteRp.set(rp, idCompte);
+  const compteDe = (employe) => {
+    if (!employe) return null;
+    if (employe.discord_id) return compteParDiscordId.get(String(employe.discord_id)) ?? null;
+    return employe.discord_pseudo_normalise ? compteParPseudoDiscord.get(normaliserTexte(employe.discord_pseudo_normalise)) ?? null : null;
+  };
+  const rattachement = lignes.map((l) => {
+    const employe = employeParNom.get(l.nomNormalise) || null;
+    const membreId = parNomSheet.get(l.nomNormalise) ?? compteDe(employe) ?? parPseudo.get(l.nomNormalise) ?? null;
+    return { employeId: employe ? employe.id : null, membreId };
   });
-  const trouverMembreId = (nomNormalise) =>
-    parNomSheet.get(nomNormalise) ?? parIdentiteRp.get(nomNormalise) ?? parPseudo.get(nomNormalise) ?? null;
 
   await env.DB.prepare("DELETE FROM sync_sheet_agents").run();
   await Promise.all(
-    lignes.map((l) =>
+    lignes.map((l, i) =>
       env.DB.prepare(
-        `INSERT INTO sync_sheet_agents (nom_sheet, nom_normalise, grade_sheet, nb_ventes, nb_locations, membre_id, ligne_sheet)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
-      ).bind(l.nom, l.nomNormalise, l.grade, l.nbVentes, l.nbLocations, trouverMembreId(l.nomNormalise), l.ligneSheet).run()
+        `INSERT INTO sync_sheet_agents (nom_sheet, nom_normalise, grade_sheet, nb_ventes, nb_locations, membre_id, ligne_sheet, employe_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`
+      ).bind(l.nom, l.nomNormalise, l.grade, l.nbVentes, l.nbLocations, rattachement[i].membreId, l.ligneSheet, rattachement[i].employeId).run()
     )
   );
 
-  const nbApparies = lignes.filter((l) => trouverMembreId(l.nomNormalise) != null).length;
   const etat = {
     derniere_sync: new Date().toISOString(),
     statut: "ok",
     erreur: "",
     nb_lignes: lignes.length,
-    nb_apparies: nbApparies,
+    nb_apparies: rattachement.filter((r) => r.membreId != null).length,
   };
   await enregistrerEtat(env, etat);
-  return { ...etat, referentiel };
+  const sansFiche = rattachement.filter((r) => r.employeId == null).length;
+  if (sansFiche) console.log(`[sync-sheet] ${sansFiche} ligne(s) du tableur sans fiche RH (voir RH → À rattacher).`);
+  return { ...etat, sansFicheRh: sansFiche };
 }
 
 // Même chose, mais n'expose jamais l'exception à l'appelant (utilisé pour la
@@ -296,46 +268,51 @@ export async function synchroniserSheetSansErreur(env) {
 // « Chiffres du tableur » : vue actuelle et archives hebdomadaires
 // ============================================================================
 
+// Résumé d'une fiche RH pour les écrans des autres modules (jamais recopié).
+function employeResume(e) {
+  if (!e || !e.id) return null;
+  return { id: e.id, idEmploye: e.id_employe, nomComplet: nomComplet(e), grade: e.grade, statut: e.statut };
+}
+
 // Chiffres du tableur tels qu'affichés dans Ventes & statistiques : chaque
 // ligne lue, avec ses primes (barèmes du site, comme « Mon profil » et la
-// DOT), la fiche du référentiel qui lui correspond (par identité RP) et le
-// compte du site relié. Sert à l'écran ET à l'archive : une semaine archivée
-// est exactement ce que l'écran montrait.
+// DOT), la fiche RH à laquelle elle est rattachée et le compte du site relié.
+// Nom et grade viennent de RH quand la ligne a sa fiche (RH fait foi), du
+// tableur sinon. Sert à l'écran ET à l'archive : une semaine archivée est
+// exactement ce que l'écran montrait.
 export async function lireTableurActuel(env) {
-  const [lignesR, fichesR, baremesR] = await Promise.all([
+  const [lignesR, baremesR] = await Promise.all([
     env.DB.prepare(
-      `SELECT ssa.ligne_sheet, ssa.nom_sheet, ssa.nom_normalise, ssa.grade_sheet, ssa.nb_ventes, ssa.nb_locations, ssa.maj, m.pseudo AS compte
-         FROM sync_sheet_agents ssa LEFT JOIN membres m ON m.id = ssa.membre_id
+      `SELECT ssa.ligne_sheet, ssa.nom_sheet, ssa.grade_sheet, ssa.nb_ventes, ssa.nb_locations, ssa.maj, ssa.employe_id,
+              m.pseudo AS compte,
+              e.id, e.id_employe, e.prenom, e.nom, e.discord_pseudo, e.grade, e.statut
+         FROM sync_sheet_agents ssa
+         LEFT JOIN membres m ON m.id = ssa.membre_id
+         LEFT JOIN employes e ON e.id = ssa.employe_id
         ORDER BY ssa.ligne_sheet`
     ).all(),
-    env.DB.prepare("SELECT id, discord_pseudo, identite_rp FROM stats_agents").all(),
     env.DB.prepare("SELECT * FROM stats_baremes_primes").all(),
   ]);
   const baremes = baremesR.results || [];
   const baremeVentes = baremes.filter((b) => b.type === "vente");
   const baremeLocations = baremes.filter((b) => b.type === "location");
-  const fichesParRp = new Map();
-  for (const f of fichesR.results || []) {
-    const cle = normaliserTexte(f.identite_rp || "");
-    const deja = fichesParRp.get(cle);
-    if (cle && (!deja || (!deja.discord_pseudo && f.discord_pseudo))) fichesParRp.set(cle, f);
-  }
   let lueLe = null;
   const lignes = (lignesR.results || []).map((l) => {
     if (l.maj && (!lueLe || l.maj > lueLe)) lueLe = l.maj;
     const primeVente = montantPalier(baremeVentes, l.nb_ventes);
     const primeLocations = montantPalier(baremeLocations, l.nb_locations);
-    const fiche = fichesParRp.get(l.nom_normalise) || null;
+    const employe = l.employe_id ? employeResume(l) : null;
     return {
       ligneSheet: l.ligne_sheet,
-      nom: l.nom_sheet,
-      grade: l.grade_sheet,
+      nom: employe ? employe.nomComplet : l.nom_sheet,
+      nomTableur: l.nom_sheet,
+      grade: employe ? employe.grade : l.grade_sheet,
       ventes: l.nb_ventes,
       locations: l.nb_locations,
       primeVente,
       primeLocations,
       primeTotale: primeVente + primeLocations,
-      fiche: fiche ? { id: fiche.id, discordPseudo: fiche.discord_pseudo || "" } : null,
+      employe,
       compte: l.compte || null,
     };
   });
@@ -423,10 +400,10 @@ export async function archiverSemaineSiDue(env, { maintenant = new Date(), grace
     for (const l of lignes) {
       await tx.prepare(
         `INSERT INTO tableur_archives_lignes
-           (archive_id, ligne_sheet, nom, grade, ventes, locations, prime_vente, prime_locations, fiche_pseudo, compte)
+           (archive_id, ligne_sheet, nom, grade, ventes, locations, prime_vente, prime_locations, compte, employe_id)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`
       ).bind(archive.id, l.ligneSheet, l.nom, l.grade || "", l.ventes, l.locations, l.primeVente, l.primeLocations,
-        l.fiche ? l.fiche.discordPseudo : null, l.compte).run();
+        l.compte, l.employe ? l.employe.id : null).run();
     }
     return true;
   });
@@ -435,28 +412,37 @@ export async function archiverSemaineSiDue(env, { maintenant = new Date(), grace
 }
 
 // Archive d'une semaine, au même format que lireTableurActuel ; null si absente.
+// Chiffres, primes et grade sont ceux de la semaine (figés) ; le nom de
+// l'employé est relu dans sa fiche RH, qui fait foi pour l'identité.
 export async function lireArchiveTableur(env, code) {
   const archive = await env.DB.prepare("SELECT * FROM tableur_archives WHERE semaine = ?1").bind(code).first();
   if (!archive) return null;
   const r = await env.DB.prepare(
-    "SELECT * FROM tableur_archives_lignes WHERE archive_id = ?1 ORDER BY ligne_sheet, id"
+    `SELECT l.ligne_sheet, l.nom AS nom_archive, l.grade AS grade_archive, l.ventes, l.locations,
+            l.prime_vente, l.prime_locations, l.compte, l.employe_id,
+            e.id, e.id_employe, e.prenom, e.nom, e.discord_pseudo, e.grade, e.statut
+       FROM tableur_archives_lignes l LEFT JOIN employes e ON e.id = l.employe_id
+      WHERE l.archive_id = ?1 ORDER BY l.ligne_sheet, l.id`
   ).bind(archive.id).all();
   return {
     semaine: archive.semaine,
     archiveLe: archive.archive_le,
     donneesDu: archive.donnees_du,
     enRetard: !!archive.en_retard,
-    lignes: (r.results || []).map((l) => ({
-      ligneSheet: l.ligne_sheet,
-      nom: l.nom,
-      grade: l.grade,
-      ventes: l.ventes,
-      locations: l.locations,
-      primeVente: l.prime_vente,
-      primeLocations: l.prime_locations,
-      primeTotale: l.prime_vente + l.prime_locations,
-      fiche: l.fiche_pseudo == null ? null : { discordPseudo: l.fiche_pseudo },
-      compte: l.compte,
-    })),
+    lignes: (r.results || []).map((l) => {
+      const employe = l.employe_id ? employeResume(l) : null;
+      return {
+        ligneSheet: l.ligne_sheet,
+        nom: employe ? employe.nomComplet : l.nom_archive,
+        grade: l.grade_archive,
+        ventes: l.ventes,
+        locations: l.locations,
+        primeVente: l.prime_vente,
+        primeLocations: l.prime_locations,
+        primeTotale: l.prime_vente + l.prime_locations,
+        employe,
+        compte: l.compte,
+      };
+    }),
   };
 }

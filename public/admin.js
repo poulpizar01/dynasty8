@@ -81,6 +81,7 @@ async function demarrer() {
         grade: moi.grade,
         direction: !!moi.direction,
         peutGererAnnonces: !!moi.peut_gerer_annonces,
+        droitsRh: moi.droits_rh || [],
       };
       // Le lien du tableau des cohérences n'est pas dans la page : le serveur
       // ne le donne qu'aux comptes connectés (voir lienCoherences côté API).
@@ -149,10 +150,12 @@ function demarrerEspaceAdmin() {
     document.getElementById("onglet-comptes").classList.remove("cache");
     document.getElementById("onglet-comptabilite").classList.remove("cache");
     document.getElementById("onglet-statistiques").classList.remove("cache");
-    document.getElementById("onglet-rh").classList.remove("cache");
     document.getElementById("onglet-parametres").classList.remove("cache");
     document.getElementById("onglet-bot-roxwood").classList.remove("cache");
   }
+  // RH : visible selon les permissions RH du grade (réglables dans l'onglet),
+  // pas seulement pour la Direction.
+  document.getElementById("onglet-rh").classList.toggle("cache", !SESSION.droitsRh.includes("voir"));
   // Le lien Webmap est réservé au Patron, au Co Patron, et au Développeur web
   // (qui a exactement les mêmes accès que le Patron, y compris ici).
   document.getElementById("lien-webmap").classList.toggle("cache", !["Patron", "Co Patron", "Développeur web"].includes(SESSION.grade));
@@ -186,7 +189,7 @@ function basculerOnglet(nom) {
   if (nom === "agenda") chargerAgenda(true);
   if (nom === "comptabilite") chargerTablette();
   if (nom === "statistiques") { chargerStatistiques(); chargerTableur(); }
-  if (nom === "rh") chargerAgentsStats();
+  if (nom === "rh") chargerRh();
   if (nom === "parametres") chargerSyncSheet();
   if (nom === "bot-roxwood") chargerBotRoxwood();
 }
@@ -264,11 +267,10 @@ async function chargerTableur(semaine) {
     vide.classList.add("cache");
     resultat.classList.remove("cache");
     document.getElementById("corps-table-tableur").innerHTML = r.lignes.map((l) => {
-      const fiche = !l.fiche
-        ? '<span class="champ-aide">— aucune —</span>'
-        : l.fiche.discordPseudo
-          ? echapper(l.fiche.discordPseudo)
-          : '<span class="puce puce-or" title="Fiche créée depuis le tableur : renseignez le pseudo Discord dans l’onglet RH.">pseudo à compléter</span>';
+      // Fiche RH de la ligne : ID employé et statut lus dans RH.
+      const fiche = !l.employe
+        ? '<span class="puce puce-or" title="Aucune fiche RH ne porte ce prénom et ce nom : à rattacher dans l’onglet RH.">sans fiche RH</span>'
+        : `${echapper(l.employe.idEmploye)}${l.employe.statut === "inactif" ? ' <span class="puce puce-masquee">Inactif</span>' : ""}`;
       return `<tr>
         <td><strong>${echapper(l.nom)}</strong></td>
         <td>${echapper(l.grade || "—")}</td>
@@ -298,130 +300,293 @@ function formaterArgentStats(valeur) {
 }
 
 // ---------------------------------------------------------------------------
-// « Gérer les agents » (onglet RH) — référentiel pseudo Discord <->
-// identité RP <-> grade (table stats_agents). Ne concerne que les grades
-// commerciaux (les mêmes que le moteur de calcul des primes connaît — voir
-// GRADES_STATS dans src/stats-calc.js) : Développeur web, DRH et Secrétaire
-// de Direction n'ont pas de quota/prime, donc pas de sens ici.
+// Onglet « RH » — fiches employés (src/rh.js côté serveur), source de vérité
+// de l'identité, du grade et du statut de chacun. Les droits viennent du
+// serveur et y sont revérifiés à chaque appel : l'interface ne fait que
+// masquer ce qui serait de toute façon refusé.
 // ---------------------------------------------------------------------------
 
-const NOMS_GRADES_STATS = GRADES
-  .filter((g) => !["Développeur web", "DRH", "Secrétaire de Direction"].includes(g.nom))
-  .map((g) => g.nom);
-const OPTIONS_GRADES_STATS_HTML = NOMS_GRADES_STATS.map((n) => `<option value="${echapper(n)}">${echapper(n)}</option>`).join("");
-document.getElementById("agent-grade").innerHTML = OPTIONS_GRADES_STATS_HTML;
+const GRADES_EMPLOYES = [
+  "Patron", "Co Patron", "Manager", "DRH", "Secrétaire de Direction", "Développeur web",
+  "Référent Immobilier", "Agent Expert", "Agent", "Agent Novice", "Stagiaire",
+];
+const LIBELLES_PERMISSIONS_RH = {
+  voir: "Consulter", creer: "Ajouter", modifier: "Modifier",
+  desactiver: "Désactiver", reactiver: "Réactiver", sensible: "Téléphone et RIB",
+};
+const OPTIONS_GRADES_EMPLOYES = GRADES_EMPLOYES.map((g) => `<option value="${echapper(g)}">${echapper(g)}</option>`).join("");
+document.getElementById("employe-grade").innerHTML = OPTIONS_GRADES_EMPLOYES;
+document.getElementById("filtre-rh-grade").innerHTML = `<option value="">Tous les grades</option>${OPTIONS_GRADES_EMPLOYES}`;
 
-let CACHE_AGENTS_STATS = [];
+let CACHE_EMPLOYES = [];
+let DROITS_RH = new Set();
+let FICHE_OUVERTE = null; // id de la fiche en cours d'édition ; null = création
 
-async function chargerAgentsStats() {
-  afficherMessage("zone-message-agents", "", null);
+const aDroitRh = (droit) => DROITS_RH.has(droit);
+
+function formaterDateCourte(iso) {
+  if (!iso) return "—";
+  const [a, m, j] = String(iso).split("-");
+  return `${j}/${m}/${a}`;
+}
+
+async function chargerRh() {
+  afficherMessage("zone-message-rh", "", null);
   try {
-    const reponse = await appelAPI("/api/stats/agents");
-    CACHE_AGENTS_STATS = reponse.agents || [];
-    const vide = document.getElementById("agents-vide");
-    const resultat = document.getElementById("agents-resultat");
-    if (!CACHE_AGENTS_STATS.length) {
-      vide.classList.remove("cache");
-      resultat.classList.add("cache");
+    const r = await appelAPI("/api/rh/employes");
+    CACHE_EMPLOYES = r.employes || [];
+    DROITS_RH = new Set(r.droits || []);
+    document.getElementById("bouton-nouvel-employe").classList.toggle("cache", !aDroitRh("creer"));
+    document.getElementById("rh-nb-actifs").textContent = r.effectif.actifs;
+    document.getElementById("rh-nb-inactifs").textContent = r.effectif.inactifs;
+    document.getElementById("rh-repartition").textContent = r.effectif.parGrade.length
+      ? "Effectif actif par grade : " + r.effectif.parGrade.map((g) => `${g.grade} ${g.nombre}`).join(" · ")
+      : "";
+    ameliorerSelect(document.getElementById("filtre-rh-grade"));
+    ameliorerSelect(document.getElementById("filtre-rh-statut"));
+    afficherEmployes();
+    chargerARattacher();
+    if (aDroitRh("parametrer")) chargerPermissionsRh();
+    else document.getElementById("rh-permissions").classList.add("cache");
+  } catch (e) {
+    afficherMessage("zone-message-rh", "Impossible de charger RH : " + e.message, "erreur");
+  }
+}
+
+function afficherEmployes() {
+  const recherche = document.getElementById("recherche-employes").value.trim().toLowerCase();
+  const grade = document.getElementById("filtre-rh-grade").value;
+  const statut = document.getElementById("filtre-rh-statut").value;
+  const liste = CACHE_EMPLOYES.filter((e) =>
+    (!grade || e.grade === grade)
+    && (!statut || e.statut === statut)
+    && (!recherche || [e.nomComplet, e.idEmploye, e.discordPseudo, e.discordId]
+      .some((v) => String(v || "").toLowerCase().includes(recherche)))
+  );
+  document.getElementById("rh-vide").classList.toggle("cache", liste.length > 0);
+  document.getElementById("rh-resultat").classList.toggle("cache", liste.length === 0);
+  const corps = document.getElementById("corps-table-employes");
+  corps.innerHTML = liste.map((e) => {
+    const aCompleter = e.aCompleter
+      ? ' <span class="puce puce-or" title="ID employé provisoire, ou prénom / nom manquant : à compléter dans la fiche.">à compléter</span>'
+      : "";
+    const statut = e.statut === "actif"
+      ? '<span class="puce puce-ok">Actif</span>'
+      : `<span class="puce puce-masquee">Inactif</span>${e.dateDepart ? `<br><span class="champ-aide">parti le ${formaterDateCourte(e.dateDepart)}</span>` : ""}`;
+    const discord = [e.discordPseudo, e.discordId].filter(Boolean).map(echapper).join("<br>") || '<span class="champ-aide">—</span>';
+    const bascule = e.statut === "actif"
+      ? (aDroitRh("desactiver") ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-desactiver="${e.id}">Désactiver</button>` : "")
+      : (aDroitRh("reactiver") ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-reactiver="${e.id}">Réactiver</button>` : "");
+    return `<tr>
+      <td>${echapper(e.idEmploye)}${e.idProvisoire ? '<br><span class="champ-aide">provisoire</span>' : ""}</td>
+      <td><strong>${echapper(e.nomComplet)}</strong>${aCompleter}</td>
+      <td>${echapper(e.grade)}</td>
+      <td>${statut}</td>
+      <td>${discord}</td>
+      <td>${formaterDateCourte(e.dateArrivee)}</td>
+      <td style="white-space:nowrap;"><button type="button" class="btn btn-fantome btn-petit" data-rh-fiche="${e.id}">${aDroitRh("modifier") ? "Fiche / modifier" : "Fiche"}</button> ${bascule}</td>
+    </tr>`;
+  }).join("");
+  corps.querySelectorAll("[data-rh-fiche]").forEach((b) => b.addEventListener("click", () => ouvrirFicheEmploye(Number(b.dataset.rhFiche))));
+  corps.querySelectorAll("[data-rh-desactiver]").forEach((b) => b.addEventListener("click", () => desactiverEmploye(Number(b.dataset.rhDesactiver))));
+  corps.querySelectorAll("[data-rh-reactiver]").forEach((b) => b.addEventListener("click", () => reactiverEmploye(Number(b.dataset.rhReactiver))));
+}
+
+document.getElementById("recherche-employes").addEventListener("input", afficherEmployes);
+document.getElementById("filtre-rh-grade").addEventListener("change", afficherEmployes);
+document.getElementById("filtre-rh-statut").addEventListener("change", afficherEmployes);
+
+// Fiche : consultation, modification, ou création (id absent, avec un
+// pré-remplissage éventuel venu de « À rattacher »).
+async function ouvrirFicheEmploye(id, preremplissage) {
+  afficherMessage("zone-message-modale-employe", "", null);
+  let f = { grade: "Agent", ...(preremplissage || {}) };
+  if (id) {
+    try {
+      f = await appelAPI(`/api/rh/employes/${id}`);
+    } catch (e) {
+      afficherMessage("zone-message-rh", e.message, "erreur");
       return;
     }
-    vide.classList.add("cache");
-    resultat.classList.remove("cache");
-    nettoyerSelectsPortee("agents-stats");
-    document.getElementById("corps-table-agents").innerHTML = CACHE_AGENTS_STATS.map((a) => `
-      <tr data-ligne="${a.id}">
-        <td><input type="text" class="table-input" value="${echapper(a.discord_pseudo)}" data-agent-pseudo="${a.id}" maxlength="100" placeholder="à compléter"></td>
-        <td><input type="text" class="table-input" value="${echapper(a.identite_rp)}" data-agent-rp="${a.id}" maxlength="100" placeholder="—"></td>
-        <td><select class="table-select" data-agent-grade="${a.id}" style="border-color:${couleurGrade(a.grade)};">${OPTIONS_GRADES_STATS_HTML}</select></td>
-        <td><button type="button" class="actions-icone actions-icone--danger" data-agent-supprimer="${a.id}" title="Supprimer" aria-label="Supprimer">🗑️</button></td>
-      </tr>`).join("");
-    document.getElementById("corps-table-agents").querySelectorAll("[data-agent-grade]").forEach((sel) => {
-      sel.value = CACHE_AGENTS_STATS.find((a) => a.id === Number(sel.dataset.agentGrade)).grade;
-      sel.style.borderColor = couleurGrade(sel.value);
-      sel.addEventListener("change", () => {
-        sel.style.borderColor = couleurGrade(sel.value);
-        modifierAgentStats(Number(sel.dataset.agentGrade), { grade: sel.value });
-      });
-      ameliorerSelect(sel, couleurGrade, "agents-stats");
-    });
-    document.getElementById("corps-table-agents").querySelectorAll("[data-agent-pseudo]").forEach((champ) => {
-      champ.addEventListener("change", () => {
-        const pseudo = champ.value.trim();
-        if (!pseudo) { champ.value = CACHE_AGENTS_STATS.find((a) => a.id === Number(champ.dataset.agentPseudo)).discord_pseudo; return; }
-        modifierAgentStats(Number(champ.dataset.agentPseudo), { discordPseudo: pseudo });
-      });
-    });
-    document.getElementById("corps-table-agents").querySelectorAll("[data-agent-rp]").forEach((champ) => {
-      champ.addEventListener("change", () => {
-        modifierAgentStats(Number(champ.dataset.agentRp), { identiteRp: champ.value.trim() });
-      });
-    });
-    document.getElementById("corps-table-agents").querySelectorAll("[data-agent-supprimer]").forEach((btn) => {
-      btn.addEventListener("click", () => supprimerAgentStats(Number(btn.dataset.agentSupprimer)));
-    });
-  } catch (e) {
-    afficherMessage("zone-message-agents", "Impossible de charger les agents : " + e.message, "erreur");
   }
+  FICHE_OUVERTE = id || null;
+  const peutEcrire = id ? aDroitRh("modifier") : aDroitRh("creer");
+  document.getElementById("modale-employe-titre").textContent = id ? `Fiche employé — ${f.nomComplet}` : "Ajouter un membre";
+  const champs = {
+    "employe-prenom": f.prenom, "employe-nom": f.nom, "employe-id": f.idEmploye,
+    "employe-discord-id": f.discordId, "employe-discord-pseudo": f.discordPseudo,
+    "employe-telephone": f.telephone, "employe-rib": f.rib,
+    "employe-arrivee": f.dateArrivee, "employe-depart": f.dateDepart,
+  };
+  for (const [idChamp, valeur] of Object.entries(champs)) {
+    const champ = document.getElementById(idChamp);
+    champ.value = valeur || "";
+    champ.disabled = !peutEcrire;
+  }
+  const grade = document.getElementById("employe-grade");
+  grade.value = GRADES_EMPLOYES.includes(f.grade) ? f.grade : "Agent";
+  grade.disabled = !peutEcrire;
+  // La date d'arrivée est exigée à la création ; une fiche reprise de
+  // l'existant peut ne pas en avoir encore.
+  document.getElementById("employe-arrivee").required = !id;
+  // Téléphone et RIB : le serveur ne les envoie qu'avec la permission « sensible ».
+  document.getElementById("employe-bloc-sensible").classList.toggle("cache", !aDroitRh("sensible"));
+  const bouton = document.getElementById("employe-enregistrer");
+  bouton.classList.toggle("cache", !peutEcrire);
+  bouton.textContent = id ? "Enregistrer les modifications" : "Ajouter le membre";
+  document.getElementById("employe-statut").textContent = id
+    ? `Statut : ${f.statut === "actif" ? "actif" : "inactif"}${f.idProvisoire ? " — ID employé provisoire (reprise de l'existant) : à remplacer par le vrai." : ""}`
+    : "";
+  const h = f.historique;
+  document.getElementById("employe-historique").innerHTML = h ? [
+    `Ventes rattachées : <strong>${h.ventesEnregistrees}</strong>${h.derniereVente ? ` — dernière reçue le ${formaterDateAdmin(h.derniereVente)}` : ""}`,
+    h.tableurSemaineEnCours
+      ? `Tableur, semaine en cours : ${h.tableurSemaineEnCours.ventes} vente(s), ${h.tableurSemaineEnCours.locations} location(s)`
+      : "Absent du tableur cette semaine",
+    `Semaines archivées du tableur : ${h.semainesArchivees}`,
+    f.compteDuSite ? `Compte du site : ${echapper(f.compteDuSite.pseudo)}` : "Aucun compte du site relié (même ID Discord)",
+  ].join("<br>") : "";
+  document.getElementById("modale-employe").classList.remove("cache");
+  if (peutEcrire) document.getElementById("employe-prenom").focus();
 }
 
-async function modifierAgentStats(id, changements) {
+function fermerModaleEmploye() {
+  document.getElementById("modale-employe").classList.add("cache");
+}
+document.getElementById("bouton-nouvel-employe").addEventListener("click", () => ouvrirFicheEmploye(null));
+document.getElementById("fermer-modale-employe").addEventListener("click", fermerModaleEmploye);
+document.getElementById("modale-employe").addEventListener("click", (ev) => { if (ev.target.id === "modale-employe") fermerModaleEmploye(); });
+
+document.getElementById("formulaire-employe").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  afficherMessage("zone-message-modale-employe", "", null);
+  const val = (id) => document.getElementById(id).value.trim();
+  const corps = {
+    prenom: val("employe-prenom"),
+    nom: val("employe-nom"),
+    idEmploye: val("employe-id"),
+    grade: document.getElementById("employe-grade").value,
+    discordId: val("employe-discord-id"),
+    discordPseudo: val("employe-discord-pseudo"),
+    dateArrivee: val("employe-arrivee"),
+    dateDepart: val("employe-depart"),
+  };
+  if (aDroitRh("sensible")) {
+    corps.telephone = val("employe-telephone");
+    corps.rib = val("employe-rib");
+  }
+  const creation = !FICHE_OUVERTE;
   try {
-    await appelAPI(`/api/stats/agents/${id}`, { method: "PATCH", body: JSON.stringify(changements) });
-    afficherMessage("zone-message-agents", "Agent mis à jour ✓", "succes");
-    chargerAgentsStats();
-    chargerTableur();
+    if (creation) await appelAPI("/api/rh/employes", { method: "POST", body: JSON.stringify(corps) });
+    else await appelAPI(`/api/rh/employes/${FICHE_OUVERTE}`, { method: "PATCH", body: JSON.stringify(corps) });
+    fermerModaleEmploye();
+    afficherMessage("zone-message-rh", creation ? "Membre ajouté ✓" : "Fiche mise à jour ✓", "succes");
+    chargerRh();
   } catch (e) {
-    afficherMessage("zone-message-agents", e.message, "erreur");
-    chargerAgentsStats();
+    afficherMessage("zone-message-modale-employe", e.message, "erreur");
   }
-}
+});
 
-async function supprimerAgentStats(id) {
+async function desactiverEmploye(id) {
+  const e = CACHE_EMPLOYES.find((x) => x.id === id);
   const ok = await confirmerAction(
-    "Il ne figurera plus dans la DOT. S'il est encore dans le tableur de la Direction, la prochaine synchronisation recréera sa fiche.",
-    "Supprimer cet agent du référentiel ?"
+    `${e ? e.nomComplet : "Cet employé"} quittera l'effectif actif, avec la date d'aujourd'hui comme date de départ. Sa fiche et tout son historique (ventes, DOT, archives du tableur) sont conservés, et il pourra être réactivé.`,
+    "Désactiver cet employé ?"
   );
   if (!ok) return;
   try {
-    await appelAPI(`/api/stats/agents/${id}`, { method: "DELETE" });
-    chargerAgentsStats();
-    chargerTableur();
-  } catch (e) {
-    afficherMessage("zone-message-agents", e.message, "erreur");
+    await appelAPI(`/api/rh/employes/${id}/desactiver`, { method: "POST", body: JSON.stringify({}) });
+    afficherMessage("zone-message-rh", "Employé désactivé ✓", "succes");
+    chargerRh();
+  } catch (err) {
+    afficherMessage("zone-message-rh", err.message, "erreur");
   }
 }
 
-function ouvrirModaleAgent() {
-  document.getElementById("agent-discord-pseudo").value = "";
-  document.getElementById("agent-identite-rp").value = "";
-  document.getElementById("agent-grade").value = "Agent";
-  afficherMessage("zone-message-modale-agent", "", null);
-  document.getElementById("modale-agent").classList.remove("cache");
-  document.getElementById("agent-discord-pseudo").focus();
-}
-function fermerModaleAgent() {
-  fermerSelectOuvert();
-  document.getElementById("modale-agent").classList.add("cache");
-}
-document.getElementById("bouton-nouvel-agent").addEventListener("click", ouvrirModaleAgent);
-document.getElementById("fermer-modale-agent").addEventListener("click", fermerModaleAgent);
-document.getElementById("modale-agent").addEventListener("click", (ev) => { if (ev.target.id === "modale-agent") fermerModaleAgent(); });
-
-document.getElementById("formulaire-agent").addEventListener("submit", async (ev) => {
-  ev.preventDefault();
-  afficherMessage("zone-message-modale-agent", "", null);
-  const discordPseudo = document.getElementById("agent-discord-pseudo").value.trim();
-  const identiteRp = document.getElementById("agent-identite-rp").value.trim();
-  const grade = document.getElementById("agent-grade").value;
+async function reactiverEmploye(id) {
+  const e = CACHE_EMPLOYES.find((x) => x.id === id);
+  const ok = await confirmerAction(
+    `${e ? e.nomComplet : "Cet employé"} réintègre l'effectif actif ; sa date de départ est effacée.`,
+    "Réactiver cet employé ?"
+  );
+  if (!ok) return;
   try {
-    await appelAPI("/api/stats/agents", { method: "POST", body: JSON.stringify({ discordPseudo, identiteRp, grade }) });
-    fermerModaleAgent();
-    chargerAgentsStats();
-    chargerTableur();
-  } catch (e) {
-    afficherMessage("zone-message-modale-agent", e.message, "erreur");
+    await appelAPI(`/api/rh/employes/${id}/reactiver`, { method: "POST", body: JSON.stringify({}) });
+    afficherMessage("zone-message-rh", "Employé réactivé ✓", "succes");
+    chargerRh();
+  } catch (err) {
+    afficherMessage("zone-message-rh", err.message, "erreur");
   }
-});
+}
+
+// « À rattacher » : vendeurs des ventes et lignes du tableur sans fiche RH.
+async function chargerARattacher() {
+  const bloc = document.getElementById("rh-a-rattacher");
+  const contenu = document.getElementById("rh-a-rattacher-contenu");
+  try {
+    const r = await appelAPI("/api/rh/a-rattacher");
+    const bouton = (attributs) => aDroitRh("creer")
+      ? `<button type="button" class="btn btn-fantome btn-petit" ${attributs}>Créer la fiche</button>` : "";
+    const parties = [];
+    if (r.vendeurs.length) {
+      parties.push(`<p class="champ-aide" style="margin:14px 0 6px;"><strong>Ventes reçues du bot sans fiche</strong> — le pseudo envoyé ne correspond au pseudo Discord d'aucune fiche.</p>
+        <div style="overflow-x:auto;"><table class="table-admin"><thead><tr><th>Pseudo reçu</th><th style="text-align:right;">Ventes</th><th>Dernière semaine</th><th></th></tr></thead><tbody>
+        ${r.vendeurs.map((v) => `<tr><td>${echapper(v.pseudo)}</td><td style="text-align:right;">${v.ventes}</td><td>${echapper(v.derniereSemaine || "—")}</td>
+          <td>${bouton(`data-rh-creer-pseudo="${echapper(v.pseudo)}"`)}</td></tr>`).join("")}
+        </tbody></table></div>`);
+    }
+    if (r.tableur.length) {
+      parties.push(`<p class="champ-aide" style="margin:14px 0 6px;"><strong>Lignes du tableur sans fiche</strong> — le nom écrit ne correspond au « Prénom Nom » d'aucune fiche.</p>
+        <div style="overflow-x:auto;"><table class="table-admin"><thead><tr><th>Nom dans le tableur</th><th>Grade</th><th style="text-align:right;">Ventes</th><th style="text-align:right;">Locations</th><th></th></tr></thead><tbody>
+        ${r.tableur.map((l) => `<tr><td>${echapper(l.nom)}</td><td>${echapper(l.grade || "—")}</td><td style="text-align:right;">${l.ventes}</td><td style="text-align:right;">${l.locations}</td>
+          <td>${bouton(`data-rh-creer-nom="${echapper(l.nom)}" data-rh-creer-grade="${echapper(l.grade || "")}"`)}</td></tr>`).join("")}
+        </tbody></table></div>`);
+    }
+    bloc.classList.toggle("cache", !parties.length);
+    contenu.innerHTML = parties.join("");
+    contenu.querySelectorAll("[data-rh-creer-pseudo]").forEach((b) =>
+      b.addEventListener("click", () => ouvrirFicheEmploye(null, { discordPseudo: b.dataset.rhCreerPseudo })));
+    contenu.querySelectorAll("[data-rh-creer-nom]").forEach((b) => b.addEventListener("click", () => {
+      const morceaux = b.dataset.rhCreerNom.trim().split(/\s+/);
+      ouvrirFicheEmploye(null, { prenom: morceaux.shift() || "", nom: morceaux.join(" "), grade: b.dataset.rhCreerGrade || "Agent" });
+    }));
+  } catch (e) {
+    bloc.classList.add("cache");
+  }
+}
+
+// Matrice des permissions RH (Patron, Co Patron, Développeur web).
+async function chargerPermissionsRh() {
+  const bloc = document.getElementById("rh-permissions");
+  afficherMessage("zone-message-rh-permissions", "", null);
+  try {
+    const r = await appelAPI("/api/rh/permissions");
+    bloc.classList.remove("cache");
+    document.getElementById("rh-permissions-entete").innerHTML =
+      `<tr><th>Grade</th>${r.permissions.map((p) => `<th style="text-align:center;">${echapper(LIBELLES_PERMISSIONS_RH[p] || p)}</th>`).join("")}</tr>`;
+    const toujours = r.gradesAdmin.map((g) => `<tr><td>${echapper(g)} <span class="champ-aide">— toujours</span></td>
+      ${r.permissions.map(() => '<td style="text-align:center;"><input type="checkbox" checked disabled aria-label="toujours autorisé"></td>').join("")}</tr>`).join("");
+    const reglables = r.grades.map((g) => `<tr><td>${echapper(g.grade)}</td>
+      ${r.permissions.map((p) => `<td style="text-align:center;"><input type="checkbox" data-rh-perm-grade="${echapper(g.grade)}" data-rh-perm="${p}" ${g.permissions.includes(p) ? "checked" : ""} aria-label="${echapper(`${g.grade} : ${LIBELLES_PERMISSIONS_RH[p] || p}`)}"></td>`).join("")}</tr>`).join("");
+    const corps = document.getElementById("rh-permissions-corps");
+    corps.innerHTML = toujours + reglables;
+    corps.querySelectorAll("[data-rh-perm-grade]").forEach((caseACocher) => caseACocher.addEventListener("change", async () => {
+      const grade = caseACocher.dataset.rhPermGrade;
+      const cases = [...corps.querySelectorAll("[data-rh-perm-grade]")].filter((c) => c.dataset.rhPermGrade === grade);
+      const permissions = cases.filter((c) => c.checked).map((c) => c.dataset.rhPerm);
+      try {
+        await appelAPI("/api/rh/permissions", { method: "PUT", body: JSON.stringify({ grade, permissions }) });
+        afficherMessage("zone-message-rh-permissions", `Permissions de « ${grade} » enregistrées ✓`, "succes");
+        chargerPermissionsRh();
+      } catch (e) {
+        afficherMessage("zone-message-rh-permissions", e.message, "erreur");
+        chargerPermissionsRh();
+      }
+    }));
+  } catch (e) {
+    afficherMessage("zone-message-rh-permissions", "Impossible de charger les permissions : " + e.message, "erreur");
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Onglet « Mon profil » — chaque membre édite sa propre fiche publique
@@ -3100,10 +3265,9 @@ document.getElementById("bouton-synchroniser-sheet")?.addEventListener("click", 
   bouton.textContent = "Synchronisation…";
   try {
     const r = await appelAPI("/api/sync-sheet/synchroniser", { method: "POST" });
-    const ref = (r.etat && r.etat.referentiel) || {};
-    const detail = ref.crees || ref.gradesMisAJour
-      ? ` — RH : ${ref.crees || 0} fiche(s) agent créée(s), ${ref.gradesMisAJour || 0} grade(s) mis à jour.`
-      : "";
+    // RH fait foi : la synchro ne crée aucune fiche, elle signale les lignes sans fiche.
+    const sansFiche = (r.etat && r.etat.sansFicheRh) || 0;
+    const detail = sansFiche ? ` — ${sansFiche} ligne(s) sans fiche RH : voir RH → À rattacher.` : "";
     afficherMessage("zone-message-sync-sheet", "Synchronisation terminée ✓" + detail, "succes");
     chargerSyncSheet();
   } catch (e) {

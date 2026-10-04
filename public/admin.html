@@ -532,7 +532,7 @@
             <thead>
               <tr>
                 <th>Agent</th><th>Grade</th><th style="text-align:right;">Ventes</th><th style="text-align:right;">Locations</th>
-                <th>Prime vente</th><th>Prime locations</th><th>Total primes</th><th>Fiche agent</th><th>Compte du site</th>
+                <th>Prime vente</th><th>Prime locations</th><th>Total primes</th><th>Fiche RH</th><th>Compte du site</th>
               </tr>
             </thead>
             <tbody id="corps-table-tableur"></tbody>
@@ -542,30 +542,75 @@
 
     </section>
 
-    <!-- Onglet RH (Direction uniquement) : référentiel des agents (§4), qui
-         associe pseudo Discord, identité RP et grade. C'est cette liste que la
-         DOT utilise pour les salaires, et que la synchro du tableur complète
-         (fiches créées, grades alignés). Modifiable directement dans le
-         tableau, comme l'écran « Comptes & accès ». -->
+    <!-- Onglet RH : la fiche employé, source de vérité de l'identité, du
+         grade et du statut de chacun (src/rh.js). Ventes, DOT, tableur et
+         statistiques ne gardent que la clé de la fiche et relisent tout ici.
+         Accès selon les permissions RH du grade (vérifiées côté serveur). -->
     <section id="panneau-rh" class="cache">
       <div class="entete-admin">
         <div>
-          <h2 style="margin-bottom:2px;">Gérer les agents</h2>
-          <p style="margin:0;font-size:0.88rem;">Associez chaque pseudo Discord à son identité RP et son grade — réservé à la Direction.</p>
+          <h2 style="margin-bottom:2px;">Ressources humaines</h2>
+          <p style="margin:0;font-size:0.88rem;">La fiche de chaque employé : identité, grade et statut, repris automatiquement par les ventes, la DOT et les statistiques.</p>
         </div>
-        <button type="button" class="btn btn-or" id="bouton-nouvel-agent">+ Ajouter un agent</button>
+        <button type="button" class="btn btn-or cache" id="bouton-nouvel-employe">+ Ajouter un membre</button>
       </div>
-      <div id="zone-message-agents"></div>
-      <div id="agents-vide" class="etat-vide cache">
-        <p>Aucun agent déclaré pour le moment. Utilisez « + Ajouter un agent », ou lancez une synchronisation du tableur (Synchro Sheets), qui crée la fiche de chaque agent qu'il liste.</p>
+      <div id="zone-message-rh"></div>
+
+      <div class="admin-stats" style="grid-template-columns:repeat(2,minmax(0,220px));margin-bottom:10px;">
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--vert">👥</span>
+          <div><div class="stat-valeur" id="rh-nb-actifs">—</div><div class="stat-libelle">Effectif actif</div></div>
+        </div>
+        <div class="stat-carte">
+          <span class="stat-icone stat-icone--ambre">🗂️</span>
+          <div><div class="stat-valeur" id="rh-nb-inactifs">—</div><div class="stat-libelle">Anciens employés</div></div>
+        </div>
       </div>
-      <div id="agents-resultat" class="cache" style="overflow-x:auto;">
+      <p class="champ-aide" id="rh-repartition" style="margin:0 0 18px;"></p>
+
+      <div class="annonces-outils">
+        <div class="annonces-recherche">
+          <span class="annonces-recherche-icone" aria-hidden="true"><svg class="ico"><use href="#ico-search"></use></svg></span>
+          <input type="search" id="recherche-employes" placeholder="Rechercher un nom, un ID, un pseudo Discord…">
+        </div>
+        <select id="filtre-rh-grade" aria-label="Filtrer par grade"><option value="">Tous les grades</option></select>
+        <select id="filtre-rh-statut" aria-label="Filtrer par statut">
+          <option value="actif">Effectif actif</option>
+          <option value="inactif">Anciens employés</option>
+          <option value="">Tous</option>
+        </select>
+      </div>
+
+      <div id="rh-vide" class="etat-vide cache"><p>Aucun employé ne correspond à ces critères.</p></div>
+      <div id="rh-resultat" style="overflow-x:auto;">
         <table class="table-admin">
           <thead>
-            <tr><th>Pseudo Discord</th><th>Identité RP</th><th>Grade</th><th></th></tr>
+            <tr><th>ID employé</th><th>Nom</th><th>Grade</th><th>Statut</th><th>Discord</th><th>Arrivée</th><th></th></tr>
           </thead>
-          <tbody id="corps-table-agents"></tbody>
+          <tbody id="corps-table-employes"></tbody>
         </table>
+      </div>
+
+      <!-- Données des autres modules sans fiche RH : vendeurs inconnus des
+           ventes du bot, lignes du tableur sans employé. -->
+      <div id="rh-a-rattacher" class="cache" style="margin-top:36px;">
+        <h3 class="comptes-sous-titre">À rattacher</h3>
+        <p class="champ-aide" style="max-width:760px;">Données reçues par les autres modules sans fiche RH correspondante. Créez la fiche, ou renseignez le pseudo Discord (ventes) ou le prénom et le nom (tableur) d'une fiche existante : elles s'y rattachent automatiquement.</p>
+        <div id="rh-a-rattacher-contenu"></div>
+      </div>
+
+      <!-- Matrice des permissions RH par grade (Patron, Co Patron et
+           Développeur web seulement). -->
+      <div id="rh-permissions" class="cache" style="margin-top:36px;">
+        <h3 class="comptes-sous-titre">Permissions RH</h3>
+        <p class="champ-aide" style="max-width:760px;">Ce que chaque grade peut faire dans RH. Patron, Co Patron et Développeur web ont toujours tous les droits, et sont les seuls à pouvoir régler ce tableau.</p>
+        <div id="zone-message-rh-permissions"></div>
+        <div style="overflow-x:auto;">
+          <table class="table-admin">
+            <thead id="rh-permissions-entete"></thead>
+            <tbody id="rh-permissions-corps"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -619,7 +664,7 @@
            site. -->
       <h3 class="comptes-sous-titre" style="margin-top:34px;">📊 État de la synchronisation</h3>
       <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">
-        Récupère automatiquement, toutes les 20 minutes (+ à la demande ci-dessous), les ventes et locations de chaque membre depuis le Google Sheets de recap (partagé en lecture seule). Le compte du site est retrouvé tout seul : par l'identité RP de la fiche agent (onglet RH) ou par un pseudo identique au nom du Sheet. Chaque agent du Sheet a aussi sa fiche dans l'onglet RH : créée au besoin (pseudo Discord à compléter), avec le grade écrit dans le Sheet. Une ligne sans compte n'empêche rien pour la comptabilité ; seul « Mon profil » de la personne reste vide tant qu'aucun compte du site n'y est relié.
+        Récupère automatiquement, toutes les 20 minutes (+ à la demande ci-dessous), les ventes et locations de chaque membre depuis le Google Sheets de recap (partagé en lecture seule). Chaque ligne est rattachée à la fiche RH dont le prénom et le nom correspondent ; RH fait foi, le Sheet ne crée aucune fiche et ne change aucun grade. Une ligne sans fiche est signalée dans RH → « À rattacher ». Le compte du site (« Mon profil ») est celui qui a le même ID Discord que la fiche RH.
       </p>
       <div id="zone-message-sync-sheet"></div>
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
@@ -906,31 +951,40 @@
   </div>
 </div>
 
-<!-- Modale « Nouvel agent » (Statistiques) : ajoute une ligne au référentiel
-     stats_agents. Pas de modale équivalente pour modifier un agent existant :
-     ça se fait directement dans le tableau, comme pour « Comptes & accès ». -->
-<div class="modale-fond cache" id="modale-agent">
-  <div class="modale" style="max-width:440px;">
+<!-- Modale « Fiche employé » (RH) : création, consultation et modification.
+     Téléphone et RIB n'apparaissent que si le serveur les a envoyés, c'est-à-
+     dire pour un compte qui a la permission « sensible ». -->
+<div class="modale-fond cache" id="modale-employe">
+  <div class="modale" style="max-width:640px;">
     <div class="modale-entete">
-      <h3>Ajouter un agent</h3>
-      <button id="fermer-modale-agent">✕</button>
+      <h3 id="modale-employe-titre">Fiche employé</h3>
+      <button type="button" id="fermer-modale-employe">✕</button>
     </div>
-    <div id="zone-message-modale-agent"></div>
-    <p class="champ-aide">Le pseudo Discord doit correspondre exactement à celui envoyé par le bot avec les ventes/locations (l'orthographe et les majuscules n'ont pas d'importance, seul le reste doit être identique), sinon ses ventes ne lui seront pas attribuées.</p>
-    <form id="formulaire-agent">
-      <div class="champ">
-        <label for="agent-discord-pseudo">Pseudo Discord</label>
-        <input type="text" id="agent-discord-pseudo" required maxlength="100" placeholder="ex : m4z3._" autocomplete="off">
+    <div id="zone-message-modale-employe"></div>
+    <form id="formulaire-employe" autocomplete="off">
+      <div class="champ-deux">
+        <div class="champ"><label for="employe-prenom">Prénom</label><input type="text" id="employe-prenom" required maxlength="60"></div>
+        <div class="champ"><label for="employe-nom">Nom</label><input type="text" id="employe-nom" required maxlength="60"></div>
       </div>
-      <div class="champ">
-        <label for="agent-identite-rp">Identité RP</label>
-        <input type="text" id="agent-identite-rp" maxlength="100" placeholder="ex : Lola Finley" autocomplete="off">
+      <div class="champ-deux">
+        <div class="champ"><label for="employe-id">ID employé</label><input type="text" id="employe-id" required maxlength="40" placeholder="ex : D8-0042"></div>
+        <div class="champ"><label for="employe-grade">Grade</label><select id="employe-grade"></select></div>
       </div>
-      <div class="champ">
-        <label for="agent-grade">Grade</label>
-        <select id="agent-grade"></select>
+      <div class="champ-deux">
+        <div class="champ"><label for="employe-discord-id">ID Discord</label><input type="text" id="employe-discord-id" inputmode="numeric" maxlength="22" placeholder="ex : 302050872383242240"></div>
+        <div class="champ"><label for="employe-discord-pseudo">Pseudo Discord</label><input type="text" id="employe-discord-pseudo" maxlength="100" placeholder="celui que le bot envoie avec les ventes"></div>
       </div>
-      <button type="submit" class="btn btn-or" style="width:100%;margin-top:18px;">Ajouter</button>
+      <div class="champ-deux" id="employe-bloc-sensible">
+        <div class="champ"><label for="employe-telephone">Téléphone</label><input type="text" id="employe-telephone" maxlength="30"></div>
+        <div class="champ"><label for="employe-rib">RIB</label><input type="text" id="employe-rib" maxlength="60"></div>
+      </div>
+      <div class="champ-deux">
+        <div class="champ"><label for="employe-arrivee">Date d'arrivée</label><input type="date" id="employe-arrivee"></div>
+        <div class="champ"><label for="employe-depart">Date de départ</label><input type="date" id="employe-depart"></div>
+      </div>
+      <p class="champ-aide" id="employe-statut" style="margin:6px 0 0;"></p>
+      <div class="champ-aide" id="employe-historique" style="margin-top:10px;"></div>
+      <button type="submit" class="btn btn-or" id="employe-enregistrer" style="width:100%;margin-top:18px;">Enregistrer</button>
     </form>
   </div>
 </div>

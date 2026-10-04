@@ -73,9 +73,17 @@ découlent ensuite de ce grade.
   lues dans le Google Sheets de la Direction, archivées chaque dimanche à
   23:59 (heure de Paris) sous le numéro de la semaine et consultables
   ensuite semaine par semaine.
-- **RH (Direction)** — référentiel des agents : pseudo Discord, identité RP et
-  grade de chacun, complété automatiquement par le tableur, et utilisé par la
-  DOT pour les salaires.
+- **RH** — source de vérité de l'identité de chaque employé : prénom, nom,
+  ID employé (saisi à la main, unique), ID et pseudo Discord, téléphone, RIB,
+  grade, statut, dates d'arrivée et de départ. Effectif par statut et par
+  grade, recherche et filtres. Un employé n'est jamais supprimé : il passe
+  « Inactif » (date de départ posée), garde son historique et peut être
+  réactivé. Les autres modules (ventes, tableur, statistiques, DOT) ne
+  stockent que le lien vers la fiche et y lisent l'identité. Les droits
+  (voir, ajouter, modifier, désactiver, réactiver, données sensibles) se
+  règlent par grade ; Patron, Co Patron et Développeur web les ont tous et
+  sont seuls à régler cette matrice. Téléphone et RIB ne sortent du serveur
+  que pour un grade qui a la permission « données sensibles ».
 - **Comptabilité (Direction)** — mise en forme de relevés collés depuis un
   tableur ou un bot ; paramètres de rémunération par grade (salaires,
   commissions, paliers de primes) ; préparation de la déclaration DOT
@@ -133,6 +141,7 @@ tâches de fond (nettoyage des photos, synchronisation du tableur).
 | `src/medias.js` | cycle de vie des photos : envoi, rattachement, nettoyage |
 | `src/stats-calc.js` | calculs de primes, quotas et semaines ISO |
 | `src/google-sheets.js` | lecture du tableur de la Direction (export CSV) |
+| `src/rh.js` | fiches employés, effectif, permissions RH (`/api/rh/*`) |
 | `src/bot-roxwood.js` | réception signée des webhooks du bot Roxwood |
 | `src/corps-requete.js` | limite de taille des requêtes, avant lecture complète |
 | `src/entetes-proxy.js` | choix de l'hôte public derrière le reverse proxy |
@@ -201,6 +210,8 @@ section « Photos » de [`deploy/operateur/README-OPERATEUR.md`](deploy/operateu
 - **Bot de ventes** — un bot Discord envoie les ventes et locations faites en
   jeu à une API protégée par `STATS_BOT_SECRET`. Chaque événement porte un
   `eventId` : un renvoi réseau ne compte jamais deux fois la même vente.
+  Chaque vente est rattachée à sa fiche RH par l'ID Discord du vendeur
+  (`discordId`, optionnel) ou, à défaut, par son pseudo.
   Configuration : [`notes/bot-ventes-configuration.md`](notes/bot-ventes-configuration.md).
 - **Bot Roxwood Network Entreprise** — le bot n'a pas d'API de lecture : il
   **pousse** ses événements (candidatures, absences, commandes, monitoring)
@@ -209,9 +220,10 @@ section « Photos » de [`deploy/operateur/README-OPERATEUR.md`](deploy/operateu
   Configuration : [`notes/bot-roxwood-configuration.md`](notes/bot-roxwood-configuration.md).
 - **Google Sheets de la Direction** — lecture seule de l'export CSV d'un
   classeur partagé par lien (ni compte de service, ni clé), toutes les 20
-  minutes. Il fait foi pour l'équipe : chaque agent listé a sa fiche dans le
-  référentiel (créée au besoin), avec le grade du tableur ; ses ventes et
-  locations alimentent « Chiffres du tableur », « Mon profil » et la DOT.
+  minutes. RH fait foi : chaque ligne est rattachée à la fiche RH de même
+  « Prénom Nom », sans créer de fiche ni changer de grade ; une ligne sans
+  fiche est signalée dans RH (« À rattacher »). Ventes et locations
+  alimentent « Chiffres du tableur », « Mon profil » et la DOT.
 - **WebMap FlashbackFA** — proxifiée par `/api/carte`. L'adresse réelle vit
   dans `WEBMAP_ORIGIN`, jamais dans le dépôt, qui est public ; sans elle, le
   bouton affiche « carte indisponible » et le reste du site fonctionne.

@@ -268,9 +268,11 @@ export function compterLocations(lignes, colonneCle, pseudoNormalise, semaine) {
     .reduce((n, l) => n + (l.interieur !== "" ? l.quantiteLoc : 0) + (l.garage !== "" ? l.quantiteLoc : 0), 0);
 }
 
-export function sommeFacture(lignes, pseudoNormalise, semaine) {
+// colonneCle : « identiteNormalisee » par défaut ; le serveur regroupe par
+// fiche RH (« cleAgent », voir lireLignesLocales dans src/index.js).
+export function sommeFacture(lignes, pseudoNormalise, semaine, colonneCle = "identiteNormalisee") {
   return lignes
-    .filter((l) => l.identiteNormalisee === pseudoNormalise && l.semaine === semaine)
+    .filter((l) => l[colonneCle] === pseudoNormalise && l.semaine === semaine)
     .reduce((s, l) => s + l.montant, 0);
 }
 

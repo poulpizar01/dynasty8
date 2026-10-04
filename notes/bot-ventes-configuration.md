@@ -50,6 +50,7 @@ Points d'attention (sources d'erreurs les plus courantes) :
 - **`semaine`** : format `"S" + numéro de semaine + "-" + année sur 2 chiffres`, par exemple `"S36-26"` pour la semaine 36 de 2026.
 - **`dateVente`** : format `JJ/MM/AAAA`.
 - **`identite`** est obligatoire (le nom RP du vendeur) ; tous les autres champs texte sont optionnels et peuvent être laissés vides (`""`).
+- **`discordId`** / **`formateurDiscordId`** *(optionnels, recommandés)* — l'ID Discord (17 à 20 chiffres) du vendeur et du formateur. Le site rattache la vente à la fiche RH par cet ID, qui ne change jamais ; sans lui, il retombe sur le pseudo envoyé dans `identite`, qui peut changer. Une vente dont le vendeur n'a pas de fiche est quand même enregistrée, et signalée dans RH « À rattacher ».
 - **`loc`** : uniquement utilisé si `type` = `"Location"` (nombre de jours/semaines de location) ; sinon laisser à `null`.
 - **`achat`** : le montant de la vente, en chiffres.
 

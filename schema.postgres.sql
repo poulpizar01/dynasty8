@@ -451,6 +451,101 @@ CREATE INDEX IF NOT EXISTS idx_bot_roxwood_type ON bot_roxwood_evenements(type_e
 CREATE INDEX IF NOT EXISTS idx_bot_roxwood_objet ON bot_roxwood_evenements(type_evenement, cle_objet, id DESC);
 
 -- ============================================================================
+-- RH : la fiche employé, source de vérité (oct. 2026) — voir src/rh.js
+-- ----------------------------------------------------------------------------
+-- Une seule fiche par employé. Les autres modules (ventes, DOT, tableur,
+-- statistiques) ne gardent que la clé de la fiche (employe_id) et lisent ici
+-- le nom, le grade, le statut… : une modification RH s'y répercute partout,
+-- sans copie à tenir à jour.
+--   id         : clé interne, celle de toutes les liaisons entre tables ;
+--   id_employe : identifiant métier saisi par RH (ex. D8-0042), unique.
+-- Jamais supprimée : un départ = statut « inactif », historique conservé.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS employes (
+  id SERIAL PRIMARY KEY,
+  id_employe TEXT NOT NULL,
+  id_provisoire INTEGER NOT NULL DEFAULT 0,   -- 1 = attribué à la reprise de l'existant, à remplacer
+  prenom TEXT NOT NULL DEFAULT '',
+  nom TEXT NOT NULL DEFAULT '',
+  telephone TEXT NOT NULL DEFAULT '',         -- donnée sensible (permission « sensible »)
+  rib TEXT NOT NULL DEFAULT '',               -- donnée sensible (permission « sensible »)
+  discord_id TEXT,                            -- identifiant Discord numérique
+  discord_pseudo TEXT NOT NULL DEFAULT '',    -- pseudo envoyé par le bot avec les ventes
+  discord_pseudo_normalise TEXT,
+  grade TEXT NOT NULL,
+  statut TEXT NOT NULL DEFAULT 'actif' CHECK (statut IN ('actif', 'inactif')),
+  date_arrivee TEXT NOT NULL DEFAULT '',      -- AAAA-MM-JJ
+  date_depart TEXT NOT NULL DEFAULT '',       -- AAAA-MM-JJ, vide tant qu'il est là
+  reprise_agent_id INTEGER,                   -- fiche stats_agents d'origine (reprise oct. 2026)
+  cree_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')),
+  maj TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_employes_id_employe ON employes(lower(id_employe));
+CREATE UNIQUE INDEX IF NOT EXISTS idx_employes_discord_id ON employes(discord_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_employes_pseudo ON employes(discord_pseudo_normalise);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_employes_reprise ON employes(reprise_agent_id);
+CREATE INDEX IF NOT EXISTS idx_employes_statut_grade ON employes(statut, grade);
+
+-- Reprise de l'existant, UNE SEULE FOIS (repère rh_reprise_faite) : ensuite,
+-- seul RH crée des fiches. Les ID employé ainsi attribués (PROV-…) sont
+-- provisoires, à remplacer depuis la fiche.
+--  1. les fiches agents (stats_agents) : identité RP coupée en prénom / nom ;
+INSERT INTO employes (id_employe, id_provisoire, prenom, nom, discord_pseudo, discord_pseudo_normalise, grade, statut, reprise_agent_id)
+SELECT 'PROV-' || lpad(a.id::text, 4, '0'), 1,
+       split_part(btrim(a.identite_rp), ' ', 1),
+       btrim(substr(btrim(a.identite_rp), length(split_part(btrim(a.identite_rp), ' ', 1)) + 1)),
+       a.discord_pseudo, NULLIF(a.discord_pseudo_normalise, ''),
+       a.grade, CASE WHEN a.actif = 1 THEN 'actif' ELSE 'inactif' END, a.id
+  FROM stats_agents a
+ WHERE NOT EXISTS (SELECT 1 FROM employes e WHERE e.reprise_agent_id = a.id)
+   AND NOT EXISTS (SELECT 1 FROM stats_config c WHERE c.cle = 'rh_reprise_faite');
+--  2. les vendeurs de l'historique sans fiche (anciens employés) : fiches
+--     « inactif », pour que leurs ventes restent rattachées à quelqu'un.
+INSERT INTO employes (id_employe, id_provisoire, discord_pseudo, discord_pseudo_normalise, grade, statut)
+SELECT 'PROV-V' || lpad((row_number() OVER (ORDER BY v.normalise))::text, 4, '0'), 1, v.pseudo, v.normalise, 'Agent', 'inactif'
+  FROM (SELECT min(btrim(identite)) AS pseudo, lower(btrim(identite)) AS normalise
+          FROM stats_logs_ventes WHERE btrim(identite) <> '' GROUP BY lower(btrim(identite))) v
+ WHERE NOT EXISTS (SELECT 1 FROM employes e WHERE e.discord_pseudo_normalise = v.normalise)
+   AND NOT EXISTS (SELECT 1 FROM stats_config c WHERE c.cle = 'rh_reprise_faite');
+INSERT INTO stats_config (cle, valeur) VALUES ('rh_reprise_faite', to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
+ON CONFLICT (cle) DO NOTHING;
+
+-- Liaisons par clé de fiche : chaque module garde ses propres données et ne
+-- pointe que vers l'employé.
+ALTER TABLE stats_logs_ventes ADD COLUMN IF NOT EXISTS employe_id INTEGER REFERENCES employes(id) ON DELETE SET NULL;
+ALTER TABLE stats_logs_ventes ADD COLUMN IF NOT EXISTS formateur_employe_id INTEGER REFERENCES employes(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_stats_logs_ventes_employe ON stats_logs_ventes(employe_id);
+ALTER TABLE sync_sheet_agents ADD COLUMN IF NOT EXISTS employe_id INTEGER REFERENCES employes(id) ON DELETE SET NULL;
+ALTER TABLE tableur_archives_lignes ADD COLUMN IF NOT EXISTS employe_id INTEGER REFERENCES employes(id) ON DELETE SET NULL;
+-- Ventes encore sans employé : rattachées par le pseudo Discord de la fiche
+-- (rejouable, ne touche que les ventes non rattachées). Les nouvelles ventes
+-- sont rattachées dès leur arrivée (voir statsEnregistrerVente).
+UPDATE stats_logs_ventes v SET employe_id = e.id FROM employes e
+ WHERE v.employe_id IS NULL AND btrim(v.identite) <> '' AND e.discord_pseudo_normalise = lower(btrim(v.identite));
+UPDATE stats_logs_ventes v SET formateur_employe_id = e.id FROM employes e
+ WHERE v.formateur_employe_id IS NULL AND btrim(v.formateur) <> '' AND e.discord_pseudo_normalise = lower(btrim(v.formateur));
+
+-- Permissions RH, paramétrables par grade depuis l'onglet RH. Patron,
+-- Co Patron et Développeur web les ont toujours toutes (et sont seuls à
+-- pouvoir les régler) : personne ne peut s'enlever l'accès par erreur.
+-- Valeurs de départ posées une seule fois (repère rh_permissions_initialisees),
+-- pour qu'un droit retiré ne revienne pas à la migration suivante.
+CREATE TABLE IF NOT EXISTS rh_permissions (
+  grade TEXT NOT NULL,
+  permission TEXT NOT NULL CHECK (permission IN ('voir', 'creer', 'modifier', 'desactiver', 'reactiver', 'sensible')),
+  PRIMARY KEY (grade, permission)
+);
+INSERT INTO rh_permissions (grade, permission)
+SELECT d.grade, d.permission
+  FROM (VALUES ('DRH', 'voir'), ('DRH', 'creer'), ('DRH', 'modifier'), ('DRH', 'desactiver'), ('DRH', 'reactiver'), ('DRH', 'sensible'),
+               ('Manager', 'voir'), ('Manager', 'creer'), ('Manager', 'modifier'), ('Manager', 'desactiver'), ('Manager', 'reactiver'),
+               ('Secrétaire de Direction', 'voir'), ('Secrétaire de Direction', 'creer'), ('Secrétaire de Direction', 'modifier'))
+       AS d(grade, permission)
+ WHERE NOT EXISTS (SELECT 1 FROM stats_config c WHERE c.cle = 'rh_permissions_initialisees')
+ON CONFLICT DO NOTHING;
+INSERT INTO stats_config (cle, valeur) VALUES ('rh_permissions_initialisees', '1') ON CONFLICT (cle) DO NOTHING;
+
+-- ============================================================================
 -- Compte applicatif restreint — À GARDER EN DERNIER DANS CE FICHIER
 -- ----------------------------------------------------------------------------
 -- Le site tourne avec un compte qui peut lire et écrire les données, mais

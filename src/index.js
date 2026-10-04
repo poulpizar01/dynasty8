@@ -26,6 +26,7 @@ import * as statsCalc from "./stats-calc.js";
 import {
   synchroniserSheetSansErreur, lireConfigSheet, lireTableurActuel, lireArchiveTableur, semaineParis,
 } from "./google-sheets.js";
+import { routeRh, permissionsRh, trouverEmploye, nomComplet } from "./rh.js";
 import { ErreurStockage } from "./fbfa-storage.js";
 import { consommer, adresseAppelant } from "./limite-debit.js";
 import { TYPES_IMAGE, decoderDataUrl, estDataUrlImage } from "./images.js";
@@ -313,6 +314,11 @@ export default {
       if (chemin === "/api/equipe") return await equipe(env);
       if (chemin === "/api/agenda") return await agenda(request, url, env);
       if (chemin.startsWith("/api/chat/")) return await chat(request, url, env);
+      if (chemin.startsWith("/api/rh/")) {
+        const s = await session(request, env);
+        if (!s) return json({ erreur: "Non connecté." }, 401);
+        return await routeRh(request, url, env, s);
+      }
       if (chemin.startsWith("/api/comptabilite/")) return await comptabilite(request, url, env);
       if (chemin.startsWith("/api/stats/")) return await statistiques(request, url, env);
       if (chemin.startsWith("/api/sync-sheet/")) return await syncSheet(request, url, env);
@@ -677,9 +683,10 @@ async function moi(request, env) {
   const s = await session(request, env);
   if (!s) return json({ connecte: false }, 401);
   if (request.method === "PUT") return modifierMonProfil(request, env, s);
-  const [m, primes] = await Promise.all([
+  const [m, primes, droitsRh] = await Promise.all([
     env.DB.prepare("SELECT poste, specialite, bio, photo FROM membres WHERE id = ?1").bind(s.id).first(),
     mesPrimesSheet(env, s.id),
+    permissionsRh(env, s),
   ]);
   return json({
     connecte: true,
@@ -688,6 +695,9 @@ async function moi(request, env) {
     grade: s.grade,
     direction: estDirection(s),
     peut_gerer_annonces: peutGererAnnonces(s),
+    // Permissions RH du compte : l'interface s'en sert pour afficher l'onglet
+    // et ses boutons — le serveur les revérifie à chaque appel.
+    droits_rh: [...droitsRh],
     poste: (m && m.poste) || "",
     specialite: (m && m.specialite) || "",
     bio: (m && m.bio) || "",
@@ -1318,6 +1328,10 @@ async function comptaDotSalaries(env, url, s) {
       }
     }
     return {
+      // Identité lue dans la fiche RH (voir calculerRecapSemaine).
+      employeId: a.employeId,
+      idEmploye: a.idEmploye,
+      statut: a.statut,
       identite: a.identite,
       identiteRp: a.identiteRp,
       grade: a.grade,
@@ -1335,12 +1349,12 @@ async function comptaDotSalaries(env, url, s) {
     };
   });
 
-  // Toute personne présente dans le relevé Tablettes mais absente du
-  // référentiel agents est ajoutée quand même : si elle a facturé cette
-  // semaine-là, elle doit figurer dans la déclaration. Son grade est le rang
-  // indiqué dans le relevé ; le salaire fixe suit le barème de ce grade s'il
-  // existe dans Rémunération (sinon 0) ; la prime est retrouvée dans le Sheet
-  // par le nom, comme pour les autres.
+  // Toute personne présente dans le relevé Tablettes mais sans fiche RH
+  // active est ajoutée quand même : si elle a facturé cette semaine-là, elle
+  // doit figurer dans la déclaration. Son grade est le rang indiqué dans le
+  // relevé ; le salaire fixe suit le barème de ce grade s'il existe dans
+  // Rémunération (sinon 0) ; la prime est celle d'une ligne du Sheet sans
+  // fiche portant le même nom. Elle est signalée « hors RH » à l'écran.
   if (iNom !== -1) {
     const tauxR = await env.DB.prepare("SELECT grade, salaire_fixe, salaire_actif FROM stats_taux_commission").all();
     const tauxParGrade = new Map((tauxR.results || []).map((t) => [normaliser(t.grade), t]));
@@ -1362,8 +1376,8 @@ async function comptaDotSalaries(env, url, s) {
         trouveDansTablette: true,
         horsReferentiel: true,
         salaireFixe: t && t.salaire_actif ? (t.salaire_fixe || 0) : 0,
-        primeTotale: primeSheetPour(primesSheet, nom).primeTotale,
-        salaireTotal: (t && t.salaire_actif ? (t.salaire_fixe || 0) : 0) + primeSheetPour(primesSheet, nom).primeTotale,
+        primeTotale: primeSheetPour(primesSheet, null, nom).primeTotale,
+        salaireTotal: (t && t.salaire_actif ? (t.salaire_fixe || 0) : 0) + primeSheetPour(primesSheet, null, nom).primeTotale,
       });
     }
   }
@@ -1496,12 +1510,21 @@ const COLONNES_LOG_VENTE = [
 // ligne précise depuis l'écran admin.
 async function lireLignesLocales(env) {
   const r = await env.DB.prepare(
-    `SELECT id, ${COLONNES_LOG_VENTE.join(", ")} FROM stats_logs_ventes ORDER BY id ASC`
+    `SELECT id, employe_id, formateur_employe_id, ${COLONNES_LOG_VENTE.join(", ")} FROM stats_logs_ventes ORDER BY id ASC`
   ).all();
   const resultats = r.results || [];
   const lignesBrutes = resultats.map((row) => COLONNES_LOG_VENTE.map((c) => row[c]));
   const { lignes, anomalies } = statsCalc.classifierLignes(lignesBrutes);
-  lignes.forEach((l, i) => { l.id = resultats[i].id; });
+  lignes.forEach((l, i) => {
+    const row = resultats[i];
+    l.id = row.id;
+    l.employeId = row.employe_id;
+    // Clés de regroupement des calculs : la fiche RH quand la vente y est
+    // rattachée (« e:12 »), sinon le texte reçu (« t:pseudo »), qui reste
+    // visible comme vendeur non rattaché.
+    l.cleAgent = row.employe_id ? `e:${row.employe_id}` : `t:${l.identiteNormalisee}`;
+    l.cleFormateur = row.formateur_employe_id ? `e:${row.formateur_employe_id}` : (l.formateurNormalise ? `t:${l.formateurNormalise}` : "");
+  });
   return { lignes, anomalies };
 }
 
@@ -1625,17 +1648,32 @@ async function statsEnregistrerVente(request, env, s) {
     }
   }
 
+  // Rattachement à la fiche RH dès l'arrivée : l'ID Discord du vendeur s'il
+  // est envoyé (champ facultatif « discordId »), sinon le pseudo de la fiche.
+  // Une vente d'un vendeur inconnu est gardée, sans employé : elle apparaît
+  // dans RH → « À rattacher ». Le bot rapporte des ventes faites en jeu : on
+  // ne les refuse jamais ; une saisie depuis le site, en revanche, ne peut pas
+  // viser un employé inactif.
+  const [employe, formateurEmploye] = await Promise.all([
+    trouverEmploye(env, { discordId: b.discordId, pseudo: v.identite }),
+    v.formateur ? trouverEmploye(env, { discordId: b.formateurDiscordId, pseudo: v.formateur }) : null,
+  ]);
+  if (membreId !== null && employe && employe.statut !== "actif") {
+    return json({ erreur: `${nomComplet(employe)} est inactif dans RH : impossible de lui attribuer une nouvelle vente.` }, 409);
+  }
+
   try {
     await env.DB.prepare(
       `INSERT INTO stats_logs_ventes
         (numero_vente, date_vente, identite, formateur, identite_client, numero_tel,
          interieur, garage, garage_indispo, garage_refus, entreprise_identite, id_entreprise,
-         type, loc, achat, semaine, cree_par, event_id)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`
+         type, loc, achat, semaine, cree_par, event_id, employe_id, formateur_employe_id)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)`
     ).bind(
       v.numeroVente, v.dateVente, v.identite, v.formateur, v.identiteClient, v.numeroTel,
       v.interieur, v.garage, v.garageIndispo, v.garageRefus, v.entrepriseIdentite, v.idEntreprise,
-      v.type, v.loc, v.achat, v.semaine, membreId, eventId
+      v.type, v.loc, v.achat, v.semaine, membreId, eventId,
+      employe ? employe.id : null, formateurEmploye ? formateurEmploye.id : null
     ).run();
     return json({ ok: true });
   } catch (e) {
@@ -1668,10 +1706,23 @@ async function statsListerVentes(env, url, s) {
   // que ses propres lignes (jamais celles des autres agents, ni les données
   // client associées). Seule la Direction (stats.voir_tous) voit tout.
   if (!statsPeutVoirTous(s)) {
+    // Ses ventes = celles rattachées à SA fiche RH (reliée au compte par l'ID
+    // Discord) ; à défaut de fiche, celles reçues sous son pseudo.
+    const compte = await env.DB.prepare("SELECT discord_id FROM membres WHERE id = ?1").bind(s.id).first();
+    const fiche = compte && compte.discord_id
+      ? await env.DB.prepare("SELECT id FROM employes WHERE discord_id = ?1").bind(compte.discord_id).first()
+      : null;
     const moi = statsCalc.normaliserPseudo(s.pseudo);
-    filtrees = filtrees.filter((l) => l.identiteNormalisee === moi);
+    filtrees = filtrees.filter((l) => (fiche ? l.employeId === fiche.id : !l.employeId && l.identiteNormalisee === moi));
   }
-  return json({ lignes: filtrees.slice().reverse() }); // plus récent en premier
+  // Identité du vendeur lue dans RH (jamais recopiée dans la vente).
+  const employes = await env.DB.prepare("SELECT id, id_employe, prenom, nom, statut FROM employes").all();
+  const parId = new Map((employes.results || []).map((e) => [e.id, e]));
+  const avecIdentite = filtrees.slice().reverse().map((l) => {
+    const e = l.employeId ? parId.get(l.employeId) : null;
+    return e ? { ...l, employe: { id: e.id, idEmploye: e.id_employe, nomComplet: nomComplet(e), statut: e.statut } } : { ...l, employe: null };
+  });
+  return json({ lignes: avecIdentite }); // plus récent en premier
 }
 
 async function statsSupprimerVente(env, s, id) {
@@ -1802,44 +1853,38 @@ async function statsAnomalies(env, url, s) {
 // (Google Sheets + barèmes) — voir cette fonction pour le détail.
 async function calculerRecapSemaine(env, semaine) {
   const { lignes } = await lireLignesPourCalculs(env);
-  const identitesNormalisees = new Set(
-    lignes.filter((l) => l.semaine === semaine && l.identiteNormalisee).map((l) => l.identiteNormalisee)
-  );
+  const clesDeLaSemaine = new Set(lignes.filter((l) => l.semaine === semaine).map((l) => l.cleAgent));
 
-  const [agentsR, baremesR, tauxR, configR] = await Promise.all([
-    env.DB.prepare("SELECT * FROM stats_agents").all(),
+  const [employesR, baremesR, tauxR, configR] = await Promise.all([
+    env.DB.prepare("SELECT * FROM employes").all(),
     env.DB.prepare("SELECT * FROM stats_baremes_primes").all(),
     env.DB.prepare("SELECT * FROM stats_taux_commission").all(),
     env.DB.prepare("SELECT valeur FROM stats_config WHERE cle = 'formateur_compte_dans_quota'").first(),
   ]);
-  // Fiche sans pseudo Discord (créée depuis le Sheet, voir alignerReferentiel) :
-  // une clé à elle, pour qu'elle apparaisse une fois. Aucune vente du bot ne
-  // peut s'y rattacher tant que son pseudo n'est pas renseigné.
-  const cleFiche = (a) => a.discord_pseudo_normalise || `fiche:${a.id}`;
-  const agentsParPseudo = new Map((agentsR.results || []).map((a) => [cleFiche(a), a]));
+  // L'identité et le grade viennent de la fiche RH (clé « e:<id> »), jamais
+  // d'une copie : une modification dans RH s'applique au calcul suivant.
+  const employesParCle = new Map((employesR.results || []).map((e) => [`e:${e.id}`, e]));
   const baremeVentes = (baremesR.results || []).filter((b) => b.type === "vente");
   const baremeLocations = (baremesR.results || []).filter((b) => b.type === "location");
   const tauxParGrade = new Map((tauxR.results || []).map((t) => [t.grade, t]));
   const formateurComptesDansQuota = !!configR && configR.valeur === "1";
 
-  // Le récap affiche TOUTE l'équipe déclarée (référentiel stats_agents,
-  // agents actifs uniquement -- un agent désactivé/parti ne réapparaît plus
-  // ici), même sans la moindre vente/location cette semaine-là (0 partout) --
-  // pas seulement ceux qui ont vendu, comme avant. On y ajoute aussi les
-  // pseudos qui ont vendu/loué cette semaine sans être (encore) déclarés dans
-  // stats_agents (fiche facultative, voir plus haut).
-  const pseudosActifsReferentiel = (agentsR.results || []).filter((a) => a.actif).map(cleFiche);
-  const tousPseudos = new Set([...pseudosActifsReferentiel, ...identitesNormalisees]);
+  // Toute l'équipe ACTIVE de RH, même sans vente cette semaine (0 partout),
+  // plus quiconque a vendu cette semaine : un employé inactif qui a encore
+  // une vente cette semaine-là y figure donc aussi (avec son statut), et un
+  // vendeur sans fiche RH apparaît sous le pseudo reçu.
+  const clesActives = (employesR.results || []).filter((e) => e.statut === "actif").map((e) => `e:${e.id}`);
+  const toutesCles = new Set([...clesActives, ...clesDeLaSemaine]);
 
-  const agents = Array.from(tousPseudos).map((pseudoNorm) => {
-    const fiche = agentsParPseudo.get(pseudoNorm);
+  const agents = Array.from(toutesCles).map((cle) => {
+    const fiche = employesParCle.get(cle) || null;
     const grade = fiche ? fiche.grade : "Agent";
     const t = tauxParGrade.get(grade) || { taux: 0.48, salaire_fixe: null, salaire_actif: 0, prime_vente_active: 1, prime_location_active: 1 };
-    const nbAchats = statsCalc.compterAchats(lignes, "identiteNormalisee", pseudoNorm, semaine);
-    const nbLocations = statsCalc.compterLocations(lignes, "identiteNormalisee", pseudoNorm, semaine);
-    const formateurNbAchats = statsCalc.compterAchats(lignes, "formateurNormalise", pseudoNorm, semaine);
-    const formateurNbLocations = statsCalc.compterLocations(lignes, "formateurNormalise", pseudoNorm, semaine);
-    const facture = statsCalc.sommeFacture(lignes, pseudoNorm, semaine);
+    const nbAchats = statsCalc.compterAchats(lignes, "cleAgent", cle, semaine);
+    const nbLocations = statsCalc.compterLocations(lignes, "cleAgent", cle, semaine);
+    const formateurNbAchats = statsCalc.compterAchats(lignes, "cleFormateur", cle, semaine);
+    const formateurNbLocations = statsCalc.compterLocations(lignes, "cleFormateur", cle, semaine);
+    const facture = statsCalc.sommeFacture(lignes, cle, semaine, "cleAgent");
     const finances = statsCalc.calculerFinances({
       nbAchats, nbLocations, facture, formateurNbAchats, formateurNbLocations,
       formateurComptesDansQuota, baremeVentes, baremeLocations, tauxCommission: t.taux,
@@ -1850,8 +1895,11 @@ async function calculerRecapSemaine(env, semaine) {
     });
     return {
       id: fiche ? fiche.id : null,
-      identite: fiche ? fiche.discord_pseudo : pseudoNorm,
-      identiteRp: fiche ? fiche.identite_rp : "",
+      employeId: fiche ? fiche.id : null,
+      idEmploye: fiche ? fiche.id_employe : "",
+      statut: fiche ? fiche.statut : "",
+      identite: fiche ? fiche.discord_pseudo : cle.slice(2),
+      identiteRp: fiche ? `${fiche.prenom} ${fiche.nom}`.trim() : "",
       grade,
       gradeConnu: !!fiche,
       nbAchats, nbLocations, facture, salaireFixe: t.salaire_fixe || 0, ...finances,
@@ -1864,29 +1912,21 @@ async function calculerRecapSemaine(env, semaine) {
 }
 
 // ---- Comptabilité (DOT) : primes alignées sur "Mon profil" ---------------
-// stats_agents (utilisé par calculerRecapSemaine ci-dessus) est un
-// référentiel séparé de membres (aucune clé commune) : le rapprochement
-// avec sync_sheet_agents — la même source que "Mon profil" — se fait donc
-// par pseudo Discord normalisé (stats_agents.discord_pseudo <->
-// membres.discord_pseudo), le seul champ que les deux univers partagent.
-// Chaque ligne du Sheet est retrouvable par PLUSIEURS clés (toutes
-// normalisées) : le nom écrit dans le Sheet (nom RP, ex. « Lola Finley »),
-// et, si la ligne est reliée à un compte, le pseudo Discord, le pseudo du
-// compte et son nom_sheet. Une ligne du Sheet sans compte relié compte donc
-// quand même : c'est ce qui manquait avant (prime à 0 pour tous les agents
-// dont le compte n'était pas apparié).
+// Chaque ligne du Sheet est rattachée à sa fiche RH à la synchronisation
+// (sync_sheet_agents.employe_id) : la prime d'un employé est donc retrouvée
+// par sa fiche, jamais par son nom. Seules les lignes du Sheet SANS fiche RH
+// restent retrouvables par le nom écrit dans le Sheet, pour les personnes du
+// relevé Tablettes qui n'ont pas (encore) de fiche.
 async function primesSheetParPseudo(env) {
   const [lignesR, baremesR] = await Promise.all([
-    env.DB.prepare(
-      `SELECT ssa.nom_sheet, ssa.nb_ventes, ssa.nb_locations, m.discord_pseudo, m.pseudo AS membre_pseudo, m.nom_sheet AS membre_nom_sheet
-       FROM sync_sheet_agents ssa LEFT JOIN membres m ON m.id = ssa.membre_id`
-    ).all(),
+    env.DB.prepare("SELECT nom_sheet, nb_ventes, nb_locations, employe_id FROM sync_sheet_agents").all(),
     env.DB.prepare("SELECT * FROM stats_baremes_primes").all(),
   ]);
   const baremes = baremesR.results || [];
   const baremeVentes = baremes.filter((b) => b.type === "vente");
   const baremeLocations = baremes.filter((b) => b.type === "location");
-  const parCle = new Map();
+  const parEmploye = new Map();
+  const parNomSansFiche = new Map();
   for (const l of lignesR.results || []) {
     const primeVente = statsCalc.montantPalier(baremeVentes, l.nb_ventes);
     const primeLocations = statsCalc.montantPalier(baremeLocations, l.nb_locations);
@@ -1897,21 +1937,25 @@ async function primesSheetParPseudo(env) {
       primeLocations,
       primeTotale: primeVente + primeLocations,
     };
-    for (const brut of [l.discord_pseudo, l.nom_sheet, l.membre_pseudo, l.membre_nom_sheet]) {
-      const cle = statsCalc.normaliserTexte(brut || "");
-      if (cle && !parCle.has(cle)) parCle.set(cle, valeur);
+    if (l.employe_id) parEmploye.set(l.employe_id, valeur);
+    else {
+      const cle = statsCalc.normaliserTexte(l.nom_sheet || "");
+      if (cle && !parNomSansFiche.has(cle)) parNomSansFiche.set(cle, valeur);
     }
   }
-  return parCle;
+  return { parEmploye, parNomSansFiche };
 }
 
-// Retrouve la ligne Sheet d'une personne à partir de n'importe lequel de ses noms.
-function primeSheetPour(primesParCle, ...noms) {
+// Ligne du Sheet d'un employé (par sa fiche RH) ; à défaut de fiche, par le
+// nom d'une ligne du Sheet elle-même sans fiche.
+function primeSheetPour(primes, employeId, ...noms) {
+  const zero = { ventes: 0, locations: 0, primeVente: 0, primeLocations: 0, primeTotale: 0 };
+  if (employeId) return primes.parEmploye.get(employeId) || zero;
   for (const n of noms) {
     const cle = statsCalc.normaliserTexte(n || "");
-    if (cle && primesParCle.has(cle)) return primesParCle.get(cle);
+    if (cle && primes.parNomSansFiche.has(cle)) return primes.parNomSansFiche.get(cle);
   }
-  return { ventes: 0, locations: 0, primeVente: 0, primeLocations: 0, primeTotale: 0 };
+  return zero;
 }
 
 // Remplace, sur une liste d'agents déjà calculée par calculerRecapSemaine(),
@@ -1921,7 +1965,7 @@ function primeSheetPour(primesParCle, ...noms) {
 // deux sources dans un même montant).
 function remplacerPrimesParSheet(agents, primesParPseudo) {
   return agents.map((a) => {
-    const p = primeSheetPour(primesParPseudo, a.identite, a.identiteRp);
+    const p = primeSheetPour(primesParPseudo, a.employeId, a.identite, a.identiteRp);
     const salaireVerse = a.totalAVerser - a.primeTotale;
     return {
       ...a,
@@ -1968,91 +2012,9 @@ async function statsTableur(env, url, s) {
   });
 }
 
-// §4 : gestion du référentiel des agents (Identité Discord <-> Identité RP <->
-// Grade) depuis l'écran admin — Direction uniquement. C'est ce référentiel
-// que la DOT utilise pour le nom RP, le grade et le salaire fixe de chacun ;
-// la synchro du tableur le complète (alignerReferentiel, src/google-sheets.js).
-
-async function statsListerAgents(env, s) {
-  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-  const r = await env.DB.prepare(
-    "SELECT id, discord_pseudo, identite_rp, grade FROM stats_agents ORDER BY discord_pseudo COLLATE NOCASE"
-  ).all();
-  const ordreGrade = (g) => { const i = statsCalc.GRADES_STATS.indexOf(g); return i === -1 ? statsCalc.GRADES_STATS.length : i; };
-  const agents = (r.results || []).slice()
-    .sort((a, b) => ordreGrade(a.grade) - ordreGrade(b.grade) || a.discord_pseudo.localeCompare(b.discord_pseudo));
-  return json({ agents });
-}
-
-function validerAgent(b) {
-  if (!b || typeof b !== "object") return "Requête invalide.";
-  if (!b.discordPseudo || !String(b.discordPseudo).trim()) return "Le pseudo Discord est obligatoire.";
-  if (String(b.discordPseudo).trim().length > 100) return "Le pseudo Discord est trop long (100 caractères max).";
-  if (!b.grade || !statsCalc.GRADES_STATS.includes(b.grade)) return "Grade invalide.";
-  if (b.identiteRp != null && String(b.identiteRp).length > 100) return "L'identité RP est trop longue (100 caractères max).";
-  return null;
-}
-
-async function statsCreerAgent(request, env, s) {
-  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-  const b = await request.json().catch(() => null);
-  const erreur = validerAgent(b);
-  if (erreur) return json({ erreur }, 400);
-  const pseudo = String(b.discordPseudo).trim();
-  const normalise = pseudo.toLowerCase();
-  const existe = await env.DB.prepare("SELECT id FROM stats_agents WHERE discord_pseudo_normalise = ?1").bind(normalise).first();
-  if (existe) return json({ erreur: "Un agent avec ce pseudo Discord existe déjà — modifiez-le plutôt depuis le tableau." }, 409);
-  const r = await env.DB.prepare(
-    `INSERT INTO stats_agents (discord_pseudo, discord_pseudo_normalise, identite_rp, grade)
-     VALUES (?1, ?2, ?3, ?4)`
-  ).bind(pseudo, normalise, String(b.identiteRp || "").trim(), b.grade).run();
-  return json({ id: r.meta.last_row_id });
-}
-
-async function statsModifierAgent(request, env, s, id) {
-  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-  if (!id || !/^\d+$/.test(id)) return json({ erreur: "Identifiant invalide." }, 400);
-  const idNum = Number(id);
-  const cible = await env.DB.prepare("SELECT id FROM stats_agents WHERE id = ?1").bind(idNum).first();
-  if (!cible) return json({ erreur: "Introuvable." }, 404);
-  const b = await request.json().catch(() => null);
-  if (!b || typeof b !== "object") return json({ erreur: "Requête illisible." }, 400);
-
-  const champs = [];
-  const binds = [idNum];
-  if (b.discordPseudo !== undefined) {
-    const pseudo = String(b.discordPseudo || "").trim();
-    if (!pseudo) return json({ erreur: "Le pseudo Discord est obligatoire." }, 400);
-    if (pseudo.length > 100) return json({ erreur: "Le pseudo Discord est trop long (100 caractères max)." }, 400);
-    const normalise = pseudo.toLowerCase();
-    const conflit = await env.DB.prepare(
-      "SELECT id FROM stats_agents WHERE discord_pseudo_normalise = ?1 AND id != ?2"
-    ).bind(normalise, idNum).first();
-    if (conflit) return json({ erreur: "Un autre agent utilise déjà ce pseudo Discord." }, 409);
-    binds.push(pseudo); champs.push(`discord_pseudo = ?${binds.length}`);
-    binds.push(normalise); champs.push(`discord_pseudo_normalise = ?${binds.length}`);
-  }
-  if (b.identiteRp !== undefined) {
-    const rp = String(b.identiteRp || "").trim();
-    if (rp.length > 100) return json({ erreur: "L'identité RP est trop longue (100 caractères max)." }, 400);
-    binds.push(rp); champs.push(`identite_rp = ?${binds.length}`);
-  }
-  if (b.grade !== undefined) {
-    if (!statsCalc.GRADES_STATS.includes(b.grade)) return json({ erreur: "Grade invalide." }, 400);
-    binds.push(b.grade); champs.push(`grade = ?${binds.length}`);
-  }
-  if (!champs.length) return json({ erreur: "Rien à modifier." }, 400);
-  champs.push("maj = datetime('now')");
-  await env.DB.prepare(`UPDATE stats_agents SET ${champs.join(", ")} WHERE id = ?1`).bind(...binds).run();
-  return json({ ok: true });
-}
-
-async function statsSupprimerAgent(env, s, id) {
-  if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-  if (!id || !/^\d+$/.test(id)) return json({ erreur: "Identifiant invalide." }, 400);
-  await env.DB.prepare("DELETE FROM stats_agents WHERE id = ?1").bind(Number(id)).run();
-  return json({ ok: true });
-}
+// L'ancien référentiel des agents (stats_agents) a été repris par RH : les
+// fiches employés se gèrent désormais dans src/rh.js (/api/rh/*). La table
+// stats_agents reste en base, intacte, mais n'est plus lue ni écrite.
 
 // ---- Comptabilité -> Paramètres : rémunération -----------------------------
 // Cet écran ne fait qu'ajouter une interface pour modifier deux tables qui
@@ -2192,8 +2154,6 @@ async function statistiques(request, url, env) {
   if (route === "/semaines" && m === "GET") return statsSemaines(env, s);
   if (route === "/anomalies" && m === "GET") return statsAnomalies(env, url, s);
   if (route === "/tableur" && m === "GET") return statsTableur(env, url, s);
-  if (route === "/agents" && m === "GET") return statsListerAgents(env, s);
-  if (route === "/agents" && m === "POST") return statsCreerAgent(request, env, s);
   if (route === "/ventes" && m === "POST") {
     if (!statsPeutVoirSoi(s)) return json({ erreur: "Non connecté." }, 401);
     return statsEnregistrerVente(request, env, s);
@@ -2201,9 +2161,6 @@ async function statistiques(request, url, env) {
   if (route === "/ventes" && m === "GET") return statsListerVentes(env, url, s);
   const mSupp = route.match(/^\/ventes\/(\d+)$/);
   if (mSupp && m === "DELETE") return statsSupprimerVente(env, s, mSupp[1]);
-  const mAgent = route.match(/^\/agents\/(\d+)$/);
-  if (mAgent && m === "PATCH") return statsModifierAgent(request, env, s, mAgent[1]);
-  if (mAgent && m === "DELETE") return statsSupprimerAgent(env, s, mAgent[1]);
   if (route === "/remuneration" && m === "GET") return statsRemunerationLire(env, s);
   const mGradeRemuneration = route.match(/^\/remuneration\/grades\/([^/]+)$/);
   if (mGradeRemuneration && m === "PATCH") return statsRemunerationModifierGrade(request, env, s, mGradeRemuneration[1]);

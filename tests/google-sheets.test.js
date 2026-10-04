@@ -223,68 +223,70 @@ after(async () => {
 });
 const avecBase = (nom, fn) => test(nom, { skip: BASE_ACTIVE ? false : "TEST_DATABASE_URL non définie" }, fn);
 
-avecBase("synchro : le tableur alimente le référentiel, la DOT et « Chiffres du tableur »", async () => {
+avecBase("synchro : RH fait foi — le tableur est rattaché aux fiches RH, sans en créer ni changer de grade", async () => {
   const fetchOriginal = globalThis.fetch;
   try {
     const env = { DB: creerAdaptateurDB(), SESSION_SECRET: SECRET_TEST, GOOGLE_SHEET_ID: "t".repeat(30) };
-    // Avant : une seule fiche, avec pseudo, et un grade différent du tableur.
-    await pool.query(
-      "INSERT INTO stats_agents (discord_pseudo, discord_pseudo_normalise, identite_rp, grade) VALUES ('.matlow.', '.matlow.', 'Caleb Duval', 'Agent')"
-    );
+    // RH : Caleb Duval existe (grade RH « Agent », le tableur dit « Agent Expert »).
+    const caleb = (await pool.query(
+      `INSERT INTO employes (id_employe, prenom, nom, discord_pseudo, discord_pseudo_normalise, grade, statut, date_arrivee)
+       VALUES ('D8-0001', 'Caleb', 'Duval', '.matlow.', '.matlow.', 'Agent', 'actif', '2026-01-10') RETURNING id`
+    )).rows[0];
     const direction = (await pool.query(
       `INSERT INTO membres (pseudo, grade, code_hash, code_indice, actif, cree_le, statut)
        VALUES ('Direction test', 'Patron', 'x', 'x', 1, '2026-01-01 00:00:00', 'valide') RETURNING id, pseudo, grade`
     )).rows[0];
     const cookie = cookieSession(direction);
+    const appel = async (chemin) => (await worker.fetch(new Request("http://localhost" + chemin, { headers: { Cookie: cookie } }), env)).json();
 
     const csv = csvTableur([
       ["Informations", ""],
       ["Identité RP", "Grade"],
       ["Caleb Duval", "Agent Expert", 31, 23],
       ["Zaim Tekno", "Agent Novice", 54, 76],
-      ["Gianni Sottero", "Agent Novice", 46, 41],
     ]);
     globalThis.fetch = async () => new Response(csv, { status: 200, headers: { "Content-Type": "text/csv" } });
+    const employesAvant = (await pool.query("SELECT count(*)::int AS n FROM employes")).rows[0].n;
 
     // Deux synchros lancées en même temps (passe automatique + bouton) : une seule exécution.
     const [etat] = await Promise.all([synchroniserSheet(env), synchroniserSheet(env)]);
-    assert.equal(etat.nb_lignes, 3, "titres de section et en-tête écartés");
-    assert.deepEqual(etat.referentiel, { crees: 2, gradesMisAJour: 1 });
-
-    const fiches = (await pool.query("SELECT identite_rp, grade, discord_pseudo, discord_pseudo_normalise FROM stats_agents ORDER BY identite_rp")).rows;
-    assert.deepEqual(fiches, [
-      { identite_rp: "Caleb Duval", grade: "Agent Expert", discord_pseudo: ".matlow.", discord_pseudo_normalise: ".matlow." },
-      { identite_rp: "Gianni Sottero", grade: "Agent Novice", discord_pseudo: "", discord_pseudo_normalise: null },
-      { identite_rp: "Zaim Tekno", grade: "Agent Novice", discord_pseudo: "", discord_pseudo_normalise: null },
-    ]);
-
-    // Relance : rien de plus, aucun doublon.
-    const relance = await synchroniserSheet(env);
-    assert.deepEqual(relance.referentiel, { crees: 0, gradesMisAJour: 0 });
-    assert.equal((await pool.query("SELECT count(*)::int AS n FROM stats_agents")).rows[0].n, 3);
+    assert.equal(etat.nb_lignes, 2, "titres de section et en-tête écartés");
+    assert.equal(etat.sansFicheRh, 1, "Zaim Tekno n'a pas de fiche RH");
+    assert.equal((await pool.query("SELECT count(*)::int AS n FROM employes")).rows[0].n, employesAvant, "aucune fiche créée par le tableur");
+    assert.equal((await pool.query("SELECT grade FROM employes WHERE id = $1", [caleb.id])).rows[0].grade, "Agent", "le grade RH n'est pas touché");
+    const lignes = (await pool.query("SELECT nom_sheet, employe_id FROM sync_sheet_agents ORDER BY ligne_sheet")).rows;
+    assert.deepEqual(lignes, [{ nom_sheet: "Caleb Duval", employe_id: caleb.id }, { nom_sheet: "Zaim Tekno", employe_id: null }]);
 
     const baremes = (await pool.query("SELECT type, seuil, montant FROM stats_baremes_primes")).rows;
     const attendu = (type, n) => montantPalier(baremes.filter((b) => b.type === type), n);
 
-    // DOT (salariés) : chaque fiche une seule fois, même sans pseudo, avec le
-    // grade du tableur et les primes du tableur.
-    const dot = await (await worker.fetch(new Request("http://localhost/api/comptabilite/dot/salaries?semaine=S40-26", { headers: { Cookie: cookie } }), env)).json();
-    const parRp = Object.fromEntries(dot.agents.map((a) => [a.identiteRp, a]));
-    assert.equal(dot.agents.length, 3);
-    assert.equal(parRp["Caleb Duval"].grade, "Agent Expert");
-    assert.equal(parRp["Zaim Tekno"].identite, "", "aucun pseudo inventé");
-    assert.equal(parRp["Zaim Tekno"].grade, "Agent Novice");
-    assert.equal(parRp["Zaim Tekno"].primeTotale, attendu("vente", 54) + attendu("location", 76));
+    // DOT : l'employé RH, avec son grade RH et les primes de SA ligne du tableur.
+    const dot = await appel("/api/comptabilite/dot/salaries?semaine=S40-26");
+    const calebDot = dot.agents.find((a) => a.employeId === caleb.id);
+    assert.equal(calebDot.identiteRp, "Caleb Duval");
+    assert.equal(calebDot.idEmploye, "D8-0001");
+    assert.equal(calebDot.grade, "Agent");
+    assert.equal(calebDot.primeTotale, attendu("vente", 31) + attendu("location", 23));
+    assert.equal(dot.agents.filter((a) => a.employeId === caleb.id).length, 1);
 
-    // « Chiffres du tableur » : lignes, fiches reliées, primes = barèmes du site.
-    const tableur = await (await worker.fetch(new Request("http://localhost/api/stats/tableur", { headers: { Cookie: cookie } }), env)).json();
-    assert.deepEqual(tableur.lignes.map((l) => l.nom), ["Caleb Duval", "Zaim Tekno", "Gianni Sottero"]);
-    const zaim = tableur.lignes.find((l) => l.nom === "Zaim Tekno");
-    assert.equal(zaim.primeVente, attendu("vente", 54));
-    assert.equal(zaim.primeLocations, attendu("location", 76));
-    assert.equal(zaim.primeTotale, zaim.primeVente + zaim.primeLocations);
-    assert.deepEqual(zaim.fiche && zaim.fiche.discordPseudo, "");
-    assert.equal(tableur.lignes.find((l) => l.nom === "Caleb Duval").fiche.discordPseudo, ".matlow.");
+    // « Chiffres du tableur » : identité RH quand la ligne a sa fiche.
+    const tableur = await appel("/api/stats/tableur");
+    const ligneCaleb = tableur.lignes.find((l) => l.nomTableur === "Caleb Duval");
+    assert.equal(ligneCaleb.employe.idEmploye, "D8-0001");
+    assert.equal(ligneCaleb.grade, "Agent", "grade lu dans RH");
+    const zaim = tableur.lignes.find((l) => l.nomTableur === "Zaim Tekno");
+    assert.equal(zaim.employe, null);
+    assert.equal(zaim.primeTotale, attendu("vente", 54) + attendu("location", 76));
+
+    // RH → « À rattacher » liste la ligne sans fiche.
+    const aRattacher = await appel("/api/rh/a-rattacher");
+    assert.deepEqual(aRattacher.tableur.map((l) => l.nom), ["Zaim Tekno"]);
+
+    // Une modification RH est reprise partout, sans rien toucher d'autre.
+    await pool.query("UPDATE employes SET prenom = 'Kaleb', grade = 'Agent Expert' WHERE id = $1", [caleb.id]);
+    const apres = await appel("/api/comptabilite/dot/salaries?semaine=S40-26");
+    const calebApres = apres.agents.find((a) => a.employeId === caleb.id);
+    assert.deepEqual([calebApres.identiteRp, calebApres.grade], ["Kaleb Duval", "Agent Expert"]);
   } finally {
     globalThis.fetch = fetchOriginal;
   }
