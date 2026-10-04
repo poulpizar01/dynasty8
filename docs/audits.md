@@ -31,7 +31,7 @@ Cherche :
 - toute route /api ou /auth de server/src/entreprise/ ou server/src/socle/ sans garde (...connecte, ...valide, ...permission de socle/http.ts), avec une garde plus faible que celle annoncée dans docs/api.md ou ENTREPRISE.md, ou une garde passée sans être étalée ;
 - les pages de gestion/ qui affichent des données réservées à une permission sans être déclarées avec cette permission dans entreprise.pages (server/src/entreprise/index.ts) ;
 - les vérifications « auteur ou permission » contournables en changeant un identifiant dans l'adresse ou le corps ;
-- l'escalade de droits : un compte qui se donne un grade, modifie un compte ou un grade égal ou supérieur au sien, accorde une permission qu'il n'a pas, garde un grade lié à un rôle Discord qu'il n'a plus ; le propriétaire revérifié à chaque connexion ;
+- l'escalade de droits : un compte qui se donne un grade, modifie un compte ou un grade égal ou supérieur au sien, accorde une permission qu'il n'a pas, garde un grade lié à un rôle Discord qu'il n'a plus ; le propriétaire revérifié à chaque connexion, et l'ancien propriétaire qui perd ses permissions après un transfert du serveur ;
 - la connexion Discord : paramètre state, appartenance au serveur vérifiée, session régénérée, comptes en attente ou refusés qui accèdent quand même à des données ;
 - DEV_LOGIN activable en production, ou tout autre raccourci de dev qui survit en prod ;
 - les requêtes qui modifient des données déclenchables depuis un autre site (SameSite, vérification d'origine) ;
@@ -48,7 +48,8 @@ Cherche :
 - la CSP (server/src/socle/security.ts) et entreprise.csp : origines trop larges ou non justifiées, ressource externe chargée sans y être déclarée, attributs onclick inopérants ;
 - les {{…}} placés dans une chaîne JavaScript (piège documenté dans CLAUDE.md) et l'échappement des valeurs de site.json dans site.ts ;
 - les fichiers servis : vérifie que server/, site.json, ENTREPRISE.md, compose*.yaml, .env, docs/ restent inaccessibles, y compris via encodage (%2e%2e, double slash, majuscules) ;
-- les données renvoyées au navigateur sans besoin (champs de comptes d'autres employés, identifiants internes, contenu brut d'un webhook).
+- les données renvoyées au navigateur sans besoin (champs de comptes d'autres employés, identifiants internes, contenu brut d'un webhook), y compris dans la réponse d'une modification (PATCH) et pas seulement des lectures ;
+- les réponses personnelles que le navigateur pourrait garder en cache (en-tête Cache-Control: no-store sur /api et /auth).
 ```
 
 ## 3. Webhooks et intégrations
@@ -67,12 +68,13 @@ Cherche :
 ```
 Audite uniquement la fiabilité en exploitation et la consommation de ressources.
 Cherche :
-- les erreurs non attrapées qui arrêtent le serveur (routes async, minuteurs de entreprise.demarrage, traitement d'image, appels sortants) ;
-- la mémoire : traitement d'image (sharp) par rapport au plafond du conteneur, caches en mémoire sans borne, listes chargées en entier sans limite (take) ;
+- les erreurs non attrapées qui arrêtent le serveur (routes async, minuteurs de entreprise.demarrage, traitement d'image, appels sortants, flux SSE — dont une écriture sur un flux déjà fermé sans écouteur d'erreur) ;
+- la mémoire : traitement d'image (sharp, avec cache et parallélisme coupés) par rapport au plafond du conteneur, caches en mémoire sans borne, listes chargées en entier sans limite (take) ;
 - l'envoi d'images : enregistrerImage contourné, fichiers orphelins sur le stockage après une erreur ou une suppression (lignes effacées avant les fichiers) ;
 - la base : tables qui grossissent sans fin (sans purge), requêtes sans index sur des colonnes filtrées ou triées, migrations non commitées, migration qui exige un super-utilisateur, référence à un compte sans nettoyage dans avantSuppressionCompte ;
 - le démarrage : variables d'environnement de l'entreprise manquantes ou invalides détectées tôt avec un message clair, ou erreur obscure plus tard ;
-- le déploiement : compose.yaml (limites mémoire, ports en loopback, sauvegardes restaurables), nginx (docs/nginx.md, routes longues de l'entreprise sans leur bloc location), cookies Secure derrière le proxy.
+- le déploiement : compose.yaml (limites mémoire, ports en loopback, sauvegardes restaurables), nginx (docs/nginx.md, routes longues de l'entreprise sans leur bloc location), cookies Secure derrière le proxy ;
+- les règles de l'hébergement (CLAUDE.md, « Déploiement ») : aucun volume Docker de médias, fichier nginx <domaine>.conf avec bloc HTTP réservé au défi ACME, include snippets/deny-hidden.conf, X-Forwarded-Proto et X-Forwarded-Host transmis.
 ```
 
 ## 5. Socle et règles du modèle
