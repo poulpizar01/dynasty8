@@ -16,7 +16,7 @@
 // pouvoir les régler : personne ne peut s'enlever l'accès par erreur.
 // ============================================================================
 
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { normaliserPseudo, normaliserTexte } from "./stats-calc.js";
 
 export const PERMISSIONS_RH = ["voir", "creer", "modifier", "desactiver", "reactiver", "sensible"];
@@ -348,22 +348,56 @@ async function aRattacher(env) {
   };
 }
 
-// ---- arrivées envoyées par le bot Discord (tickets de recrutement) -----------
-// Le bot lit un ticket de recrutement et POSTE l'arrivée sur
-// /api/rh/bot/arrivees, avec la clé RH_BOT_SECRET (variable d'environnement,
-// distincte de celle du bot de ventes : elle laisse entrer téléphone et RIB).
-// La fiche est créée tout de suite, active. Règles :
-//   - un ticket = une fiche : un renvoi du même ticketId ne crée rien de plus ;
+// ---- candidatures du bot Discord « Roxwood Network Entreprise » --------------
+// Le bot (github.com/poulpizar01/roxwood-network-entreprise) fait foi : c'est
+// son format qu'on reçoit, tel quel. Il pousse l'événement `recruitment.updated`
+// (abonnement « Candidatures » de son panneau Monitoring) à chaque changement
+// d'une candidature :
+//   corps   { guildId, eventType, payload, sentAt }
+//   payload { ticketId, channelId, candidateId, status, recruiterId,
+//             submittedAt, answers: [{ question, answer }], attachments }
+//   en-tête X-Signature-256 = HMAC-SHA256 hexadécimal du corps brut, avec le
+//           secret généré par le bot pour l'abonnement (RECRUTEMENT_WEBHOOK_SECRET).
+// Seul le passage à `status: "ACCEPTED"` crée une fiche. Les réponses du
+// formulaire sont des questions libres, réglées dans le bot : la question qui
+// porte chaque champ de la fiche se règle dans Ressources humaines.
+//
+// Le bot ne renvoie jamais un événement refusé en 4xx : une candidature
+// acceptée qui ne peut pas encore devenir une fiche (réglage manquant, nom
+// incomplet...) est donc GARDÉE ici, « à traiter », et RH la retraite une
+// fois le réglage corrigé. Ses réponses (qui peuvent contenir téléphone et
+// RIB) ne sont conservées que le temps de ce traitement, 30 jours au plus.
+// Règles de création :
+//   - un ticket = une fiche, même si le bot renvoie l'événement ;
 //   - un compte Discord qui a déjà une fiche n'en reçoit pas une deuxième, et
 //     sa fiche n'est pas modifiée (RH fait foi) ; une fiche inactive n'est pas
 //     réactivée d'office, la décision reste à RH ;
-//   - sans ID employé dans le ticket, la fiche reçoit un ID provisoire
-//     « PROV-B… », à remplacer dans RH ;
-//   - sans grade dans le ticket, le grade d'arrivée réglé dans RH ; jamais un
-//     grade de direction (Patron, Co Patron, Développeur web).
-// Chaque ticket reçu est consigné (rh_arrivees_bot), sans téléphone ni RIB.
+//   - sans ID employé dans les réponses, ID provisoire « PROV-B… » ;
+//   - grade : celui réglé dans RH pour les arrivées (jamais de direction).
 
-const REGLAGES_RH = { bot_grade_arrivee: "", bot_serveur_discord: "" };
+const REGLAGES_RH = {
+  bot_grade_arrivee: "",
+  bot_serveur_discord: "",
+  question_identite: "",
+  question_prenom: "",
+  question_nom: "",
+  question_telephone: "",
+  question_rib: "",
+  question_id_employe: "",
+};
+// Réglage <-> nom du champ côté interface.
+const CHAMPS_REGLAGES = {
+  gradeArrivee: "bot_grade_arrivee",
+  serveurDiscord: "bot_serveur_discord",
+  questionIdentite: "question_identite",
+  questionPrenom: "question_prenom",
+  questionNom: "question_nom",
+  questionTelephone: "question_telephone",
+  questionRib: "question_rib",
+  questionIdEmploye: "question_id_employe",
+};
+const STATUT_ACCEPTE = "ACCEPTED";
+const CONSERVATION_REPONSES = "30 days";
 
 async function lireReglages(env) {
   const r = await env.DB.prepare("SELECT cle, valeur FROM rh_reglages").all();
@@ -372,97 +406,91 @@ async function lireReglages(env) {
   return reglages;
 }
 
-// Comparaison à temps constant (empreintes de même longueur).
-function cleBotValide(request, env) {
-  const correspond = (request.headers.get("Authorization") || "").match(/^Bearer\s+(.+)$/i);
-  if (!env.RH_BOT_SECRET || !correspond) return false;
-  const empreinte = (v) => createHash("sha256").update(String(v)).digest();
-  return timingSafeEqual(empreinte(correspond[1]), empreinte(env.RH_BOT_SECRET));
+// Signature du bot : HMAC-SHA256 du corps brut, en hexadécimal, comparé à
+// temps constant (empreintes de même longueur quelle que soit l'entrée).
+function signatureValide(corpsBrut, signature, secret) {
+  const recue = String(signature || "").trim().replace(/^sha256=/i, "").toLowerCase();
+  if (!secret || !/^[0-9a-f]{64}$/.test(recue)) return false;
+  const attendue = createHmac("sha256", secret).update(corpsBrut).digest("hex");
+  const empreinte = (v) => createHash("sha256").update(v).digest();
+  return timingSafeEqual(empreinte(recue), empreinte(attendue));
 }
 
-function aujourdhuiParis() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+function dateParis(instant) {
+  const d = instant ? new Date(instant) : new Date();
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(Number.isNaN(d.getTime()) ? new Date() : d);
 }
 
 const RE_ID_DISCORD = /^\d{15,22}$/;
 
-async function reponseArrivee(env, ligne, status, deja) {
-  const e = ligne.employe_id
-    ? await env.DB.prepare("SELECT id_employe, id_provisoire, statut FROM employes WHERE id = ?1").bind(ligne.employe_id).first()
-    : null;
-  const corps = { ok: ligne.resultat !== "refusee", resultat: ligne.resultat, deja: !!deja };
-  if (ligne.motif) corps[ligne.resultat === "refusee" ? "erreur" : "motif"] = ligne.motif;
-  if (e) Object.assign(corps, { employeId: ligne.employe_id, idEmploye: e.id_employe, idProvisoire: !!e.id_provisoire, statut: e.statut });
-  return json(corps, status);
+// Réponse du formulaire à la question réglée (libellé comparé sans casse ni accents).
+function reponseA(reponses, libelle) {
+  if (!libelle) return "";
+  const cible = normaliserTexte(libelle);
+  const trouvee = reponses.find((r) => normaliserTexte(r.question) === cible);
+  return trouvee ? String(trouvee.answer || "").trim() : "";
 }
 
-export async function recevoirArriveeBot(request, env) {
-  if (request.method !== "POST") return json({ erreur: "Méthode non autorisée." }, 405);
-  if (!env.RH_BOT_SECRET) return json({ erreur: "Réception des arrivées non configurée (RH_BOT_SECRET)." }, 503);
-  if (!cleBotValide(request, env)) return json({ erreur: "Clé du bot invalide." }, 401);
-  const b = await request.json().catch(() => null);
-  if (!b || typeof b !== "object" || Array.isArray(b)) return json({ erreur: "Requête illisible (objet JSON attendu)." }, 400);
-  const ticketId = texte(b.ticketId, 100);
-  if (!ticketId) return json({ erreur: "ticketId est obligatoire : un identifiant unique et stable par ticket." }, 400);
+function lireReponses(payload) {
+  return (Array.isArray(payload.answers) ? payload.answers : [])
+    .filter((r) => r && typeof r === "object")
+    .map((r) => ({ question: texte(r.question, 200), answer: texte(r.answer, 500) }));
+}
 
-  const deja = await env.DB.prepare("SELECT * FROM rh_arrivees_bot WHERE ticket_id = ?1").bind(ticketId).first();
-  if (deja && deja.resultat !== "refusee") return reponseArrivee(env, deja, 200, true);
-
-  const serveur = texte(b.serveurDiscord, 30);
-  const discordId = texte(b.discordId, 30);
-  const consigner = async (resultat, motif, employeId, status) => {
-    // Un ticket refusé peut être renvoyé corrigé ; un ticket abouti reste tel
-    // quel (deux envois simultanés : le second lit le résultat du premier).
-    await env.DB.prepare(
-      `INSERT INTO rh_arrivees_bot (ticket_id, serveur_discord, discord_id, nom_recu, resultat, motif, employe_id)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-       ON CONFLICT (ticket_id) DO UPDATE SET serveur_discord = excluded.serveur_discord, discord_id = excluded.discord_id,
-         nom_recu = excluded.nom_recu, resultat = excluded.resultat, motif = excluded.motif, employe_id = excluded.employe_id,
-         recu_le = to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')
-       WHERE rh_arrivees_bot.resultat = 'refusee'
-       RETURNING id`
-    ).bind(ticketId, serveur, discordId, `${texte(b.prenom, 60)} ${texte(b.nom, 60)}`.trim(), resultat, motif, employeId).run();
-    const ligne = await env.DB.prepare("SELECT * FROM rh_arrivees_bot WHERE ticket_id = ?1").bind(ticketId).first();
-    const memeResultat = ligne.resultat === resultat && Number(ligne.employe_id || 0) === Number(employeId || 0);
-    return reponseArrivee(env, ligne, memeResultat ? status : 200, !memeResultat);
-  };
-
-  const reglages = await lireReglages(env);
-  if (reglages.bot_serveur_discord && serveur !== reglages.bot_serveur_discord) {
-    return consigner("refusee", "Ce serveur Discord n'est pas celui réglé dans Ressources humaines.", null, 403);
+// Identité lue dans les réponses : une question « Prénom Nom » (le premier mot
+// est le prénom), ou deux questions séparées.
+function identiteDepuisReponses(reponses, reglages) {
+  if (reglages.question_identite) {
+    const mots = reponseA(reponses, reglages.question_identite).split(/\s+/).filter(Boolean);
+    return { prenom: mots.shift() || "", nom: mots.join(" ") };
   }
-  if (!RE_ID_DISCORD.test(discordId)) {
-    return consigner("refusee", "discordId est obligatoire : l'ID Discord (15 à 22 chiffres) de la personne recrutée.", null, 400);
+  return { prenom: reponseA(reponses, reglages.question_prenom), nom: reponseA(reponses, reglages.question_nom) };
+}
+
+// Transforme une candidature acceptée en fiche. Renvoie
+// { resultat: "creee" | "existante" | "refusee", motif, employeId }.
+async function traiterCandidature(env, c, reglages) {
+  if (!RE_ID_DISCORD.test(c.discordId)) {
+    return { resultat: "refusee", motif: "Le bot n'a pas pu identifier le compte Discord du candidat." };
   }
-  const existante = await env.DB.prepare("SELECT id, statut FROM employes WHERE discord_id = ?1").bind(discordId).first();
+  const existante = await env.DB.prepare("SELECT id, statut FROM employes WHERE discord_id = ?1").bind(c.discordId).first();
   if (existante) {
-    const motif = existante.statut === "inactif"
-      ? "Ce compte Discord a déjà une fiche, inactive : à réactiver dans Ressources humaines."
-      : "Ce compte Discord a déjà une fiche.";
-    return consigner("existante", motif, existante.id, 200);
+    return {
+      resultat: "existante",
+      employeId: existante.id,
+      motif: existante.statut === "inactif"
+        ? "Ce compte Discord a déjà une fiche, inactive : à réactiver dans Ressources humaines."
+        : "Ce compte Discord a déjà une fiche.",
+    };
   }
-  const grade = texte(b.grade, 60) || reglages.bot_grade_arrivee;
-  if (!grade) return consigner("refusee", "Aucun grade reçu, et aucun grade d'arrivée réglé dans Ressources humaines.", null, 400);
-  if (GRADES_ADMIN_RH.includes(grade)) return consigner("refusee", "Ce grade ne peut pas être attribué par le bot.", null, 400);
+  const questionsRecues = c.reponses.map((r) => `« ${r.question} »`).join(", ") || "aucune";
+  if (!reglages.question_identite && !(reglages.question_prenom && reglages.question_nom)) {
+    return { resultat: "refusee", motif: `Réglez la question qui donne le prénom et le nom. Questions reçues : ${questionsRecues}.` };
+  }
+  const { prenom, nom } = identiteDepuisReponses(c.reponses, reglages);
+  if (!prenom || !nom) {
+    return { resultat: "refusee", motif: `Prénom ou nom introuvable dans les réponses. Questions reçues : ${questionsRecues}.` };
+  }
+  if (!reglages.bot_grade_arrivee) return { resultat: "refusee", motif: "Réglez le grade donné aux arrivées." };
 
-  const corps = {
-    idEmploye: b.idEmploye, prenom: b.prenom, nom: b.nom, grade,
-    discordId, discordPseudo: b.discordPseudo, telephone: b.telephone, rib: b.rib,
-    dateArrivee: texte(b.dateArrivee, 10) || aujourdhuiParis(),
-  };
-  for (const cle of ["discordPseudo", "telephone", "rib"]) if (corps[cle] === undefined) delete corps[cle];
-  // Pas d'ID employé dans le ticket : ID provisoire tiré du numéro de la fiche.
+  const corps = { prenom, nom, grade: reglages.bot_grade_arrivee, discordId: c.discordId, dateArrivee: dateParis(c.accepteLe) };
+  for (const [cle, reglage] of [["telephone", "question_telephone"], ["rib", "question_rib"], ["idEmploye", "question_id_employe"]]) {
+    const valeur = reponseA(c.reponses, reglages[reglage]);
+    if (valeur) corps[cle] = valeur;
+  }
+  // Pas d'ID employé dans les réponses : ID provisoire tiré du numéro de la fiche.
   let numero = null;
-  if (!texte(b.idEmploye, 40)) {
+  if (!corps.idEmploye) {
     numero = Number((await env.DB.prepare("SELECT nextval(pg_get_serial_sequence('employes', 'id')) AS n").first()).n);
     corps.idEmploye = `PROV-B${String(numero).padStart(4, "0")}`;
   }
   const { champs, erreur } = lireChamps(corps, null);
-  if (erreur) return consigner("refusee", erreur, null, 400);
+  if (erreur) return { resultat: "refusee", motif: erreur };
   champs.statut = "actif";
   if (numero !== null) { champs.id = numero; champs.id_provisoire = 1; }
   const doublon = await conflit(env, champs, 0);
-  if (doublon) return consigner("refusee", doublon, null, 409);
+  if (doublon) return { resultat: "refusee", motif: doublon };
   const colonnes = Object.keys(champs);
   let fiche;
   try {
@@ -472,33 +500,119 @@ export async function recevoirArriveeBot(request, env) {
   } catch (e) {
     // Deux envois simultanés pour le même compte : le second trouve la fiche du premier.
     if (e && e.code === "23505") {
-      const autre = await env.DB.prepare("SELECT id FROM employes WHERE discord_id = ?1").bind(discordId).first();
-      if (autre) return consigner("existante", "Ce compte Discord a déjà une fiche.", autre.id, 200);
-      return consigner("refusee", "Cet ID employé ou ce pseudo Discord est déjà sur une autre fiche.", null, 409);
+      const autre = await env.DB.prepare("SELECT id FROM employes WHERE discord_id = ?1").bind(c.discordId).first();
+      if (autre) return { resultat: "existante", employeId: autre.id, motif: "Ce compte Discord a déjà une fiche." };
+      return { resultat: "refusee", motif: "Cet ID employé est déjà sur une autre fiche." };
     }
     throw e;
   }
   await rattacherVentes(env, fiche);
-  return consigner("creee", "", fiche.id, 201);
+  return { resultat: "creee", employeId: fiche.id, motif: "" };
 }
 
-// Écran RH : dernières arrivées reçues du bot, réglages, état de la clé.
+// Consigne le résultat d'un ticket. Les réponses ne sont gardées que pour un
+// ticket « à traiter » ; un ticket abouti n'est plus jamais modifié.
+async function consignerCandidature(env, c, r) {
+  await env.DB.prepare(
+    `INSERT INTO rh_arrivees_bot (ticket_id, serveur_discord, discord_id, nom_recu, resultat, motif, employe_id, charge, accepte_le)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+     ON CONFLICT (ticket_id) DO UPDATE SET serveur_discord = excluded.serveur_discord, discord_id = excluded.discord_id,
+       nom_recu = excluded.nom_recu, resultat = excluded.resultat, motif = excluded.motif, employe_id = excluded.employe_id,
+       charge = excluded.charge, accepte_le = excluded.accepte_le,
+       recu_le = to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')
+     WHERE rh_arrivees_bot.resultat = 'refusee'
+     RETURNING id`
+  ).bind(
+    c.ticketId, c.serveur, c.discordId, c.nomRecu, r.resultat, r.motif || "", r.employeId || null,
+    r.resultat === "refusee" ? JSON.stringify(c.reponses) : null, c.accepteLe || "",
+  ).run();
+  return env.DB.prepare("SELECT * FROM rh_arrivees_bot WHERE ticket_id = ?1").bind(c.ticketId).first();
+}
+
+// Au-delà de 30 jours, les réponses d'un ticket resté « à traiter » sont effacées.
+async function purgerReponses(env) {
+  await env.DB.prepare(
+    `UPDATE rh_arrivees_bot SET charge = NULL
+      WHERE charge IS NOT NULL AND recu_le < to_char(now() at time zone 'utc' - interval '${CONSERVATION_REPONSES}', 'YYYY-MM-DD HH24:MI:SS')`
+  ).run();
+}
+
+// POST /api/rh/bot/candidatures — appelée par le bot, sans session.
+export async function recevoirCandidatureBot(request, env) {
+  if (request.method !== "POST") return json({ erreur: "Méthode non autorisée." }, 405);
+  const secret = env.RECRUTEMENT_WEBHOOK_SECRET || "";
+  // 503 : le bot réessaie plus tard, l'événement n'est pas perdu le temps de régler la clé.
+  if (!secret) return json({ erreur: "Réception des candidatures non configurée (RECRUTEMENT_WEBHOOK_SECRET)." }, 503);
+  const corpsBrut = Buffer.from(await request.arrayBuffer());
+  if (!signatureValide(corpsBrut, request.headers.get("X-Signature-256"), secret)) {
+    return json({ erreur: "Signature invalide." }, 401);
+  }
+  let evenement;
+  try { evenement = JSON.parse(corpsBrut.toString("utf8")); } catch { evenement = null; }
+  if (!evenement || typeof evenement !== "object" || !evenement.payload || typeof evenement.payload !== "object") {
+    return json({ erreur: "Corps illisible : { guildId, eventType, payload, sentAt } attendu." }, 400);
+  }
+  if (evenement.eventType !== "recruitment.updated") {
+    return json({ erreur: `Type d'événement non géré ici : ${texte(evenement.eventType, 40)} (abonnement « Candidatures » attendu).` }, 400);
+  }
+  const reglages = await lireReglages(env);
+  const serveur = texte(evenement.guildId, 30);
+  if (reglages.bot_serveur_discord && serveur !== reglages.bot_serveur_discord) {
+    return json({ erreur: "Ce serveur Discord n'est pas celui réglé dans Ressources humaines." }, 403);
+  }
+  const p = evenement.payload;
+  if (p.status !== STATUT_ACCEPTE) return json({ ok: true, ignore: `candidature au statut ${texte(p.status, 20) || "inconnu"}` });
+  const ticketId = texte(p.ticketId, 100);
+  if (!ticketId) return json({ erreur: "payload.ticketId manquant." }, 400);
+
+  const deja = await env.DB.prepare("SELECT * FROM rh_arrivees_bot WHERE ticket_id = ?1").bind(ticketId).first();
+  if (deja && deja.resultat !== "refusee") return json({ ok: true, resultat: deja.resultat, employeId: deja.employe_id, deja: true });
+
+  const reponses = lireReponses(p);
+  const c = {
+    ticketId, serveur, reponses,
+    discordId: texte(p.candidateId, 30),
+    accepteLe: texte(evenement.sentAt, 40),
+  };
+  const id = identiteDepuisReponses(reponses, reglages);
+  c.nomRecu = `${id.prenom} ${id.nom}`.trim() || reponses.map((r) => r.answer).find(Boolean) || "";
+  c.nomRecu = c.nomRecu.slice(0, 130);
+  const r = await traiterCandidature(env, c, reglages);
+  const ligne = await consignerCandidature(env, c, r);
+  await purgerReponses(env);
+  // 202 : reçue et gardée « à traiter » dans RH (le bot la considère livrée).
+  const status = ligne.resultat === "creee" ? 201 : ligne.resultat === "refusee" ? 202 : 200;
+  return json({ ok: true, resultat: ligne.resultat, motif: ligne.motif || undefined, employeId: ligne.employe_id || undefined }, status);
+}
+
+// Écran RH : dernières candidatures acceptées reçues, réglages, état de la clé.
 async function arriveesBot(env) {
-  const [lignes, reglages] = await Promise.all([
+  const [lignes, reglages, questions] = await Promise.all([
     env.DB.prepare(
-      `SELECT a.ticket_id, a.discord_id, a.nom_recu, a.resultat, a.motif, a.recu_le, a.employe_id,
+      `SELECT a.id, a.ticket_id, a.discord_id, a.nom_recu, a.resultat, a.motif, a.recu_le, a.employe_id,
+              (a.charge IS NOT NULL) AS retraitable,
               e.id_employe, e.id_provisoire, e.prenom, e.nom, e.discord_pseudo, e.statut
          FROM rh_arrivees_bot a LEFT JOIN employes e ON e.id = a.employe_id
         ORDER BY a.id DESC LIMIT 50`
     ).all(),
     lireReglages(env),
+    // Libellés des questions vues dans les tickets à traiter (jamais les réponses).
+    env.DB.prepare(
+      `SELECT DISTINCT q.value->>'question' AS question
+         FROM rh_arrivees_bot a, jsonb_array_elements(a.charge::jsonb) q
+        WHERE a.charge IS NOT NULL`
+    ).all(),
   ]);
+  const reglagesAffiches = {};
+  for (const [champ, cle] of Object.entries(CHAMPS_REGLAGES)) reglagesAffiches[champ] = reglages[cle];
   return {
-    configure: !!env.RH_BOT_SECRET,
-    reglages: { gradeArrivee: reglages.bot_grade_arrivee, serveurDiscord: reglages.bot_serveur_discord },
+    configure: !!env.RECRUTEMENT_WEBHOOK_SECRET,
+    reglages: reglagesAffiches,
     grades: GRADES_EMPLOYES.filter((g) => !GRADES_ADMIN_RH.includes(g)),
+    questionsVues: (questions.results || []).map((q) => q.question).filter(Boolean).sort((a, b) => a.localeCompare(b, "fr")),
     arrivees: (lignes.results || []).map((l) => ({
-      ticketId: l.ticket_id, discordId: l.discord_id, nomRecu: l.nom_recu, resultat: l.resultat, motif: l.motif, recuLe: l.recu_le,
+      id: l.id, ticketId: l.ticket_id, discordId: l.discord_id, nomRecu: l.nom_recu, resultat: l.resultat, motif: l.motif,
+      recuLe: l.recu_le, retraitable: !!l.retraitable,
       employe: l.employe_id
         ? { id: l.employe_id, idEmploye: l.id_employe, idProvisoire: !!l.id_provisoire, nomComplet: nomComplet(l), statut: l.statut }
         : null,
@@ -506,15 +620,41 @@ async function arriveesBot(env) {
   };
 }
 
+// Retraite un ticket « à traiter » avec les réglages actuels.
+async function retraiterCandidature(env, id) {
+  const ligne = await env.DB.prepare("SELECT * FROM rh_arrivees_bot WHERE id = ?1").bind(id).first();
+  if (!ligne) return json({ erreur: "Candidature introuvable." }, 404);
+  if (ligne.resultat !== "refusee") return json({ erreur: "Cette candidature a déjà été traitée." }, 409);
+  if (!ligne.charge) return json({ erreur: "Les réponses de cette candidature ne sont plus conservées (30 jours) : créez la fiche à la main." }, 410);
+  const reglages = await lireReglages(env);
+  let reponses;
+  try { reponses = JSON.parse(ligne.charge); } catch { reponses = []; }
+  const c = { ticketId: ligne.ticket_id, serveur: ligne.serveur_discord, discordId: ligne.discord_id, accepteLe: ligne.accepte_le, reponses };
+  const identite = identiteDepuisReponses(reponses, reglages);
+  c.nomRecu = (`${identite.prenom} ${identite.nom}`.trim() || ligne.nom_recu).slice(0, 130);
+  const r = await traiterCandidature(env, c, reglages);
+  const apres = await consignerCandidature(env, c, r);
+  return json({ ok: apres.resultat !== "refusee", resultat: apres.resultat, motif: apres.motif || undefined, employeId: apres.employe_id || undefined });
+}
+
 async function reglerBot(env, request) {
   const b = await request.json().catch(() => null);
   if (!b || typeof b !== "object") return json({ erreur: "Requête illisible." }, 400);
-  const grade = texte(b.gradeArrivee, 60);
-  const serveur = texte(b.serveurDiscord, 30);
+  const valeurs = {};
+  for (const [champ, cle] of Object.entries(CHAMPS_REGLAGES)) valeurs[cle] = texte(b[champ], 200);
+  const grade = valeurs.bot_grade_arrivee;
   if (grade && (!GRADES_EMPLOYES.includes(grade) || GRADES_ADMIN_RH.includes(grade))) return json({ erreur: "Grade d'arrivée invalide." }, 400);
-  if (serveur && !RE_ID_DISCORD.test(serveur)) return json({ erreur: "L'ID du serveur Discord est un nombre de 15 à 22 chiffres." }, 400);
+  if (valeurs.bot_serveur_discord && !RE_ID_DISCORD.test(valeurs.bot_serveur_discord)) {
+    return json({ erreur: "L'ID du serveur Discord est un nombre de 15 à 22 chiffres." }, 400);
+  }
+  if (valeurs.question_identite && (valeurs.question_prenom || valeurs.question_nom)) {
+    return json({ erreur: "Choisissez soit une question « Prénom Nom », soit deux questions séparées, pas les deux." }, 400);
+  }
+  if (!!valeurs.question_prenom !== !!valeurs.question_nom) {
+    return json({ erreur: "Avec des questions séparées, réglez à la fois celle du prénom et celle du nom." }, 400);
+  }
   await env.DB.transaction(async (tx) => {
-    for (const [cle, valeur] of [["bot_grade_arrivee", grade], ["bot_serveur_discord", serveur]]) {
+    for (const [cle, valeur] of Object.entries(valeurs)) {
       // RETURNING explicite : rh_reglages n'a pas de colonne « id ».
       await tx.prepare(
         "INSERT INTO rh_reglages (cle, valeur) VALUES (?1, ?2) ON CONFLICT (cle) DO UPDATE SET valeur = excluded.valeur RETURNING cle"
@@ -541,6 +681,11 @@ export async function routeRh(request, url, env, s) {
   }
   if (route === "/a-rattacher" && m === "GET") return json(await aRattacher(env));
   if (route === "/bot" && m === "GET") return json(await arriveesBot(env));
+  const mRetraiter = route.match(/^\/bot\/arrivees\/(\d+)\/retraiter$/);
+  if (mRetraiter && m === "POST") {
+    if (!perms.has("creer")) return json({ erreur: "Vous n'avez pas le droit d'ajouter un employé." }, 403);
+    return retraiterCandidature(env, Number(mRetraiter[1]));
+  }
   if (route === "/bot/reglages" && m === "PUT") {
     if (!perms.has("parametrer")) return json({ erreur: "Réservé au Patron, au Co Patron et au Développeur web." }, 403);
     return reglerBot(env, request);

@@ -1,100 +1,93 @@
-# Bot de recrutement — créer la fiche RH à partir d'un ticket Discord
+# Bot Discord « Roxwood Network Entreprise » — candidatures → fiches RH
 
-Quand un ticket de recrutement aboutit, le bot envoie au site les
-informations du ticket. Le site crée aussitôt la fiche de l'employé dans
-l'onglet **Ressources humaines** (statut actif). Le bot n'a rien d'autre à
-faire : RH complète ensuite la fiche si besoin.
+Le bot ([poulpizar01/roxwood-network-entreprise](https://github.com/poulpizar01/roxwood-network-entreprise))
+fait foi : le site reçoit son webhook `recruitment.updated` tel qu'il
+l'envoie, sans rien changer au bot. Quand une candidature passe à
+**Accepté** (bouton « Statut » du message de suivi, ou automatiquement par
+le log FiveM d'embauche), la fiche de l'employé est créée dans l'onglet
+**Ressources humaines**, active.
 
-## 1. Côté site : la clé `RH_BOT_SECRET`
+## 1. Côté bot : créer l'abonnement
 
-Une valeur longue et aléatoire, **différente** de `STATS_BOT_SECRET` (bot de
-ventes) : celle-ci laisse entrer un téléphone et un RIB. À placer dans le
-`.env` du serveur, puis redémarrer le site :
+Dans le salon panneau du bot : **Monitoring → Ajouter un webhook**
+(permission Discord « Gérer le serveur ») :
+
+- type : **Candidatures** (`recruitment.updated`) ;
+- URL : `https://<adresse du site>/api/rh/bot/candidatures`.
+
+Le bot affiche alors un **secret, une seule fois**. Le copier tout de suite.
+
+## 2. Côté site : le secret
+
+Dans le `.env` du serveur, puis redémarrer le site :
 
 ```env
-RH_BOT_SECRET=une-longue-valeur-aleatoire
+RECRUTEMENT_WEBHOOK_SECRET=<le secret affiché par le bot>
 ```
 
-La même valeur est donnée à la personne qui héberge le bot, hors du dépôt
-(jamais dans Git, ni dans un message Discord public). Sans cette variable, la
-réception est désactivée et répond `503`.
+Jamais dans Git ni dans un message Discord. En cas de doute sur une fuite :
+retirer l'abonnement dans le bot, en recréer un, et remplacer la valeur.
+Tant que la variable manque, le site répond `503` et le bot réessaie (jusqu'à
+10 fois, sur plusieurs heures) : rien n'est perdu le temps de la régler.
 
-Dans l'onglet **Ressources humaines → Arrivées reçues du bot**, Patron,
-Co Patron et Développeur web règlent :
+## 3. Côté site : les réglages
 
-- **Grade à l'arrivée** : le grade donné quand le ticket n'en indique pas ;
-- **ID du serveur Discord** : si renseigné, seules les arrivées qui portent
-  cet ID de serveur sont acceptées.
+Onglet **Ressources humaines → Arrivées reçues du bot** (Patron, Co Patron,
+Développeur web) :
 
-## 2. Côté bot : la requête
+| Réglage | Rôle |
+|---|---|
+| Grade à l'arrivée | grade de la fiche créée (jamais Patron, Co Patron, Développeur web) |
+| ID du serveur Discord | si renseigné, seules les candidatures de ce serveur sont acceptées |
+| Prénom et nom (une seule question) | ex. « Nom RP » (question par défaut du bot) : premier mot = prénom, le reste = nom |
+| Prénom / Nom (questions séparées) | à la place de la précédente, si le formulaire pose deux questions |
+| Téléphone, RIB, ID employé | facultatifs ; sans ID employé, la fiche reçoit un ID provisoire `PROV-B…` |
 
-```
-POST https://<adresse du site>/api/rh/bot/arrivees
-Authorization: Bearer <RH_BOT_SECRET>
-Content-Type: application/json
-```
+Chaque question se désigne par son **libellé**, tel qu'il est réglé dans le
+bot (panneau **Recrutement → questions du formulaire**, 5 au plus). Les
+majuscules et les accents ne comptent pas. Les libellés déjà reçus sont
+proposés à la saisie.
 
-```json
-{
-  "ticketId": "1291234567890123456",
-  "serveurDiscord": "1180000000000000000",
-  "discordId": "302050872383242240",
-  "discordPseudo": "lina.recrue",
-  "prenom": "Lina",
-  "nom": "Recrue",
-  "telephone": "555-0199",
-  "rib": "FR76 ...",
-  "grade": "",
-  "idEmploye": "",
-  "dateArrivee": ""
-}
-```
+Le formulaire par défaut du bot (Nom RP, Âge, Expérience RP, Disponibilités,
+Motivation) ne demande ni téléphone ni RIB : pour les recevoir, il faut
+ajouter ces questions dans le bot.
 
-| Champ | Obligatoire | Contenu |
-|---|---|---|
-| `ticketId` | oui | identifiant **unique et stable** du ticket (l'ID du salon du ticket convient) |
-| `discordId` | oui | ID Discord de la personne recrutée (15 à 22 chiffres) |
-| `prenom`, `nom` | oui | identité RP |
-| `serveurDiscord` | si l'ID du serveur est réglé dans RH | ID du serveur Discord du ticket |
-| `discordPseudo` | non | pseudo Discord ; c'est lui que le bot de ventes envoie, il relie les ventes à la fiche |
-| `telephone`, `rib` | non | données sensibles, visibles seulement des grades autorisés |
-| `grade` | non | un grade du site (`Stagiaire`, `Agent Novice`, `Agent`…) ; vide = grade d'arrivée réglé dans RH. Patron, Co Patron et Développeur web sont refusés |
-| `idEmploye` | non | vide = ID provisoire `PROV-B0042`, à remplacer dans RH |
-| `dateArrivee` | non | `AAAA-MM-JJ` ; vide = date du jour (heure de Paris) |
+## 4. Ce que fait le site
 
-## 3. Les réponses
+- **Seul le statut « Accepté » crée une fiche.** Les autres envois
+  (formulaire soumis, entretien, refus, recruteur assigné) sont acquittés et
+  ignorés.
+- **Un ticket = une fiche** : le bot renvoie l'état complet à chaque
+  changement, un même ticket ne crée jamais une deuxième fiche.
+- **Un compte Discord = une fiche** : s'il en a déjà une, elle n'est pas
+  modifiée (RH fait foi) ; si elle est inactive, elle n'est pas réactivée
+  d'office, c'est signalé dans RH.
+- **Date d'arrivée** : le jour de l'acceptation, à l'heure de Paris.
+- **« À traiter »** : une candidature acceptée qui ne peut pas encore devenir
+  une fiche (réglage manquant, nom d'un seul mot, ID employé déjà pris…) est
+  gardée avec son motif. Une fois le réglage corrigé, bouton **Retraiter**.
+  Ses réponses (qui peuvent contenir téléphone et RIB) ne sont gardées que
+  le temps de ce traitement, 30 jours au plus, et ne sont jamais affichées.
 
-| Cas | Code | Réponse |
-|---|---|---|
-| Fiche créée | `201` | `{"ok":true,"resultat":"creee","employeId":42,"idEmploye":"PROV-B0042","idProvisoire":true,"statut":"actif"}` |
-| Ce compte Discord a déjà une fiche | `200` | `{"ok":true,"resultat":"existante","motif":"…","employeId":12,…}` |
-| Même `ticketId` déjà traité (renvoi) | `200` | la réponse d'origine, avec `"deja":true` |
-| Donnée manquante ou invalide | `400` | `{"ok":false,"resultat":"refusee","erreur":"…"}` |
-| Serveur Discord non autorisé | `403` | idem |
-| ID employé ou pseudo déjà pris | `409` | idem |
-| Mauvaise clé | `401` | `{"erreur":"Clé du bot invalide."}` |
-| Clé absente du serveur | `503` | réception non configurée |
+## 5. Réponses du site (visibles dans les journaux du bot)
 
-Un ticket refusé peut être renvoyé une fois corrigé, avec le même `ticketId`.
-Un ticket abouti ne crée jamais une deuxième fiche, même renvoyé : en cas de
-doute (coupure réseau), le bot peut renvoyer sans risque. Le message
-`erreur` est fait pour être affiché tel quel dans le ticket.
+| Cas | Code |
+|---|---|
+| Fiche créée | `201` |
+| Déjà une fiche pour ce compte Discord, ou ticket déjà traité | `200` |
+| Candidature pas encore acceptée (ignorée) | `200` |
+| Acceptée, gardée « à traiter » dans RH | `202` |
+| Signature invalide (mauvais secret) | `401` |
+| Serveur Discord non autorisé | `403` |
+| Type d'événement autre que « Candidatures » | `400` |
+| Secret absent du serveur | `503` (le bot réessaie) |
 
-Ce que le site ne fait **pas** :
+Le bot ne réessaie jamais un `4xx` : un `401` dans ses journaux veut dire que
+le secret du `.env` ne correspond pas à celui de l'abonnement.
 
-- il ne modifie jamais une fiche existante (RH fait foi) ;
-- il ne réactive pas une fiche inactive : la réponse `existante` le signale,
-  la décision revient à RH ;
-- il ne garde ni téléphone ni RIB ailleurs que sur la fiche : le journal des
-  arrivées n'en contient pas.
+## 6. Liaison avec les ventes
 
-## 4. Tester
-
-```bash
-curl -i -X POST https://<adresse du site>/api/rh/bot/arrivees \
-  -H "Authorization: Bearer <RH_BOT_SECRET>" -H "Content-Type: application/json" \
-  -d '{"ticketId":"test-1","discordId":"302050872383242240","prenom":"Test","nom":"Bot","grade":"Stagiaire"}'
-```
-
-La ligne apparaît dans **Ressources humaines → Arrivées reçues du bot**, et
-la fiche dans la liste des employés.
+La fiche porte l'ID Discord du candidat. Les ventes du bot de ventes s'y
+rattachent si elles envoient ce même `discordId`, sinon par le pseudo
+Discord, à renseigner dans la fiche (le webhook du bot ne transmet pas le
+pseudo).

@@ -59,7 +59,7 @@ Modèle commenté : [`.env.example`](.env.example). Variables indispensables :
 | `DISCORD_CLIENT_ID` | `1546523997980852294` (application **RoxwoodLegal**) |
 | `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI` | OAuth de l'espace agents |
 | `STATS_BOT_SECRET` | clé du bot de ventes (`POST /api/stats/ventes`) |
-| `RH_BOT_SECRET` | clé du bot de recrutement (`POST /api/rh/bot/arrivees`) |
+| `RECRUTEMENT_WEBHOOK_SECRET` | secret de l'abonnement « Candidatures » du bot Discord (`POST /api/rh/bot/candidatures`) |
 | `FOLKOS_*` | SSO « Se connecter IG » |
 | `FBFA_STORAGE_TOKEN` | stockage externe des photos |
 

@@ -553,12 +553,23 @@ async function chargerARattacher() {
   }
 }
 
-// « Arrivées reçues du bot » : tickets de recrutement transformés en fiches,
-// et réglages de la réception (Patron, Co Patron, Développeur web).
+// « Arrivées reçues du bot » : candidatures acceptées dans le bot Discord,
+// transformées en fiches, et réglages de la réception (Patron, Co Patron,
+// Développeur web). Les questions du formulaire se règlent par leur libellé.
 const LIBELLES_ARRIVEE_BOT = {
   creee: '<span class="puce puce-ok">Fiche créée</span>',
   existante: '<span class="puce puce-masquee">Déjà une fiche</span>',
-  refusee: '<span class="puce puce-or">Refusée</span>',
+  refusee: '<span class="puce puce-or">À traiter</span>',
+};
+// Champ renvoyé par l'API -> champ du formulaire.
+const CHAMPS_REGLAGES_BOT = {
+  serveurDiscord: "rh-bot-serveur",
+  questionIdentite: "rh-bot-q-identite",
+  questionIdEmploye: "rh-bot-q-id-employe",
+  questionPrenom: "rh-bot-q-prenom",
+  questionNom: "rh-bot-q-nom",
+  questionTelephone: "rh-bot-q-telephone",
+  questionRib: "rh-bot-q-rib",
 };
 
 async function chargerArriveesBot() {
@@ -569,20 +580,23 @@ async function chargerArriveesBot() {
     // Rien à montrer tant que le bot n'est ni branché ni réglable par ce compte.
     bloc.classList.toggle("cache", !r.configure && !r.arrivees.length && !reglable);
     document.getElementById("rh-bot-etat").textContent = r.configure
-      ? "Réception active : le serveur a la clé du bot (RH_BOT_SECRET)."
-      : "Réception non configurée : la variable RH_BOT_SECRET manque dans le .env du serveur.";
+      ? "Réception active : le serveur a le secret de l'abonnement « Candidatures » du bot."
+      : "Réception non configurée : la variable RECRUTEMENT_WEBHOOK_SECRET manque dans le .env du serveur.";
     const formulaire = document.getElementById("rh-bot-reglages");
     formulaire.classList.toggle("cache", !reglable);
     if (reglable) {
       const select = document.getElementById("rh-bot-grade");
-      select.innerHTML = `<option value="">— aucun (le ticket doit indiquer le grade) —</option>`
+      select.innerHTML = `<option value="">— à régler —</option>`
         + r.grades.map((g) => `<option value="${echapper(g)}">${echapper(g)}</option>`).join("");
       select.value = r.reglages.gradeArrivee || "";
       ameliorerSelect(select);
-      document.getElementById("rh-bot-serveur").value = r.reglages.serveurDiscord || "";
+      for (const [champ, id] of Object.entries(CHAMPS_REGLAGES_BOT)) document.getElementById(id).value = r.reglages[champ] || "";
+      document.getElementById("rh-bot-questions-vues").innerHTML =
+        r.questionsVues.map((q) => `<option value="${echapper(q)}"></option>`).join("");
     }
+    const peutCreer = aDroitRh("creer");
     document.getElementById("rh-bot-contenu").innerHTML = r.arrivees.length
-      ? `<div style="overflow-x:auto;"><table class="table-admin"><thead><tr><th>Reçu le</th><th>Nom dans le ticket</th><th>ID Discord</th><th>Résultat</th><th>Fiche</th></tr></thead><tbody>
+      ? `<div style="overflow-x:auto;"><table class="table-admin"><thead><tr><th>Reçu le</th><th>Candidat</th><th>ID Discord</th><th>Résultat</th><th>Fiche</th></tr></thead><tbody>
         ${r.arrivees.map((a) => `<tr>
           <td>${formaterDateAdmin(a.recuLe)}</td>
           <td>${echapper(a.nomRecu || "—")}</td>
@@ -590,12 +604,25 @@ async function chargerArriveesBot() {
           <td>${LIBELLES_ARRIVEE_BOT[a.resultat] || echapper(a.resultat)}${a.motif ? `<div class="champ-aide">${echapper(a.motif)}</div>` : ""}</td>
           <td>${a.employe
             ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-fiche="${a.employe.id}">${echapper(a.employe.idEmploye)} — ${echapper(a.employe.nomComplet)}</button>${a.employe.statut === "inactif" ? ' <span class="puce puce-masquee">Inactif</span>' : ""}`
-            : "—"}</td>
+            : a.retraitable && peutCreer
+              ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-retraiter="${a.id}">Retraiter</button>`
+              : "—"}</td>
         </tr>`).join("")}
         </tbody></table></div>`
-      : '<p class="champ-aide">Aucune arrivée reçue pour le moment.</p>';
+      : '<p class="champ-aide">Aucune candidature acceptée reçue pour le moment.</p>';
     document.querySelectorAll("[data-rh-bot-fiche]").forEach((b) =>
       b.addEventListener("click", () => ouvrirFicheEmploye(Number(b.dataset.rhBotFiche))));
+    document.querySelectorAll("[data-rh-bot-retraiter]").forEach((b) => b.addEventListener("click", async () => {
+      b.disabled = true;
+      try {
+        const res = await appelAPI(`/api/rh/bot/arrivees/${b.dataset.rhBotRetraiter}/retraiter`, { method: "POST", body: "{}" });
+        afficherMessage("zone-message-rh-bot", res.ok ? "Fiche créée ✓" : (res.motif || "Toujours à traiter."), res.ok ? "succes" : "erreur");
+        chargerRh();
+      } catch (e) {
+        afficherMessage("zone-message-rh-bot", e.message, "erreur");
+        b.disabled = false;
+      }
+    }));
   } catch (e) {
     bloc.classList.add("cache");
   }
@@ -603,14 +630,10 @@ async function chargerArriveesBot() {
 
 document.getElementById("rh-bot-reglages").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const corps = { gradeArrivee: document.getElementById("rh-bot-grade").value };
+  for (const [champ, id] of Object.entries(CHAMPS_REGLAGES_BOT)) corps[champ] = document.getElementById(id).value.trim();
   try {
-    await appelAPI("/api/rh/bot/reglages", {
-      method: "PUT",
-      body: JSON.stringify({
-        gradeArrivee: document.getElementById("rh-bot-grade").value,
-        serveurDiscord: document.getElementById("rh-bot-serveur").value.trim(),
-      }),
-    });
+    await appelAPI("/api/rh/bot/reglages", { method: "PUT", body: JSON.stringify(corps) });
     afficherMessage("zone-message-rh-bot", "Réglages du bot enregistrés ✓", "succes");
     chargerArriveesBot();
   } catch (err) {

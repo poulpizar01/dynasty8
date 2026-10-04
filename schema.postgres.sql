@@ -546,18 +546,21 @@ INSERT INTO stats_config (cle, valeur) VALUES ('rh_permissions_initialisees', '1
 
 -- Réglages RH modifiables depuis l'espace agents (Patron, Co Patron,
 -- Développeur web) : rien de propre à l'agence n'est écrit dans le code.
---   bot_grade_arrivee    grade donné à une arrivée reçue du bot sans grade
+--   bot_grade_arrivee    grade donné aux candidatures acceptées par le bot
 --   bot_serveur_discord  ID du serveur Discord dont le bot peut envoyer des
---                        arrivées (vide = pas de contrôle)
+--                        candidatures (vide = pas de contrôle)
+--   question_*           libellé de la question du formulaire du bot qui
+--                        donne chaque champ de la fiche (voir src/rh.js)
 CREATE TABLE IF NOT EXISTS rh_reglages (
   cle TEXT PRIMARY KEY,
   valeur TEXT NOT NULL DEFAULT ''
 );
 
--- Arrivées envoyées par le bot Discord à partir des tickets de recrutement
--- (POST /api/rh/bot/arrivees, voir src/rh.js). Une ligne par ticket : un
--- renvoi du même ticket ne crée jamais une deuxième fiche. Ni téléphone ni
--- RIB ici : ils ne vivent que sur la fiche employé.
+-- Candidatures acceptées reçues du bot Discord (webhook recruitment.updated,
+-- POST /api/rh/bot/candidatures, voir src/rh.js). Une ligne par ticket : un
+-- renvoi du même ticket ne crée jamais une deuxième fiche. « charge » garde
+-- les réponses du formulaire d'un ticket à traiter (réglage manquant...),
+-- 30 jours au plus, et est effacée dès que la fiche est créée.
 CREATE TABLE IF NOT EXISTS rh_arrivees_bot (
   id SERIAL PRIMARY KEY,
   ticket_id TEXT NOT NULL UNIQUE,
@@ -570,6 +573,8 @@ CREATE TABLE IF NOT EXISTS rh_arrivees_bot (
   recu_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
 );
 CREATE INDEX IF NOT EXISTS idx_rh_arrivees_bot_recu ON rh_arrivees_bot(id DESC);
+ALTER TABLE rh_arrivees_bot ADD COLUMN IF NOT EXISTS charge TEXT;
+ALTER TABLE rh_arrivees_bot ADD COLUMN IF NOT EXISTS accepte_le TEXT NOT NULL DEFAULT '';
 
 -- ============================================================================
 -- Compte applicatif restreint — À GARDER EN DERNIER DANS CE FICHIER
