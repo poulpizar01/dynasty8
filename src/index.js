@@ -1115,7 +1115,7 @@ async function comptaReset(env, s, type) {
 // (saisies à la main ci-dessous) = Bénéfice, sur lequel on applique le barème
 // officiel (dot_bareme_imposition) pour obtenir les impôts, puis on retire les
 // primes de la semaine (déjà calculées par Statistiques) et les retraits pour
-// obtenir le bénéfice net. Voir aussi le tableau par salarié (statsRecap) :
+// obtenir le bénéfice net. Voir aussi le tableau par salarié (comptaDotSalaries) :
 // FACTURE/Prime en sont directement issus, RUN et VENTE valent toujours 0$
 // chez Dynasty 8 (agence immobilière, pas de "runs" ni de ventes séparées).
 
@@ -1791,11 +1791,11 @@ async function statsAnomalies(env, url, s) {
 // qui n'y est pas encore déclaré apparaît quand même, avec son pseudo brut
 // et le grade par défaut "Agent" (seul le grade "Stagiaire" change le calcul
 // des primes — tout le reste utilise le même barème pour l'instant).
-// Calcule le récap d'une semaine, utilisé par statsRecap (Statistiques ->
-// Récapitulatif par agent, qui garde ce calcul historique par semaine, basé
-// sur les ventes/locations enregistrées par le bot). Comptabilité (DOT), en
-// revanche, ne garde de cette fonction QUE le salaire fixe et le classement
-// par grade : ses primes sont ensuite remplacées par remplacerPrimesParSheet
+// Calcule le récap d'une semaine à partir des ventes/locations enregistrées
+// par le bot. Son seul utilisateur est la Comptabilité (DOT), qui n'en garde
+// QUE le salaire fixe et le classement par grade (l'ancien écran
+// « Récapitulatif par agent » a été retiré au profit de « Chiffres du
+// tableur ») : ses primes sont ensuite remplacées par remplacerPrimesParSheet
 // ci-dessous, pour afficher exactement les mêmes montants que "Mon profil"
 // (Google Sheets + barèmes) — voir cette fonction pour le détail.
 async function calculerRecapSemaine(env, semaine) {
@@ -1938,8 +1938,7 @@ function remplacerPrimesParSheet(agents, primesParPseudo) {
 // Sheets de la Direction, avec ses primes — calculées avec les barèmes du
 // site, exactement comme « Mon profil » et la DOT — la fiche du référentiel
 // qui lui correspond (par identité RP) et le compte du site relié. Lecture
-// seule : ces chiffres ne se mélangent pas au récapitulatif ci-dessus, qui
-// compte les ventes envoyées par le bot.
+// seule.
 async function statsTableur(env, s) {
   if (!statsPeutVoirTous(s)) return json({ erreur: "Réservé à la Direction." }, 403);
   const [lignesR, fichesR, baremesR, etatR] = await Promise.all([
@@ -1984,19 +1983,10 @@ async function statsTableur(env, s) {
   });
 }
 
-async function statsRecap(env, url, s) {
-  if (!statsPeutVoirTous(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-  const semaine = (url.searchParams.get("semaine") || "").trim().toUpperCase();
-  if (!semaine) return json({ erreur: "Le paramètre « semaine » est obligatoire (ex : S36-26)." }, 400);
-  const agents = await calculerRecapSemaine(env, semaine);
-  return json({ semaine, agents });
-}
-
 // §4 : gestion du référentiel des agents (Identité Discord <-> Identité RP <->
-// Grade) depuis l'écran admin — Direction uniquement. C'est ce référentiel qui
-// permet à statsRecap ci-dessus d'afficher le vrai nom RP et le vrai grade
-// plutôt que le pseudo brut et le grade par défaut. Avant l'ajout de cet
-// écran, ce référentiel ne pouvait être rempli que par un import SQL manuel.
+// Grade) depuis l'écran admin — Direction uniquement. C'est ce référentiel
+// que la DOT utilise pour le nom RP, le grade et le salaire fixe de chacun ;
+// la synchro du tableur le complète (alignerReferentiel, src/google-sheets.js).
 
 async function statsListerAgents(env, s) {
   if (!statsPeutAdministrer(s)) return json({ erreur: "Réservé à la Direction." }, 403);
@@ -2216,7 +2206,6 @@ async function statistiques(request, url, env) {
   if (!s) return json({ erreur: "Non connecté." }, 401);
   if (route === "/semaines" && m === "GET") return statsSemaines(env, s);
   if (route === "/anomalies" && m === "GET") return statsAnomalies(env, url, s);
-  if (route === "/recap" && m === "GET") return statsRecap(env, url, s);
   if (route === "/tableur" && m === "GET") return statsTableur(env, s);
   if (route === "/agents" && m === "GET") return statsListerAgents(env, s);
   if (route === "/agents" && m === "POST") return statsCreerAgent(request, env, s);

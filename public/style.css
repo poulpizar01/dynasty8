@@ -2504,7 +2504,7 @@ section.section.serre {
      ameliorerSelect() : les selects déjà placés dans un .champ ou un
      .annonces-outils récupèrent leur propre style plus précis (déclaré plus
      haut dans ce fichier, donc écrasé ici à égalité de spécificité) — mais un
-     select "tout seul" comme #select-semaine-dot ou #select-semaine-recap
+     select "tout seul" comme #select-semaine-dot
      n'avait autrement AUCUN habillage de couleur : seule la petite flèche
      native disparaissait (appearance: none), le reste restait blanc/natif. */
   width: 100%; min-height: 44px; padding-left: 14px;

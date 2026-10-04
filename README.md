@@ -68,9 +68,10 @@ découlent ensuite de ce grade.
 - **Agenda privé** — semaine par semaine, visible du seul compte concerné.
 - **Profil agent** — photo, poste, spécialité, biographie affichés sur la
   page équipe.
-- **Statistiques et rémunérations** — récapitulatif hebdomadaire, volumes,
-  quota par agent, primes vente et location, total à verser, référentiel des
-  identités RP.
+- **Statistiques et rémunérations** — volumes de ventes et locations reçus du
+  bot ; « Chiffres du tableur » : ventes, locations et primes de chaque agent
+  lues dans le Google Sheets de la Direction ; référentiel des agents
+  (identité RP, grade), complété automatiquement par le tableur.
 - **Comptabilité (Direction)** — mise en forme de relevés collés depuis un
   tableur ou un bot ; paramètres de rémunération par grade (salaires,
   commissions, paliers de primes) ; préparation de la déclaration DOT
@@ -204,7 +205,9 @@ section « Photos » de [`deploy/operateur/README-OPERATEUR.md`](deploy/operateu
   Configuration : [`notes/bot-roxwood-configuration.md`](notes/bot-roxwood-configuration.md).
 - **Google Sheets de la Direction** — lecture seule de l'export CSV d'un
   classeur partagé par lien (ni compte de service, ni clé), toutes les 20
-  minutes, pour le récapitulatif des ventes par agent.
+  minutes. Il fait foi pour l'équipe : chaque agent listé a sa fiche dans le
+  référentiel (créée au besoin), avec le grade du tableur ; ses ventes et
+  locations alimentent « Chiffres du tableur », « Mon profil » et la DOT.
 - **WebMap FlashbackFA** — proxifiée par `/api/carte`. L'adresse réelle vit
   dans `WEBMAP_ORIGIN`, jamais dans le dépôt, qui est public ; sans elle, le
   bouton affiche « carte indisponible » et le reste du site fonctionne.

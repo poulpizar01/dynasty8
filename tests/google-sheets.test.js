@@ -249,18 +249,21 @@ test("synchro : le tableur alimente le référentiel, le récapitulatif et « Ch
     assert.deepEqual(relance.referentiel, { crees: 0, gradesMisAJour: 0 });
     assert.equal((await pool.query("SELECT count(*)::int AS n FROM stats_agents")).rows[0].n, 3);
 
-    // Récapitulatif (et donc DOT) : chaque fiche une seule fois, même sans pseudo.
-    const recap = await (await worker.fetch(new Request("http://localhost/api/stats/recap?semaine=S40-26", { headers: { Cookie: cookie } }), env)).json();
-    const parRp = Object.fromEntries(recap.agents.map((a) => [a.identiteRp, a]));
-    assert.equal(recap.agents.length, 3);
+    const baremes = (await pool.query("SELECT type, seuil, montant FROM stats_baremes_primes")).rows;
+    const attendu = (type, n) => montantPalier(baremes.filter((b) => b.type === type), n);
+
+    // DOT (salariés) : chaque fiche une seule fois, même sans pseudo, avec le
+    // grade du tableur et les primes du tableur.
+    const dot = await (await worker.fetch(new Request("http://localhost/api/comptabilite/dot/salaries?semaine=S40-26", { headers: { Cookie: cookie } }), env)).json();
+    const parRp = Object.fromEntries(dot.agents.map((a) => [a.identiteRp, a]));
+    assert.equal(dot.agents.length, 3);
     assert.equal(parRp["Caleb Duval"].grade, "Agent Expert");
     assert.equal(parRp["Zaim Tekno"].identite, "", "aucun pseudo inventé");
-    assert.equal(parRp["Zaim Tekno"].gradeConnu, true);
+    assert.equal(parRp["Zaim Tekno"].grade, "Agent Novice");
+    assert.equal(parRp["Zaim Tekno"].primeTotale, attendu("vente", 54) + attendu("location", 76));
 
     // « Chiffres du tableur » : lignes, fiches reliées, primes = barèmes du site.
     const tableur = await (await worker.fetch(new Request("http://localhost/api/stats/tableur", { headers: { Cookie: cookie } }), env)).json();
-    const baremes = (await pool.query("SELECT type, seuil, montant FROM stats_baremes_primes")).rows;
-    const attendu = (type, n) => montantPalier(baremes.filter((b) => b.type === type), n);
     assert.deepEqual(tableur.lignes.map((l) => l.nom), ["Caleb Duval", "Zaim Tekno", "Gianni Sottero"]);
     const zaim = tableur.lignes.find((l) => l.nom === "Zaim Tekno");
     assert.equal(zaim.primeVente, attendu("vente", 54));

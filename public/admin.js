@@ -200,16 +200,13 @@ async function chargerStatistiques() {
     const reponse = await appelAPI("/api/stats/semaines");
     const vide = document.getElementById("statistiques-vide");
     const resultat = document.getElementById("statistiques-resultat");
-    const recap = document.getElementById("statistiques-recap");
     if (!reponse.semaines || !reponse.semaines.length) {
       vide.classList.remove("cache");
       resultat.classList.add("cache");
-      recap.classList.add("cache");
       return;
     }
     vide.classList.add("cache");
     resultat.classList.remove("cache");
-    recap.classList.remove("cache");
     // Totaux agence (toutes semaines confondues) — remplace l'ancien tableau
     // semaine par semaine.
     document.getElementById("stats-total-ventes").textContent = reponse.totalVentes ?? 0;
@@ -221,73 +218,8 @@ async function chargerStatistiques() {
       : "Aucune semaine avec des données pour le moment.";
     document.getElementById("stats-semaine-ventes").textContent = reponse.ventesSemaine ?? 0;
     document.getElementById("stats-semaine-locations").textContent = reponse.locationsSemaine ?? 0;
-
-    // Le sélecteur de semaine du récap par agent reprend la liste des
-    // semaines (déjà triée du plus récent au plus ancien par l'API) — c'est
-    // désormais la seule chose que cette liste sert encore à alimenter.
-    const select = document.getElementById("select-semaine-recap");
-    const semaineChoisieAvant = select.value;
-    select.innerHTML = reponse.semaines.map((s) => `<option value="${s.code}">${s.code}</option>`).join("");
-    select.value = reponse.semaines.some((s) => s.code === semaineChoisieAvant)
-      ? semaineChoisieAvant
-      : reponse.semaines[0].code;
-    // Même habillage que le menu déroulant de semaine dans DOT (voir plus
-    // bas dans ce fichier) — sinon ce menu-ci garde le rendu natif du
-    // navigateur, qui détonne sur le thème sombre du site.
-    ameliorerSelect(select);
-    chargerRecap(select.value);
   } catch (e) {
     afficherMessage("zone-message-statistiques", "Impossible de charger les statistiques : " + e.message, "erreur");
-  }
-}
-
-document.getElementById("select-semaine-recap").addEventListener("change", (e) => chargerRecap(e.target.value));
-
-async function chargerRecap(semaine) {
-  if (!semaine) return;
-  afficherMessage("zone-message-recap", "", null);
-  try {
-    const reponse = await appelAPI(`/api/stats/recap?semaine=${encodeURIComponent(semaine)}`);
-    const vide = document.getElementById("recap-vide");
-    const resultat = document.getElementById("recap-resultat");
-    if (!reponse.agents || !reponse.agents.length) {
-      vide.classList.remove("cache");
-      resultat.classList.add("cache");
-      return;
-    }
-    vide.classList.add("cache");
-    resultat.classList.remove("cache");
-    document.getElementById("corps-table-recap").innerHTML = reponse.agents.map((a) => {
-      const grade = echapper(a.grade) + (a.gradeConnu ? "" :
-        ' <span class="puce puce-or" title="Cet agent n\'est pas encore déclaré dans le référentiel — grade par défaut appliqué.">par défaut</span>');
-      // Suppression possible uniquement pour un agent réellement déclaré
-      // dans le référentiel (a.id) — un pseudo apparu via une vente/location
-      // mais jamais ajouté dans « Gérer les agents » n'a rien à supprimer.
-      const actions = a.id != null
-        ? `<button type="button" class="actions-icone actions-icone--danger" data-recap-supprimer="${a.id}" title="Supprimer cet agent" aria-label="Supprimer cet agent">🗑️</button>`
-        : "";
-      // Fiche créée depuis le tableur, sans pseudo Discord : on l'affiche
-      // sous son identité RP plutôt qu'avec un nom vide.
-      const nomAgent = a.identite
-        ? `<strong>${echapper(a.identite)}</strong>${a.identiteRp ? `<br><span style="font-size:0.82rem;color:var(--text-faint);">${echapper(a.identiteRp)}</span>` : ""}`
-        : `<strong>${echapper(a.identiteRp)}</strong><br><span style="font-size:0.82rem;color:var(--text-faint);">pseudo Discord à compléter</span>`;
-      return `<tr>
-        <td>${nomAgent}</td>
-        <td>${grade}</td>
-        <td>${a.nbAchats}</td>
-        <td>${a.nbLocations}</td>
-        <td>${a.quotaRealise}</td>
-        <td>${formaterArgentStats(a.primeVente)}</td>
-        <td>${formaterArgentStats(a.primeLocations)}</td>
-        <td><strong>${formaterArgentStats(a.totalAVerser)}</strong></td>
-        <td>${actions}</td>
-      </tr>`;
-    }).join("");
-    document.getElementById("corps-table-recap").querySelectorAll("[data-recap-supprimer]").forEach((btn) => {
-      btn.addEventListener("click", () => supprimerAgentStats(Number(btn.dataset.recapSupprimer)));
-    });
-  } catch (e) {
-    afficherMessage("zone-message-recap", "Impossible de charger le récapitulatif : " + e.message, "erreur");
   }
 }
 
@@ -417,7 +349,7 @@ async function modifierAgentStats(id, changements) {
     await appelAPI(`/api/stats/agents/${id}`, { method: "PATCH", body: JSON.stringify(changements) });
     afficherMessage("zone-message-agents", "Agent mis à jour ✓", "succes");
     chargerAgentsStats();
-    document.getElementById("select-semaine-recap").value && chargerRecap(document.getElementById("select-semaine-recap").value);
+    chargerTableur();
   } catch (e) {
     afficherMessage("zone-message-agents", e.message, "erreur");
     chargerAgentsStats();
@@ -426,14 +358,14 @@ async function modifierAgentStats(id, changements) {
 
 async function supprimerAgentStats(id) {
   const ok = await confirmerAction(
-    "Cet agent redeviendra « inconnu » dans le récap (pseudo brut, grade par défaut) tant qu'il n'est pas ajouté de nouveau.",
+    "Il ne figurera plus dans la DOT. S'il est encore dans le tableur de la Direction, la prochaine synchronisation recréera sa fiche.",
     "Supprimer cet agent du référentiel ?"
   );
   if (!ok) return;
   try {
     await appelAPI(`/api/stats/agents/${id}`, { method: "DELETE" });
     chargerAgentsStats();
-    document.getElementById("select-semaine-recap").value && chargerRecap(document.getElementById("select-semaine-recap").value);
+    chargerTableur();
   } catch (e) {
     afficherMessage("zone-message-agents", e.message, "erreur");
   }
@@ -465,7 +397,7 @@ document.getElementById("formulaire-agent").addEventListener("submit", async (ev
     await appelAPI("/api/stats/agents", { method: "POST", body: JSON.stringify({ discordPseudo, identiteRp, grade }) });
     fermerModaleAgent();
     chargerAgentsStats();
-    document.getElementById("select-semaine-recap").value && chargerRecap(document.getElementById("select-semaine-recap").value);
+    chargerTableur();
   } catch (e) {
     afficherMessage("zone-message-modale-agent", e.message, "erreur");
   }
