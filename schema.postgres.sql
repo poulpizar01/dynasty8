@@ -433,10 +433,9 @@ CREATE TABLE IF NOT EXISTS medias_migration_sauvegarde (
 CREATE INDEX IF NOT EXISTS idx_medias_migration_cible ON medias_migration_sauvegarde(table_cible, ligne_id);
 
 -- ---- Bot « Roxwood Network Entreprise » (sept. 2026) -----------------------
--- Journal des événements POUSSÉS par le bot Discord (webhooks sortants signés,
--- reçus sur POST /api/bot-roxwood/webhook — voir src/bot-roxwood.js). Le site
--- ne fait que les stocker et les afficher (onglet « Bot Roxwood » de l'espace
--- agents, lecture seule) : aucune écriture vers le bot, jamais.
+-- Journal des événements que poussait le bot Discord. L'onglet et la route
+-- de réception ont été retirés (oct. 2026) ; la table reste en place pour ne
+-- perdre aucune donnée déjà reçue, mais plus rien ne la lit ni ne l'écrit.
 CREATE TABLE IF NOT EXISTS bot_roxwood_evenements (
   id SERIAL PRIMARY KEY,
   guild_id TEXT NOT NULL,            -- serveur Discord d'origine

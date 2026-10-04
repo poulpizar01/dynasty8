@@ -148,9 +148,6 @@ function construireEnv() {
     // origineAutorisee() dans src/index.js). Sans cette ligne, la variable du
     // .env est ignoree et seules les requetes venant du site lui-meme passent.
     ORIGINES_AUTORISEES: process.env.ORIGINES_AUTORISEES,
-    // Secrets des webhooks du bot Roxwood Network Entreprise (un par
-    // abonnement, séparés par des virgules) — voir src/bot-roxwood.js.
-    ROXWOOD_WEBHOOK_SECRETS: process.env.ROXWOOD_WEBHOOK_SECRETS,
     // Transmet le réglage "cookies en HTTP simple" (voir poserCookie() dans
     // src/index.js) -- sans cette ligne, la variable .env COOKIES_HTTP=1 est
     // ignorée : le cookie de connexion reste marqué "Secure" et le navigateur

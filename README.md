@@ -88,7 +88,6 @@ découlent ensuite de ce grade.
   tableur ou un bot ; paramètres de rémunération par grade (salaires,
   commissions, paliers de primes) ; préparation de la déclaration DOT
   hebdomadaire (chiffre d'affaires, dépenses, retraits, primes, salariés).
-- **Bot Roxwood Network** — journal du bot Discord, en lecture seule.
 - **Comptes & accès (Direction)** — validation des demandes, grades,
   activation ou désactivation d'un accès, dernière visite, permissions.
 
@@ -142,7 +141,6 @@ tâches de fond (nettoyage des photos, synchronisation du tableur).
 | `src/stats-calc.js` | calculs de primes, quotas et semaines ISO |
 | `src/google-sheets.js` | lecture du tableur de la Direction (export CSV) |
 | `src/rh.js` | fiches employés, effectif, permissions RH (`/api/rh/*`) |
-| `src/bot-roxwood.js` | réception signée des webhooks du bot Roxwood |
 | `src/corps-requete.js` | limite de taille des requêtes, avant lecture complète |
 | `src/entetes-proxy.js` | choix de l'hôte public derrière le reverse proxy |
 | `src/limite-debit.js` | limitation de débit par adresse et par route |
@@ -213,11 +211,6 @@ section « Photos » de [`deploy/operateur/README-OPERATEUR.md`](deploy/operateu
   Chaque vente est rattachée à sa fiche RH par l'ID Discord du vendeur
   (`discordId`, optionnel) ou, à défaut, par son pseudo.
   Configuration : [`notes/bot-ventes-configuration.md`](notes/bot-ventes-configuration.md).
-- **Bot Roxwood Network Entreprise** — le bot n'a pas d'API de lecture : il
-  **pousse** ses événements (candidatures, absences, commandes, monitoring)
-  en webhooks signés HMAC-SHA256 sur `POST /api/bot-roxwood/webhook`. Le site
-  les stocke et les affiche ; rien n'est modifiable depuis le site.
-  Configuration : [`notes/bot-roxwood-configuration.md`](notes/bot-roxwood-configuration.md).
 - **Google Sheets de la Direction** — lecture seule de l'export CSV d'un
   classeur partagé par lien (ni compte de service, ni clé), toutes les 20
   minutes. RH fait foi : chaque ligne est rattachée à la fiche RH de même
@@ -296,7 +289,6 @@ Ces en-têtes ne sont pas décoratifs : l'application reconstruit ses URL
 | `SESSION_SECRET` | signature des cookies de session |
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` / `DISCORD_REDIRECT_URI` | connexion Discord — l'URL de redirection est la **seule** valeur liée à la machine |
 | `STATS_BOT_SECRET` | authentification du bot de ventes |
-| `ROXWOOD_WEBHOOK_SECRETS` | secrets des webhooks du bot Roxwood, séparés par des virgules |
 | `FBFA_STORAGE_TOKEN` | stockage des photos ; vide = import désactivé, le reste fonctionne |
 | `WEBMAP_ORIGIN` | adresse réelle de la WebMap ; vide = carte indisponible |
 | `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_GID` | classeur de la Direction ; vide = synchronisation du tableur désactivée |
@@ -315,7 +307,7 @@ Réglages facultatifs du stockage des photos : `FBFA_STORAGE_PREFIXE`,
 `deploy/*/.env.example`.
 
 `SESSION_SECRET`, les identifiants Discord, les mots de passe PostgreSQL,
-`STATS_BOT_SECRET`, `ROXWOOD_WEBHOOK_SECRETS` et `FBFA_STORAGE_TOKEN` sont
+`STATS_BOT_SECRET` et `FBFA_STORAGE_TOKEN` sont
 des **secrets** : jamais dans Git, transmis hors dépôt.
 
 ---
