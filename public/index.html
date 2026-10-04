@@ -130,7 +130,7 @@ const enJeu = (() => { try { return window.self !== window.top; } catch (e) { re
   }
   const THREE = await import('three');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'});
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'low-power'});
   renderer.setPixelRatio(Math.min(devicePixelRatio||1, 1.5)); renderer.setClearColor(0x000000, 0); renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(38, 1, 0.1, 100); cam.position.z = 10;
@@ -239,7 +239,6 @@ const enJeu = (() => { try { return window.self !== window.top; } catch (e) { re
   const t0 = performance.now(); let sortieT = null;
   const ENTREE = reduced ? 0.6 : 2.8;
   function frame(now){
-    requestAnimationFrame(frame);
     const t=(now-t0)/1000;
     const tIn = Math.min(1, t/ENTREE);
     const out = sortieT===null ? 0 : Math.min(1, (now-sortieT)/1100);
@@ -252,7 +251,20 @@ const enJeu = (() => { try { return window.self !== window.top; } catch (e) { re
     logo.scale.z = 1; logo.position.z = out*1.5;         // le logo s'avance vers nous en sortant
     renderer.render(scene, cam);
   }
-  requestAnimationFrame(frame);
+  // Au repos, 30 images/s au plus (sinon la boucle suit la fréquence de
+  // l'écran, 144 Hz compris) ; l'entrée et la sortie gardent toute leur
+  // fluidité. Pause quand la fenêtre n'a pas le focus.
+  const PAS = 1000/30; let raf = 0, derniere = -Infinity;
+  function boucle(now){
+    raf = requestAnimationFrame(boucle);
+    const auRepos = sortieT===null && now - t0 > ENTREE*1000;
+    if (auRepos && now - derniere < PAS - 2) return;
+    derniere = now; frame(now);
+  }
+  const lancer = ()=>{ if (!raf) raf = requestAnimationFrame(boucle); };
+  addEventListener('blur', ()=>{ cancelAnimationFrame(raf); raf = 0; });
+  addEventListener('focus', lancer);
+  lancer();
 
   // ---------- « Entrer sur le site » : sortie animée puis navigation ----------
   const bouton = document.getElementById('entrer');

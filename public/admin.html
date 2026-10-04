@@ -1105,7 +1105,10 @@ TOTAL    -    0    0    0    0    0    -"></textarea>
       stars: 0.7,
       ridge: false,     // pas de silhouette de montagnes derrière un tableau de bord
       parallax: true,
-      pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
+      // Rendu à 60 % de la taille CSS puis agrandi par le navigateur : le
+      // fond est flou par nature, et le coût du shader suit le nombre de
+      // pixels (≈ 6 fois moins qu'à 1,5 sur un écran zoomé à 150 %).
+      pixelRatio: 0.6,
     });
   } catch (e) {
     const c = document.getElementById('aurora-bg');

@@ -233,36 +233,22 @@ label, .eyebrow-label {
   top: 0;
   z-index: 50;
   /* Pas d'"overflow: hidden" ici : ça couperait les sous-menus déroulants
-     (Les Intérieurs, Cohérences) qui doivent dépasser vers le bas. Le reflet
-     lumineux ci-dessous est donc peint comme un simple background (toujours
-     confiné à sa propre boîte, même sans overflow) plutôt que comme un bloc
-     positionné qui aurait eu besoin d'être coupé par le parent. */
+     (Les Intérieurs, Cohérences) qui doivent dépasser vers le bas.
+     Ni flou d'arrière-plan (backdrop-filter) ni reflet animé : l'en-tête est
+     fixe au-dessus de la poussière d'or, un canvas qui change à chaque image,
+     et Chrome recalculait alors le flou (et repeignait le reflet) en continu.
+     Un fond presque opaque donne la même lisibilité. */
   background-color: rgba(10, 15, 34, 0);
-  background-image: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.55) 50%, transparent 60%);
-  background-repeat: no-repeat;
-  background-size: 340% 100%;
-  background-position: -180% 0;
-  backdrop-filter: blur(0px) saturate(100%);
-  -webkit-backdrop-filter: blur(0px) saturate(100%);
   border-bottom: 1px solid transparent;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0), 0 4px 24px rgba(0, 0, 0, 0);
-  transition: background-color 0.35s ease, backdrop-filter 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+  transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
 }
 
 .entete.entete-scrolled {
-  background-color: rgba(10, 15, 34, 0.88);
-  backdrop-filter: blur(10px) saturate(165%);
-  -webkit-backdrop-filter: blur(10px) saturate(165%);
+  background-color: rgba(10, 15, 34, 0.95);
   border-bottom: 1px solid var(--border);
   /* Léger liseré lumineux en haut + ombre douce : donne l'effet "verre bombé" glossy. */
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 24px rgba(0, 0, 0, 0.35);
-  /* Reflet lumineux qui balaie lentement l'en-tête une fois qu'elle est en mode "vitre". */
-  animation: entete-reflet 7s ease-in-out infinite;
-}
-
-@keyframes entete-reflet {
-  0%, 12% { background-position: -180% 0; }
-  60%, 100% { background-position: 180% 0; }
 }
 
 .entete-barre {
@@ -384,13 +370,12 @@ label, .eyebrow-label {
     background:
       radial-gradient(120% 60% at 50% 0%, rgba(201, 165, 92, 0.08), transparent 60%),
       rgba(6, 12, 26, 0.97);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .entete { transition: none; }
-  .entete.entete-scrolled { animation: none; }
   .logo img { transition: none; }
   .logo:hover img { transform: none; }
   .nav-principale a::after { transition: none; }
@@ -659,14 +644,11 @@ label, .eyebrow-label {
   text-align: left;
   padding: 88px 24px 92px;
   background: linear-gradient(120deg, var(--bg-elevated), #16204a, var(--bg), #241a3f, var(--bg-elevated));
+  /* Fond fixe : l'animer (background-position) obligeait à repeindre tout le
+     hero à chaque image, alors qu'il est presque entièrement couvert par les
+     photos. */
   background-size: 300% 300%;
-  animation: hero-aurora 12s ease infinite;
-}
-
-@keyframes hero-aurora {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  background-position: 30% 50%;
 }
 
 /* ---------- fond animé du hero : ville qui dérive + fenêtres qui scintillent + particules dorées ---------- */
@@ -754,7 +736,6 @@ label, .eyebrow-label {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero.hero-accueil { animation: none; background-position: 30% 50%; }
   .hero-ville img { animation: none; }
   .hero-fenetre { animation: none; opacity: 0.4; }
   .hero-particule { animation: none; opacity: 0.4; }
@@ -793,34 +774,32 @@ label, .eyebrow-label {
 }
 .hero-accueil .hero-actions { justify-content: flex-start; }
 /* Le bouton "fantôme" (fond translucide) se fond trop dans une photo claire :
-   sur le hero uniquement, on le rend plus opaque et on lui ajoute un flou
-   d'arrière-plan pour qu'il reste identifiable comme un vrai bouton, quelle
-   que soit la photo derrière lui. */
+   sur le hero uniquement, on le rend plus opaque pour qu'il reste
+   identifiable comme un vrai bouton, quelle que soit la photo derrière lui.
+   Pas de flou d'arrière-plan : la photo dérive en continu, et Chrome
+   recalculait ce flou à chaque image. */
 .hero-accueil .hero-actions .btn-fantome {
-  background: rgba(10, 14, 32, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(10, 14, 32, 0.78);
   border-color: rgba(242, 223, 168, 0.75);
   color: #f6e9c8;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 .hero-accueil .hero-actions .btn-fantome:hover {
-  background: rgba(10, 14, 32, 0.72);
+  background: rgba(10, 14, 32, 0.88);
   border-color: var(--d8-gold-300);
 }
 /* Ici, contrairement aux autres pages, le bloc de stats est posé directement sur
    la photo du siège Dynasty 8 (pas sur un fond uni). Une simple ombre portée sur
    le texte ne suffit pas : par endroits la photo est presque blanche (l'enseigne
    "DYNASTY 8"), et le texte s'y fond complètement. On pose donc une vraie plaque
-   semi-transparente et floutée ("verre dépoli", même technique que la barre de
-   menu en haut du site) derrière tout le bloc : elle assombrit systématiquement
-   la zone du texte, quelle que soit la partie de la photo qui se trouve dessous. */
+   sombre derrière tout le bloc : elle assombrit systématiquement la zone du
+   texte, quelle que soit la partie de la photo qui se trouve dessous. Plaque
+   plus opaque plutôt que floutée : la photo dérive en continu, et Chrome
+   recalculait le flou à chaque image. */
 .hero-accueil .hero-stats {
   justify-content: flex-start;
   margin-top: 44px;
-  background: rgba(6, 9, 24, 0.72);
-  backdrop-filter: blur(10px) saturate(140%);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  background: rgba(6, 9, 24, 0.84);
   border: 1px solid rgba(201, 165, 92, 0.22);
   border-radius: 14px;
   padding: 18px 28px;

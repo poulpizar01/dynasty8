@@ -390,7 +390,7 @@ const enJeu = (() => { try { return window.self !== window.top; } catch (e) { re
   if (enJeu) { canvas.remove(); return; }
   const THREE = await import('three');
   let renderer;
-  try { renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'}); }
+  try { renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'low-power'}); }
   catch (e) { canvas.remove(); return; }
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   renderer.setPixelRatio(Math.min(devicePixelRatio||1, 1.5)); renderer.setClearColor(0x000000, 0); renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -527,7 +527,6 @@ const enJeu = (() => { try { return window.self !== window.top; } catch (e) { re
   let visible=true;
   new IntersectionObserver((e)=>{visible=e[0].isIntersecting;},{threshold:0}).observe(canvas);
   function frame(now){
-    requestAnimationFrame(frame);
     if(!visible) return;                                        // hero hors écran : on ne dessine pas
     const t=(now-t0)/1000, e=t*sp;
     ru.uProg.value=ease(Math.min(1,e/2.8));
@@ -539,7 +538,19 @@ const enJeu = (() => { try { return window.self !== window.top; } catch (e) { re
     monde.rotation.y=ms.x*0.16; monde.rotation.x=-ms.y*0.1;
     renderer.render(scene,cam);
   }
-  requestAnimationFrame(frame);
+  // Une fois le logo dessiné (~5 s), 30 images/s au plus : sinon la boucle
+  // suit la fréquence de l'écran, 144 Hz compris. Pause quand la fenêtre n'a
+  // pas le focus.
+  const PAS = 1000/30, FIN_INTRO = 5200/sp; let raf = 0, derniere = -Infinity;
+  function boucle(now){
+    raf = requestAnimationFrame(boucle);
+    if (now - t0 > FIN_INTRO && now - derniere < PAS - 2) return;
+    derniere = now; frame(now);
+  }
+  const lancer = ()=>{ if (!raf) raf = requestAnimationFrame(boucle); };
+  addEventListener('blur', ()=>{ cancelAnimationFrame(raf); raf = 0; });
+  addEventListener('focus', lancer);
+  lancer();
 })();
 </script>
 </body>

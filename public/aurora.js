@@ -38,6 +38,7 @@ export const AURORA_FRAGMENT = /* glsl */ `// Aurore — fragment shader plein �
 //   uSpeed  (float)  multiplicateur temporel      (défaut : 1.0)
 //   uStars  (float)  densité d'étoiles 0..1       (défaut : 1.0)
 //   uRidge  (float)  1.0 = crête de montagnes, 0.0 = ciel seul
+//   uPx     (float)  pixels du framebuffer par pixel CSS (le pixelRatio)
 
 precision highp float;
 
@@ -51,6 +52,7 @@ uniform float uIntensity;
 uniform float uSpeed;
 uniform float uStars;
 uniform float uRidge;
+uniform float uPx;
 
 // --- Simplex noise 3D (Ashima Arts / Stefan Gustavson, MIT) ---
 vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
@@ -98,7 +100,9 @@ float snoise(vec3 v){
 }
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float fbm(vec3 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 5; i++) { s += a * snoise(p); p *= 2.03; a *= 0.5; } return s; }
+// 3 octaves : les suivantes n'ajoutaient qu'un grain invisible sur un fond
+// doux, pour près de la moitié du coût du shader.
+float fbm(vec3 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 3; i++) { s += a * snoise(p); p *= 2.03; a *= 0.5; } return s; }
 
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
@@ -110,11 +114,14 @@ void main(){
   // Ciel nocturne
   vec3 col = mix(vec3(0.012, 0.025, 0.07), vec3(0.0, 0.0, 0.012), smoothstep(0.1, 1.0, uv.y));
 
-  // Étoiles (une par cellule de 3 px, jitter aléatoire, scintillement)
-  vec2 cell = floor(gl_FragCoord.xy / 3.0);
+  // Étoiles (une par cellule de 3 px CSS, jitter aléatoire, scintillement) :
+  // comptées en pixels CSS pour garder le même ciel quelle que soit la
+  // résolution de rendu.
+  vec2 fc = gl_FragCoord.xy / uPx;
+  vec2 cell = floor(fc / 3.0);
   float h = hash(cell);
   vec2 jit = vec2(hash(cell + 7.1), hash(cell + 3.7));
-  float sd = length(fract(gl_FragCoord.xy / 3.0) - jit);
+  float sd = length(fract(fc / 3.0) - jit);
   float star = step(1.0 - 0.0065 * uStars, h) * smoothstep(0.55, 0.0, sd);
   float tw = 0.55 + 0.45 * sin(t * 1.7 + h * 120.0);
   col += star * tw * 0.85 * smoothstep(0.22, 0.5, uv.y);
@@ -126,6 +133,9 @@ void main(){
     float yc = 0.40 + fi * 0.085 + 0.11 * snoise(vec3(p.x * 0.85 + fi * 3.1, t * 0.11, fi * 2.0));
     float d = p.y - yc;
     float band = d < 0.0 ? exp(-pow(d * 18.0, 2.0)) : exp(-d * 7.0);
+    // Loin sous la nappe, sa contribution est nulle à l'œil : on évite le
+    // calcul du bruit (le bas de l'écran entier, pour chaque nappe).
+    if (band < 0.002) continue;
     float curt = fbm(vec3(p.x * 2.4 + t * 0.07 + fi * 7.0, d * 1.6 - t * 0.04, fi * 1.7));
     curt = smoothstep(-0.15, 0.65, curt);
     float rays = 0.65 + 0.35 * snoise(vec3(p.x * 14.0 + t * 0.25, fi * 5.0, t * 0.05));
@@ -136,11 +146,14 @@ void main(){
   }
   col += acol * uIntensity;
 
-  // Crête de montagnes (optionnelle)
-  float m = 0.17 + 0.075 * snoise(vec3(p.x * 1.25, 0.0, 1.0)) + 0.025 * snoise(vec3(p.x * 4.2, 0.0, 2.0)) + 0.008 * snoise(vec3(p.x * 14.0, 0.0, 3.0));
-  float ground = smoothstep(m + 0.003, m - 0.003, uv.y) * uRidge;
-  vec3 gcol = vec3(0.0, 0.002, 0.006) + acol * 0.05 * smoothstep(m - 0.04, m, uv.y);
-  col = mix(col, gcol, ground);
+  // Crête de montagnes (optionnelle) : pas de bruit calculé quand elle est
+  // désactivée.
+  if (uRidge > 0.0) {
+    float m = 0.17 + 0.075 * snoise(vec3(p.x * 1.25, 0.0, 1.0)) + 0.025 * snoise(vec3(p.x * 4.2, 0.0, 2.0)) + 0.008 * snoise(vec3(p.x * 14.0, 0.0, 3.0));
+    float ground = smoothstep(m + 0.003, m - 0.003, uv.y) * uRidge;
+    vec3 gcol = vec3(0.0, 0.002, 0.006) + acol * 0.05 * smoothstep(m - 0.04, m, uv.y);
+    col = mix(col, gcol, ground);
+  }
 
   // Dithering anti-banding
   col += (hash(gl_FragCoord.xy + t) - 0.5) / 255.0;
@@ -160,6 +173,8 @@ const DEFAULTS = {
   pixelRatio: Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 2),
   respectReducedMotion: true,
   autoStart: true,
+  fps: 30,              // plafond d'images par seconde (le ciel bouge lentement)
+  pauseOnBlur: true,    // aucun calcul quand la fenêtre n'a pas le focus
 };
 
 /** Construit le ShaderMaterial. Toutes les options sont modifiables ensuite via material.uniforms. */
@@ -177,6 +192,7 @@ export function createAuroraMaterial(THREE, options = {}) {
       uSpeed: { value: o.speed },
       uStars: { value: o.stars },
       uRidge: { value: o.ridge ? 1 : 0 },
+      uPx: { value: o.pixelRatio },
     },
     vertexShader: AURORA_VERTEX,
     fragmentShader: AURORA_FRAGMENT,
@@ -198,7 +214,9 @@ export function mountAurora(THREE, options = {}) {
   }
   const reduced = o.respectReducedMotion && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' });
+  // 'low-power' : un fond décoratif n'a pas à réveiller la carte graphique
+  // dédiée (et ses ventilateurs) sur un PC qui en a deux.
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'low-power' });
   renderer.setPixelRatio(o.pixelRatio);
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -211,32 +229,47 @@ export function mountAurora(THREE, options = {}) {
   const onMove = (e) => mouse.set((e.clientX / window.innerWidth) * 2 - 1, -((e.clientY / window.innerHeight) * 2 - 1));
   if (o.parallax) window.addEventListener('pointermove', onMove, { passive: true });
 
+  let raf = 0, running = false, time = 0, last = performance.now();
+
   function resize() {
     const w = canvas.clientWidth || window.innerWidth;
     const h = canvas.clientHeight || window.innerHeight;
     renderer.setSize(w, h, false);
     uniforms.uRes.value.set(w * o.pixelRatio, h * o.pixelRatio);
+    uniforms.uPx.value = o.pixelRatio;
+    if (!running) renderer.render(scene, camera); // image fixe à jour (pause, animations réduites)
   }
   window.addEventListener('resize', resize);
   resize();
 
-  let raf = 0, running = false, time = 0, last = performance.now();
-  const timeScale = reduced ? 0.25 : 1;
+  // Plafond d'images par seconde : sans lui, la boucle suit la fréquence de
+  // l'écran (60, 144 Hz...) et le GPU ne se repose jamais. La marge de 2 ms
+  // évite de sauter une image sur deux à cause des petites irrégularités.
+  const pas = o.fps > 0 ? 1000 / o.fps : 0;
   function frame(now) {
     raf = requestAnimationFrame(frame);
+    if (now - last < pas - 2) return;
     const dt = Math.min((now - last) / 1000, 0.1); last = now;
-    time += dt * timeScale;
+    time += dt;
     uniforms.uTime.value = time;
     mouseSmooth.lerp(mouse, 1 - Math.exp(-dt * 3));
     uniforms.uMouse.value.copy(mouseSmooth);
     renderer.render(scene, camera);
   }
-  function start() { if (running) return; running = true; last = performance.now(); raf = requestAnimationFrame(frame); }
+  // Animations réduites demandées : une image fixe, aucune boucle.
+  function start() { if (running || reduced) return; running = true; last = performance.now(); raf = requestAnimationFrame(frame); }
   function stop() { running = false; cancelAnimationFrame(raf); }
+  // Fenêtre en arrière-plan (autre application, autre fenêtre) : pause. Un
+  // onglet masqué est déjà mis en pause par le navigateur.
+  const onBlur = () => stop();
+  const onFocus = () => { if (o.autoStart) start(); };
+  if (o.pauseOnBlur) { window.addEventListener('blur', onBlur); window.addEventListener('focus', onFocus); }
   function dispose() {
     stop();
     window.removeEventListener('resize', resize);
     window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('blur', onBlur);
+    window.removeEventListener('focus', onFocus);
     material.dispose();
     renderer.dispose();
     if (!o.canvas) canvas.remove();

@@ -633,7 +633,8 @@ function demarrerPoussiereOr() {
     canvas.className = "d8-poussiere"; canvas.setAttribute("aria-hidden", "true");
     document.body.prepend(canvas);
     let renderer;
-    try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true, powerPreference: "high-performance" }); }
+    // "low-power" : un décor n'a pas à réveiller la carte graphique dédiée.
+    try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true, powerPreference: "low-power" }); }
     catch (e) { canvas.remove(); return; }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); renderer.setClearColor(0x000000, 0);
     const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(55, 1, 0.1, 100); cam.position.z = 9;
@@ -649,8 +650,20 @@ function demarrerPoussiereOr() {
       fragmentShader: `precision highp float;varying float vA;void main(){vec2 c=gl_PointCoord-0.5;float d=length(c);if(d>0.5)discard;float gl=smoothstep(0.5,0.0,d);gl_FragColor=vec4(mix(vec3(0.75,0.5,0.24),vec3(0.98,0.9,0.66),gl),gl*gl*vA*0.7);}` })));
     function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); u.uPix.value = (h * renderer.getPixelRatio()) / 900; }
     addEventListener("resize", resize); resize();
-    const t0 = performance.now();
-    (function frame(now) { requestAnimationFrame(frame); u.uTime.value = (now - t0) / 1000; u.uScroll.value = scrollY / 300; renderer.render(scene, cam); })(t0);
+    // 30 images/s au plus (sinon la boucle suit la fréquence de l'écran, 144 Hz
+    // compris), et pause quand la fenêtre n'a pas le focus.
+    const t0 = performance.now(), PAS = 1000 / 30;
+    let raf = 0, derniere = -Infinity;
+    function frame(now) {
+      raf = requestAnimationFrame(frame);
+      if (now - derniere < PAS - 2) return;
+      derniere = now;
+      u.uTime.value = (now - t0) / 1000; u.uScroll.value = scrollY / 300; renderer.render(scene, cam);
+    }
+    const lancer = () => { if (!raf) raf = requestAnimationFrame(frame); };
+    addEventListener("blur", () => { cancelAnimationFrame(raf); raf = 0; });
+    addEventListener("focus", lancer);
+    lancer();
   }).catch(() => {});
 }
 
