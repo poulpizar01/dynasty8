@@ -23,7 +23,9 @@
 
 import { enc, b64url, unb64url } from "./util-crypto.js";
 import * as statsCalc from "./stats-calc.js";
-import { synchroniserSheetSansErreur, lireConfigSheet } from "./google-sheets.js";
+import {
+  synchroniserSheetSansErreur, lireConfigSheet, lireTableurActuel, lireArchiveTableur, semaineParis,
+} from "./google-sheets.js";
 import { ErreurStockage } from "./fbfa-storage.js";
 import { consommer, adresseAppelant } from "./limite-debit.js";
 import { TYPES_IMAGE, decoderDataUrl, estDataUrlImage } from "./images.js";
@@ -1938,48 +1940,31 @@ function remplacerPrimesParSheet(agents, primesParPseudo) {
 // Sheets de la Direction, avec ses primes — calculées avec les barèmes du
 // site, exactement comme « Mon profil » et la DOT — la fiche du référentiel
 // qui lui correspond (par identité RP) et le compte du site relié. Lecture
-// seule.
-async function statsTableur(env, s) {
+// seule. Sans paramètre : la semaine en cours (chiffres actuels du tableur) ;
+// avec ?semaine=S40-26 : l'archive figée le dimanche à 23:59.
+async function statsTableur(env, url, s) {
   if (!statsPeutVoirTous(s)) return json({ erreur: "Réservé à la Direction." }, 403);
-  const [lignesR, fichesR, baremesR, etatR] = await Promise.all([
-    env.DB.prepare(
-      `SELECT ssa.nom_sheet, ssa.nom_normalise, ssa.grade_sheet, ssa.nb_ventes, ssa.nb_locations, m.pseudo AS compte
-         FROM sync_sheet_agents ssa LEFT JOIN membres m ON m.id = ssa.membre_id
-        ORDER BY ssa.ligne_sheet`
-    ).all(),
-    env.DB.prepare("SELECT id, discord_pseudo, identite_rp, grade FROM stats_agents").all(),
-    env.DB.prepare("SELECT * FROM stats_baremes_primes").all(),
+  const archivesR = await env.DB.prepare("SELECT semaine, archive_le FROM tableur_archives ORDER BY id DESC").all();
+  const archives = (archivesR.results || []).map((a) => ({ semaine: a.semaine, archiveLe: a.archive_le }));
+
+  const demandee = (url.searchParams.get("semaine") || "").trim().toUpperCase();
+  if (demandee) {
+    const archive = await lireArchiveTableur(env, demandee);
+    if (!archive) return json({ erreur: `Aucune archive pour la semaine ${demandee}.` }, 404);
+    return json({ archive, archives, lignes: archive.lignes });
+  }
+
+  const [actuel, etatR] = await Promise.all([
+    lireTableurActuel(env),
     env.DB.prepare("SELECT derniere_sync, statut FROM sync_sheet_etat WHERE id = 1").first(),
   ]);
-  const baremes = baremesR.results || [];
-  const baremeVentes = baremes.filter((b) => b.type === "vente");
-  const baremeLocations = baremes.filter((b) => b.type === "location");
-  const fichesParRp = new Map();
-  for (const f of fichesR.results || []) {
-    const cle = statsCalc.normaliserTexte(f.identite_rp || "");
-    if (cle && (!fichesParRp.has(cle) || (!fichesParRp.get(cle).discord_pseudo && f.discord_pseudo))) fichesParRp.set(cle, f);
-  }
-  const lignes = (lignesR.results || []).map((l) => {
-    const primeVente = statsCalc.montantPalier(baremeVentes, l.nb_ventes);
-    const primeLocations = statsCalc.montantPalier(baremeLocations, l.nb_locations);
-    const fiche = fichesParRp.get(l.nom_normalise) || null;
-    return {
-      nom: l.nom_sheet,
-      grade: l.grade_sheet,
-      ventes: l.nb_ventes,
-      locations: l.nb_locations,
-      primeVente,
-      primeLocations,
-      primeTotale: primeVente + primeLocations,
-      fiche: fiche ? { id: fiche.id, discordPseudo: fiche.discord_pseudo || "" } : null,
-      compte: l.compte || null,
-    };
-  });
   return json({
     configure: !!lireConfigSheet(env),
+    semaineEnCours: semaineParis(new Date()).code,
     derniereSync: (etatR && etatR.derniere_sync) || null,
     statut: (etatR && etatR.statut) || null,
-    lignes,
+    archives,
+    lignes: actuel.lignes,
   });
 }
 
@@ -2206,7 +2191,7 @@ async function statistiques(request, url, env) {
   if (!s) return json({ erreur: "Non connecté." }, 401);
   if (route === "/semaines" && m === "GET") return statsSemaines(env, s);
   if (route === "/anomalies" && m === "GET") return statsAnomalies(env, url, s);
-  if (route === "/tableur" && m === "GET") return statsTableur(env, s);
+  if (route === "/tableur" && m === "GET") return statsTableur(env, url, s);
   if (route === "/agents" && m === "GET") return statsListerAgents(env, s);
   if (route === "/agents" && m === "POST") return statsCreerAgent(request, env, s);
   if (route === "/ventes" && m === "POST") {

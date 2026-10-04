@@ -22,7 +22,7 @@
 // prime, comme demandé par la Direction.
 // ============================================================================
 
-import { normaliserTexte, GRADES_STATS } from "./stats-calc.js";
+import { normaliserTexte, GRADES_STATS, semaineISO, montantPalier } from "./stats-calc.js";
 
 // Grade écrit dans le Sheet -> grade du site (majuscules/accents ignorés).
 const GRADE_PAR_NORMALISE = new Map(GRADES_STATS.map((g) => [normaliserTexte(g), g]));
@@ -208,6 +208,11 @@ export async function alignerReferentiel(env, lignes) {
 async function synchroniserSheetUneFois(env) {
   const config = lireConfigSheet(env);
   if (!config) throw new SheetNonConfigure();
+  // Une semaine terminée et pas encore archivée (serveur arrêté dimanche soir,
+  // par exemple) est figée AVANT que la nouvelle lecture n'écrase ses chiffres.
+  // Pas dans la minute de 23:59 elle-même : c'est la tâche d'archivage qui s'en
+  // charge alors, juste après une lecture fraîche.
+  await archiverSemaineSiDue(env, { grace: 60_000 });
   const brut = await lireCSV(config);
   const lignes = analyserLignesSheet(brut.slice(1)); // ligne 1 = en-têtes
   const referentiel = await alignerReferentiel(env, lignes);
@@ -285,4 +290,173 @@ export async function synchroniserSheetSansErreur(env) {
     if (!nonConfigure) console.error("[sync-sheet] Échec de synchronisation :", e);
     return etat;
   }
+}
+
+// ============================================================================
+// « Chiffres du tableur » : vue actuelle et archives hebdomadaires
+// ============================================================================
+
+// Chiffres du tableur tels qu'affichés dans Ventes & statistiques : chaque
+// ligne lue, avec ses primes (barèmes du site, comme « Mon profil » et la
+// DOT), la fiche du référentiel qui lui correspond (par identité RP) et le
+// compte du site relié. Sert à l'écran ET à l'archive : une semaine archivée
+// est exactement ce que l'écran montrait.
+export async function lireTableurActuel(env) {
+  const [lignesR, fichesR, baremesR] = await Promise.all([
+    env.DB.prepare(
+      `SELECT ssa.ligne_sheet, ssa.nom_sheet, ssa.nom_normalise, ssa.grade_sheet, ssa.nb_ventes, ssa.nb_locations, ssa.maj, m.pseudo AS compte
+         FROM sync_sheet_agents ssa LEFT JOIN membres m ON m.id = ssa.membre_id
+        ORDER BY ssa.ligne_sheet`
+    ).all(),
+    env.DB.prepare("SELECT id, discord_pseudo, identite_rp FROM stats_agents").all(),
+    env.DB.prepare("SELECT * FROM stats_baremes_primes").all(),
+  ]);
+  const baremes = baremesR.results || [];
+  const baremeVentes = baremes.filter((b) => b.type === "vente");
+  const baremeLocations = baremes.filter((b) => b.type === "location");
+  const fichesParRp = new Map();
+  for (const f of fichesR.results || []) {
+    const cle = normaliserTexte(f.identite_rp || "");
+    const deja = fichesParRp.get(cle);
+    if (cle && (!deja || (!deja.discord_pseudo && f.discord_pseudo))) fichesParRp.set(cle, f);
+  }
+  let lueLe = null;
+  const lignes = (lignesR.results || []).map((l) => {
+    if (l.maj && (!lueLe || l.maj > lueLe)) lueLe = l.maj;
+    const primeVente = montantPalier(baremeVentes, l.nb_ventes);
+    const primeLocations = montantPalier(baremeLocations, l.nb_locations);
+    const fiche = fichesParRp.get(l.nom_normalise) || null;
+    return {
+      ligneSheet: l.ligne_sheet,
+      nom: l.nom_sheet,
+      grade: l.grade_sheet,
+      ventes: l.nb_ventes,
+      locations: l.nb_locations,
+      primeVente,
+      primeLocations,
+      primeTotale: primeVente + primeLocations,
+      fiche: fiche ? { id: fiche.id, discordPseudo: fiche.discord_pseudo || "" } : null,
+      compte: l.compte || null,
+    };
+  });
+  // maj est écrit par PostgreSQL en UTC, au format « AAAA-MM-JJ HH:MM:SS ».
+  return { lignes, lueLe: lueLe ? new Date(lueLe.replace(" ", "T") + "Z") : null };
+}
+
+// ---- Heure de Paris, sans bibliothèque --------------------------------------
+// Europe/Paris : UTC+2 l'été, UTC+1 l'hiver. Les semaines du site vont du lundi
+// 00:00 au dimanche 23:59, heure de Paris ; l'archive se fait à 23:59.
+
+const FORMAT_PARIS = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Paris", hourCycle: "h23", weekday: "short",
+  year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+});
+const JOURS = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+
+function partiesParis(date) {
+  const p = Object.fromEntries(FORMAT_PARIS.formatToParts(date).map((x) => [x.type, x.value]));
+  return { annee: +p.year, mois: +p.month, jour: +p.day, heure: +p.hour, minute: +p.minute, jourSemaine: JOURS[p.weekday] };
+}
+
+// Instant correspondant à une date et une heure de Paris.
+function instantParis(annee, mois, jour, heure, minute) {
+  const commeSiUtc = Date.UTC(annee, mois - 1, jour, heure, minute);
+  const p = partiesParis(new Date(commeSiUtc));
+  const decalage = Date.UTC(p.annee, p.mois - 1, p.jour, p.heure, p.minute) - commeSiUtc;
+  return new Date(commeSiUtc - decalage);
+}
+
+// Semaine (lundi -> dimanche, heure de Paris) qui contient cet instant :
+// { code: "S41-26", debut: lundi 00:00, fin: dimanche 23:59 }.
+export function semaineParis(date) {
+  const p = partiesParis(date);
+  const jourCivil = new Date(Date.UTC(p.annee, p.mois - 1, p.jour));
+  const { numero, anneeIso } = semaineISO(jourCivil);
+  const decaler = (jours) => {
+    const d = new Date(jourCivil);
+    d.setUTCDate(d.getUTCDate() + jours);
+    return d;
+  };
+  const lundi = decaler(1 - p.jourSemaine);
+  const dimanche = decaler(7 - p.jourSemaine);
+  return {
+    code: `S${numero}-${String(anneeIso).slice(-2)}`,
+    debut: instantParis(lundi.getUTCFullYear(), lundi.getUTCMonth() + 1, lundi.getUTCDate(), 0, 0),
+    fin: instantParis(dimanche.getUTCFullYear(), dimanche.getUTCMonth() + 1, dimanche.getUTCDate(), 23, 59),
+  };
+}
+
+// Dernière semaine dont l'heure d'archivage est passée : la semaine en cours
+// à partir du dimanche 23:59, sinon la précédente.
+export function semaineArchivable(maintenant) {
+  const enCours = semaineParis(maintenant);
+  if (maintenant >= enCours.fin) return enCours;
+  return semaineParis(new Date(enCours.debut.getTime() - 60_000));
+}
+
+// Fige les chiffres du tableur de la semaine écoulée, une seule fois par
+// semaine. Ne fige QUE des chiffres lus pendant cette semaine-là : si la
+// dernière lecture date d'une autre semaine (premier démarrage en milieu de
+// semaine, synchro désactivée…), rien n'est archivé plutôt que d'enregistrer
+// les chiffres d'une semaine sous le numéro d'une autre.
+// `grace` : délai minimal après dimanche 23:59 avant d'agir (voir l'appel
+// dans synchroniserSheetUneFois).
+export async function archiverSemaineSiDue(env, { maintenant = new Date(), grace = 0 } = {}) {
+  const semaine = semaineArchivable(maintenant);
+  if (maintenant - semaine.fin < grace) return { archivee: false, semaine: semaine.code, raison: "pas encore" };
+  const deja = await env.DB.prepare("SELECT id FROM tableur_archives WHERE semaine = ?1").bind(semaine.code).first();
+  if (deja) return { archivee: false, semaine: semaine.code, raison: "déjà archivée" };
+
+  const { lignes, lueLe } = await lireTableurActuel(env);
+  if (!lignes.length || !lueLe) return { archivee: false, semaine: semaine.code, raison: "tableur jamais lu" };
+  if (semaineParis(lueLe).code !== semaine.code) {
+    return { archivee: false, semaine: semaine.code, raison: "chiffres d'une autre semaine" };
+  }
+
+  const enRetard = maintenant - semaine.fin > 5 * 60_000 ? 1 : 0;
+  const cree = await env.DB.transaction(async (tx) => {
+    const archive = await tx.prepare(
+      `INSERT INTO tableur_archives (semaine, archive_le, donnees_du, en_retard)
+       VALUES (?1, ?2, ?3, ?4) ON CONFLICT (semaine) DO NOTHING RETURNING id`
+    ).bind(semaine.code, maintenant.toISOString(), lueLe.toISOString(), enRetard).first();
+    if (!archive) return false; // archivée entre-temps par une autre passe
+    for (const l of lignes) {
+      await tx.prepare(
+        `INSERT INTO tableur_archives_lignes
+           (archive_id, ligne_sheet, nom, grade, ventes, locations, prime_vente, prime_locations, fiche_pseudo, compte)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`
+      ).bind(archive.id, l.ligneSheet, l.nom, l.grade || "", l.ventes, l.locations, l.primeVente, l.primeLocations,
+        l.fiche ? l.fiche.discordPseudo : null, l.compte).run();
+    }
+    return true;
+  });
+  if (cree) console.log(`[archive-tableur] Semaine ${semaine.code} archivée (${lignes.length} agent(s))${enRetard ? " — en retard" : ""}.`);
+  return { archivee: cree, semaine: semaine.code };
+}
+
+// Archive d'une semaine, au même format que lireTableurActuel ; null si absente.
+export async function lireArchiveTableur(env, code) {
+  const archive = await env.DB.prepare("SELECT * FROM tableur_archives WHERE semaine = ?1").bind(code).first();
+  if (!archive) return null;
+  const r = await env.DB.prepare(
+    "SELECT * FROM tableur_archives_lignes WHERE archive_id = ?1 ORDER BY ligne_sheet, id"
+  ).bind(archive.id).all();
+  return {
+    semaine: archive.semaine,
+    archiveLe: archive.archive_le,
+    donneesDu: archive.donnees_du,
+    enRetard: !!archive.en_retard,
+    lignes: (r.results || []).map((l) => ({
+      ligneSheet: l.ligne_sheet,
+      nom: l.nom,
+      grade: l.grade,
+      ventes: l.ventes,
+      locations: l.locations,
+      primeVente: l.prime_vente,
+      primeLocations: l.prime_locations,
+      primeTotale: l.prime_vente + l.prime_locations,
+      fiche: l.fiche_pseudo == null ? null : { discordPseudo: l.fiche_pseudo },
+      compte: l.compte,
+    })),
+  };
 }

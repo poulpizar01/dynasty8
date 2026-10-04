@@ -226,18 +226,33 @@ async function chargerStatistiques() {
 // « Chiffres du tableur » : lignes du Google Sheets de la Direction, avec les
 // primes calculées côté serveur (mêmes montants que « Mon profil » et la DOT),
 // la fiche du référentiel reliée et le compte du site. Lecture seule.
-async function chargerTableur() {
+// Sélecteur : la semaine en cours (chiffres actuels du tableur) ou une
+// semaine archivée (figée le dimanche à 23:59, heure de Paris).
+async function chargerTableur(semaine) {
   afficherMessage("zone-message-tableur", "", null);
   const etatLigne = document.getElementById("tableur-etat");
   const vide = document.getElementById("tableur-vide");
   const resultat = document.getElementById("tableur-resultat");
+  const select = document.getElementById("select-semaine-tableur");
+  const choisie = semaine === undefined ? select.value : semaine;
   try {
-    const r = await appelAPI("/api/stats/tableur");
-    etatLigne.textContent = !r.configure
-      ? "Synchronisation non configurée sur ce serveur (GOOGLE_SHEET_ID absent du .env)."
-      : r.derniereSync
-        ? `Dernière lecture du tableur : ${formaterDateAdmin(r.derniereSync)}${r.statut === "erreur" ? " (échec — voir Paramètres)" : ""}.`
-        : "Tableur pas encore lu — « Synchroniser maintenant » dans Paramètres.";
+    const r = await appelAPI("/api/stats/tableur" + (choisie ? `?semaine=${encodeURIComponent(choisie)}` : ""));
+    const options = [`<option value="">Semaine en cours${r.semaineEnCours ? ` (${echapper(r.semaineEnCours)})` : ""}</option>`]
+      .concat((r.archives || []).map((a) => `<option value="${echapper(a.semaine)}">${echapper(a.semaine)} — archivée</option>`));
+    select.innerHTML = options.join("");
+    select.value = choisie || "";
+    ameliorerSelect(select);
+    if (r.archive) {
+      etatLigne.textContent = `Semaine ${r.archive.semaine} — archivée le ${formaterDateAdmin(r.archive.archiveLe)}`
+        + ` (chiffres lus le ${formaterDateAdmin(r.archive.donneesDu)})`
+        + (r.archive.enRetard ? ", après coup : le serveur était arrêté dimanche à 23:59." : ".");
+    } else {
+      etatLigne.textContent = !r.configure
+        ? "Synchronisation non configurée sur ce serveur (GOOGLE_SHEET_ID absent du .env)."
+        : r.derniereSync
+          ? `Dernière lecture du tableur : ${formaterDateAdmin(r.derniereSync)}${r.statut === "erreur" ? " (échec — voir Paramètres)" : ""}.`
+          : "Tableur pas encore lu — « Synchroniser maintenant » dans Paramètres.";
+    }
     if (!r.lignes.length) {
       vide.classList.remove("cache");
       resultat.classList.add("cache");
@@ -268,6 +283,8 @@ async function chargerTableur() {
     afficherMessage("zone-message-tableur", "Impossible de charger les chiffres du tableur : " + e.message, "erreur");
   }
 }
+
+document.getElementById("select-semaine-tableur").addEventListener("change", (e) => chargerTableur(e.target.value));
 
 // Même logique d'espacement des milliers que formaterPrix() (layout.js), mais
 // sans le suffixe "HT" : les primes ne sont pas des prix du catalogue.

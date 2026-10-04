@@ -11,7 +11,9 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import worker from "./src/index.js";
 import { creerPool, creerAdaptateurDB } from "./src/db-pg.js";
-import { synchroniserSheetSansErreur, lireConfigSheet } from "./src/google-sheets.js";
+import {
+  synchroniserSheetSansErreur, lireConfigSheet, archiverSemaineSiDue, semaineParis,
+} from "./src/google-sheets.js";
 import { lireCorpsLimite, limiteCorpsPour, ErreurCorpsTropGros } from "./src/corps-requete.js";
 import { lireSchema, appliquerSchema as appliquerSchemaSQL, verifierSchema } from "./src/schema.js";
 import { choisirHote } from "./src/entetes-proxy.js";
@@ -238,6 +240,32 @@ function demarrerSyncSheet() {
   }
   synchroniserSheetSansErreur(construireEnv());
   setInterval(() => synchroniserSheetSansErreur(construireEnv()), INTERVALLE_SYNC_SHEET_MS);
+  setInterval(archiverTableurSansErreur, INTERVALLE_ARCHIVE_TABLEUR_MS);
+}
+
+// Archive hebdomadaire des « Chiffres du tableur » : chaque dimanche à 23:59,
+// heure de Paris (été comme hiver), une lecture fraîche du tableur puis
+// l'archive de la semaine, sous son code (S41-26). Vérifié toutes les 30 s ;
+// si le serveur était arrêté à 23:59, l'archive est faite au redémarrage avec
+// les derniers chiffres lus dans la semaine (voir archiverSemaineSiDue).
+const INTERVALLE_ARCHIVE_TABLEUR_MS = 30 * 1000;
+let derniereSemaineArchivee = null;
+async function archiverTableurSansErreur() {
+  try {
+    const env = construireEnv();
+    const semaine = semaineParis(new Date());
+    const maintenant = Date.now();
+    const minuteDArchivage = maintenant >= semaine.fin.getTime() && maintenant - semaine.fin.getTime() < 60_000;
+    if (minuteDArchivage && derniereSemaineArchivee !== semaine.code) {
+      // Minute de 23:59 : on relit le tableur une dernière fois, pour figer
+      // les chiffres à jour (une lecture déjà en cours est simplement attendue).
+      await synchroniserSheetSansErreur(env);
+    }
+    const r = await archiverSemaineSiDue(env);
+    if (r.archivee || r.raison === "déjà archivée") derniereSemaineArchivee = r.semaine;
+  } catch (e) {
+    console.error("[archive-tableur] Échec de l'archivage hebdomadaire :", e);
+  }
 }
 
 // Nom d'hôte public du site. Derrière un reverse proxy (nginx chez

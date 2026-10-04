@@ -2,12 +2,12 @@
 // extraction des lignes utiles. C'est la source des ventes et locations
 // affichées dans « Mon profil » et utilisées pour les primes : un champ mal
 // découpé décale une colonne entière, sans que rien ne le signale à l'écran.
-import test from "node:test";
+import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { analyserCSV, analyserLignesSheet, lireConfigSheet, synchroniserSheetSansErreur } from "../src/google-sheets.js";
-import { synchroniserSheet } from "../src/google-sheets.js";
+import { synchroniserSheet, semaineParis, semaineArchivable, archiverSemaineSiDue } from "../src/google-sheets.js";
 import { montantPalier } from "../src/stats-calc.js";
 import { creerPool, creerAdaptateurDB } from "../src/db-pg.js";
 import worker from "../src/index.js";
@@ -207,9 +207,23 @@ function csvTableur(lignes) {
   })].join("\n");
 }
 
-test("synchro : le tableur alimente le référentiel, le récapitulatif et « Chiffres du tableur »", { skip: BASE_ACTIVE ? false : "TEST_DATABASE_URL non définie" }, async () => {
-  const base = await creerBaseDeTest("tableur");
-  const pool = creerPool(base.url);
+// Une seule base pour les tests d'intégration de ce fichier : l'adaptateur
+// (src/db-pg.js) garde un pool unique par processus, lié à la première base.
+let base = null;
+let pool = null;
+before(async () => {
+  if (!BASE_ACTIVE) return;
+  base = await creerBaseDeTest("tableur");
+  pool = creerPool(base.url);
+});
+after(async () => {
+  if (!BASE_ACTIVE) return;
+  await pool.end();
+  await base.supprimer();
+});
+const avecBase = (nom, fn) => test(nom, { skip: BASE_ACTIVE ? false : "TEST_DATABASE_URL non définie" }, fn);
+
+avecBase("synchro : le tableur alimente le référentiel, la DOT et « Chiffres du tableur »", async () => {
   const fetchOriginal = globalThis.fetch;
   try {
     const env = { DB: creerAdaptateurDB(), SESSION_SECRET: SECRET_TEST, GOOGLE_SHEET_ID: "t".repeat(30) };
@@ -273,7 +287,78 @@ test("synchro : le tableur alimente le référentiel, le récapitulatif et « Ch
     assert.equal(tableur.lignes.find((l) => l.nom === "Caleb Duval").fiche.discordPseudo, ".matlow.");
   } finally {
     globalThis.fetch = fetchOriginal;
-    await pool.end();
-    await base.supprimer();
   }
+});
+
+// ---------------------------------------------------------------------------
+// Archives hebdomadaires : dimanche 23:59, heure de Paris.
+// ---------------------------------------------------------------------------
+
+test("semaines du site : lundi 00:00 → dimanche 23:59 heure de Paris, été comme hiver", () => {
+  // Été (UTC+2) : dimanche 4 octobre 2026, 23:59 à Paris = 21:59 UTC.
+  assert.equal(semaineParis(new Date("2026-10-04T21:58:59Z")).code, "S40-26");
+  assert.equal(semaineParis(new Date("2026-10-04T21:59:00Z")).fin.toISOString(), "2026-10-04T21:59:00.000Z");
+  assert.equal(semaineArchivable(new Date("2026-10-04T21:58:59Z")).code, "S39-26", "avant 23:59 : la semaine précédente");
+  assert.equal(semaineArchivable(new Date("2026-10-04T21:59:00Z")).code, "S40-26", "à 23:59 : la semaine qui se termine");
+  // Lundi 00:00 à Paris = dimanche 22:00 UTC (été) : déjà la semaine suivante.
+  assert.equal(semaineParis(new Date("2026-10-04T22:00:00Z")).code, "S41-26");
+  // Passage à l'heure d'hiver (dimanche 25 octobre) : 23:59 à Paris = 22:59 UTC.
+  assert.equal(semaineParis(new Date("2026-10-25T12:00:00Z")).fin.toISOString(), "2026-10-25T22:59:00.000Z");
+  // Fin d'année : 2026 compte 53 semaines ISO.
+  assert.equal(semaineParis(new Date("2027-01-02T12:00:00Z")).code, "S53-26");
+});
+
+avecBase("archive : figée à 23:59, une seule fois, primes gelées, consultable", async () => {
+  const env = { DB: creerAdaptateurDB(), SESSION_SECRET: SECRET_TEST, GOOGLE_SHEET_ID: "t".repeat(30) };
+  await pool.query("DELETE FROM tableur_archives");
+  await pool.query("DELETE FROM sync_sheet_agents");
+  const lire = (maj) => pool.query(
+    `INSERT INTO sync_sheet_agents (nom_sheet, nom_normalise, grade_sheet, nb_ventes, nb_locations, ligne_sheet, maj)
+     VALUES ('Zaim Tekno', 'zaim tekno', 'Agent Novice', 54, 76, 47, $1), ('Ava Snow', 'ava snow', 'Référent Immobilier', 3, 1, 20, $1)`,
+    [maj]
+  );
+  // Tableur lu dimanche 4 octobre à 22:00, heure de Paris (semaine S40-26).
+  await lire("2026-10-04 20:00:00");
+
+  // 23:58 : la semaine due est S39, mais les chiffres sont de S40 -> rien.
+  let r = await archiverSemaineSiDue(env, { maintenant: new Date("2026-10-04T21:58:00Z") });
+  assert.deepEqual([r.archivee, r.raison], [false, "chiffres d'une autre semaine"]);
+  // 23:59:30, avec le délai que respecte une synchro ordinaire -> pas encore.
+  r = await archiverSemaineSiDue(env, { maintenant: new Date("2026-10-04T21:59:30Z"), grace: 60_000 });
+  assert.deepEqual([r.archivee, r.raison], [false, "pas encore"]);
+  // 23:59:30, tâche d'archivage -> S40 archivée.
+  r = await archiverSemaineSiDue(env, { maintenant: new Date("2026-10-04T21:59:30Z") });
+  assert.deepEqual([r.archivee, r.semaine], [true, "S40-26"]);
+  // Une seconde fois -> rien.
+  r = await archiverSemaineSiDue(env, { maintenant: new Date("2026-10-04T21:59:45Z") });
+  assert.deepEqual([r.archivee, r.raison], [false, "déjà archivée"]);
+
+  // Un barème modifié après coup ne réécrit pas l'archive.
+  const primesAvant = (await pool.query("SELECT nom, prime_vente, prime_locations FROM tableur_archives_lignes ORDER BY nom")).rows;
+  await pool.query("UPDATE stats_baremes_primes SET montant = montant + 1000");
+  assert.deepEqual((await pool.query("SELECT nom, prime_vente, prime_locations FROM tableur_archives_lignes ORDER BY nom")).rows, primesAvant);
+
+  // Serveur arrêté le dimanche suivant : archive faite au redémarrage (mardi),
+  // avec les derniers chiffres lus dans la semaine S41, marquée « en retard ».
+  await pool.query("DELETE FROM sync_sheet_agents");
+  await lire("2026-10-10 12:00:00");
+  r = await archiverSemaineSiDue(env, { maintenant: new Date("2026-10-13T08:00:00Z") });
+  assert.deepEqual([r.archivee, r.semaine], [true, "S41-26"]);
+  assert.equal((await pool.query("SELECT en_retard FROM tableur_archives WHERE semaine = 'S41-26'")).rows[0].en_retard, 1);
+
+  // Consultation : liste des semaines, puis une archive précise.
+  const direction = (await pool.query(
+    `INSERT INTO membres (pseudo, grade, code_hash, code_indice, actif, cree_le, statut)
+     VALUES ('Direction archives', 'Patron', 'x', 'x', 1, '2026-01-01 00:00:00', 'valide') RETURNING id, pseudo, grade`
+  )).rows[0];
+  const cookie = cookieSession(direction);
+  const appel = async (chemin) => worker.fetch(new Request("http://localhost" + chemin, { headers: { Cookie: cookie } }), env);
+  const liste = await (await appel("/api/stats/tableur")).json();
+  assert.deepEqual(liste.archives.map((a) => a.semaine), ["S41-26", "S40-26"]);
+  const s40 = await (await appel("/api/stats/tableur?semaine=S40-26")).json();
+  assert.equal(s40.archive.semaine, "S40-26");
+  assert.equal(s40.archive.enRetard, false);
+  assert.deepEqual(s40.lignes.map((l) => [l.nom, l.ventes, l.locations]), [["Ava Snow", 3, 1], ["Zaim Tekno", 54, 76]]);
+  assert.deepEqual(s40.lignes.map((l) => [l.nom, l.primeVente, l.primeLocations]), primesAvant.map((p) => [p.nom, p.prime_vente, p.prime_locations]));
+  assert.equal((await appel("/api/stats/tableur?semaine=S99-26")).status, 404);
 });

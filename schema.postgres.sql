@@ -325,6 +325,34 @@ CREATE TABLE IF NOT EXISTS sync_sheet_etat (
   nb_apparies INTEGER NOT NULL DEFAULT 0
 );
 
+-- ---- Archives hebdomadaires du tableur (oct. 2026) -------------------------
+-- Chaque dimanche à 23:59, heure de Paris, les « Chiffres du tableur » de la
+-- semaine écoulée sont figés ici, sous le code de semaine du site (S41-26).
+-- Les primes sont enregistrées telles qu'elles étaient ce jour-là : un
+-- changement de barème ultérieur ne réécrit pas le passé. Voir
+-- archiverSemaineSiDue (src/google-sheets.js).
+CREATE TABLE IF NOT EXISTS tableur_archives (
+  id SERIAL PRIMARY KEY,
+  semaine TEXT NOT NULL UNIQUE,      -- code de semaine du site, ex. S41-26
+  archive_le TEXT NOT NULL,          -- instant de l'archivage (ISO 8601, UTC)
+  donnees_du TEXT NOT NULL,          -- dernière lecture du tableur figée ici
+  en_retard INTEGER NOT NULL DEFAULT 0 -- 1 = archivée après coup (serveur arrêté dimanche soir)
+);
+CREATE TABLE IF NOT EXISTS tableur_archives_lignes (
+  id SERIAL PRIMARY KEY,
+  archive_id INTEGER NOT NULL REFERENCES tableur_archives(id) ON DELETE CASCADE,
+  ligne_sheet INTEGER,
+  nom TEXT NOT NULL,
+  grade TEXT NOT NULL DEFAULT '',
+  ventes INTEGER NOT NULL DEFAULT 0,
+  locations INTEGER NOT NULL DEFAULT 0,
+  prime_vente INTEGER NOT NULL DEFAULT 0,
+  prime_locations INTEGER NOT NULL DEFAULT 0,
+  fiche_pseudo TEXT,                 -- NULL : aucune fiche ; '' : fiche sans pseudo Discord
+  compte TEXT                        -- compte du site relié, s'il y en a un
+);
+CREATE INDEX IF NOT EXISTS idx_tableur_archives_lignes_archive ON tableur_archives_lignes(archive_id);
+
 -- ---- Médias hébergés sur storage.fbfa.fr (sept. 2026) ---------------------
 -- Suivi de chaque fichier envoyé au stockage externe par ce site (photos
 -- d'annonces et de profils) — voir src/medias.js pour le cycle de vie.
