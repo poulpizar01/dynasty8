@@ -397,6 +397,10 @@ const CHAMPS_REGLAGES = {
   questionIdEmploye: "question_id_employe",
 };
 const STATUT_ACCEPTE = "ACCEPTED";
+const STATUT_REFUSE = "REJECTED";
+// Valeur de payload.statusChangedVia quand le staff a validé dans Discord
+// (bouton « Statut ») ; « MONITORING » = embauche constatée par le log FiveM.
+const VALIDATION_DISCORD = "DISCORD";
 const CONSERVATION_REPONSES = "30 days";
 
 async function lireReglages(env) {
@@ -510,8 +514,12 @@ async function traiterCandidature(env, c, reglages) {
   return { resultat: "creee", employeId: fiche.id, motif: "" };
 }
 
+// Tickets encore en suspens : leurs réponses sont gardées, et un nouvel envoi
+// du bot (ou RH) peut encore les faire aboutir.
+const EN_SUSPENS = ["refusee", "attente"];
+
 // Consigne le résultat d'un ticket. Les réponses ne sont gardées que pour un
-// ticket « à traiter » ; un ticket abouti n'est plus jamais modifié.
+// ticket en suspens ; un ticket abouti ou écarté n'est plus jamais modifié.
 async function consignerCandidature(env, c, r) {
   await env.DB.prepare(
     `INSERT INTO rh_arrivees_bot (ticket_id, serveur_discord, discord_id, nom_recu, resultat, motif, employe_id, charge, accepte_le)
@@ -520,16 +528,26 @@ async function consignerCandidature(env, c, r) {
        nom_recu = excluded.nom_recu, resultat = excluded.resultat, motif = excluded.motif, employe_id = excluded.employe_id,
        charge = excluded.charge, accepte_le = excluded.accepte_le,
        recu_le = to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')
-     WHERE rh_arrivees_bot.resultat = 'refusee'
+     WHERE rh_arrivees_bot.resultat IN ('refusee', 'attente')
      RETURNING id`
   ).bind(
     c.ticketId, c.serveur, c.discordId, c.nomRecu, r.resultat, r.motif || "", r.employeId || null,
-    r.resultat === "refusee" ? JSON.stringify(c.reponses) : null, c.accepteLe || "",
+    EN_SUSPENS.includes(r.resultat) ? JSON.stringify(c.reponses) : null, c.accepteLe || "",
   ).run();
   return env.DB.prepare("SELECT * FROM rh_arrivees_bot WHERE ticket_id = ?1").bind(c.ticketId).first();
 }
 
-// Au-delà de 30 jours, les réponses d'un ticket resté « à traiter » sont effacées.
+// Embauche constatée en jeu (ou origine inconnue) : pas de fiche d'office,
+// une ligne « en attente d'approbation » que RH approuve ou écarte.
+async function mettreEnAttente(env, c) {
+  if (RE_ID_DISCORD.test(c.discordId)) {
+    const existante = await env.DB.prepare("SELECT id FROM employes WHERE discord_id = ?1").bind(c.discordId).first();
+    if (existante) return { resultat: "existante", employeId: existante.id, motif: "Ce compte Discord a déjà une fiche." };
+  }
+  return { resultat: "attente", motif: "Embauche constatée en jeu, sans validation dans Discord : à approuver." };
+}
+
+// Au-delà de 30 jours, les réponses d'un ticket resté en suspens sont effacées.
 async function purgerReponses(env) {
   await env.DB.prepare(
     `UPDATE rh_arrivees_bot SET charge = NULL
@@ -561,27 +579,39 @@ export async function recevoirCandidatureBot(request, env) {
     return json({ erreur: "Ce serveur Discord n'est pas celui réglé dans Ressources humaines." }, 403);
   }
   const p = evenement.payload;
-  if (p.status !== STATUT_ACCEPTE) return json({ ok: true, ignore: `candidature au statut ${texte(p.status, 20) || "inconnu"}` });
   const ticketId = texte(p.ticketId, 100);
   if (!ticketId) return json({ erreur: "payload.ticketId manquant." }, 400);
-
   const deja = await env.DB.prepare("SELECT * FROM rh_arrivees_bot WHERE ticket_id = ?1").bind(ticketId).first();
-  if (deja && deja.resultat !== "refusee") return json({ ok: true, resultat: deja.resultat, employeId: deja.employe_id, deja: true });
+
+  // Refusée dans Discord : un ticket encore en suspens est écarté (réponses effacées).
+  if (p.status === STATUT_REFUSE) {
+    if (deja && EN_SUSPENS.includes(deja.resultat)) {
+      await env.DB.prepare("UPDATE rh_arrivees_bot SET resultat = 'ecartee', motif = ?2, charge = NULL WHERE id = ?1")
+        .bind(deja.id, "Candidature refusée dans Discord.").run();
+      return json({ ok: true, resultat: "ecartee" });
+    }
+    return json({ ok: true, ignore: "candidature refusée" });
+  }
+  if (p.status !== STATUT_ACCEPTE) return json({ ok: true, ignore: `candidature au statut ${texte(p.status, 20) || "inconnu"}` });
+  if (deja && !EN_SUSPENS.includes(deja.resultat)) {
+    return json({ ok: true, resultat: deja.resultat, employeId: deja.employe_id || undefined, deja: true });
+  }
 
   const reponses = lireReponses(p);
   const c = {
     ticketId, serveur, reponses,
-    discordId: texte(p.candidateId, 30),
+    // La personne qui a soumis le formulaire ; à défaut, celle qui a ouvert le ticket.
+    discordId: texte(p.submittedById, 30) || texte(p.candidateId, 30),
     accepteLe: texte(evenement.sentAt, 40),
   };
   const id = identiteDepuisReponses(reponses, reglages);
-  c.nomRecu = `${id.prenom} ${id.nom}`.trim() || reponses.map((r) => r.answer).find(Boolean) || "";
-  c.nomRecu = c.nomRecu.slice(0, 130);
-  const r = await traiterCandidature(env, c, reglages);
+  c.nomRecu = (`${id.prenom} ${id.nom}`.trim() || reponses.map((r) => r.answer).find(Boolean) || "").slice(0, 130);
+  // Seule une validation par le staff dans Discord crée la fiche d'office.
+  const r = p.statusChangedVia === VALIDATION_DISCORD ? await traiterCandidature(env, c, reglages) : await mettreEnAttente(env, c);
   const ligne = await consignerCandidature(env, c, r);
   await purgerReponses(env);
-  // 202 : reçue et gardée « à traiter » dans RH (le bot la considère livrée).
-  const status = ligne.resultat === "creee" ? 201 : ligne.resultat === "refusee" ? 202 : 200;
+  // 202 : reçue et gardée en suspens dans RH (le bot la considère livrée).
+  const status = ligne.resultat === "creee" ? 201 : EN_SUSPENS.includes(ligne.resultat) ? 202 : 200;
   return json({ ok: true, resultat: ligne.resultat, motif: ligne.motif || undefined, employeId: ligne.employe_id || undefined }, status);
 }
 
@@ -590,13 +620,13 @@ async function arriveesBot(env) {
   const [lignes, reglages, questions] = await Promise.all([
     env.DB.prepare(
       `SELECT a.id, a.ticket_id, a.discord_id, a.nom_recu, a.resultat, a.motif, a.recu_le, a.employe_id,
-              (a.charge IS NOT NULL) AS retraitable,
+              (a.charge IS NOT NULL) AS reponses_gardees,
               e.id_employe, e.id_provisoire, e.prenom, e.nom, e.discord_pseudo, e.statut
          FROM rh_arrivees_bot a LEFT JOIN employes e ON e.id = a.employe_id
         ORDER BY a.id DESC LIMIT 50`
     ).all(),
     lireReglages(env),
-    // Libellés des questions vues dans les tickets à traiter (jamais les réponses).
+    // Libellés des questions vues dans les tickets en suspens (jamais les réponses).
     env.DB.prepare(
       `SELECT DISTINCT q.value->>'question' AS question
          FROM rh_arrivees_bot a, jsonb_array_elements(a.charge::jsonb) q
@@ -612,7 +642,10 @@ async function arriveesBot(env) {
     questionsVues: (questions.results || []).map((q) => q.question).filter(Boolean).sort((a, b) => a.localeCompare(b, "fr")),
     arrivees: (lignes.results || []).map((l) => ({
       id: l.id, ticketId: l.ticket_id, discordId: l.discord_id, nomRecu: l.nom_recu, resultat: l.resultat, motif: l.motif,
-      recuLe: l.recu_le, retraitable: !!l.retraitable,
+      recuLe: l.recu_le,
+      // Approuver / retraiter : possible tant que le ticket est en suspens et ses réponses gardées.
+      traitable: EN_SUSPENS.includes(l.resultat) && !!l.reponses_gardees,
+      ecartable: EN_SUSPENS.includes(l.resultat),
       employe: l.employe_id
         ? { id: l.employe_id, idEmploye: l.id_employe, idProvisoire: !!l.id_provisoire, nomComplet: nomComplet(l), statut: l.statut }
         : null,
@@ -620,11 +653,12 @@ async function arriveesBot(env) {
   };
 }
 
-// Retraite un ticket « à traiter » avec les réglages actuels.
-async function retraiterCandidature(env, id) {
+// Approuve une embauche en attente, ou retraite un ticket « à traiter », avec
+// les réglages actuels.
+async function traiterCandidatureEnSuspens(env, id) {
   const ligne = await env.DB.prepare("SELECT * FROM rh_arrivees_bot WHERE id = ?1").bind(id).first();
   if (!ligne) return json({ erreur: "Candidature introuvable." }, 404);
-  if (ligne.resultat !== "refusee") return json({ erreur: "Cette candidature a déjà été traitée." }, 409);
+  if (!EN_SUSPENS.includes(ligne.resultat)) return json({ erreur: "Cette candidature a déjà été traitée." }, 409);
   if (!ligne.charge) return json({ erreur: "Les réponses de cette candidature ne sont plus conservées (30 jours) : créez la fiche à la main." }, 410);
   const reglages = await lireReglages(env);
   let reponses;
@@ -634,7 +668,17 @@ async function retraiterCandidature(env, id) {
   c.nomRecu = (`${identite.prenom} ${identite.nom}`.trim() || ligne.nom_recu).slice(0, 130);
   const r = await traiterCandidature(env, c, reglages);
   const apres = await consignerCandidature(env, c, r);
-  return json({ ok: apres.resultat !== "refusee", resultat: apres.resultat, motif: apres.motif || undefined, employeId: apres.employe_id || undefined });
+  return json({ ok: !EN_SUSPENS.includes(apres.resultat), resultat: apres.resultat, motif: apres.motif || undefined, employeId: apres.employe_id || undefined });
+}
+
+// Écarte une candidature en suspens : aucune fiche, réponses effacées.
+async function ecarterCandidature(env, id) {
+  const ligne = await env.DB.prepare("SELECT id, resultat FROM rh_arrivees_bot WHERE id = ?1").bind(id).first();
+  if (!ligne) return json({ erreur: "Candidature introuvable." }, 404);
+  if (!EN_SUSPENS.includes(ligne.resultat)) return json({ erreur: "Cette candidature a déjà été traitée." }, 409);
+  await env.DB.prepare("UPDATE rh_arrivees_bot SET resultat = 'ecartee', motif = ?2, charge = NULL WHERE id = ?1")
+    .bind(id, "Écartée dans Ressources humaines.").run();
+  return json({ ok: true });
 }
 
 async function reglerBot(env, request) {
@@ -681,10 +725,12 @@ export async function routeRh(request, url, env, s) {
   }
   if (route === "/a-rattacher" && m === "GET") return json(await aRattacher(env));
   if (route === "/bot" && m === "GET") return json(await arriveesBot(env));
-  const mRetraiter = route.match(/^\/bot\/arrivees\/(\d+)\/retraiter$/);
-  if (mRetraiter && m === "POST") {
+  // Approuver / retraiter, ou écarter, une candidature en suspens : droit d'ajouter un employé.
+  const mSuspens = route.match(/^\/bot\/arrivees\/(\d+)\/(traiter|ecarter)$/);
+  if (mSuspens && m === "POST") {
     if (!perms.has("creer")) return json({ erreur: "Vous n'avez pas le droit d'ajouter un employé." }, 403);
-    return retraiterCandidature(env, Number(mRetraiter[1]));
+    const id = Number(mSuspens[1]);
+    return mSuspens[2] === "traiter" ? traiterCandidatureEnSuspens(env, id) : ecarterCandidature(env, id);
   }
   if (route === "/bot/reglages" && m === "PUT") {
     if (!perms.has("parametrer")) return json({ erreur: "Réservé au Patron, au Co Patron et au Développeur web." }, 403);

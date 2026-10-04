@@ -228,8 +228,9 @@ async function evenementDuBot(payload, { secret = SECRET_WEBHOOK, eventType = "r
   return { status: r.status, corps: await r.json() };
 }
 const candidature = (champs = {}) => ({
-  ticketId: "ckticket001", channelId: "1290000000000000001", candidateId: "333333333333333333",
-  status: "ACCEPTED", recruiterId: null, submittedAt: "2026-10-04T20:00:00.000Z", attachments: [],
+  ticketId: "ckticket001", channelId: "1290000000000000001", candidateId: "999999999999999999",
+  submittedById: "333333333333333333", status: "ACCEPTED", statusChangedVia: "DISCORD", statusChangedById: "111111111111111111",
+  recruiterId: null, submittedAt: "2026-10-04T20:00:00.000Z", attachments: [],
   answers: [
     { question: "Nom RP", answer: "Lina De la Recrue" },
     { question: "Numéro de téléphone", answer: "555-0199" },
@@ -266,9 +267,9 @@ it("bot Discord : une candidature acceptée crée la fiche, une seule fois, selo
 
   // RH retraite le ticket : la fiche est créée, active, ID provisoire.
   const ligne = (await appel("Patron", "/api/rh/bot")).corps.arrivees.find((a) => a.ticketId === "ckticket001");
-  assert.equal(ligne.retraitable, true);
-  assert.equal((await appel("Agent", `/api/rh/bot/arrivees/${ligne.id}/retraiter`, { method: "POST", corps: {} })).status, 403);
-  const retraite = await appel("Manager", `/api/rh/bot/arrivees/${ligne.id}/retraiter`, { method: "POST", corps: {} });
+  assert.equal(ligne.traitable, true);
+  assert.equal((await appel("Agent", `/api/rh/bot/arrivees/${ligne.id}/traiter`, { method: "POST", corps: {} })).status, 403);
+  const retraite = await appel("Manager", `/api/rh/bot/arrivees/${ligne.id}/traiter`, { method: "POST", corps: {} });
   assert.deepEqual([retraite.status, retraite.corps.resultat], [200, "creee"]);
   const fiche = (await pool.query("SELECT * FROM employes WHERE id = $1", [retraite.corps.employeId])).rows[0];
   assert.deepEqual(
@@ -290,14 +291,54 @@ it("bot Discord : une candidature acceptée crée la fiche, une seule fois, selo
   assert.equal((await pool.query("SELECT prenom FROM employes WHERE id = $1", [fiche.id])).rows[0].prenom, "Lina");
 
   // Nouveau candidat, réglages en place : fiche créée dès la réception.
-  const direct = await evenementDuBot(candidature({ ticketId: "ckticket003", candidateId: "666666666666666666",
+  const direct = await evenementDuBot(candidature({ ticketId: "ckticket003", submittedById: "666666666666666666",
     answers: [{ question: "Nom RP", answer: "Noa Direct" }] }));
   assert.deepEqual([direct.status, direct.corps.resultat], [201, "creee"]);
 
   // Nom incomplet : à traiter, avec le motif.
-  const incomplet = await evenementDuBot(candidature({ ticketId: "ckticket004", candidateId: "777777777777777777",
+  const incomplet = await evenementDuBot(candidature({ ticketId: "ckticket004", submittedById: "777777777777777777",
     answers: [{ question: "Nom RP", answer: "Mononyme" }] }));
   assert.deepEqual([incomplet.status, incomplet.corps.resultat], [202, "refusee"]);
+
+  // Embauche constatée en jeu (log FiveM) : pas de fiche, en attente d'approbation.
+  const enJeu = await evenementDuBot(candidature({ ticketId: "ckticket006", submittedById: "121212121212121212",
+    statusChangedVia: "MONITORING", statusChangedById: null, answers: [{ question: "Nom RP", answer: "Sam Enjeu" }] }));
+  assert.deepEqual([enJeu.status, enJeu.corps.resultat], [202, "attente"]);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM employes WHERE discord_id = '121212121212121212'")).rows[0].n, 0);
+  // Un renvoi du bot (pièce jointe...) ne change rien ; une validation dans Discord crée la fiche.
+  assert.equal((await evenementDuBot(candidature({ ticketId: "ckticket006", submittedById: "121212121212121212",
+    statusChangedVia: "MONITORING", answers: [{ question: "Nom RP", answer: "Sam Enjeu" }] }))).corps.resultat, "attente");
+  const valideDiscord = await evenementDuBot(candidature({ ticketId: "ckticket006", submittedById: "121212121212121212",
+    answers: [{ question: "Nom RP", answer: "Sam Enjeu" }] }));
+  assert.deepEqual([valideDiscord.status, valideDiscord.corps.resultat], [201, "creee"]);
+
+  // Ancienne version du bot (sans statusChangedVia) : prudence, en attente aussi.
+  const sansOrigine = await evenementDuBot(candidature({ ticketId: "ckticket007", submittedById: "131313131313131313",
+    statusChangedVia: undefined, answers: [{ question: "Nom RP", answer: "Alex Approuve" }] }));
+  assert.equal(sansOrigine.corps.resultat, "attente");
+  // RH approuve depuis le site : la fiche est créée.
+  const enAttente2 = (await appel("Patron", "/api/rh/bot")).corps.arrivees.find((a) => a.ticketId === "ckticket007");
+  assert.deepEqual([enAttente2.resultat, enAttente2.traitable, enAttente2.ecartable], ["attente", true, true]);
+  const approuve = await appel("DRH", `/api/rh/bot/arrivees/${enAttente2.id}/traiter`, { method: "POST", corps: {} });
+  assert.deepEqual([approuve.status, approuve.corps.resultat], [200, "creee"]);
+  assert.equal((await pool.query("SELECT prenom FROM employes WHERE discord_id = '131313131313131313'")).rows[0].prenom, "Alex");
+
+  // Écartée depuis le site : aucune fiche, réponses effacées, plus rien ne la relance.
+  await evenementDuBot(candidature({ ticketId: "ckticket008", submittedById: "141414141414141414", statusChangedVia: "MONITORING",
+    answers: [{ question: "Nom RP", answer: "Lou Ecarte" }] }));
+  const aEcarter = (await appel("Patron", "/api/rh/bot")).corps.arrivees.find((a) => a.ticketId === "ckticket008");
+  assert.equal((await appel("Manager", `/api/rh/bot/arrivees/${aEcarter.id}/ecarter`, { method: "POST", corps: {} })).status, 200);
+  const ecartee = (await pool.query("SELECT resultat, charge FROM rh_arrivees_bot WHERE ticket_id = 'ckticket008'")).rows[0];
+  assert.deepEqual([ecartee.resultat, ecartee.charge], ["ecartee", null]);
+  assert.equal((await evenementDuBot(candidature({ ticketId: "ckticket008", submittedById: "141414141414141414",
+    answers: [{ question: "Nom RP", answer: "Lou Ecarte" }] }))).corps.deja, true);
+
+  // Refusée dans Discord alors qu'elle attendait : écartée.
+  await evenementDuBot(candidature({ ticketId: "ckticket009", submittedById: "151515151515151515", statusChangedVia: "MONITORING",
+    answers: [{ question: "Nom RP", answer: "Max Refuse" }] }));
+  const refus = await evenementDuBot(candidature({ ticketId: "ckticket009", submittedById: "151515151515151515", status: "REJECTED",
+    answers: [{ question: "Nom RP", answer: "Max Refuse" }] }));
+  assert.equal(refus.corps.resultat, "ecartee");
 
   // Autre serveur Discord que celui réglé : refusé.
   assert.equal((await evenementDuBot(candidature({ ticketId: "ckticket005" }), { guildId: "555555555555555555" })).status, 403);

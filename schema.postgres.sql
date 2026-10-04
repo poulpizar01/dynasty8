@@ -567,7 +567,7 @@ CREATE TABLE IF NOT EXISTS rh_arrivees_bot (
   serveur_discord TEXT NOT NULL DEFAULT '',
   discord_id TEXT NOT NULL DEFAULT '',
   nom_recu TEXT NOT NULL DEFAULT '',
-  resultat TEXT NOT NULL CHECK (resultat IN ('creee', 'existante', 'refusee')),
+  resultat TEXT NOT NULL,
   motif TEXT NOT NULL DEFAULT '',
   employe_id INTEGER REFERENCES employes(id) ON DELETE SET NULL,
   recu_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
@@ -575,6 +575,18 @@ CREATE TABLE IF NOT EXISTS rh_arrivees_bot (
 CREATE INDEX IF NOT EXISTS idx_rh_arrivees_bot_recu ON rh_arrivees_bot(id DESC);
 ALTER TABLE rh_arrivees_bot ADD COLUMN IF NOT EXISTS charge TEXT;
 ALTER TABLE rh_arrivees_bot ADD COLUMN IF NOT EXISTS accepte_le TEXT NOT NULL DEFAULT '';
+-- États d'un ticket : creee, existante (le compte avait déjà une fiche),
+-- refusee (« à traiter » : réglage manquant...), attente (embauche constatée
+-- en jeu, à approuver), ecartee. La première version de la table n'en
+-- connaissait que trois : sa contrainte est remplacée par celle-ci.
+ALTER TABLE rh_arrivees_bot DROP CONSTRAINT IF EXISTS rh_arrivees_bot_resultat_check;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rh_arrivees_bot_resultat_valide') THEN
+    ALTER TABLE rh_arrivees_bot ADD CONSTRAINT rh_arrivees_bot_resultat_valide
+      CHECK (resultat IN ('creee', 'existante', 'refusee', 'attente', 'ecartee'));
+  END IF;
+END $$;
 
 -- ============================================================================
 -- Compte applicatif restreint — À GARDER EN DERNIER DANS CE FICHIER

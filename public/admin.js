@@ -560,6 +560,8 @@ const LIBELLES_ARRIVEE_BOT = {
   creee: '<span class="puce puce-ok">Fiche créée</span>',
   existante: '<span class="puce puce-masquee">Déjà une fiche</span>',
   refusee: '<span class="puce puce-or">À traiter</span>',
+  attente: '<span class="puce puce-or">En attente d’approbation</span>',
+  ecartee: '<span class="puce puce-masquee">Écartée</span>',
 };
 // Champ renvoyé par l'API -> champ du formulaire.
 const CHAMPS_REGLAGES_BOT = {
@@ -604,19 +606,24 @@ async function chargerArriveesBot() {
           <td>${LIBELLES_ARRIVEE_BOT[a.resultat] || echapper(a.resultat)}${a.motif ? `<div class="champ-aide">${echapper(a.motif)}</div>` : ""}</td>
           <td>${a.employe
             ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-fiche="${a.employe.id}">${echapper(a.employe.idEmploye)} — ${echapper(a.employe.nomComplet)}</button>${a.employe.statut === "inactif" ? ' <span class="puce puce-masquee">Inactif</span>' : ""}`
-            : a.retraitable && peutCreer
-              ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-retraiter="${a.id}">Retraiter</button>`
+            : peutCreer && (a.traitable || a.ecartable)
+              ? (a.traitable ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-action="traiter" data-rh-bot-id="${a.id}">${a.resultat === "attente" ? "Approuver" : "Retraiter"}</button> ` : "")
+                + `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-action="ecarter" data-rh-bot-id="${a.id}">Écarter</button>`
               : "—"}</td>
         </tr>`).join("")}
         </tbody></table></div>`
       : '<p class="champ-aide">Aucune candidature acceptée reçue pour le moment.</p>';
     document.querySelectorAll("[data-rh-bot-fiche]").forEach((b) =>
       b.addEventListener("click", () => ouvrirFicheEmploye(Number(b.dataset.rhBotFiche))));
-    document.querySelectorAll("[data-rh-bot-retraiter]").forEach((b) => b.addEventListener("click", async () => {
+    document.querySelectorAll("[data-rh-bot-action]").forEach((b) => b.addEventListener("click", async () => {
+      const ecarter = b.dataset.rhBotAction === "ecarter";
+      if (ecarter && !(await confirmerAction("Écarter cette candidature ? Aucune fiche ne sera créée, et ses réponses seront effacées."))) return;
       b.disabled = true;
       try {
-        const res = await appelAPI(`/api/rh/bot/arrivees/${b.dataset.rhBotRetraiter}/retraiter`, { method: "POST", body: "{}" });
-        afficherMessage("zone-message-rh-bot", res.ok ? "Fiche créée ✓" : (res.motif || "Toujours à traiter."), res.ok ? "succes" : "erreur");
+        const res = await appelAPI(`/api/rh/bot/arrivees/${b.dataset.rhBotId}/${b.dataset.rhBotAction}`, { method: "POST", body: "{}" });
+        if (ecarter) afficherMessage("zone-message-rh-bot", "Candidature écartée ✓", "succes");
+        else if (res.resultat === "creee") afficherMessage("zone-message-rh-bot", "Fiche créée ✓", "succes");
+        else afficherMessage("zone-message-rh-bot", res.motif || "Toujours à traiter.", res.ok ? "succes" : "erreur");
         chargerRh();
       } catch (e) {
         afficherMessage("zone-message-rh-bot", e.message, "erreur");

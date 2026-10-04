@@ -214,8 +214,10 @@ section « Photos » de [`deploy/operateur/README-OPERATEUR.md`](deploy/operateu
 - **Bot Discord « Roxwood Network Entreprise »** (recrutement) — le bot
   ([dépôt](https://github.com/poulpizar01/roxwood-network-entreprise)) fait
   foi : il pousse son webhook `recruitment.updated`, signé HMAC-SHA256
-  (`X-Signature-256`), sur `POST /api/rh/bot/candidatures`. Quand une
-  candidature passe à « Accepté », la fiche RH est créée aussitôt. Un ticket ne
+  (`X-Signature-256`), sur `POST /api/rh/bot/candidatures`. Quand le staff
+  valide une candidature dans Discord, la fiche RH est créée aussitôt à partir
+  du formulaire ; une embauche constatée seulement en jeu attend
+  l'approbation de RH. Un ticket ne
   crée jamais deux fiches, un compte Discord non plus. Le grade d'arrivée, le
   serveur Discord autorisé et la question du formulaire qui donne chaque champ
   de la fiche se règlent dans l'onglet Ressources humaines.

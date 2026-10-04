@@ -2,10 +2,27 @@
 
 Le bot ([poulpizar01/roxwood-network-entreprise](https://github.com/poulpizar01/roxwood-network-entreprise))
 fait foi : le site reçoit son webhook `recruitment.updated` tel qu'il
-l'envoie, sans rien changer au bot. Quand une candidature passe à
-**Accepté** (bouton « Statut » du message de suivi, ou automatiquement par
-le log FiveM d'embauche), la fiche de l'employé est créée dans l'onglet
-**Ressources humaines**, active.
+l'envoie. Le parcours :
+
+1. le candidat remplit le formulaire de son ticket ;
+2. après l'entretien, une personne habilitée valide (« Statut → Accepté »)
+   ou refuse dans Discord ;
+3. à la validation, le site reprend les réponses du formulaire et crée la
+   fiche dans l'onglet **Ressources humaines**, active.
+
+Une embauche constatée **seulement en jeu** (le bot passe la candidature à
+« Accepté » tout seul sur le log FiveM d'embauche) ne crée pas de fiche : la
+ligne arrive « **en attente d'approbation** » dans RH, qui l'approuve (la
+fiche est alors créée) ou l'écarte. Une validation ensuite dans Discord crée
+aussi la fiche ; un refus dans Discord l'écarte.
+
+**Version du bot requise** : la branche `site-dynasty8-candidatures` du
+dépôt du bot, qui ajoute au webhook `submittedById` (la personne qui a
+soumis le formulaire, dont l'ID Discord va sur la fiche) et
+`statusChangedVia` (`DISCORD` ou `MONITORING`, d'où vient la validation).
+Avec une version du bot qui ne les envoie pas, toute candidature acceptée
+arrive « en attente d'approbation » (on ne peut pas savoir qui l'a validée),
+et l'ID Discord est celui de l'ouvreur du ticket.
 
 ## 1. Côté bot : créer l'abonnement
 
@@ -39,7 +56,7 @@ Développeur web) :
 |---|---|
 | Grade à l'arrivée | grade de la fiche créée (jamais Patron, Co Patron, Développeur web) |
 | ID du serveur Discord | si renseigné, seules les candidatures de ce serveur sont acceptées |
-| Prénom et nom (une seule question) | ex. « Nom RP » (question par défaut du bot) : premier mot = prénom, le reste = nom |
+| Prénom et nom (une seule question) | ex. « Prénom Nom » : premier mot = prénom, le reste = nom |
 | Prénom / Nom (questions séparées) | à la place de la précédente, si le formulaire pose deux questions |
 | Téléphone, RIB, ID employé | facultatifs ; sans ID employé, la fiche reçoit un ID provisoire `PROV-B…` |
 
@@ -54,9 +71,12 @@ ajouter ces questions dans le bot.
 
 ## 4. Ce que fait le site
 
-- **Seul le statut « Accepté » crée une fiche.** Les autres envois
-  (formulaire soumis, entretien, refus, recruteur assigné) sont acquittés et
-  ignorés.
+- **Seule une validation dans Discord crée une fiche d'office.** Une
+  embauche constatée en jeu attend l'approbation de RH. Les autres envois
+  (formulaire soumis, entretien, recruteur assigné) sont acquittés et
+  ignorés ; un refus écarte une candidature encore en attente.
+- **L'ID Discord de la fiche** est celui de la personne qui a soumis le
+  formulaire.
 - **Un ticket = une fiche** : le bot renvoie l'état complet à chaque
   changement, un même ticket ne crée jamais une deuxième fiche.
 - **Un compte Discord = une fiche** : s'il en a déjà une, elle n'est pas
@@ -76,7 +96,7 @@ ajouter ces questions dans le bot.
 | Fiche créée | `201` |
 | Déjà une fiche pour ce compte Discord, ou ticket déjà traité | `200` |
 | Candidature pas encore acceptée (ignorée) | `200` |
-| Acceptée, gardée « à traiter » dans RH | `202` |
+| Acceptée, gardée « à traiter » ou « en attente d'approbation » dans RH | `202` |
 | Signature invalide (mauvais secret) | `401` |
 | Serveur Discord non autorisé | `403` |
 | Type d'événement autre que « Candidatures » | `400` |
