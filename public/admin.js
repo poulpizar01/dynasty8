@@ -3052,10 +3052,19 @@ async function chargerSyncSheet() {
   try {
     const r = await appelAPI("/api/sync-sheet/etat");
 
-    if (!r.etat) {
+    // Sans GOOGLE_SHEET_ID, le bouton ne peut rien faire : on le désactive et
+    // on le dit une fois, plutôt que de laisser cliquer vers un « échec ».
+    const nonConfigure = r.configure === false;
+    const bouton = document.getElementById("bouton-synchroniser-sheet");
+    if (bouton) {
+      bouton.disabled = nonConfigure;
+      bouton.title = nonConfigure ? "Synchronisation non configurée sur ce serveur" : "";
+    }
+
+    if (nonConfigure) {
+      etatLigne.textContent = "Synchronisation non configurée sur ce serveur (GOOGLE_SHEET_ID absent du .env).";
+    } else if (!r.etat || r.etat.statut === "desactive") {
       etatLigne.textContent = "Pas encore synchronisé.";
-    } else if (r.etat.statut === "desactive") {
-      etatLigne.textContent = "Synchronisation non configurée sur le serveur : renseignez GOOGLE_SHEET_ID dans le .env (identifiant du classeur de la Direction).";
     } else if (r.etat.statut === "erreur") {
       etatLigne.textContent = `Dernière tentative en échec (${formaterDateAdmin(r.etat.derniere_sync)}) : ${r.etat.erreur}`;
     } else {
@@ -3063,7 +3072,9 @@ async function chargerSyncSheet() {
     }
 
     if (!r.lignes.length) {
-      corps.innerHTML = `<tr><td colspan="5">Aucune ligne lue pour le moment — cliquez sur « Synchroniser maintenant ».</td></tr>`;
+      corps.innerHTML = nonConfigure
+        ? `<tr><td colspan="5">Aucune ligne : la synchronisation n'est pas configurée sur ce serveur.</td></tr>`
+        : `<tr><td colspan="5">Aucune ligne lue pour le moment — cliquez sur « Synchroniser maintenant ».</td></tr>`;
       return;
     }
     corps.innerHTML = r.lignes.map((l) => `

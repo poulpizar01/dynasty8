@@ -7,7 +7,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { analyserCSV, analyserLignesSheet, lireConfigSheet, synchroniserSheetSansErreur } from "../src/google-sheets.js";
-import { RACINE } from "./aide-medias.js";
+import worker from "../src/index.js";
+import { RACINE, cookieSession, SECRET_TEST } from "./aide-medias.js";
 
 test("CSV simple", () => {
   assert.deepEqual(analyserCSV("a,b,c\n1,2,3"), [["a", "b", "c"], ["1", "2", "3"]]);
@@ -122,4 +123,46 @@ test("aucun identifiant de classeur codé en dur dans le dépôt", () => {
   };
   aExaminer.forEach(parcourir);
   assert.deepEqual(fautifs, [], "identifiant de classeur trouvé dans : " + fautifs.join(", "));
+});
+
+// ---------------------------------------------------------------------------
+// Onglet « Synchro Google Sheets » : un réglage absent n'est pas un échec.
+// ---------------------------------------------------------------------------
+
+// Base factice : un compte Direction valide, aucune donnée de synchro.
+function envDirection(reglages = {}) {
+  const membre = { id: 1, pseudo: "Direction test", grade: "Patron", statut: "valide", actif: 1, sessions_invalides_avant: null };
+  const requete = (sql) => {
+    const r = {
+      first: async () => (/FROM membres WHERE id/.test(sql) ? membre : null),
+      all: async () => ({ results: [] }),
+      run: async () => ({}),
+    };
+    return { ...r, bind: () => r };
+  };
+  return { env: { DB: { prepare: requete }, SESSION_SECRET: SECRET_TEST, ...reglages }, cookie: cookieSession(membre) };
+}
+
+test("sans GOOGLE_SHEET_ID : l'état annonce « non configuré » et le bouton ne tente rien", async () => {
+  const { env, cookie } = envDirection();
+  const etat = await (await worker.fetch(new Request("http://localhost/api/sync-sheet/etat", { headers: { Cookie: cookie } }), env)).json();
+  assert.equal(etat.configure, false);
+
+  const fetchOriginal = globalThis.fetch;
+  let appels = 0;
+  globalThis.fetch = async () => { appels++; throw new Error("aucun appel réseau ne devrait avoir lieu"); };
+  try {
+    const r = await worker.fetch(new Request("http://localhost/api/sync-sheet/synchroniser", { method: "POST", headers: { Cookie: cookie } }), env);
+    assert.equal(r.status, 503, "absence de réglage, pas une panne du classeur (502)");
+    assert.match((await r.json()).erreur, /GOOGLE_SHEET_ID/);
+    assert.equal(appels, 0);
+  } finally {
+    globalThis.fetch = fetchOriginal;
+  }
+});
+
+test("avec GOOGLE_SHEET_ID : l'état annonce « configuré »", async () => {
+  const { env, cookie } = envDirection({ GOOGLE_SHEET_ID: "c".repeat(44) });
+  const etat = await (await worker.fetch(new Request("http://localhost/api/sync-sheet/etat", { headers: { Cookie: cookie } }), env)).json();
+  assert.equal(etat.configure, true);
 });

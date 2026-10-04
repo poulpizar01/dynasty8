@@ -23,7 +23,7 @@
 
 import { enc, b64url, unb64url } from "./util-crypto.js";
 import * as statsCalc from "./stats-calc.js";
-import { synchroniserSheetSansErreur } from "./google-sheets.js";
+import { synchroniserSheetSansErreur, lireConfigSheet } from "./google-sheets.js";
 import { ErreurStockage } from "./fbfa-storage.js";
 import { consommer, adresseAppelant } from "./limite-debit.js";
 import { TYPES_IMAGE, decoderDataUrl, estDataUrlImage } from "./images.js";
@@ -2786,6 +2786,9 @@ async function syncSheetEtat(env, s) {
     ).all(),
   ]);
   return json({
+    // Réglage du serveur, indépendant de l'historique : l'interface s'en sert
+    // pour distinguer « pas configuré » (bouton inutile) d'un vrai échec.
+    configure: !!lireConfigSheet(env),
     etat: etatR || null,
     lignes: lignesR.results || [],
   });
@@ -2793,6 +2796,9 @@ async function syncSheetEtat(env, s) {
 
 async function syncSheetSynchroniser(request, env, s) {
   if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
+  if (!lireConfigSheet(env)) {
+    return json({ erreur: "Synchronisation non configurée sur ce serveur (GOOGLE_SHEET_ID absent du .env)." }, 503);
+  }
   const etat = await synchroniserSheetSansErreur(env);
   if (etat.statut !== "ok") return json({ erreur: etat.erreur || "Échec de la synchronisation." }, 502);
   return json({ ok: true, etat });
