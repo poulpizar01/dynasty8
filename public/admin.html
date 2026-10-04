@@ -25,6 +25,7 @@
   <symbol id="ico-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></symbol>
   <symbol id="ico-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
   <symbol id="ico-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+  <symbol id="ico-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c2 .7 3 2.5 3 5.2"/></symbol>
   <symbol id="ico-calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h2M12 12h2M8 16h2M12 16h2M16 12v4"/></symbol>
   <symbol id="ico-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M2 20h20"/></symbol>
   <symbol id="ico-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
@@ -89,6 +90,7 @@
 
     <p class="admin-nav-groupe cache" id="groupe-direction">Direction</p>
     <button class="lien-onglet cache" data-onglet="statistiques" id="onglet-statistiques"><svg class="ico"><use href="#ico-chart"></use></svg><span>Ventes &amp; statistiques</span></button>
+    <button class="lien-onglet cache" data-onglet="rh" id="onglet-rh"><svg class="ico"><use href="#ico-users"></use></svg><span>RH</span></button>
     <button class="lien-onglet cache" data-onglet="comptabilite" id="onglet-comptabilite"><svg class="ico"><use href="#ico-calc"></use></svg><span>Comptabilité</span></button>
     <button class="lien-onglet cache" data-onglet="comptes" id="onglet-comptes"><svg class="ico"><use href="#ico-lock"></use></svg><span>Comptes &amp; accès</span></button>
 
@@ -538,31 +540,32 @@
         </div>
       </div>
 
-      <!-- Référentiel des agents (§4) : associe pseudo Discord, identité RP
-           et grade — c'est cette liste que la DOT utilise pour les salaires,
-           et que la synchro du tableur complète (fiches créées, grades
-           alignés). Modifiable directement dans le tableau, comme l'écran
-           « Comptes & accès » ci-dessous. -->
-      <div id="statistiques-agents" style="margin-top:36px;">
-        <div class="entete-admin">
-          <div>
-            <h3 style="margin-bottom:2px;">Gérer les agents</h3>
-            <p style="margin:0;font-size:0.88rem;">Associez chaque pseudo Discord à son identité RP et son grade.</p>
-          </div>
-          <button type="button" class="btn btn-or" id="bouton-nouvel-agent">+ Ajouter un agent</button>
+    </section>
+
+    <!-- Onglet RH (Direction uniquement) : référentiel des agents (§4), qui
+         associe pseudo Discord, identité RP et grade. C'est cette liste que la
+         DOT utilise pour les salaires, et que la synchro du tableur complète
+         (fiches créées, grades alignés). Modifiable directement dans le
+         tableau, comme l'écran « Comptes & accès ». -->
+    <section id="panneau-rh" class="cache">
+      <div class="entete-admin">
+        <div>
+          <h2 style="margin-bottom:2px;">Gérer les agents</h2>
+          <p style="margin:0;font-size:0.88rem;">Associez chaque pseudo Discord à son identité RP et son grade — réservé à la Direction.</p>
         </div>
-        <div id="zone-message-agents"></div>
-        <div id="agents-vide" class="etat-vide cache">
-          <p>Aucun agent déclaré pour le moment. Utilisez « + Ajouter un agent », ou lancez une synchronisation du tableur (Paramètres), qui crée la fiche de chaque agent qu'il liste.</p>
-        </div>
-        <div id="agents-resultat" class="cache" style="overflow-x:auto;">
-          <table class="table-admin">
-            <thead>
-              <tr><th>Pseudo Discord</th><th>Identité RP</th><th>Grade</th><th></th></tr>
-            </thead>
-            <tbody id="corps-table-agents"></tbody>
-          </table>
-        </div>
+        <button type="button" class="btn btn-or" id="bouton-nouvel-agent">+ Ajouter un agent</button>
+      </div>
+      <div id="zone-message-agents"></div>
+      <div id="agents-vide" class="etat-vide cache">
+        <p>Aucun agent déclaré pour le moment. Utilisez « + Ajouter un agent », ou lancez une synchronisation du tableur (Synchro Sheets), qui crée la fiche de chaque agent qu'il liste.</p>
+      </div>
+      <div id="agents-resultat" class="cache" style="overflow-x:auto;">
+        <table class="table-admin">
+          <thead>
+            <tr><th>Pseudo Discord</th><th>Identité RP</th><th>Grade</th><th></th></tr>
+          </thead>
+          <tbody id="corps-table-agents"></tbody>
+        </table>
       </div>
     </section>
 
@@ -616,7 +619,7 @@
            site. -->
       <h3 class="comptes-sous-titre" style="margin-top:34px;">📊 État de la synchronisation</h3>
       <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">
-        Récupère automatiquement, toutes les 20 minutes (+ à la demande ci-dessous), les ventes et locations de chaque membre depuis le Google Sheets de recap (partagé en lecture seule). Le compte du site est retrouvé tout seul : par l'identité RP de la fiche agent (Ventes &amp; statistiques → Agents) ou par un pseudo identique au nom du Sheet. Chaque agent du Sheet a aussi sa fiche dans Ventes &amp; statistiques : créée au besoin (pseudo Discord à compléter), avec le grade écrit dans le Sheet. Une ligne sans compte n'empêche rien pour la comptabilité ; seul « Mon profil » de la personne reste vide tant qu'aucun compte du site n'y est relié.
+        Récupère automatiquement, toutes les 20 minutes (+ à la demande ci-dessous), les ventes et locations de chaque membre depuis le Google Sheets de recap (partagé en lecture seule). Le compte du site est retrouvé tout seul : par l'identité RP de la fiche agent (onglet RH) ou par un pseudo identique au nom du Sheet. Chaque agent du Sheet a aussi sa fiche dans l'onglet RH : créée au besoin (pseudo Discord à compléter), avec le grade écrit dans le Sheet. Une ligne sans compte n'empêche rien pour la comptabilité ; seul « Mon profil » de la personne reste vide tant qu'aucun compte du site n'y est relié.
       </p>
       <div id="zone-message-sync-sheet"></div>
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;">

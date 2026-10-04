@@ -72,8 +72,10 @@ découlent ensuite de ce grade.
   bot ; « Chiffres du tableur » : ventes, locations et primes de chaque agent
   lues dans le Google Sheets de la Direction, archivées chaque dimanche à
   23:59 (heure de Paris) sous le numéro de la semaine et consultables
-  ensuite semaine par semaine ; référentiel des agents
-  (identité RP, grade), complété automatiquement par le tableur.
+  ensuite semaine par semaine.
+- **RH (Direction)** — référentiel des agents : pseudo Discord, identité RP et
+  grade de chacun, complété automatiquement par le tableur, et utilisé par la
+  DOT pour les salaires.
 - **Comptabilité (Direction)** — mise en forme de relevés collés depuis un
   tableur ou un bot ; paramètres de rémunération par grade (salaires,
   commissions, paliers de primes) ; préparation de la déclaration DOT

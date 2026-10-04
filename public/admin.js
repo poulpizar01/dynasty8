@@ -149,6 +149,7 @@ function demarrerEspaceAdmin() {
     document.getElementById("onglet-comptes").classList.remove("cache");
     document.getElementById("onglet-comptabilite").classList.remove("cache");
     document.getElementById("onglet-statistiques").classList.remove("cache");
+    document.getElementById("onglet-rh").classList.remove("cache");
     document.getElementById("onglet-parametres").classList.remove("cache");
     document.getElementById("onglet-bot-roxwood").classList.remove("cache");
   }
@@ -174,6 +175,7 @@ function basculerOnglet(nom) {
   document.getElementById("panneau-comptes").classList.toggle("cache", nom !== "comptes");
   document.getElementById("panneau-comptabilite").classList.toggle("cache", nom !== "comptabilite");
   document.getElementById("panneau-statistiques").classList.toggle("cache", nom !== "statistiques");
+  document.getElementById("panneau-rh").classList.toggle("cache", nom !== "rh");
   document.getElementById("panneau-parametres").classList.toggle("cache", nom !== "parametres");
   document.getElementById("panneau-bot-roxwood").classList.toggle("cache", nom !== "bot-roxwood");
   // L'agenda a besoin de toute la largeur disponible (voir style.css) : le
@@ -183,7 +185,8 @@ function basculerOnglet(nom) {
   if (nom === "comptes") chargerTableMembres();
   if (nom === "agenda") chargerAgenda(true);
   if (nom === "comptabilite") chargerTablette();
-  if (nom === "statistiques") { chargerStatistiques(); chargerTableur(); chargerAgentsStats(); }
+  if (nom === "statistiques") { chargerStatistiques(); chargerTableur(); }
+  if (nom === "rh") chargerAgentsStats();
   if (nom === "parametres") chargerSyncSheet();
   if (nom === "bot-roxwood") chargerBotRoxwood();
 }
@@ -265,7 +268,7 @@ async function chargerTableur(semaine) {
         ? '<span class="champ-aide">— aucune —</span>'
         : l.fiche.discordPseudo
           ? echapper(l.fiche.discordPseudo)
-          : '<span class="puce puce-or" title="Fiche créée depuis le tableur : renseignez le pseudo Discord dans « Gérer les agents » ci-dessous.">pseudo à compléter</span>';
+          : '<span class="puce puce-or" title="Fiche créée depuis le tableur : renseignez le pseudo Discord dans l’onglet RH.">pseudo à compléter</span>';
       return `<tr>
         <td><strong>${echapper(l.nom)}</strong></td>
         <td>${echapper(l.grade || "—")}</td>
@@ -295,7 +298,7 @@ function formaterArgentStats(valeur) {
 }
 
 // ---------------------------------------------------------------------------
-// « Gérer les agents » (Statistiques) — référentiel pseudo Discord <->
+// « Gérer les agents » (onglet RH) — référentiel pseudo Discord <->
 // identité RP <-> grade (table stats_agents). Ne concerne que les grades
 // commerciaux (les mêmes que le moteur de calcul des primes connaît — voir
 // GRADES_STATS dans src/stats-calc.js) : Développeur web, DRH et Secrétaire
@@ -2109,7 +2112,7 @@ async function chargerDotSalaries() {
     DOT_SALARIES = agents;
     corps.innerHTML = agents.length
       ? agents.map((a) => `<tr>
-            <td>${echapper(a.identiteRp || a.identite)}${a.horsReferentiel ? ' <span class="champ-aide" title="Présent dans le relevé Tablettes, sans fiche dans le référentiel agents (Ventes &amp; statistiques → Agents)">*</span>' : ""}</td>
+            <td>${echapper(a.identiteRp || a.identite)}${a.horsReferentiel ? ' <span class="champ-aide" title="Présent dans le relevé Tablettes, sans fiche dans le référentiel agents (onglet RH)">*</span>' : ""}</td>
             <td>${echapper(a.grade)}</td>
             <td>${formaterArgentStats(a.run)}</td>
             <td>${formaterArgentStats(a.facture)}</td>
@@ -3083,7 +3086,7 @@ async function chargerSyncSheet() {
         <td>${echapper(l.grade_sheet || "—")}</td>
         <td style="text-align:right;">${l.nb_ventes}</td>
         <td style="text-align:right;">${l.nb_locations}</td>
-        <td>${l.membre_pseudo ? echapper(l.membre_pseudo) : '<span class="champ-aide" title="Aucun compte du site ne porte ce nom : créez ou corrigez la fiche agent (identité RP) dans Ventes &amp; statistiques → Agents.">— aucun compte reconnu —</span>'}</td>
+        <td>${l.membre_pseudo ? echapper(l.membre_pseudo) : '<span class="champ-aide" title="Aucun compte du site ne porte ce nom : créez ou corrigez la fiche agent (identité RP) dans l’onglet RH.">— aucun compte reconnu —</span>'}</td>
       </tr>`).join("");
   } catch (e) {
     corps.innerHTML = `<tr><td colspan="5">Erreur de chargement : ${echapper(e.message)}</td></tr>`;
@@ -3099,7 +3102,7 @@ document.getElementById("bouton-synchroniser-sheet")?.addEventListener("click", 
     const r = await appelAPI("/api/sync-sheet/synchroniser", { method: "POST" });
     const ref = (r.etat && r.etat.referentiel) || {};
     const detail = ref.crees || ref.gradesMisAJour
-      ? ` — Ventes & statistiques : ${ref.crees || 0} fiche(s) agent créée(s), ${ref.gradesMisAJour || 0} grade(s) mis à jour.`
+      ? ` — RH : ${ref.crees || 0} fiche(s) agent créée(s), ${ref.gradesMisAJour || 0} grade(s) mis à jour.`
       : "";
     afficherMessage("zone-message-sync-sheet", "Synchronisation terminée ✓" + detail, "succes");
     chargerSyncSheet();
