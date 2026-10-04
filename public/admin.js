@@ -266,7 +266,7 @@ async function chargerTableur(semaine) {
     document.getElementById("corps-table-tableur").innerHTML = r.lignes.map((l) => {
       // Fiche RH de la ligne : ID employé et statut lus dans RH.
       const fiche = !l.employe
-        ? '<span class="puce puce-or" title="Aucune fiche RH ne porte ce prénom et ce nom : à rattacher dans l’onglet RH.">sans fiche RH</span>'
+        ? '<span class="puce puce-or" title="Aucune fiche RH ne porte ce prénom et ce nom : à rattacher dans l’onglet Ressources humaines.">sans fiche RH</span>'
         : `${echapper(l.employe.idEmploye)}${l.employe.statut === "inactif" ? ' <span class="puce puce-masquee">Inactif</span>' : ""}`;
       return `<tr>
         <td><strong>${echapper(l.nom)}</strong></td>
@@ -2274,7 +2274,7 @@ async function chargerDotSalaries() {
     DOT_SALARIES = agents;
     corps.innerHTML = agents.length
       ? agents.map((a) => `<tr>
-            <td>${echapper(a.identiteRp || a.identite)}${a.horsReferentiel ? ' <span class="champ-aide" title="Présent dans le relevé Tablettes, sans fiche dans le référentiel agents (onglet RH)">*</span>' : ""}</td>
+            <td>${echapper(a.identiteRp || a.identite)}${a.horsReferentiel ? ' <span class="champ-aide" title="Présent dans le relevé Tablettes, sans fiche dans le référentiel agents (onglet Ressources humaines)">*</span>' : ""}</td>
             <td>${echapper(a.grade)}</td>
             <td>${formaterArgentStats(a.run)}</td>
             <td>${formaterArgentStats(a.facture)}</td>
