@@ -598,6 +598,31 @@
         <div id="rh-a-rattacher-contenu"></div>
       </div>
 
+      <!-- Arrivées envoyées par le bot Discord à partir des tickets de
+           recrutement (POST /api/rh/bot/arrivees), et leurs réglages. -->
+      <div id="rh-bot" class="cache" style="margin-top:36px;">
+        <h3 class="comptes-sous-titre">Arrivées reçues du bot</h3>
+        <p class="champ-aide" style="max-width:760px;">Fiches créées automatiquement à partir des tickets de recrutement Discord. Un ID employé « PROV-B… » est provisoire : remplacez-le par le vrai dans la fiche. Un compte Discord qui a déjà une fiche n'en reçoit pas une deuxième.</p>
+        <div id="zone-message-rh-bot"></div>
+        <p class="champ-aide" id="rh-bot-etat" style="margin:0 0 12px;"></p>
+        <form id="rh-bot-reglages" class="cache" style="max-width:760px;margin-bottom:16px;">
+          <div class="champ-deux">
+            <div class="champ">
+              <label for="rh-bot-grade">Grade à l'arrivée</label>
+              <select id="rh-bot-grade"></select>
+              <p class="champ-aide">Donné quand le ticket n'indique pas de grade.</p>
+            </div>
+            <div class="champ">
+              <label for="rh-bot-serveur">ID du serveur Discord</label>
+              <input type="text" id="rh-bot-serveur" inputmode="numeric" maxlength="22" placeholder="vide = pas de contrôle">
+              <p class="champ-aide">Seules les arrivées venant de ce serveur sont acceptées.</p>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-fantome btn-petit">Enregistrer les réglages</button>
+        </form>
+        <div id="rh-bot-contenu"></div>
+      </div>
+
       <!-- Matrice des permissions RH par grade (Patron, Co Patron et
            Développeur web seulement). -->
       <div id="rh-permissions" class="cache" style="margin-top:36px;">

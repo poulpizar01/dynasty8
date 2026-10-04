@@ -544,6 +544,33 @@ SELECT d.grade, d.permission
 ON CONFLICT DO NOTHING;
 INSERT INTO stats_config (cle, valeur) VALUES ('rh_permissions_initialisees', '1') ON CONFLICT (cle) DO NOTHING;
 
+-- Réglages RH modifiables depuis l'espace agents (Patron, Co Patron,
+-- Développeur web) : rien de propre à l'agence n'est écrit dans le code.
+--   bot_grade_arrivee    grade donné à une arrivée reçue du bot sans grade
+--   bot_serveur_discord  ID du serveur Discord dont le bot peut envoyer des
+--                        arrivées (vide = pas de contrôle)
+CREATE TABLE IF NOT EXISTS rh_reglages (
+  cle TEXT PRIMARY KEY,
+  valeur TEXT NOT NULL DEFAULT ''
+);
+
+-- Arrivées envoyées par le bot Discord à partir des tickets de recrutement
+-- (POST /api/rh/bot/arrivees, voir src/rh.js). Une ligne par ticket : un
+-- renvoi du même ticket ne crée jamais une deuxième fiche. Ni téléphone ni
+-- RIB ici : ils ne vivent que sur la fiche employé.
+CREATE TABLE IF NOT EXISTS rh_arrivees_bot (
+  id SERIAL PRIMARY KEY,
+  ticket_id TEXT NOT NULL UNIQUE,
+  serveur_discord TEXT NOT NULL DEFAULT '',
+  discord_id TEXT NOT NULL DEFAULT '',
+  nom_recu TEXT NOT NULL DEFAULT '',
+  resultat TEXT NOT NULL CHECK (resultat IN ('creee', 'existante', 'refusee')),
+  motif TEXT NOT NULL DEFAULT '',
+  employe_id INTEGER REFERENCES employes(id) ON DELETE SET NULL,
+  recu_le TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
+);
+CREATE INDEX IF NOT EXISTS idx_rh_arrivees_bot_recu ON rh_arrivees_bot(id DESC);
+
 -- ============================================================================
 -- Compte applicatif restreint — À GARDER EN DERNIER DANS CE FICHIER
 -- ----------------------------------------------------------------------------

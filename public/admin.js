@@ -343,6 +343,7 @@ async function chargerRh() {
     ameliorerSelect(document.getElementById("filtre-rh-statut"));
     afficherEmployes();
     chargerARattacher();
+    chargerArriveesBot();
     if (aDroitRh("parametrer")) chargerPermissionsRh();
     else document.getElementById("rh-permissions").classList.add("cache");
   } catch (e) {
@@ -551,6 +552,71 @@ async function chargerARattacher() {
     bloc.classList.add("cache");
   }
 }
+
+// « Arrivées reçues du bot » : tickets de recrutement transformés en fiches,
+// et réglages de la réception (Patron, Co Patron, Développeur web).
+const LIBELLES_ARRIVEE_BOT = {
+  creee: '<span class="puce puce-ok">Fiche créée</span>',
+  existante: '<span class="puce puce-masquee">Déjà une fiche</span>',
+  refusee: '<span class="puce puce-or">Refusée</span>',
+};
+
+async function chargerArriveesBot() {
+  const bloc = document.getElementById("rh-bot");
+  try {
+    const r = await appelAPI("/api/rh/bot");
+    const reglable = aDroitRh("parametrer");
+    // Rien à montrer tant que le bot n'est ni branché ni réglable par ce compte.
+    bloc.classList.toggle("cache", !r.configure && !r.arrivees.length && !reglable);
+    document.getElementById("rh-bot-etat").textContent = r.configure
+      ? "Réception active : le serveur a la clé du bot (RH_BOT_SECRET)."
+      : "Réception non configurée : la variable RH_BOT_SECRET manque dans le .env du serveur.";
+    const formulaire = document.getElementById("rh-bot-reglages");
+    formulaire.classList.toggle("cache", !reglable);
+    if (reglable) {
+      const select = document.getElementById("rh-bot-grade");
+      select.innerHTML = `<option value="">— aucun (le ticket doit indiquer le grade) —</option>`
+        + r.grades.map((g) => `<option value="${echapper(g)}">${echapper(g)}</option>`).join("");
+      select.value = r.reglages.gradeArrivee || "";
+      ameliorerSelect(select);
+      document.getElementById("rh-bot-serveur").value = r.reglages.serveurDiscord || "";
+    }
+    document.getElementById("rh-bot-contenu").innerHTML = r.arrivees.length
+      ? `<div style="overflow-x:auto;"><table class="table-admin"><thead><tr><th>Reçu le</th><th>Nom dans le ticket</th><th>ID Discord</th><th>Résultat</th><th>Fiche</th></tr></thead><tbody>
+        ${r.arrivees.map((a) => `<tr>
+          <td>${formaterDateAdmin(a.recuLe)}</td>
+          <td>${echapper(a.nomRecu || "—")}</td>
+          <td>${echapper(a.discordId || "—")}</td>
+          <td>${LIBELLES_ARRIVEE_BOT[a.resultat] || echapper(a.resultat)}${a.motif ? `<div class="champ-aide">${echapper(a.motif)}</div>` : ""}</td>
+          <td>${a.employe
+            ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-fiche="${a.employe.id}">${echapper(a.employe.idEmploye)} — ${echapper(a.employe.nomComplet)}</button>${a.employe.statut === "inactif" ? ' <span class="puce puce-masquee">Inactif</span>' : ""}`
+            : "—"}</td>
+        </tr>`).join("")}
+        </tbody></table></div>`
+      : '<p class="champ-aide">Aucune arrivée reçue pour le moment.</p>';
+    document.querySelectorAll("[data-rh-bot-fiche]").forEach((b) =>
+      b.addEventListener("click", () => ouvrirFicheEmploye(Number(b.dataset.rhBotFiche))));
+  } catch (e) {
+    bloc.classList.add("cache");
+  }
+}
+
+document.getElementById("rh-bot-reglages").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await appelAPI("/api/rh/bot/reglages", {
+      method: "PUT",
+      body: JSON.stringify({
+        gradeArrivee: document.getElementById("rh-bot-grade").value,
+        serveurDiscord: document.getElementById("rh-bot-serveur").value.trim(),
+      }),
+    });
+    afficherMessage("zone-message-rh-bot", "Réglages du bot enregistrés ✓", "succes");
+    chargerArriveesBot();
+  } catch (err) {
+    afficherMessage("zone-message-rh-bot", err.message, "erreur");
+  }
+});
 
 // Matrice des permissions RH (Patron, Co Patron, Développeur web).
 async function chargerPermissionsRh() {

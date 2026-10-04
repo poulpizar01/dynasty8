@@ -26,7 +26,7 @@ import * as statsCalc from "./stats-calc.js";
 import {
   synchroniserSheetSansErreur, lireConfigSheet, lireTableurActuel, lireArchiveTableur, semaineParis,
 } from "./google-sheets.js";
-import { routeRh, permissionsRh, trouverEmploye, nomComplet } from "./rh.js";
+import { routeRh, permissionsRh, trouverEmploye, nomComplet, recevoirArriveeBot } from "./rh.js";
 import { ErreurStockage } from "./fbfa-storage.js";
 import { consommer, adresseAppelant } from "./limite-debit.js";
 import { TYPES_IMAGE, decoderDataUrl, estDataUrlImage } from "./images.js";
@@ -246,6 +246,8 @@ const LIMITES = [
   // Connexion : chaque tentative déclenche un aller-retour vers Discord ou
   // vers le validateur FolkOS, tous deux hors de notre contrôle.
   { test: (c) => c.startsWith("/api/auth/") || c === "/api/folkos", max: 20, fenetreMs: 60_000 },
+  // Arrivées du bot de recrutement : la clé protège déjà, ceci borne le bruit.
+  { test: (c) => c === "/api/rh/bot/arrivees", max: 30, fenetreMs: 60_000 },
   // Proxy de la carte : route PUBLIQUE, celle qui coûte le plus cher.
   { test: (c) => c.startsWith(WEBMAP_PREFIXE), max: 600, fenetreMs: 60_000 },
 ];
@@ -308,6 +310,8 @@ export default {
       if (chemin === "/api/equipe") return await equipe(env);
       if (chemin === "/api/agenda") return await agenda(request, url, env);
       if (chemin.startsWith("/api/chat/")) return await chat(request, url, env);
+      // Appelée par le bot (clé RH_BOT_SECRET), sans session : avant le contrôle de session.
+      if (chemin === "/api/rh/bot/arrivees") return await recevoirArriveeBot(request, env);
       if (chemin.startsWith("/api/rh/")) {
         const s = await session(request, env);
         if (!s) return json({ erreur: "Non connecté." }, 401);

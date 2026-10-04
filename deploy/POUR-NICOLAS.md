@@ -93,6 +93,7 @@ dépôt : Paul vous le transmet par message privé, déjà rempli.
 | `DISCORD_CLIENT_SECRET` | secret OAuth de cette application |
 | `DISCORD_REDIRECT_URI` | `https://dynasty8.fbfa.fr/api/auth/discord/callback` |
 | `STATS_BOT_SECRET` | clé du bot de ventes (`POST /api/stats/ventes`) |
+| `RH_BOT_SECRET` | clé du bot de recrutement (`POST /api/rh/bot/arrivees`) |
 | `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | SSO « Se connecter IG » |
 | `WEBMAP_ORIGIN` | adresse réelle de la carte, proxifiée par `/api/carte` (absente du code : le dépôt est public) |
 | `FBFA_STORAGE_TOKEN` | stockage des photos sur `storage.fbfa.fr` |

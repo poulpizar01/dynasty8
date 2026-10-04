@@ -144,6 +144,8 @@ function construireEnv() {
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
     DISCORD_REDIRECT_URI: process.env.DISCORD_REDIRECT_URI,
     STATS_BOT_SECRET: process.env.STATS_BOT_SECRET,
+    // Clé du bot de recrutement (POST /api/rh/bot/arrivees) — voir src/rh.js.
+    RH_BOT_SECRET: process.env.RH_BOT_SECRET,
     // Hotes supplementaires acceptes en ecriture (controle d'origine, voir
     // origineAutorisee() dans src/index.js). Sans cette ligne, la variable du
     // .env est ignoree et seules les requetes venant du site lui-meme passent.

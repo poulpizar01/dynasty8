@@ -16,6 +16,7 @@
 // pouvoir les régler : personne ne peut s'enlever l'accès par erreur.
 // ============================================================================
 
+import { createHash, timingSafeEqual } from "node:crypto";
 import { normaliserPseudo, normaliserTexte } from "./stats-calc.js";
 
 export const PERMISSIONS_RH = ["voir", "creer", "modifier", "desactiver", "reactiver", "sensible"];
@@ -347,6 +348,182 @@ async function aRattacher(env) {
   };
 }
 
+// ---- arrivées envoyées par le bot Discord (tickets de recrutement) -----------
+// Le bot lit un ticket de recrutement et POSTE l'arrivée sur
+// /api/rh/bot/arrivees, avec la clé RH_BOT_SECRET (variable d'environnement,
+// distincte de celle du bot de ventes : elle laisse entrer téléphone et RIB).
+// La fiche est créée tout de suite, active. Règles :
+//   - un ticket = une fiche : un renvoi du même ticketId ne crée rien de plus ;
+//   - un compte Discord qui a déjà une fiche n'en reçoit pas une deuxième, et
+//     sa fiche n'est pas modifiée (RH fait foi) ; une fiche inactive n'est pas
+//     réactivée d'office, la décision reste à RH ;
+//   - sans ID employé dans le ticket, la fiche reçoit un ID provisoire
+//     « PROV-B… », à remplacer dans RH ;
+//   - sans grade dans le ticket, le grade d'arrivée réglé dans RH ; jamais un
+//     grade de direction (Patron, Co Patron, Développeur web).
+// Chaque ticket reçu est consigné (rh_arrivees_bot), sans téléphone ni RIB.
+
+const REGLAGES_RH = { bot_grade_arrivee: "", bot_serveur_discord: "" };
+
+async function lireReglages(env) {
+  const r = await env.DB.prepare("SELECT cle, valeur FROM rh_reglages").all();
+  const reglages = { ...REGLAGES_RH };
+  for (const { cle, valeur } of r.results || []) if (cle in reglages) reglages[cle] = valeur;
+  return reglages;
+}
+
+// Comparaison à temps constant (empreintes de même longueur).
+function cleBotValide(request, env) {
+  const correspond = (request.headers.get("Authorization") || "").match(/^Bearer\s+(.+)$/i);
+  if (!env.RH_BOT_SECRET || !correspond) return false;
+  const empreinte = (v) => createHash("sha256").update(String(v)).digest();
+  return timingSafeEqual(empreinte(correspond[1]), empreinte(env.RH_BOT_SECRET));
+}
+
+function aujourdhuiParis() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
+const RE_ID_DISCORD = /^\d{15,22}$/;
+
+async function reponseArrivee(env, ligne, status, deja) {
+  const e = ligne.employe_id
+    ? await env.DB.prepare("SELECT id_employe, id_provisoire, statut FROM employes WHERE id = ?1").bind(ligne.employe_id).first()
+    : null;
+  const corps = { ok: ligne.resultat !== "refusee", resultat: ligne.resultat, deja: !!deja };
+  if (ligne.motif) corps[ligne.resultat === "refusee" ? "erreur" : "motif"] = ligne.motif;
+  if (e) Object.assign(corps, { employeId: ligne.employe_id, idEmploye: e.id_employe, idProvisoire: !!e.id_provisoire, statut: e.statut });
+  return json(corps, status);
+}
+
+export async function recevoirArriveeBot(request, env) {
+  if (request.method !== "POST") return json({ erreur: "Méthode non autorisée." }, 405);
+  if (!env.RH_BOT_SECRET) return json({ erreur: "Réception des arrivées non configurée (RH_BOT_SECRET)." }, 503);
+  if (!cleBotValide(request, env)) return json({ erreur: "Clé du bot invalide." }, 401);
+  const b = await request.json().catch(() => null);
+  if (!b || typeof b !== "object" || Array.isArray(b)) return json({ erreur: "Requête illisible (objet JSON attendu)." }, 400);
+  const ticketId = texte(b.ticketId, 100);
+  if (!ticketId) return json({ erreur: "ticketId est obligatoire : un identifiant unique et stable par ticket." }, 400);
+
+  const deja = await env.DB.prepare("SELECT * FROM rh_arrivees_bot WHERE ticket_id = ?1").bind(ticketId).first();
+  if (deja && deja.resultat !== "refusee") return reponseArrivee(env, deja, 200, true);
+
+  const serveur = texte(b.serveurDiscord, 30);
+  const discordId = texte(b.discordId, 30);
+  const consigner = async (resultat, motif, employeId, status) => {
+    // Un ticket refusé peut être renvoyé corrigé ; un ticket abouti reste tel
+    // quel (deux envois simultanés : le second lit le résultat du premier).
+    await env.DB.prepare(
+      `INSERT INTO rh_arrivees_bot (ticket_id, serveur_discord, discord_id, nom_recu, resultat, motif, employe_id)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+       ON CONFLICT (ticket_id) DO UPDATE SET serveur_discord = excluded.serveur_discord, discord_id = excluded.discord_id,
+         nom_recu = excluded.nom_recu, resultat = excluded.resultat, motif = excluded.motif, employe_id = excluded.employe_id,
+         recu_le = to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')
+       WHERE rh_arrivees_bot.resultat = 'refusee'
+       RETURNING id`
+    ).bind(ticketId, serveur, discordId, `${texte(b.prenom, 60)} ${texte(b.nom, 60)}`.trim(), resultat, motif, employeId).run();
+    const ligne = await env.DB.prepare("SELECT * FROM rh_arrivees_bot WHERE ticket_id = ?1").bind(ticketId).first();
+    const memeResultat = ligne.resultat === resultat && Number(ligne.employe_id || 0) === Number(employeId || 0);
+    return reponseArrivee(env, ligne, memeResultat ? status : 200, !memeResultat);
+  };
+
+  const reglages = await lireReglages(env);
+  if (reglages.bot_serveur_discord && serveur !== reglages.bot_serveur_discord) {
+    return consigner("refusee", "Ce serveur Discord n'est pas celui réglé dans Ressources humaines.", null, 403);
+  }
+  if (!RE_ID_DISCORD.test(discordId)) {
+    return consigner("refusee", "discordId est obligatoire : l'ID Discord (15 à 22 chiffres) de la personne recrutée.", null, 400);
+  }
+  const existante = await env.DB.prepare("SELECT id, statut FROM employes WHERE discord_id = ?1").bind(discordId).first();
+  if (existante) {
+    const motif = existante.statut === "inactif"
+      ? "Ce compte Discord a déjà une fiche, inactive : à réactiver dans Ressources humaines."
+      : "Ce compte Discord a déjà une fiche.";
+    return consigner("existante", motif, existante.id, 200);
+  }
+  const grade = texte(b.grade, 60) || reglages.bot_grade_arrivee;
+  if (!grade) return consigner("refusee", "Aucun grade reçu, et aucun grade d'arrivée réglé dans Ressources humaines.", null, 400);
+  if (GRADES_ADMIN_RH.includes(grade)) return consigner("refusee", "Ce grade ne peut pas être attribué par le bot.", null, 400);
+
+  const corps = {
+    idEmploye: b.idEmploye, prenom: b.prenom, nom: b.nom, grade,
+    discordId, discordPseudo: b.discordPseudo, telephone: b.telephone, rib: b.rib,
+    dateArrivee: texte(b.dateArrivee, 10) || aujourdhuiParis(),
+  };
+  for (const cle of ["discordPseudo", "telephone", "rib"]) if (corps[cle] === undefined) delete corps[cle];
+  // Pas d'ID employé dans le ticket : ID provisoire tiré du numéro de la fiche.
+  let numero = null;
+  if (!texte(b.idEmploye, 40)) {
+    numero = Number((await env.DB.prepare("SELECT nextval(pg_get_serial_sequence('employes', 'id')) AS n").first()).n);
+    corps.idEmploye = `PROV-B${String(numero).padStart(4, "0")}`;
+  }
+  const { champs, erreur } = lireChamps(corps, null);
+  if (erreur) return consigner("refusee", erreur, null, 400);
+  champs.statut = "actif";
+  if (numero !== null) { champs.id = numero; champs.id_provisoire = 1; }
+  const doublon = await conflit(env, champs, 0);
+  if (doublon) return consigner("refusee", doublon, null, 409);
+  const colonnes = Object.keys(champs);
+  let fiche;
+  try {
+    fiche = await env.DB.prepare(
+      `INSERT INTO employes (${colonnes.join(", ")}) VALUES (${colonnes.map((_, i) => `?${i + 1}`).join(", ")}) RETURNING *`
+    ).bind(...colonnes.map((k) => champs[k])).first();
+  } catch (e) {
+    // Deux envois simultanés pour le même compte : le second trouve la fiche du premier.
+    if (e && e.code === "23505") {
+      const autre = await env.DB.prepare("SELECT id FROM employes WHERE discord_id = ?1").bind(discordId).first();
+      if (autre) return consigner("existante", "Ce compte Discord a déjà une fiche.", autre.id, 200);
+      return consigner("refusee", "Cet ID employé ou ce pseudo Discord est déjà sur une autre fiche.", null, 409);
+    }
+    throw e;
+  }
+  await rattacherVentes(env, fiche);
+  return consigner("creee", "", fiche.id, 201);
+}
+
+// Écran RH : dernières arrivées reçues du bot, réglages, état de la clé.
+async function arriveesBot(env) {
+  const [lignes, reglages] = await Promise.all([
+    env.DB.prepare(
+      `SELECT a.ticket_id, a.discord_id, a.nom_recu, a.resultat, a.motif, a.recu_le, a.employe_id,
+              e.id_employe, e.id_provisoire, e.prenom, e.nom, e.discord_pseudo, e.statut
+         FROM rh_arrivees_bot a LEFT JOIN employes e ON e.id = a.employe_id
+        ORDER BY a.id DESC LIMIT 50`
+    ).all(),
+    lireReglages(env),
+  ]);
+  return {
+    configure: !!env.RH_BOT_SECRET,
+    reglages: { gradeArrivee: reglages.bot_grade_arrivee, serveurDiscord: reglages.bot_serveur_discord },
+    grades: GRADES_EMPLOYES.filter((g) => !GRADES_ADMIN_RH.includes(g)),
+    arrivees: (lignes.results || []).map((l) => ({
+      ticketId: l.ticket_id, discordId: l.discord_id, nomRecu: l.nom_recu, resultat: l.resultat, motif: l.motif, recuLe: l.recu_le,
+      employe: l.employe_id
+        ? { id: l.employe_id, idEmploye: l.id_employe, idProvisoire: !!l.id_provisoire, nomComplet: nomComplet(l), statut: l.statut }
+        : null,
+    })),
+  };
+}
+
+async function reglerBot(env, request) {
+  const b = await request.json().catch(() => null);
+  if (!b || typeof b !== "object") return json({ erreur: "Requête illisible." }, 400);
+  const grade = texte(b.gradeArrivee, 60);
+  const serveur = texte(b.serveurDiscord, 30);
+  if (grade && (!GRADES_EMPLOYES.includes(grade) || GRADES_ADMIN_RH.includes(grade))) return json({ erreur: "Grade d'arrivée invalide." }, 400);
+  if (serveur && !RE_ID_DISCORD.test(serveur)) return json({ erreur: "L'ID du serveur Discord est un nombre de 15 à 22 chiffres." }, 400);
+  await env.DB.transaction(async (tx) => {
+    for (const [cle, valeur] of [["bot_grade_arrivee", grade], ["bot_serveur_discord", serveur]]) {
+      // RETURNING explicite : rh_reglages n'a pas de colonne « id ».
+      await tx.prepare(
+        "INSERT INTO rh_reglages (cle, valeur) VALUES (?1, ?2) ON CONFLICT (cle) DO UPDATE SET valeur = excluded.valeur RETURNING cle"
+      ).bind(cle, valeur).run();
+    }
+  });
+  return json({ ok: true });
+}
+
 // Point d'entrée : /api/rh/... (session déjà vérifiée par l'appelant).
 export async function routeRh(request, url, env, s) {
   const perms = await permissionsRh(env, s);
@@ -363,6 +540,11 @@ export async function routeRh(request, url, env, s) {
     return creer(env, b);
   }
   if (route === "/a-rattacher" && m === "GET") return json(await aRattacher(env));
+  if (route === "/bot" && m === "GET") return json(await arriveesBot(env));
+  if (route === "/bot/reglages" && m === "PUT") {
+    if (!perms.has("parametrer")) return json({ erreur: "Réservé au Patron, au Co Patron et au Développeur web." }, 403);
+    return reglerBot(env, request);
+  }
   if (route === "/permissions" && m === "GET") {
     if (!perms.has("parametrer")) return json({ erreur: "Réservé au Patron, au Co Patron et au Développeur web." }, 403);
     return json(await lirePermissions(env));

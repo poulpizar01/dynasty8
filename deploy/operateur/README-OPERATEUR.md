@@ -88,7 +88,7 @@ server {
 | `APP_DB_USER`, `APP_DB_PASSWORD` | vous (valeurs aléatoires) | compte **applicatif restreint** avec lequel le site tourne (créé par `migration`) |
 | `SESSION_SECRET` | vous (valeur aléatoire) | signature des cookies de session |
 | `DISCORD_CLIENT_ID` | fixe : `1546523997980852294` (application Discord « RoxwoodLegal ») | connexion Discord de l'espace agents |
-| `DISCORD_CLIENT_SECRET`, `STATS_BOT_SECRET` | Dynasty 8, transmis hors dépôt | secret OAuth de RoxwoodLegal, clé du bot de ventes |
+| `DISCORD_CLIENT_SECRET`, `STATS_BOT_SECRET`, `RH_BOT_SECRET` | Dynasty 8, transmis hors dépôt | secret OAuth de RoxwoodLegal, clés du bot de ventes et du bot de recrutement |
 | `DISCORD_REDIRECT_URI` | fixe | `https://dynasty8.fbfa.fr/api/auth/discord/callback` — doit être déclarée telle quelle dans RoxwoodLegal (OAuth2 → Redirects) |
 | `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | vous | SSO « Se connecter IG » |
 | `FBFA_STORAGE_TOKEN` | vous (jeton `storage.fbfa.fr`) | import des photos d'annonces et de profils |

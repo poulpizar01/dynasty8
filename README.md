@@ -211,6 +211,12 @@ section « Photos » de [`deploy/operateur/README-OPERATEUR.md`](deploy/operateu
   Chaque vente est rattachée à sa fiche RH par l'ID Discord du vendeur
   (`discordId`, optionnel) ou, à défaut, par son pseudo.
   Configuration : [`notes/bot-ventes-configuration.md`](notes/bot-ventes-configuration.md).
+- **Bot de recrutement** — à partir d'un ticket de recrutement Discord, le
+  bot envoie l'arrivée sur `POST /api/rh/bot/arrivees` (clé `RH_BOT_SECRET`) et
+  la fiche RH est créée aussitôt. Un ticket ne crée jamais deux fiches, un
+  compte Discord non plus ; le grade d'arrivée et le serveur Discord autorisé
+  se règlent dans l'onglet Ressources humaines.
+  Configuration : [`notes/bot-recrutement-configuration.md`](notes/bot-recrutement-configuration.md).
 - **Google Sheets de la Direction** — lecture seule de l'export CSV d'un
   classeur partagé par lien (ni compte de service, ni clé), toutes les 20
   minutes. RH fait foi : chaque ligne est rattachée à la fiche RH de même
@@ -289,6 +295,7 @@ Ces en-têtes ne sont pas décoratifs : l'application reconstruit ses URL
 | `SESSION_SECRET` | signature des cookies de session |
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` / `DISCORD_REDIRECT_URI` | connexion Discord — l'URL de redirection est la **seule** valeur liée à la machine |
 | `STATS_BOT_SECRET` | authentification du bot de ventes |
+| `RH_BOT_SECRET` | authentification du bot de recrutement (tickets Discord → fiches RH) ; vide = réception désactivée |
 | `FBFA_STORAGE_TOKEN` | stockage des photos ; vide = import désactivé, le reste fonctionne |
 | `WEBMAP_ORIGIN` | adresse réelle de la WebMap ; vide = carte indisponible |
 | `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_GID` | classeur de la Direction ; vide = synchronisation du tableur désactivée |
@@ -307,7 +314,7 @@ Réglages facultatifs du stockage des photos : `FBFA_STORAGE_PREFIXE`,
 `deploy/*/.env.example`.
 
 `SESSION_SECRET`, les identifiants Discord, les mots de passe PostgreSQL,
-`STATS_BOT_SECRET` et `FBFA_STORAGE_TOKEN` sont
+`STATS_BOT_SECRET`, `RH_BOT_SECRET` et `FBFA_STORAGE_TOKEN` sont
 des **secrets** : jamais dans Git, transmis hors dépôt.
 
 ---

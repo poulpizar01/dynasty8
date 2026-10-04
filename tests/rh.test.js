@@ -14,6 +14,7 @@ import { creerBaseDeTest, cookieSession, SECRET_TEST, RACINE } from "./aide-medi
 const ACTIF = !!process.env.TEST_DATABASE_URL;
 const it = (nom, fn) => test(nom, { skip: ACTIF ? false : "TEST_DATABASE_URL non définie" }, fn);
 const CLE_BOT = "cle-bot-de-test";
+const CLE_BOT_RH = "cle-bot-rh-de-test";
 
 let base;
 let pool;
@@ -24,7 +25,7 @@ before(async () => {
   if (!ACTIF) return;
   base = await creerBaseDeTest("rh");
   pool = creerPool(base.url);
-  env = { DB: creerAdaptateurDB(), SESSION_SECRET: SECRET_TEST, STATS_BOT_SECRET: CLE_BOT };
+  env = { DB: creerAdaptateurDB(), SESSION_SECRET: SECRET_TEST, STATS_BOT_SECRET: CLE_BOT, RH_BOT_SECRET: CLE_BOT_RH };
   for (const grade of ["Patron", "DRH", "Manager", "Secrétaire de Direction", "Agent"]) {
     const m = (await pool.query(
       `INSERT INTO membres (pseudo, grade, code_hash, code_indice, actif, cree_le, statut)
@@ -210,4 +211,83 @@ it("reprise de l'existant : fiches agents et anciens vendeurs, une seule fois", 
   await pool.query("INSERT INTO stats_logs_ventes (identite, type, interieur, achat, semaine, event_id) VALUES ('tout.nouveau', 'Vente', 'Villa', 1, 'S41-26', 'reprise-3')");
   await pool.query(schema);
   assert.equal((await pool.query("SELECT count(*)::int AS n FROM employes WHERE discord_pseudo_normalise = 'tout.nouveau'")).rows[0].n, 0);
+});
+
+// Arrivée envoyée par le bot de recrutement (clé RH_BOT_SECRET, sans session).
+async function arriveeDuBot(corps, cle = CLE_BOT_RH) {
+  const r = await worker.fetch(new Request("http://localhost/api/rh/bot/arrivees", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${cle}`, "Content-Type": "application/json" },
+    body: JSON.stringify(corps),
+  }), env);
+  return { status: r.status, corps: await r.json() };
+}
+
+it("bot de recrutement : un ticket crée la fiche, une seule fois, avec les réglages de RH", async () => {
+  const ticket = { ticketId: "ticket-001", discordId: "333333333333333333", discordPseudo: "nouvelle.recrue",
+    prenom: "Lina", nom: "Recrue", telephone: "555-0199", rib: "FR76-BOT" };
+
+  assert.equal((await arriveeDuBot(ticket, "mauvaise-cle")).status, 401);
+  assert.equal((await arriveeDuBot({ ...ticket, ticketId: "" })).status, 400, "ticketId obligatoire");
+
+  // Ni grade dans le ticket, ni grade d'arrivée réglé : refusé, et consigné.
+  const sansGrade = await arriveeDuBot(ticket);
+  assert.equal(sansGrade.status, 400);
+  assert.equal(sansGrade.corps.resultat, "refusee");
+
+  // Réglages : réservés aux grades administrateurs, grades de direction exclus.
+  const reglages = { gradeArrivee: "Stagiaire", serveurDiscord: "444444444444444444" };
+  assert.equal((await appel("DRH", "/api/rh/bot/reglages", { method: "PUT", corps: reglages })).status, 403);
+  assert.equal((await appel("Patron", "/api/rh/bot/reglages", { method: "PUT", corps: { gradeArrivee: "Patron" } })).status, 400);
+  assert.equal((await appel("Patron", "/api/rh/bot/reglages", { method: "PUT", corps: reglages })).status, 200);
+
+  // Serveur Discord différent de celui réglé : refusé.
+  assert.equal((await arriveeDuBot({ ...ticket, serveurDiscord: "555555555555555555" })).status, 403);
+
+  // Le même ticket, renvoyé corrigé : la fiche est créée, active, ID provisoire.
+  const creee = await arriveeDuBot({ ...ticket, serveurDiscord: "444444444444444444" });
+  assert.equal(creee.status, 201, JSON.stringify(creee.corps));
+  assert.equal(creee.corps.resultat, "creee");
+  assert.match(creee.corps.idEmploye, /^PROV-B\d{4,}$/);
+  const fiche = (await pool.query("SELECT * FROM employes WHERE id = $1", [creee.corps.employeId])).rows[0];
+  assert.deepEqual(
+    [fiche.prenom, fiche.nom, fiche.grade, fiche.statut, fiche.discord_id, fiche.telephone, fiche.rib, fiche.id_provisoire],
+    ["Lina", "Recrue", "Stagiaire", "actif", "333333333333333333", "555-0199", "FR76-BOT", 1]
+  );
+  assert.match(fiche.date_arrivee, /^\d{4}-\d{2}-\d{2}$/, "date d'arrivée du jour par défaut");
+
+  // Renvoi du même ticket (réponse perdue côté bot) : rien de plus.
+  const renvoi = await arriveeDuBot({ ...ticket, serveurDiscord: "444444444444444444" });
+  assert.deepEqual([renvoi.status, renvoi.corps.deja, renvoi.corps.employeId], [200, true, creee.corps.employeId]);
+
+  // Autre ticket pour le même compte Discord : pas de deuxième fiche, la
+  // première n'est pas modifiée.
+  const autre = await arriveeDuBot({ ...ticket, ticketId: "ticket-002", prenom: "Autre", serveurDiscord: "444444444444444444" });
+  assert.deepEqual([autre.status, autre.corps.resultat, autre.corps.employeId], [200, "existante", creee.corps.employeId]);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM employes WHERE discord_id = '333333333333333333'")).rows[0].n, 1);
+  assert.equal((await pool.query("SELECT prenom FROM employes WHERE id = $1", [creee.corps.employeId])).rows[0].prenom, "Lina");
+
+  // ID employé fourni et grade du ticket : repris tels quels ; grade de direction refusé.
+  const avecId = await arriveeDuBot({ ticketId: "ticket-003", discordId: "666666666666666666", prenom: "Noa", nom: "Direct",
+    idEmploye: "D8-0777", grade: "Agent", serveurDiscord: "444444444444444444" });
+  assert.deepEqual([avecId.status, avecId.corps.idEmploye, avecId.corps.idProvisoire], [201, "D8-0777", false]);
+  const patron = await arriveeDuBot({ ticketId: "ticket-004", discordId: "777777777777777777", prenom: "Pat", nom: "Ron",
+    grade: "Patron", serveurDiscord: "444444444444444444" });
+  assert.equal(patron.status, 400);
+
+  // L'écran RH liste les tickets reçus, sans téléphone ni RIB.
+  const ecran = await appel("Manager", "/api/rh/bot");
+  assert.equal(ecran.status, 200);
+  assert.equal(ecran.corps.configure, true);
+  assert.equal(ecran.corps.reglages.gradeArrivee, "Stagiaire");
+  const t1 = ecran.corps.arrivees.find((a) => a.ticketId === "ticket-001");
+  assert.deepEqual([t1.resultat, t1.employe.idEmploye], ["creee", creee.corps.idEmploye]);
+  assert.ok(!JSON.stringify(ecran.corps).includes("FR76-BOT") && !JSON.stringify(ecran.corps).includes("555-0199"));
+  assert.equal((await appel("Agent", "/api/rh/bot")).status, 403);
+
+  // Sans clé sur le serveur, la réception le dit.
+  const sansCle = await worker.fetch(new Request("http://localhost/api/rh/bot/arrivees", {
+    method: "POST", headers: { Authorization: "Bearer x", "Content-Type": "application/json" }, body: "{}",
+  }), { ...env, RH_BOT_SECRET: "" });
+  assert.equal(sansCle.status, 503);
 });
