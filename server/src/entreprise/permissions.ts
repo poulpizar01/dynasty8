@@ -5,6 +5,4 @@ import type { Permission } from '../socle/contrat.js';
 
 export const permissions: Permission[] = [
   { cle: 'biens', libelle: 'Gérer les biens', description: 'Créer, modifier, masquer et supprimer les biens du catalogue ; voir les biens masqués' },
-  // exemple du modèle (annonces internes), remplacé à l'étape de la gestion
-  { cle: 'annonces', libelle: 'Publier des annonces', description: 'Publier, épingler et retirer les annonces internes' },
 ];

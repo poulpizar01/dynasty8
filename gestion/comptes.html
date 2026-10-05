@@ -4,96 +4,109 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="application-name" content="{{nom}}">
-  <meta name="robots" content="noindex">
-  <title>Comptes — {{nom}}</title>
+  <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/gestion/gestion.css">
   <script src="/socle/socle.js"></script>
+  <script src="/layout.js"></script>
   <script src="/gestion/gestion.js"></script>
+  <title>Comptes & accès — {{nom}}</title>
 </head>
-<body>
-  <!-- Gestion des comptes (API du socle : /api/comptes, docs/api.md). Apparence libre. Le serveur applique les règles
-       (on ne gère que les comptes sous son propre grade) : cette page ne fait que proposer ce qui sera accepté. -->
-  <main class="contenu">
-    <p class="surtitre">Gestion</p>
-    <h1 class="page-titre">Comptes</h1>
-    <p class="intro">Les demandes d'accès arrivent ici. Un compte qui porte un rôle Discord lié à un grade est validé d'office à sa connexion.</p>
-    <p class="message" id="msg" hidden></p>
-    <div class="ligne" style="margin-bottom:16px" id="filtres">
-      <button class="btn btn--accent" data-statut="attente">En attente</button>
-      <button class="btn" data-statut="valide">Validés</button>
-      <button class="btn" data-statut="refuse">Refusés</button>
+<body class="page-agents">
+  <!-- GESTION — comptes et accès (permission « comptes », serveur : socle/routes/comptes.ts). -->
+  <main class="admin-contenu">
+    <div class="entete-admin">
+      <div>
+        <h2 style="margin-bottom:2px;">Comptes &amp; accès</h2>
+        <p style="margin:0;font-size:0.88rem;">Validez les demandes de connexion Discord et gérez le grade de chacun. Un agent qui porte sur Discord un rôle lié à un grade est validé d'office à sa connexion.</p>
+      </div>
     </div>
-    <section class="carte table-defile">
-      <table>
-        <thead><tr><th>Compte</th><th>Grade</th><th>Demande</th><th></th></tr></thead>
-        <tbody id="lignes"><tr><td colspan="4" class="vide">Chargement…</td></tr></tbody>
+    <div id="zone-message"></div>
+
+    <div id="bloc-attente" class="cache">
+      <h3 class="comptes-sous-titre">Demandes en attente <span class="champ-compteur" id="compteur-attente"></span></h3>
+      <p class="champ-aide">Ces personnes se sont connectées avec Discord sans rôle lié à un grade. Validez-les pour leur donner accès.</p>
+      <div class="carte-table" style="overflow-x:auto;">
+        <table class="table-admin"><thead><tr><th>Compte</th><th>Grade</th><th>Demande</th><th></th></tr></thead><tbody id="corps-attente"></tbody></table>
+      </div>
+    </div>
+
+    <h3 class="comptes-sous-titre">Comptes</h3>
+    <div class="carte-table" style="overflow-x:auto;">
+      <table class="table-admin">
+        <thead><tr><th>Compte</th><th>Grade</th><th>Statut</th><th>Dernière connexion</th><th></th></tr></thead>
+        <tbody id="corps-comptes"><tr><td colspan="5">Chargement…</td></tr></tbody>
       </table>
-    </section>
+    </div>
   </main>
   <script>
-    let moi, comptes = [], grades = [], filtre = 'attente';
-    const msg = document.getElementById('msg'), lignes = document.getElementById('lignes');
-    // rang d'un grade (0 = sommet), sans grade = tout en bas ; même règle que le serveur (droits.ts)
+    let moi, comptes = [], grades = [];
+    // rang d'un grade (0 = sommet), sans grade = tout en bas ; même règle que le serveur (socle/droits.ts)
     const rang = cle => { const i = grades.findIndex(g => g.cle === cle); return i < 0 ? grades.length : i; };
     const gerable = c => moi.proprietaire || (!!moi.grade && rang(c.grade?.cle) > rang(moi.grade.cle) && c.id !== moi.id && !c.proprietaire);
     const gradesPossibles = () => grades.filter(g => moi.proprietaire || (moi.grade && rang(g.cle) > rang(moi.grade.cle)));
+    const dateCourte = d => (d ? new Date(d).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' }) : '—');
+    const STATUTS = { valide: '<span class="puce puce-ok">Validé</span>', attente: '<span class="puce puce-or">En attente</span>', refuse: '<span class="puce puce-off">Refusé</span>' };
+
+    function celluleCompte(c) {
+      const nom = c.nom || c.pseudo;
+      const avatar = c.avatar ? `<img class="admin-avatar" src="${echapper(c.avatar)}" alt="">` : `<span class="admin-avatar">${echapper(nom.slice(0, 2).toUpperCase())}</span>`;
+      return `<div class="cellule-compte">${avatar}<div><strong>${echapper(nom)}</strong>${c.proprietaire ? ' <span class="puce puce-or">Propriétaire</span>' : ''}<div class="table-biens-sous">@${echapper(c.pseudo)}</div></div></div>`;
+    }
+    function celluleGrade(c) {
+      if (!gerable(c)) return c.grade ? `<span class="pastille-grade" style="background:${echapper(c.grade.couleur || '#8a93b8')}"></span>${echapper(c.grade.libelle)}` : '<span class="table-biens-sous">Sans grade</span>';
+      return `<select data-grade><option value="">Sans grade</option>${gradesPossibles().map(g => `<option value="${echapper(g.cle)}"${g.cle === c.grade?.cle ? ' selected' : ''}>${echapper(g.libelle)}</option>`).join('')}</select>`;
+    }
+    function boutons(c) {
+      if (!gerable(c)) return '';
+      return `<div class="actions-ligne">
+        ${c.statut !== 'valide' ? '<button type="button" class="btn btn-or btn-petit" data-action="valide">Valider</button>' : ''}
+        ${c.statut === 'valide' && c.id !== moi.id ? '<button type="button" class="btn btn-fantome btn-petit" data-action="refuse" title="Retire l’accès sans supprimer le compte">Suspendre</button>' : ''}
+        ${c.statut === 'attente' ? '<button type="button" class="btn btn-fantome btn-petit" data-action="refuse">Refuser</button>' : ''}
+        ${c.id !== moi.id ? `<button type="button" class="actions-icone actions-icone--danger" data-action="supprimer" title="Supprimer" aria-label="Supprimer">${gestion.ico('trash')}</button>` : ''}
+      </div>`;
+    }
 
     function afficher() {
-      const liste = comptes.filter(c => c.statut === filtre);
-      lignes.innerHTML = liste.length ? liste.map(c => {
-        const actions = !gerable(c) ? '<span class="muet">—</span>' : `
-          ${c.statut !== 'valide' ? '<button class="btn btn--petit btn--accent" data-action="valide">Valider</button>' : ''}
-          ${c.statut === 'attente' ? '<button class="btn btn--petit" data-action="refuse">Refuser</button>' : ''}
-          ${c.id !== moi.id ? '<button class="btn btn--petit btn--danger" data-action="supprimer">Supprimer</button>' : ''}`;
-        const grade = gerable(c)
-          ? `<select data-grade><option value="">Sans grade</option>${gradesPossibles().map(g => `<option value="${socle.esc(g.cle)}"${g.cle === c.grade?.cle ? ' selected' : ''}>${socle.esc(g.libelle)}</option>`).join('')}</select>`
-          : socle.esc(c.grade?.libelle || (c.proprietaire ? 'Propriétaire' : 'Sans grade'));
-        return `<tr data-id="${c.id}">
-          <td><div class="ligne">${c.avatar ? `<img class="avatar" src="${socle.esc(c.avatar)}" alt="">` : '<span class="avatar"></span>'}
-            <div><strong>${socle.esc(c.nom || c.pseudo)}</strong><br><span class="muet">@${socle.esc(c.pseudo)}</span></div></div></td>
-          <td>${grade}</td>
-          <td class="muet">${socle.date(c.creeLe)}</td>
-          <td><div class="ligne">${actions}</div></td>
-        </tr>`;
-      }).join('') : '<tr><td colspan="4" class="vide">Aucun compte ici.</td></tr>';
+      const attente = comptes.filter(c => c.statut === 'attente'), autres = comptes.filter(c => c.statut !== 'attente');
+      document.getElementById('bloc-attente').classList.toggle('cache', !attente.length);
+      document.getElementById('compteur-attente').textContent = attente.length || '';
+      document.getElementById('corps-attente').innerHTML = attente.map(c => `<tr data-id="${c.id}"><td>${celluleCompte(c)}</td><td>${celluleGrade(c)}</td><td>${dateCourte(c.creeLe)}</td><td>${boutons(c)}</td></tr>`).join('');
+      document.getElementById('corps-comptes').innerHTML = autres.length ? autres.map(c => `<tr data-id="${c.id}"><td>${celluleCompte(c)}</td><td>${celluleGrade(c)}</td><td>${STATUTS[c.statut]}</td><td>${dateCourte(c.connecteLe)}</td><td>${boutons(c)}</td></tr>`).join('')
+        : '<tr><td colspan="5">Aucun compte validé pour le moment.</td></tr>';
+      document.querySelectorAll('select[data-grade]').forEach(s => ameliorerSelect(s, cle => grades.find(g => g.cle === cle)?.couleur || '#8a93b8', 'comptes'));
     }
 
     async function charger() {
       [comptes, grades] = await Promise.all([socle.api('/api/comptes'), socle.api('/api/grades')]);
+      nettoyerSelectsPortee?.('comptes');
       afficher();
     }
 
-    document.getElementById('filtres').addEventListener('click', e => {
-      const b = e.target.closest('[data-statut]');
-      if (!b) return;
-      filtre = b.dataset.statut;
-      document.querySelectorAll('#filtres .btn').forEach(x => x.classList.toggle('btn--accent', x === b));
-      afficher();
-    });
-
-    lignes.addEventListener('click', async e => {
+    document.querySelector('main').addEventListener('click', async e => {
       const b = e.target.closest('[data-action]'), id = e.target.closest('tr')?.dataset.id;
       if (!b || !id) return;
+      const c = comptes.find(x => String(x.id) === id);
       try {
         if (b.dataset.action === 'supprimer') {
-          if (!confirm('Supprimer ce compte ? Il pourra refaire une demande en se reconnectant.')) return;
+          if (!await gestion.confirmer(`Le compte de ${c.nom || c.pseudo} sera supprimé du site. Il pourra refaire une demande en se reconnectant.`, 'Supprimer ce compte ?', 'Supprimer')) return;
           await socle.api(`/api/comptes/${id}`, { method: 'DELETE' });
         } else await socle.api(`/api/comptes/${id}`, { method: 'PATCH', body: { statut: b.dataset.action } });
-        gestion.message(msg, '');
+        gestion.message('zone-message', '');
         await charger();
-      } catch (err) { gestion.message(msg, err.message); }
+      } catch (err) { gestion.message('zone-message', err.message); }
     });
-
-    lignes.addEventListener('change', async e => {
+    document.querySelector('main').addEventListener('change', async e => {
       const id = e.target.closest('tr')?.dataset.id;
       if (!e.target.matches('[data-grade]') || !id) return;
-      try { await socle.api(`/api/comptes/${id}`, { method: 'PATCH', body: { grade: e.target.value || null } }); gestion.message(msg, 'Grade enregistré.', true); await charger(); }
-      catch (err) { gestion.message(msg, err.message); await charger(); }
+      try { await socle.api(`/api/comptes/${id}`, { method: 'PATCH', body: { grade: e.target.value || null } }); gestion.message('zone-message', 'Grade enregistré.', 'succes'); }
+      catch (err) { gestion.message('zone-message', err.message); }
+      await charger();
     });
 
-    gestion.coque().then(m => { moi = m; return charger(); }).catch(e => gestion.message(msg, e.message));
+    gestion.coque('comptes').then(m => { moi = m; return charger(); }).catch(e => gestion.message('zone-message', e.message));
   </script>
 </body>
 </html>

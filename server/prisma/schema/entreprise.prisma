@@ -6,21 +6,6 @@
 // - après chaque modification : docker compose exec app npx prisma migrate dev --name <description>, puis committer
 //   le dossier créé dans prisma/migrations/.
 
-// Exemple : annonces internes (page gestion/annonces.html, routes src/entreprise/routes/annonces.ts). À supprimer
-// ou remplacer par les tables de l'entreprise (stocks, factures, rendez-vous…).
-model Annonce {
-  id       Int       @id @default(autoincrement())
-  compteId Int?      @map("compte_id") // auteur ; null si son compte a été supprimé
-  titre    String    @db.VarChar(120)
-  texte    String    @db.VarChar(4000)
-  epingle  Boolean   @default(false)
-  creeLe   DateTime  @default(now()) @map("cree_le") @db.Timestamptz(6)
-
-  @@index([creeLe(sort: Desc)])
-  @@index([compteId])
-  @@map("annonces")
-}
-
 // Bien immobilier proposé par l'agence (catalogue public de la vitrine, géré depuis la gestion).
 // Valeurs contrôlées par src/entreprise/biens.ts (catégories, sous-catégories, cohérences).
 model Bien {
@@ -65,4 +50,27 @@ model Profil {
   photo      String? @db.VarChar(512) // adresse de la photo (stockage d'images)
 
   @@map("profils")
+}
+
+// Photo envoyée par un agent (fichier ou lien téléchargé par le serveur), stockée par le socle (disque en dev, CDN en
+// prod). Suivie ici pour être retirée du stockage quand plus rien ne l'utilise : une photo envoyée puis abandonnée
+// (annonce jamais enregistrée) ou retirée d'une annonce passe « a_supprimer », et la tâche de nettoyage
+// (entreprise/photos.ts) l'efface du stockage avant d'effacer la ligne.
+model Photo {
+  id       Int      @id @default(autoincrement())
+  usage    String   @db.VarChar(10) // bien | profil
+  cle      String   @db.VarChar(200)
+  url      String   @unique @db.VarChar(512)
+  cleMini  String   @map("cle_mini") @db.VarChar(200)
+  urlMini  String   @map("url_mini") @db.VarChar(512)
+  statut   String   @default("temporaire") @db.VarChar(12) // temporaire | attachee | a_supprimer
+  bienId   Int?     @map("bien_id") // bien qui l'affiche (usage bien)
+  compteId Int?     @map("compte_id") // agent qui l'a envoyée ; pour un profil, son propriétaire
+  erreur   String?  @db.VarChar(300) // dernier échec de suppression sur le stockage
+  creeLe   DateTime @default(now()) @map("cree_le") @db.Timestamptz(6)
+  majLe    DateTime @default(now()) @updatedAt @map("maj_le") @db.Timestamptz(6)
+
+  @@index([statut, majLe])
+  @@index([bienId])
+  @@map("photos")
 }

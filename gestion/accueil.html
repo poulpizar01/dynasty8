@@ -4,47 +4,52 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="application-name" content="{{nom}}">
-  <meta name="robots" content="noindex">
-  <title>Accueil — {{nom}}</title>
+  <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/gestion/gestion.css">
   <script src="/socle/socle.js"></script>
+  <script src="/layout.js"></script>
   <script src="/gestion/gestion.js"></script>
+  <title>Espace agents — {{nom}}</title>
 </head>
-<body>
-  <!-- Accueil après connexion (nom imposé par le socle : gestion/accueil.html). Contenu libre : tableau de bord de
-       l'entreprise (chiffres du jour, stocks, rendez-vous…). -->
-  <main class="contenu">
-    <p class="surtitre">Espace employés</p>
-    <h1 class="page-titre" id="bonjour">Bonjour</h1>
-    <p class="intro">Point de départ du tableau de bord : à remplacer par ce dont l'entreprise a besoin au quotidien.</p>
-    <div class="grille">
-      <section class="carte">
-        <h2>Dernières annonces</h2>
-        <div id="annonces"><p class="vide">Chargement…</p></div>
-        <a href="annonces.html">Toutes les annonces →</a>
-      </section>
-      <section class="carte" id="aFaire" hidden>
-        <h2>À traiter</h2>
-        <p id="attente" class="muet"></p>
-        <a href="comptes.html">Gérer les comptes →</a>
-      </section>
+<body class="page-agents">
+  <!-- GESTION — accueil après connexion (nom imposé par le socle : gestion/accueil.html). -->
+  <main class="admin-contenu">
+    <div class="entete-admin">
+      <div>
+        <h2 style="margin-bottom:2px;" id="bonjour">Bonjour</h2>
+        <p style="margin:0;font-size:0.88rem;">Bienvenue dans l'espace agents de {{nom}}.</p>
+      </div>
     </div>
+    <div id="zone-message"></div>
+    <div class="admin-stats" id="indicateurs"></div>
+    <div id="raccourcis" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;"></div>
   </main>
   <script>
-    gestion.coque().then(async moi => {
+    gestion.coque('accueil').then(async moi => {
       document.getElementById('bonjour').textContent = `Bonjour, ${moi.nom || moi.pseudo}`;
-      const zone = document.getElementById('annonces');
+      const cartes = [], liens = [];
+      const carte = (icone, couleur, valeur, libelle, sous) => `
+        <div class="stat-carte"><span class="stat-icone stat-icone--${couleur}">${gestion.ico(icone)}</span>
+        <div><div class="stat-valeur">${valeur}</div><div class="stat-libelle">${libelle}</div><div class="stat-sous-libelle">${sous}</div></div></div>`;
       try {
-        const liste = (await socle.api('/api/annonces')).slice(0, 3);
-        zone.innerHTML = liste.length ? liste.map(a => `<p><strong>${socle.esc(a.titre)}</strong><br><span class="muet">${socle.date(a.creeLe)}</span></p>`).join('') : '<p class="vide">Aucune annonce pour le moment.</p>';
-      } catch (e) { zone.innerHTML = `<p class="message">${socle.esc(e.message)}</p>`; }
-      if (socle.peut(moi, 'comptes')) {
-        const n = (await socle.api('/api/comptes')).filter(c => c.statut === 'attente').length;
-        document.getElementById('aFaire').hidden = false;
-        document.getElementById('attente').textContent = n ? `${n} demande(s) d’accès en attente.` : 'Aucune demande d’accès en attente.';
-      }
+        if (socle.peut(moi, 'biens')) {
+          const biens = (await socle.api('/api/biens')).biens || [];
+          const visibles = biens.filter(b => b.disponible).length;
+          cartes.push(carte('home', 'or', biens.length, 'Annonces', `${visibles} visible${visibles > 1 ? 's' : ''} sur le site`));
+          liens.push('<a class="btn btn-or" href="biens.html">Gérer les annonces</a>');
+        }
+        if (socle.peut(moi, 'comptes')) {
+          const attente = (await socle.api('/api/comptes')).filter(c => c.statut === 'attente').length;
+          cartes.push(carte('lock', attente ? 'or' : 'vert', attente, `Demande${attente > 1 ? 's' : ''} d'accès`, attente ? 'À valider' : 'Rien à traiter'));
+          liens.push('<a class="btn btn-fantome" href="comptes.html">Comptes &amp; accès</a>');
+        }
+      } catch (e) { gestion.message('zone-message', e.message); }
+      liens.push('<a class="btn btn-fantome" href="compte.html">Mon compte</a>');
+      document.getElementById('indicateurs').innerHTML = cartes.join('');
+      document.getElementById('raccourcis').innerHTML = liens.join('');
     });
   </script>
 </body>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="application-name" content="{{nom}}">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/gestion/gestion.css">
+  <script src="/socle/socle.js"></script>
+  <script src="/layout.js"></script>
+  <script src="/gestion/gestion.js"></script>
+  <title>Annonces — {{nom}}</title>
+</head>
+<body class="page-agents">
+  <!-- GESTION — annonces : les biens du catalogue (permission « biens », serveur : routes/biens.ts). -->
+  <main class="admin-contenu">
+    <section>
+      <div class="entete-admin">
+        <div>
+          <h2 style="margin-bottom:2px;">Annonces</h2>
+          <p style="margin:0;font-size:0.88rem;">Ajoutez, modifiez ou retirez les biens du catalogue.</p>
+        </div>
+        <button class="btn btn-or" id="bouton-nouveau-bien" type="button"><svg class="ico"><use href="#ico-plus"></use></svg> Nouvelle annonce</button>
+      </div>
+
+      <div class="admin-stats" id="admin-stats"></div>
+
+      <div class="annonces-outils">
+        <div class="annonces-recherche">
+          <span class="annonces-recherche-icone" aria-hidden="true"><svg class="ico"><use href="#ico-search"></use></svg></span>
+          <input type="search" id="recherche-biens" placeholder="Rechercher un bien, une catégorie…">
+        </div>
+        <select id="filtre-categorie">
+          <option value="">Toutes catégories</option>
+          <option value="habitation">Habitation</option>
+          <option value="garage">Garage</option>
+        </select>
+        <select id="filtre-statut">
+          <option value="">Tous statuts</option>
+          <option value="visible">Visible</option>
+          <option value="masquee">Masquée</option>
+        </select>
+        <button type="button" class="btn btn-fantome btn-petit cache" id="bouton-reinitialiser-filtres">✕ Réinitialiser</button>
+        <div class="annonces-vue-toggle" role="group" aria-label="Mode d'affichage">
+          <button type="button" class="annonces-vue-bouton" id="bouton-vue-liste" title="Vue liste" aria-pressed="true"><svg class="ico"><use href="#ico-list"></use></svg></button>
+          <button type="button" class="annonces-vue-bouton" id="bouton-vue-grille" title="Vue grille" aria-pressed="false"><svg class="ico"><use href="#ico-grid"></use></svg></button>
+        </div>
+      </div>
+
+      <div id="zone-message-annonces"></div>
+
+      <div id="vue-liste-biens" class="carte-table" style="overflow-x:auto;">
+        <table class="table-admin">
+          <thead>
+            <tr><th></th><th>Bien</th><th>Catégorie</th><th>Sous-catégorie</th><th>Prix</th><th>Statut</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="corps-table-biens"></tbody>
+        </table>
+      </div>
+      <div id="vue-grille-biens" class="grille-admin-biens cache"></div>
+
+      <div class="annonces-pagination" id="annonces-pagination"></div>
+    </section>
+  </main>
+
+<div class="modale-fond cache" id="modale-bien">
+  <div class="modale">
+    <div class="modale-entete">
+      <h3 id="titre-modale-bien">Nouvelle annonce</h3>
+      <button id="fermer-modale-bien" type="button" aria-label="Fermer">✕</button>
+    </div>
+    <div id="zone-message-modale-bien"></div>
+    <form id="formulaire-bien">
+      <input type="hidden" id="bien-id">
+      <div class="champ">
+        <label for="bien-titre">Nom du bien <span class="champ-obligatoire">*</span></label>
+        <input type="text" id="bien-titre" maxlength="120" placeholder="Ex: Loft moderne — Eclipse Tower">
+        <p class="champ-erreur cache" id="erreur-bien-titre">Le nom du bien est obligatoire.</p>
+      </div>
+      <div class="champ-deux">
+        <div class="champ">
+          <label for="bien-categorie">Catégorie <span class="champ-obligatoire">*</span></label>
+          <select id="bien-categorie">
+            <option value="habitation">Habitation</option>
+            <option value="garage">Garage</option>
+          </select>
+        </div>
+        <div class="champ">
+          <label for="bien-sous-categorie">Sous-catégorie</label>
+          <select id="bien-sous-categorie"></select>
+        </div>
+      </div>
+      <div class="champ champ-checkbox cache" id="ligne-bien-meuble">
+        <input type="checkbox" id="bien-meuble" checked>
+        <label for="bien-meuble" style="margin:0;">Meublé (sinon : non meublé)</label>
+      </div>
+      <div class="champ">
+        <label>Transaction <span class="champ-obligatoire">*</span></label>
+        <p class="champ-aide" style="margin:0 0 10px;">Un bien peut être proposé à la vente, à la location, ou aux deux en même temps.</p>
+
+        <div class="champ-checkbox">
+          <input type="checkbox" id="bien-dispo-vente" checked>
+          <label for="bien-dispo-vente" style="margin:0;">À la vente</label>
+        </div>
+        <div class="champ" id="ligne-bien-prix-vente" style="margin:8px 0 16px 26px;">
+          <label for="bien-prix-vente">Prix de vente ($)</label>
+          <input type="number" id="bien-prix-vente" min="0" step="1">
+          <p class="champ-erreur cache" id="erreur-bien-prix-vente">Indiquez un prix de vente valide (0 ou plus).</p>
+        </div>
+
+        <div class="champ-checkbox">
+          <input type="checkbox" id="bien-dispo-location">
+          <label for="bien-dispo-location" style="margin:0;">À la location (par semaine)</label>
+        </div>
+        <div class="champ cache" id="ligne-bien-prix-location" style="margin:8px 0 0 26px;">
+          <label for="bien-prix-location">Prix de location ($ / semaine)</label>
+          <input type="number" id="bien-prix-location" min="0" step="1">
+          <p class="champ-erreur cache" id="erreur-bien-prix-location">Indiquez un prix de location valide (0 ou plus).</p>
+        </div>
+
+        <p class="champ-erreur cache" id="erreur-bien-transaction">Cochez au moins une option : à la vente et/ou à la location.</p>
+      </div>
+      <div class="champ-deux">
+        <div class="champ">
+          <label for="bien-places">Places / chambres (optionnel)</label>
+          <input type="number" id="bien-places" min="0" step="1">
+        </div>
+        <div class="champ">
+          <label for="bien-coffre">Coffre — capacité en kg (optionnel)</label>
+          <input type="number" id="bien-coffre" min="0" step="1">
+        </div>
+      </div>
+      <div class="champ-deux">
+        <div class="champ">
+          <label for="bien-coherence">Cohérence / zone <span class="champ-obligatoire">*</span></label>
+          <select id="bien-coherence">
+            <option value="Habitation">Habitation</option>
+            <option value="Garage">Garage</option>
+            <option value="Cayo Perico">Cayo Perico</option>
+            <option value="Roxwood">Roxwood</option>
+          </select>
+          <p class="champ-aide">Détermine dans quelle fiche de cohérence ce bien apparaît.</p>
+        </div>
+        <div class="champ">
+          <label for="bien-vip">Statut VIP PLUS (optionnel, boutique FlashbackFA)</label>
+          <select id="bien-vip">
+            <option value="">Aucun</option>
+            <option value="vip">VIP</option>
+          </select>
+        </div>
+      </div>
+      <div class="champ">
+        <label for="bien-description">Description</label>
+        <div class="description-outils">
+          <button type="button" class="btn btn-fantome btn-petit" id="bouton-description-gras" title="Mettre en gras"><strong>G</strong></button>
+          <button type="button" class="btn btn-fantome btn-petit" id="bouton-description-italique" title="Mettre en italique"><em>I</em></button>
+          <div class="emoji-outil">
+            <button type="button" class="btn btn-fantome btn-petit" id="bouton-description-emoji" aria-expanded="false" aria-haspopup="true">🙂 Emoji</button>
+            <div class="emoji-panneau cache" id="panneau-description-emoji"></div>
+          </div>
+        </div>
+        <textarea id="bien-description" maxlength="4000" placeholder="Décrivez le bien : superficie, atouts, équipements..."></textarea>
+        <p class="champ-aide">Sélectionnez du texte puis cliquez sur <strong>G</strong> (gras) ou <em>I</em> (italique) — ou tapez directement <code>**gras**</code> / <code>*italique*</code>. Aperçu tel qu'affiché sur la fiche du bien :</p>
+        <div class="description-apercu vide" id="apercu-description"></div>
+      </div>
+      <div class="champ">
+        <label>Photos <span class="champ-compteur" id="bien-images-compteur">0 / 10</span></label>
+        <div class="bien-images-outils">
+          <button type="button" class="btn btn-fantome btn-petit" id="bouton-parcourir">📁 Parcourir mes fichiers</button>
+          <input type="file" id="bien-image-fichier" accept="image/jpeg,image/png,image/webp" multiple class="cache">
+          <div class="bien-image-url-groupe">
+            <input type="url" id="bien-image-url" placeholder="…ou collez le lien d'une image (https://…)" autocomplete="off">
+            <button type="button" class="btn btn-fantome btn-petit" id="bouton-ajouter-url">Ajouter</button>
+          </div>
+        </div>
+        <p class="champ-erreur cache" id="erreur-bien-images"></p>
+        <div class="bien-images-grille" id="bien-images-grille"></div>
+        <p class="champ-aide">La première photo est la photo principale. Formats acceptés : JPG, PNG, WEBP (15 Mo maximum) — 10 photos maximum par bien. Depuis l'ordinateur en jeu, collez le lien d'une image : le site la télécharge et la garde, même si le lien d'origine disparaît ensuite.</p>
+      </div>
+      <div class="champ-deux">
+        <div class="champ champ-checkbox">
+          <input type="checkbox" id="bien-coup-de-coeur">
+          <label for="bien-coup-de-coeur" style="margin:0;">Mettre en « coup de cœur » (page d'accueil)</label>
+        </div>
+        <div class="champ champ-checkbox">
+          <input type="checkbox" id="bien-disponible" checked>
+          <label for="bien-disponible" style="margin:0;">Annonce visible sur le site</label>
+        </div>
+      </div>
+      <!-- Case retirée du formulaire à la demande de Paul (ne s'en sert plus). On garde
+           volontairement le champ cache/JS existant plutôt que de le supprimer partout :
+           ça évite de re-mettre "vendu" à faux sur les biens déjà marqués comme vendus
+           dès qu'on modifie autre chose sur leur fiche (prix, description, etc.). -->
+      <div class="champ champ-checkbox cache">
+        <input type="checkbox" id="bien-vendu">
+        <label for="bien-vendu" style="margin:0;">Bien vendu — affiche un badge « Vendu » sur l'annonce</label>
+      </div>
+      <div class="champ champ-checkbox">
+        <input type="checkbox" id="bien-standing">
+        <label for="bien-standing" style="margin:0;">Bien d'exception — apparaît dans « Exclusifs »</label>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-or" style="flex:1;">Enregistrer le bien</button>
+        <button type="button" class="btn btn-fantome" id="bouton-annuler-bien">Annuler</button>
+        <button type="button" class="btn btn-danger cache" id="bouton-supprimer-bien">Supprimer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+  <script src="/gestion/biens.js"></script>
+</body>
+</html>
