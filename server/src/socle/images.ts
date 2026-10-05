@@ -32,11 +32,34 @@ const stockagePret: RequestHandler = (_req, res, next) => {
   if (storage.accepte) next();
   else res.status(503).json({ error: 'L’envoi d’images n’est pas encore configuré sur ce site.' });
 };
+// Chaque envoi reçu garde son fichier en mémoire (15 Mo au plus) jusqu'à la fin de son traitement : au-delà de quelques
+// envois en même temps, tous comptes confondus, le plafond mémoire du conteneur serait dépassé. Les suivants repassent.
+// La place n'est rendue qu'à la fin du traitement, pas quand le navigateur abandonne : sinon un envoi abandonné
+// libérerait sa place tout en gardant son fichier en mémoire, et le plafond ne protégerait plus rien.
+const ENVOIS_MAX = 3;
+let envois = 0;
+type Creneau = { traitement: boolean; liberer: () => void; abandonne: () => boolean };
+const CRENEAU = Symbol('creneau');
+type FichierRecu = Express.Multer.File & { [CRENEAU]?: Creneau };
+const envoisBornes: RequestHandler = (req, res, next) => {
+  if (envois >= ENVOIS_MAX) { res.status(503).set('Retry-After', '10').json({ error: 'Trop d’images en cours d’envoi, réessaie dans quelques secondes.' }); return; }
+  envois++;
+  let libre = false;
+  // connexion coupée (pas req.destroyed : vrai dès que le corps de la requête est lu, donc pour tout envoi)
+  const creneau: Creneau = { traitement: false, liberer: () => { if (!libre) { libre = true; envois--; } }, abandonne: () => req.socket.destroyed };
+  res.locals.creneauImage = creneau;
+  // refusé ou abandonné avant le traitement : la place est rendue avec la réponse ; sinon enregistrerImage la rend
+  res.once('close', () => { if (!creneau.traitement) creneau.liberer(); });
+  next();
+};
 const lire: RequestHandler = (req, res, next) => multerUn(req, res, err => {
-  if (!err) return next();
+  if (!err) {
+    if (req.file) (req.file as FichierRecu)[CRENEAU] = res.locals.creneauImage;
+    return next();
+  }
   res.status(400).json({ error: err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE' ? 'Image trop lourde (15 Mo max).' : 'Envoi illisible.' });
 });
-export const recevoirImage: RequestHandler[] = [stockagePret, limits.upload, lire];
+export const recevoirImage: RequestHandler[] = [stockagePret, limits.upload, envoisBornes, lire];
 
 // un seul traitement à la fois : deux images de 25 Mpx en parallèle dépasseraient la mémoire du conteneur
 let file: Promise<unknown> = Promise.resolve();
@@ -54,7 +77,15 @@ export type ImageEnregistree = { cle: string; url: string; cleMini: string; urlM
 export async function enregistrerImage(dossier: string, fichier: Express.Multer.File | undefined): Promise<ImageEnregistree> {
   if (!/^[a-z0-9-]+$/.test(dossier)) throw new Error(`enregistrerImage : dossier invalide « ${dossier} »`);
   if (!fichier) throw new ImageRefusee('Aucune image (jpg, png ou webp).');
+  const creneau = (fichier as FichierRecu)[CRENEAU];
+  if (creneau) creneau.traitement = true;
+  try { return await traiter(dossier, fichier, creneau); } finally { creneau?.liberer(); }
+}
+
+async function traiter(dossier: string, fichier: Express.Multer.File, creneau: Creneau | undefined): Promise<ImageEnregistree> {
   const { grande, mini } = await aTonTour(async () => {
+    // envoi abandonné pendant l'attente : on ne traite pas une image que personne ne recevra
+    if (creneau?.abandonne()) throw new ImageRefusee('Envoi abandonné.');
     let meta: Metadata;
     try { meta = await sharp(fichier.buffer, { limitInputPixels: MAX_PIXELS }).metadata(); } catch { throw new ImageRefusee('Image illisible.'); }
     if (!meta.format || !FORMATS_ACCEPTES.includes(meta.format)) throw new ImageRefusee('Format refusé : jpg, png ou webp uniquement (pas de gif ni de heic).');
