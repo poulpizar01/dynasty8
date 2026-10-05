@@ -1,0 +1,22 @@
+// ENTREPRISE (personnalisable) — tables propres à ce site. Le générateur et la base sont déclarés dans socle.prisma.
+// Règles :
+// - noms de tables en français et en snake_case (@@map), colonnes aussi (@map) ;
+// - un compte se référence par `compteId Int @map("compte_id")`, sans relation Prisma vers Compte (socle.prisma ne se
+//   modifie pas) ; ce qui doit disparaître avec le compte est effacé dans avantSuppressionCompte (src/entreprise/index.ts) ;
+// - après chaque modification : docker compose exec app npx prisma migrate dev --name <description>, puis committer
+//   le dossier créé dans prisma/migrations/.
+
+// Exemple : annonces internes (page gestion/annonces.html, routes src/entreprise/routes/annonces.ts). À supprimer
+// ou remplacer par les tables de l'entreprise (stocks, factures, rendez-vous…).
+model Annonce {
+  id       Int       @id @default(autoincrement())
+  compteId Int?      @map("compte_id") // auteur ; null si son compte a été supprimé
+  titre    String    @db.VarChar(120)
+  texte    String    @db.VarChar(4000)
+  epingle  Boolean   @default(false)
+  creeLe   DateTime  @default(now()) @map("cree_le") @db.Timestamptz(6)
+
+  @@index([creeLe(sort: Desc)])
+  @@index([compteId])
+  @@map("annonces")
+}

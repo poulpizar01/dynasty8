@@ -1,0 +1,28 @@
+/* SOCLE — signature commune aux sites Roxwood Network, en bas de chaque vitrine. Mutualisé : à garder telle quelle.
+   <link rel="stylesheet" href="/socle/signature.css">, puis, après le pied de page :
+   <div class="signature">
+     <div class="sig-pastille">
+       <img src="/assets/roxwood.png" alt="" width="20" height="20" loading="lazy">
+       <span class="sig-txt">Développé par <b>Roxwood Network</b></span>
+       <span class="sig-trait" aria-hidden="true"></span>
+       <span class="sig-actions">
+         <a href="https://roxwood-network.fbfa.fr/" target="_blank" rel="noopener">Site</a>
+         <a href="https://discord.gg/dZDfarP8zT" target="_blank" rel="noopener">Discord</a>
+       </span>
+     </div>
+   </div>
+   Couleurs tirées de theme.css (--ink2, --line, --accent, --accent-dark) : elle prend la DA de chaque site. */
+.signature{display:flex;justify-content:center;padding:6px 16px 44px}
+.sig-pastille{display:inline-flex;align-items:center;gap:10px;padding:7px 8px 7px 14px;border-radius:999px;border:1px solid transparent;transition:border-color .25s,background .25s}
+.sig-pastille:hover{border-color:var(--line);background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.sig-txt{color:var(--ink2);font-size:12px;letter-spacing:.06em;opacity:.55;white-space:nowrap;transition:opacity .25s}
+.sig-pastille:hover .sig-txt{opacity:.9}
+.sig-trait{width:1px;height:13px;background:var(--line);opacity:.8}
+.sig-actions{display:inline-flex;align-items:center;gap:2px;margin-left:-3px}
+.signature a{color:var(--ink2);font-size:12px;letter-spacing:.06em;opacity:.6;padding:4px 8px;border-radius:999px;white-space:nowrap;text-decoration:none;transition:opacity .18s,color .18s,background .18s}
+.signature a:hover{opacity:1;color:var(--accent);background:color-mix(in srgb,var(--ink2) 8%,transparent)}
+.signature img{width:20px;height:20px;object-fit:contain;filter:saturate(.55) brightness(.9);transition:filter .25s}
+.sig-pastille:hover img{filter:none}
+.signature b{font-weight:500;color:var(--accent-dark);transition:color .25s}
+.sig-pastille:hover b{color:var(--accent)}
+@media (max-width:520px){.sig-pastille{flex-wrap:wrap;justify-content:center;padding:9px 12px;row-gap:2px}.sig-trait{display:none}}

@@ -1,0 +1,43 @@
+{
+  "name": "roxwood-site-entreprise",
+  "version": "1.0.0",
+  "description": "Site d'entreprise RP (vitrine + gestion) : Express + PostgreSQL (Prisma) + Discord OAuth — socle Roxwood Network",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "prisma generate && tsc -p .",
+    "start": "prisma migrate deploy && node dist/index.js",
+    "dev": "prisma generate && prisma migrate deploy && tsx src/index.ts",
+    "typecheck": "tsc -p . --noEmit"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "connect-pg-simple": "^10.0.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "express-session": "^1.18.1",
+    "helmet": "^8.3.0",
+    "multer": "^2.0.0",
+    "pg": "^8.13.1",
+    "prisma": "7.10.0",
+    "sharp": "^0.35.5"
+  },
+  "overrides": {
+    "mysql2": "^3.24.5",
+    "deepmerge-ts": "^8.0.2"
+  },
+  "devDependencies": {
+    "@types/connect-pg-simple": "^7.0.3",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.18.1",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

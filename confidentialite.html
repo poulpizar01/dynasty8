@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Confidentialité — {{nom}}</title>
+  <meta name="description" content="Ce que le site de {{nom}} enregistre, pourquoi, pendant combien de temps, et comment le faire effacer.">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<!-- Personnalisable, mais doit rester VRAIE : la compléter dès que le site enregistre autre chose (tables de
+     l'entreprise, images envoyées, événements du bot traités, origine ajoutée à la politique de sécurité). -->
+<main class="page-texte">
+  <a href="/">← Retour au site</a>
+  <h1>Confidentialité</h1>
+  <p>Ce que le site de {{nom}} enregistre, pourquoi, pendant combien de temps, et comment le faire effacer.</p>
+
+  <h2>Si tu visites seulement le site</h2>
+  <p>Rien n'est enregistré sur toi : pas de compte, pas de cookie, pas de mesure d'audience, pas de publicité. Les polices et les scripts sont servis par le site lui-même : ta visite n'est signalée à aucun service extérieur.</p>
+  <p>Comme tout site, le serveur tient un journal technique (adresse IP, page demandée, date), utilisé seulement pour la sécurité et le dépannage.</p>
+
+  <h2>Si tu te connectes à l'espace employés</h2>
+  <p>La connexion passe par Discord. Discord indique au site ton identifiant, ton pseudo, ton avatar, ton surnom et tes rôles sur le serveur Discord de l'entreprise, et la liste de tes serveurs. Cette liste sert une seule fois, à savoir si tu es le propriétaire du serveur de l'entreprise : elle n'est pas conservée. Le site ne reçoit ni ton adresse e-mail ni ton mot de passe.</p>
+  <p>Le site enregistre :</p>
+  <ul>
+    <li><b>ton compte</b> : identifiant, pseudo et avatar Discord, nom RP, grade, date de la demande, de sa validation et de ta dernière connexion ;</li>
+    <li><b>ce que tu publies</b> dans l'espace employés (annonces).</li>
+  </ul>
+  <p>Un seul cookie est posé, <b>site.sid</b> : il garde ta session ouverte pendant 7 jours. Il est indispensable à la connexion et ne sert à rien d'autre.</p>
+  <p>Le bot Discord de l'entreprise peut transmettre au site certains événements (par exemple une demande d'absence) : ils sont gardés 30 jours.</p>
+
+  <h2>Qui voit quoi</h2>
+  <ul>
+    <li><b>Les employés</b> (compte validé) : ton nom RP, ton avatar Discord et ton grade, et ce que tu publies.</li>
+    <li><b>Les responsables</b> qui gèrent les comptes : en plus, ton pseudo Discord, les dates de ton compte et le statut de ta demande.</li>
+    <li><b>Les prestataires techniques</b> : l'hébergeur du site et, s'il y en a, le service qui stocke les images. Les avatars sont affichés depuis Discord.</li>
+  </ul>
+  <p>Rien n'est vendu ni transmis à qui que ce soit d'autre.</p>
+
+  <h2>Combien de temps</h2>
+  <ul>
+    <li>Ton compte : tant que tu ne le supprimes pas.</li>
+    <li>Les sauvegardes de la base : 7 jours sur le serveur, et jusqu'à 30 jours pour une éventuelle copie de secours. Une donnée effacée y survit donc quelques semaines au plus.</li>
+  </ul>
+
+  <h2>Tes droits</h2>
+  <p>Tu peux à tout moment <b>corriger</b> ton nom et <b>supprimer ton compte</b> depuis la page « Mon compte » de l'espace employés. Une demande encore en attente se retire de la même façon.</p>
+  <p>Pour toute autre demande (obtenir une copie de tes données), écris aux responsables de l'entreprise sur <a href="{{discord}}" rel="noopener">son serveur Discord</a>. Si la réponse ne te convient pas, tu peux saisir la <a href="https://www.cnil.fr/fr/plaintes" rel="noopener">CNIL</a>.</p>
+
+  <p><i>Les responsables de {{nom}} sont responsables de ces données.</i></p>
+</main>
+</body>
+</html>

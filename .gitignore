@@ -1,24 +1,15 @@
 node_modules/
-*.log
+server/node_modules/
+.env
+.DS_Store
+uploads/
+backups/
 
-# Secrets réels : JAMAIS dans Git, quel que soit le pack de déploiement.
-# Ils sont transmis à l'opérateur hors dépôt (message privé chiffré).
-deploy/vps/.env
-deploy/operateur/.env
-/.env
-deploy/vps/backups/
-
-# Sauvegardes et dumps de la base : données réelles des membres et des ventes
-# (noms RP, journaux). Transmis hors dépôt, jamais commités — voir
-# deploy/operateur/README-OPERATEUR.md, section « Reprise des données ».
+# Propre à Dynasty 8 — sauvegardes et dumps de la base (données réelles des
+# membres et des ventes), comptes rendus de scripts, envois en préparation
 *.dump
 *.sql.gz
 *.backup
-
+rapports/
 Claude outputs/
 _a-envoyer/
-# Comptes rendus des scripts (migration / nettoyage des photos)
-rapports/
-
-
-

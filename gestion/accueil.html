@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="application-name" content="{{nom}}">
+  <meta name="robots" content="noindex">
+  <title>Accueil — {{nom}}</title>
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/gestion/gestion.css">
+  <script src="/socle/socle.js"></script>
+  <script src="/gestion/gestion.js"></script>
+</head>
+<body>
+  <!-- Accueil après connexion (nom imposé par le socle : gestion/accueil.html). Contenu libre : tableau de bord de
+       l'entreprise (chiffres du jour, stocks, rendez-vous…). -->
+  <main class="contenu">
+    <p class="surtitre">Espace employés</p>
+    <h1 class="page-titre" id="bonjour">Bonjour</h1>
+    <p class="intro">Point de départ du tableau de bord : à remplacer par ce dont l'entreprise a besoin au quotidien.</p>
+    <div class="grille">
+      <section class="carte">
+        <h2>Dernières annonces</h2>
+        <div id="annonces"><p class="vide">Chargement…</p></div>
+        <a href="annonces.html">Toutes les annonces →</a>
+      </section>
+      <section class="carte" id="aFaire" hidden>
+        <h2>À traiter</h2>
+        <p id="attente" class="muet"></p>
+        <a href="comptes.html">Gérer les comptes →</a>
+      </section>
+    </div>
+  </main>
+  <script>
+    gestion.coque().then(async moi => {
+      document.getElementById('bonjour').textContent = `Bonjour, ${moi.nom || moi.pseudo}`;
+      const zone = document.getElementById('annonces');
+      try {
+        const liste = (await socle.api('/api/annonces')).slice(0, 3);
+        zone.innerHTML = liste.length ? liste.map(a => `<p><strong>${socle.esc(a.titre)}</strong><br><span class="muet">${socle.date(a.creeLe)}</span></p>`).join('') : '<p class="vide">Aucune annonce pour le moment.</p>';
+      } catch (e) { zone.innerHTML = `<p class="message">${socle.esc(e.message)}</p>`; }
+      if (socle.peut(moi, 'comptes')) {
+        const n = (await socle.api('/api/comptes')).filter(c => c.statut === 'attente').length;
+        document.getElementById('aFaire').hidden = false;
+        document.getElementById('attente').textContent = n ? `${n} demande(s) d’accès en attente.` : 'Aucune demande d’accès en attente.';
+      }
+    });
+  </script>
+</body>
+</html>
