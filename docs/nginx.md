@@ -40,7 +40,7 @@ Prérequis de certbot : le domaine pointe déjà sur le VPS (`dig +short <domain
 Ne pas ajouter de cache nginx sur les pages : elles sont personnalisées par site et par session. Les images de `assets/` portent déjà leur propre durée de cache (7 jours).
 
 ## Routes longues et flux temps réel de l'entreprise
-nginx coupe une requête sans réponse au bout de 60 s et met les réponses en tampon. Une route de l'entreprise qui dure plus longtemps (envoi d'image suivi du dépôt sur le stockage, export) ou qui garde la connexion ouverte (flux Server-Sent Events) a son propre bloc `location`, placé avant `location /` :
+nginx coupe une requête sans réponse au bout de 60 s et met les réponses en tampon. Une route de l'entreprise qui dure plus longtemps (envoi d'image suivi du dépôt sur le stockage, image par lien qui ajoute son téléchargement, export) ou qui garde la connexion ouverte (flux Server-Sent Events) a son propre bloc `location`, placé avant `location /` :
 ```nginx
 # envoi d'image : jusqu'à 2 minutes (exemple commenté dans nginx.conf.example)
 location ~ ^/api/articles/\d+/photo$ { …mêmes en-têtes que location /… proxy_read_timeout 120s; }

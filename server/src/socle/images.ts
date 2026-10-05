@@ -4,14 +4,18 @@
 //     const image = await enregistrerImage('articles', req.file);   // { cle, url, cleMini, urlMini, largeur, hauteur }
 //     … enregistrer les quatre premiers champs en base ; à la suppression : retirerImage(image)
 //   });
+// Image donnée par lien (ordinateur en jeu : pas de sélecteur de fichiers) : même route avec ...recevoirImageParLien
+// à la place de ...recevoirImage, corps JSON { url } ; le serveur télécharge l'image, la suite est identique.
 // Contrôles : 15 Mo, 25 mégapixels, contenu réellement jpg / png / webp (pas seulement l'extension), une image par
 // envoi ; réencodage WebP (1 800 px + miniature 600 px), orientation appliquée, métadonnées (GPS…) retirées.
 import crypto from 'node:crypto';
 import type { RequestHandler } from 'express';
 import multer from 'multer';
 import sharp, { type Metadata } from 'sharp';
+import { body, text } from './http.js';
 import { limits } from './limites.js';
 import { storage } from './storage.js';
+import { LienRefuse, telecharger } from './telechargement.js';
 
 // à garder sous le plafond mémoire du conteneur (APP_MEMORY)
 const MAX_PIXELS = 25_000_000;
@@ -60,6 +64,32 @@ const lire: RequestHandler = (req, res, next) => multerUn(req, res, err => {
   res.status(400).json({ error: err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE' ? 'Image trop lourde (15 Mo max).' : 'Envoi illisible.' });
 });
 export const recevoirImage: RequestHandler[] = [stockagePret, limits.upload, envoisBornes, lire];
+
+// Même chose pour une image donnée par lien (champ JSON « url ») : le serveur la télécharge (telechargement.ts) et la
+// route la reçoit dans req.file comme un fichier envoyé. Même plafond d'envois en cours : la place est gardée pendant
+// le téléchargement, même si le navigateur abandonne (le fichier arrive quand même en mémoire), puis rendue comme pour
+// un fichier.
+const telechargerLien: RequestHandler = async (req, res, next) => {
+  const creneau = res.locals.creneauImage as Creneau;
+  const lien = text(body(req).url, 2048);
+  if (!lien) { res.status(400).json({ error: 'Colle l’adresse d’une image.' }); return; }
+  creneau.traitement = true;
+  let octets: Buffer;
+  try {
+    octets = await telecharger(lien, { types: /^image\/|octet-stream/i, refusType: 'Ce lien ne mène pas à une image (copie l’adresse de l’image elle-même).' });
+  } catch (e) {
+    creneau.traitement = false; creneau.liberer();
+    if (!res.headersSent) res.status(400).json({ error: e instanceof LienRefuse ? e.message : 'Image injoignable à cette adresse.' });
+    return;
+  }
+  creneau.traitement = false;
+  if (req.socket.destroyed) { creneau.liberer(); return; }   // navigateur parti pendant le téléchargement
+  const fichier = { buffer: octets, size: octets.length, fieldname: 'image', originalname: 'lien', mimetype: 'application/octet-stream' } as FichierRecu;
+  fichier[CRENEAU] = creneau;
+  req.file = fichier;
+  next();
+};
+export const recevoirImageParLien: RequestHandler[] = [stockagePret, limits.upload, envoisBornes, telechargerLien];
 
 // un seul traitement à la fois : deux images de 25 Mpx en parallèle dépasseraient la mémoire du conteneur
 let file: Promise<unknown> = Promise.resolve();
