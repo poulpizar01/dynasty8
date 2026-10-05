@@ -10,7 +10,7 @@ Fichier **personnalisable**, importé par `CLAUDE.md` : ce qu'un agent (ou un d�
 
 ## Migration en cours (branche `migration-modele`)
 
-Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main), rangée dans `ancien/` le temps du portage (jamais servie : seuls les fichiers de premier niveau le sont). Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion un par un (annonces ✔, profil ✔, messagerie ✔) ; 4) reprise des données de la base actuelle ; 5) documentation de déploiement pour l'opérateur. `ancien/` disparaît à la fin.
+Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main), rangée dans `ancien/` le temps du portage (jamais servie : seuls les fichiers de premier niveau le sont). Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion un par un (annonces ✔, profil ✔, messagerie ✔, agenda ✔) ; 4) reprise des données de la base actuelle ; 5) documentation de déploiement pour l'opérateur. `ancien/` disparaît à la fin.
 
 ## Ce que le site ajoute au socle
 
@@ -20,6 +20,7 @@ Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main
 | Annonces (gestion des biens) | `biens` | `gestion/biens.html` + `biens.js` | `routes/biens.ts` : `POST /api/biens`, `PUT` / `DELETE /api/biens/:id`, `POST /api/biens/photo` (fichier), `POST /api/biens/photo-lien` (lien téléchargé par le serveur) | `biens`, `photos` |
 | Profil public (page équipe) | chacun le sien ; `comptes` pour un agent sous son grade | `gestion/compte.html` (« Mon profil »), fenêtre dans `comptes.html` ; éditeur commun `gestion/profil.js` | `routes/profils.ts` : `GET`/`PUT /api/profil`, `POST /api/profil/photo`, `/api/profil/photo-lien`, `GET`/`PUT /api/profils/:id` | `profils`, `photos` |
 | Messagerie interne | tout compte validé | widget sur toutes les pages : `gestion/messagerie.js`, chargé par la coque | `routes/messagerie.ts` : `/api/messagerie/contacts`, `/messages`, `/statut`, `/frappe` | `messages`, `messagerie_statuts` (présence et frappe : en mémoire) |
+| Agenda personnel | tout compte validé, chacun le sien | `gestion/agenda.html` + `agenda.js` | `routes/agenda.ts` : `GET /api/agenda?debut=&fin=`, `POST`, `PUT` / `DELETE /api/agenda/:id` | `evenements_agenda` |
 | Comptes, grades (socle) | `comptes`, `grades` | `comptes.html`, `grades.html`, `compte.html`, `accueil.html` | socle | socle |
 
 ## Vitrine

@@ -98,3 +98,19 @@ model StatutMessagerie {
 
   @@map("messagerie_statuts")
 }
+
+// « Mon agenda » : événements personnels d'un agent, visibles de lui seul (routes/agenda.ts).
+model EvenementAgenda {
+  id         Int      @id @default(autoincrement())
+  compteId   Int      @map("compte_id")
+  titre      String   @db.VarChar(80)
+  jour       DateTime @db.Date
+  heureDebut String   @map("heure_debut") @db.VarChar(5) // HH:MM
+  heureFin   String   @map("heure_fin") @db.VarChar(5)
+  notes      String   @default("") @db.VarChar(500)
+  creeLe     DateTime @default(now()) @map("cree_le") @db.Timestamptz(6)
+  majLe      DateTime @default(now()) @updatedAt @map("maj_le") @db.Timestamptz(6)
+
+  @@index([compteId, jour])
+  @@map("evenements_agenda")
+}

@@ -2,6 +2,7 @@
 // Tout src/entreprise/ est libre : ajouter des routes (routes/), des modules métier, des tâches planifiées.
 import type { Entreprise } from '../socle/contrat.js';
 import { planifierNettoyagePhotos } from './photos.js';
+import { agenda } from './routes/agenda.js';
 import { biens } from './routes/biens.js';
 import { messagerie } from './routes/messagerie.js';
 import { profils } from './routes/profils.js';
@@ -13,12 +14,13 @@ export const entreprise: Entreprise = {
   pages: {
     accueil: 'valide',
     compte: 'valide',
+    agenda: 'valide',
     biens: 'biens',
     comptes: 'comptes',
     grades: 'grades',
   },
 
-  routes: [vitrine, biens, profils, messagerie],
+  routes: [vitrine, biens, profils, messagerie, agenda],
 
   webhooks: {},
 
@@ -30,6 +32,7 @@ export const entreprise: Entreprise = {
     // ses conversations disparaissent avec lui (des deux côtés, comme sur l'ancien site)
     await tx.message.deleteMany({ where: { OR: [{ expediteurId: compteId }, { destinataireId: compteId }] } });
     await tx.statutMessagerie.deleteMany({ where: { compteId } });
+    await tx.evenementAgenda.deleteMany({ where: { compteId } });
     await tx.photo.updateMany({ where: { compteId, usage: 'profil' }, data: { statut: 'a_supprimer' } });
     await tx.photo.updateMany({ where: { compteId, statut: 'temporaire' }, data: { statut: 'a_supprimer' } });
     await tx.photo.updateMany({ where: { compteId }, data: { compteId: null } });
