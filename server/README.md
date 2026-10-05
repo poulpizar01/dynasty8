@@ -1,6 +1,6 @@
 # Serveur et déploiement
 
-Express + PostgreSQL + Discord OAuth. Sert aussi la vitrine et la gestion (racine du dépôt). Pour créer un site à partir du modèle et pour le développement, voir le [README de la racine](../README.md).
+Express + PostgreSQL + Discord OAuth. Sert aussi la vitrine et la gestion (racine du dépôt). Pour créer un site à partir du modèle et pour le développement, voir [docs/modele.md](../docs/modele.md).
 
 Documentation détaillée : [API](../docs/api.md) · [webhooks du bot](../docs/webhooks.md) · [nginx](../docs/nginx.md) · [stockage des images](../docs/stockage.md).
 
