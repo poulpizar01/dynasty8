@@ -10,7 +10,7 @@ Fichier **personnalisable**, importé par `CLAUDE.md` : ce qu'un agent (ou un d�
 
 ## Migration en cours (branche `migration-modele`)
 
-Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main), rangée dans `ancien/` le temps du portage (jamais servie : seuls les fichiers de premier niveau le sont). Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion un par un (annonces ✔, profil ✔, messagerie ✔, agenda ✔, RH ✔, ventes & statistiques ✔, comptabilité ✔, WebMap ✔) ; 4) reprise des données de la base actuelle ✔ (script `server/src/entreprise/reprise/reprise.ts`, mode d'emploi `deploy/REPRISE.md`) ; 5) documentation de déploiement pour l'opérateur ✔ (`deploy/POUR-NICOLAS.md`, configurations nginx dans `deploy/nginx/`). `ancien/` disparaît à la fin.
+Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main), rangée dans `ancien/` le temps du portage (jamais servie : seuls les fichiers de premier niveau le sont). Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion un par un (annonces ✔, profil ✔, messagerie ✔, agenda ✔, RH ✔, ventes & statistiques ✔, comptabilité ✔, WebMap ✔) ; 4) reprise des données de la base actuelle ✔ (script `server/src/entreprise/reprise/reprise.ts`, mode d'emploi `deploy/REPRISE.md`) ; 5) documentation de déploiement pour l'opérateur ✔ (`deploy/INSTALLATION.md`, configurations nginx dans `deploy/nginx/`). `ancien/` disparaît à la fin.
 
 ## Ce que le site ajoute au socle
 
@@ -50,6 +50,5 @@ MSYS_NO_PATHCONV=1 docker exec -w /app/server dynasty8-app node --import tsx --t
 ## Pièges propres à ce site
 
 - Les `{{cle}}` de `site.json` sont remplacés dans les `.html` et `.css` : ne jamais en mettre dans une chaîne JavaScript (voir CLAUDE.md).
-- `GET /api/folkos` (`routes/vitrine.ts`) renvoie vers `/auth/folkos` : ancienne adresse du SSO, encore déclarée dans le broker FolkOS de l'opérateur. À retirer une fois le broker mis à jour.
-- Déploiement : guide propre à Dynasty 8 dans `deploy/POUR-NICOLAS.md` (VPS FlashbackFA, port 3011, sous-domaine de la carte) ; le guide générique du modèle reste `server/README.md`.
+- Déploiement : guide d'installation propre à Dynasty 8 dans `deploy/INSTALLATION.md` (VPS FlashbackFA, port 3010, sous-domaine de la carte) ; le guide générique du modèle reste `server/README.md`.
 - WebMap : servie sur son sous-domaine, jamais sous le domaine du site (son code tournerait avec les droits du site). En dev : `WEBMAP_HOTE=carte.localhost` (http://carte.localhost:3010) ; l'iframe de la vitrine n'est autorisée qu'en https, la carte s'ouvre alors en pleine page.

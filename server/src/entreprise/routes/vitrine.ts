@@ -68,10 +68,3 @@ vitrine.get(/^\/api\/carte(\/.*)?$/, (req, res) => {
   if (!carte) { res.status(503).type('text').send('La carte n’est pas configurée sur ce serveur.'); return; }
   res.redirect(302, carte.url + (req.path.slice('/api/carte'.length) || '/'));
 });
-
-// Ancienne adresse du SSO FolkOS, encore déclarée dans le broker de l'opérateur : renvoyée telle quelle (ticket et next
-// compris) vers celle du socle, pour que la bascule n'attende pas la mise à jour du broker.
-vitrine.get('/api/folkos', (req, res) => {
-  const q = req.originalUrl.indexOf('?');
-  res.redirect(302, '/auth/folkos' + (q >= 0 ? req.originalUrl.slice(q) : ''));
-});
