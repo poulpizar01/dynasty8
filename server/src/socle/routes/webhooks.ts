@@ -9,7 +9,7 @@ import express, { Router } from 'express';
 import { config } from '../config.js';
 import { prisma } from '../db.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { limits } from '../security.js';
+import { limits } from '../limites.js';
 import type { EvenementBot } from '../contrat.js';
 import { entreprise } from '../../entreprise/index.js';
 
