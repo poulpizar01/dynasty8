@@ -5,10 +5,9 @@
 
 // Adresse d'invitation Discord du serveur — à remplacer par la vraie une fois disponible.
 const LIEN_DISCORD = "https://discord.com/invite/zCsPrrR3uw";
-// Adresse de la WebMap : un chemin sur NOTRE domaine, jamais l'adresse
-// réelle du serveur qui héberge la carte — voir carteProxy() dans
-// src/index.js, qui va la chercher côté serveur et la reproxie ici. La
-// vraie adresse n'apparaît donc nulle part dans le code envoyé au
+// Adresse de la WebMap : un chemin sur NOTRE domaine, qui redirige vers son
+// sous-domaine (server/src/entreprise/carte.ts relaie la carte là-bas). La
+// vraie adresse de la carte n'apparaît donc nulle part dans le code envoyé au
 // navigateur (ni ici, ni dans l'iframe intégrée en page, voir
 // data-webmap-toggle / data-webmap-boite ci-dessous).
 const LIEN_WEBMAP = "/api/carte/";

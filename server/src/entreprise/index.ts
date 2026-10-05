@@ -1,6 +1,7 @@
 // ENTREPRISE — ce que Dynasty 8 branche sur le socle (contrat : src/socle/contrat.ts).
 // Tout src/entreprise/ est libre : ajouter des routes (routes/), des modules métier, des tâches planifiées.
 import type { Entreprise } from '../socle/contrat.js';
+import { carte, relaisCarte } from './carte.js';
 import { planifierNettoyagePhotos } from './photos.js';
 import { purgerReponses, recevoirCandidature } from './rh.js';
 import { agenda } from './routes/agenda.js';
@@ -29,6 +30,11 @@ export const entreprise: Entreprise = {
   },
 
   routes: [vitrine, biens, profils, messagerie, agenda, rh, stats, compta],
+
+  // WebMap : relayée sur son sous-domaine, servi à part du site (carte.ts) ; la vitrine l'affiche dans une iframe (https
+  // seulement : en dev, l'iframe est refusée, la carte s'ouvre en pleine page)
+  ...(carte && { hotes: { [carte.hote]: relaisCarte } }),
+  ...(carte?.url.startsWith('https://') && { csp: { frame: [carte.url] } }),
 
   // événements du bot Discord entreprise (docs/webhooks.md) : candidatures acceptées → fiches RH
   webhooks: {

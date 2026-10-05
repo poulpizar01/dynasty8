@@ -6,6 +6,7 @@ import { prisma } from '../../socle/db.js';
 import { gradeDe, peut } from '../../socle/droits.js';
 import { entier } from '../../socle/http.js';
 import { bienPublic, CATEGORIES, COHERENCES } from '../biens.js';
+import { carte } from '../carte.js';
 
 export const vitrine = Router();
 
@@ -59,4 +60,11 @@ vitrine.get('/api/equipe', async (_req, res) => {
       return { id: c.id, pseudo: c.nom ?? c.pseudo, poste: p?.poste || gradeDe(c.gradeCle)?.libelle || 'Agent immobilier', specialite: p?.specialite ?? '', bio: p?.bio ?? '', photo: p?.photo ?? '' };
     });
   res.json({ membres });
+});
+
+// Adresse de la WebMap gardée par la vitrine (/api/carte/…) : redirige vers son sous-domaine (entreprise/carte.ts). La
+// vraie adresse de la carte n'apparaît ainsi nulle part dans le code envoyé au navigateur.
+vitrine.get(/^\/api\/carte(\/.*)?$/, (req, res) => {
+  if (!carte) { res.status(503).type('text').send('La carte n’est pas configurée sur ce serveur.'); return; }
+  res.redirect(302, carte.url + (req.path.slice('/api/carte'.length) || '/'));
 });

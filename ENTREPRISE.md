@@ -10,7 +10,7 @@ Fichier **personnalisable**, importé par `CLAUDE.md` : ce qu'un agent (ou un d�
 
 ## Migration en cours (branche `migration-modele`)
 
-Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main), rangée dans `ancien/` le temps du portage (jamais servie : seuls les fichiers de premier niveau le sont). Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion un par un (annonces ✔, profil ✔, messagerie ✔, agenda ✔, RH ✔, ventes & statistiques ✔, comptabilité ✔ ; reste : WebMap sur son sous-domaine) ; 4) reprise des données de la base actuelle ; 5) documentation de déploiement pour l'opérateur. `ancien/` disparaît à la fin.
+Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main), rangée dans `ancien/` le temps du portage (jamais servie : seuls les fichiers de premier niveau le sont). Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion un par un (annonces ✔, profil ✔, messagerie ✔, agenda ✔, RH ✔, ventes & statistiques ✔, comptabilité ✔, WebMap ✔) ; 4) reprise des données de la base actuelle ; 5) documentation de déploiement pour l'opérateur. `ancien/` disparaît à la fin.
 
 ## Ce que le site ajoute au socle
 
@@ -24,6 +24,7 @@ Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main
 | Ressources humaines | `rh-voir` + une par action : `rh-creer`, `rh-modifier`, `rh-desactiver`, `rh-reactiver`, `rh-sensible` (téléphone, RIB), `rh-parametrer` (réglages du bot) | `gestion/rh.html` + `rh.js` | `routes/rh.ts` (`/api/rh/employes…`, `/api/rh/bot…`), logique `rh.ts` ; webhook `recruitment.updated` | `employes`, `rh_arrivees_bot` ; réglages `rh.*` (socle) |
 | Ventes & statistiques | `ventes` (voir), `ventes-gerer` (supprimer, synchroniser) ; bot : clé `STATS_BOT_SECRET` | `gestion/statistiques.html` + `statistiques.js` ; primes dans « Mon profil » | `routes/stats.ts` (`/api/stats/…`, `/api/tableur/…`, `/api/profil/primes`), logique `stats/` (`calcul.ts` : moteur pur, `ventes.ts`, `tableur.ts`) | `ventes`, `ventes_doublons`, `tableur_lignes`, `tableur_etat`, `tableur_archives` (+ `_lignes`) |
 | Comptabilité : relevé Tablettes, DOT, rémunération | `compta` | `gestion/comptabilite.html` + `comptabilite.js` | `routes/compta.ts` (`/api/compta/…`), rémunération dans `routes/stats.ts` ; récapitulatif hebdomadaire `stats/recap.ts` | `compta_imports`, `compta_dot_ecritures`, `dot_bareme_imposition`, `remunerations_grades`, `baremes_primes` |
+| WebMap | publique | lien « WebMap » de la vitrine et du menu (`/api/carte/` redirige) | `carte.ts` : relais sur le sous-domaine `WEBMAP_HOTE` (`entreprise.hotes`), iframe de la vitrine autorisée (`csp.frame`, https) | — |
 | Comptes, grades (socle) | `comptes`, `grades` | `comptes.html`, `grades.html`, `compte.html`, `accueil.html` | socle | socle |
 
 ## Vitrine
@@ -49,4 +50,4 @@ MSYS_NO_PATHCONV=1 docker exec -w /app/server dynasty8-app node --import tsx --t
 ## Pièges propres à ce site
 
 - Les `{{cle}}` de `site.json` sont remplacés dans les `.html` et `.css` : ne jamais en mettre dans une chaîne JavaScript (voir CLAUDE.md).
-- Lien « WebMap » (`layout.js`, `LIEN_WEBMAP`) : l'ancien site servait la carte à travers un mandataire sur son propre domaine (`/api/carte/`), non repris (voir la décision à prendre dans le compte rendu de l'étape 2).
+- WebMap : servie sur son sous-domaine, jamais sous le domaine du site (son code tournerait avec les droits du site). En dev : `WEBMAP_HOTE=carte.localhost` (http://carte.localhost:3010) ; l'iframe de la vitrine n'est autorisée qu'en https, la carte s'ouvre alors en pleine page.

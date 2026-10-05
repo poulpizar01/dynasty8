@@ -16,6 +16,7 @@ const GESTION_NAV = [
   { cle: 'grades', href: 'grades.html', label: 'Grades', icone: 'gear', permission: 'grades' },
   { groupe: 'Outils' },
   { href: 'https://intra.dynasty8.fbfa.fr/login', label: 'Registre', icone: 'book', externe: true },
+  { href: '/api/carte/', label: 'WebMap', icone: 'map', externe: true },
 ];
 
 // icônes au trait fin (sprite injecté une fois par page) : <svg class="ico"><use href="#ico-…"></use></svg>
@@ -82,6 +83,17 @@ window.gestion = {
         </div>
       </div>`;
     barre.querySelector('[data-deconnexion]').addEventListener('click', () => socle.deconnexion());
+    // tableau des cohérences : son lien n'est servi qu'aux comptes validés (il n'est écrit ni dans la page ni dans le dépôt)
+    socle.api('/api/outils').then(o => {
+      if (!o.coherences) return;
+      const lien = document.createElement('a');
+      lien.className = 'lien-onglet';
+      lien.href = o.coherences;
+      lien.target = '_blank';
+      lien.rel = 'noopener';
+      lien.innerHTML = `${ico('sheet')}<span>Cohérence</span>`;
+      barre.querySelector('.admin-nav').append(lien);
+    }).catch(() => {});
     const main = document.querySelector('main.admin-contenu');
     const coque = document.createElement('div');
     coque.className = 'admin-shell';
