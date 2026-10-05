@@ -10,7 +10,7 @@ import crypto from 'node:crypto';
 import type { RequestHandler } from 'express';
 import multer from 'multer';
 import sharp, { type Metadata } from 'sharp';
-import { limits } from './security.js';
+import { limits } from './limites.js';
 import { storage } from './storage.js';
 
 // à garder sous le plafond mémoire du conteneur (APP_MEMORY)
