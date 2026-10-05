@@ -65,6 +65,7 @@ docker compose up          # http://localhost:3000  ·  gestion : http://localho
 - Connexion sans Discord (bouton de connexion → compte « Dev local », propriétaire, tous les droits). Pour essayer un autre niveau d'accès : `http://localhost:3000/auth/discord?compte=<ID Discord>` ouvre la session d'un compte existant (dev uniquement).
 - Pages, CSS, JS et `site.json` : rafraîchir le navigateur suffit. Serveur (`server/src`) : `docker compose restart app`.
 - Base : après une modification de `server/prisma/schema/entreprise.prisma`, `docker compose exec app npx prisma migrate dev --name <description>`, et **committer le dossier de migration créé**. `docker compose down -v` remet la base à zéro.
+- Tests : `docker compose exec -w /app/server app npm test` (`server/test/` : `socle-*.test.ts` pour le socle, le reste pour le site).
 - Tester les webhooks du bot en local : voir [docs/webhooks.md](webhooks.md#tester-en-local).
 
 ## Organisation
@@ -75,5 +76,6 @@ docker compose up          # http://localhost:3000  ·  gestion : http://localho
 - `assets/` — logo, favicon, image de partage, polices, logo Roxwood
 - `server/src/socle/` — socle du serveur ; `server/src/entreprise/` — code métier du site ; `server/src/index.ts` — assemblage
 - `server/prisma/schema/` — `socle.prisma` + `entreprise.prisma` ; `server/prisma/migrations/` — migrations des deux
+- `server/test/` — tests (`socle-*.test.ts` : socle ; les autres : site)
 - `server/deploy/` — configuration nginx ; `compose.yaml` — site, base et sauvegardes ; `compose.override.yaml` — dev
 - `docs/` — documentation ; `.claude/skills/` — commandes Claude Code (`/audit`)
