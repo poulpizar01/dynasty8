@@ -173,13 +173,21 @@ export function planifierNettoyagePhotos(): void {
 // ---------- route « photo par lien » (annonces, profils) ----------
 // lien collé (indispensable dans l'ordinateur en jeu, sans sélecteur de fichiers) : le serveur télécharge l'image et la
 // traite comme un fichier envoyé — seule l'adresse de ce site est gardée, jamais le lien. À placer après la garde.
+// Ces envois ne passent pas par recevoirImage, donc pas par son plafond d'envois en cours : chaque téléchargement garde
+// jusqu'à 15 Mo en mémoire jusqu'à la fin du traitement, d'où un plafond à part, sur tout le site.
+const TELECHARGEMENTS_MAX = 2;
+let telechargements = 0;
 export const photoParLien = (usage: 'bien' | 'profil'): RequestHandler[] => [limits.upload, async (req, res) => {
   const lien = text(body(req).url, 2048);
   if (!lien) { res.status(400).json({ error: 'Colle l’adresse d’une image.' }); return; }
   if (!storage.accepte) { res.status(503).json({ error: 'L’envoi d’images n’est pas encore configuré sur ce site.' }); return; }
-  let octets: Buffer;
-  try { octets = await telechargerImage(lien); }
-  catch (e) { if (e instanceof ImageRefusee) throw e; throw new ImageRefusee('Image injoignable à cette adresse.'); }
-  const image = await enregistrerPhoto(usage, req.compte.id, octets);
-  res.status(201).json({ url: image.url });
+  if (telechargements >= TELECHARGEMENTS_MAX) { res.status(503).set('Retry-After', '10').json({ error: 'Trop d’images en cours d’envoi, réessaie dans quelques secondes.' }); return; }
+  telechargements++;
+  try {
+    let octets: Buffer;
+    try { octets = await telechargerImage(lien); }
+    catch (e) { if (e instanceof ImageRefusee) throw e; throw new ImageRefusee('Image injoignable à cette adresse.'); }
+    const image = await enregistrerPhoto(usage, req.compte.id, octets);
+    res.status(201).json({ url: image.url });
+  } finally { telechargements--; }
 }];
