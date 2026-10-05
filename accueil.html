@@ -9,18 +9,17 @@
 <meta property="og:site_name" content="Dynasty 8">
 <meta property="og:title" content="Dynasty 8 — Agence immobilière de Los Santos">
 <meta property="og:description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
-<meta property="og:image" content="https://dynasty8.fbfa.fr/img/og-image.jpg">
-<meta property="og:url" content="https://dynasty8.fbfa.fr/accueil.html">
+<meta property="og:image" content="{{url}}/assets/og-image.jpg">
+<meta property="og:url" content="{{url}}/accueil.html">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Dynasty 8 — Agence immobilière de Los Santos">
 <meta name="twitter:description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
-<meta name="twitter:image" content="https://dynasty8.fbfa.fr/img/og-image.jpg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+<meta name="twitter:image" content="{{url}}/assets/og-image.jpg">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/socle/signature.css">
 <link rel="stylesheet" href="/style.css">
-<link rel="icon" type="image/png" href="/img/favicon-32.png">
-<link rel="apple-touch-icon" href="/img/favicon-180.png">
+<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/img/favicon-180.png">
 </head>
 <body class="page-accueil">
 
@@ -155,7 +154,7 @@
         <a href="/exclusifs.html" class="btn btn-or btn-large">Découvrir les biens exclusifs <span aria-hidden="true">→</span></a>
       </div>
       <div class="vitrine-exception-image">
-        <img src="/img/villa-exception.jpg" alt="Villa de standing avec piscine à débordement, vue de nuit" loading="lazy">
+        <img src="/assets/img/villa-exception.jpg" alt="Villa de standing avec piscine à débordement, vue de nuit" loading="lazy">
       </div>
     </div>
   </div>
@@ -219,7 +218,7 @@
       <p>Comment nous contacter en jeu, et la démarche complète pour trouver, visiter et signer un bien avec Dynasty 8.</p>
     </div>
     <div class="cadre-guide">
-      <img src="/img/guide-demarche.jpg" alt="Guide Dynasty 8 : nous contacter via l'application Eyefind, et démarche en 3 étapes pour trouver un bien (choix avec Agatha à l'agence, repérage d'une porte disponible sur place, localisation du secteur via les fiches de cohérence et la WebMap)" loading="lazy" width="1491" height="1055">
+      <img src="/assets/img/guide-demarche.jpg" alt="Guide Dynasty 8 : nous contacter via l'application Eyefind, et démarche en 3 étapes pour trouver un bien (choix avec Agatha à l'agence, repérage d'une porte disponible sur place, localisation du secteur via les fiches de cohérence et la WebMap)" loading="lazy" width="1491" height="1055">
     </div>
   </div>
 </section>
@@ -231,7 +230,7 @@
   <div class="conteneur">
     <div class="partenaire-bandeau">
       <div class="partenaire-bandeau-image">
-        <img src="/img/terra-home-deco.jpg" alt="Terra Home Deco — décoration et aménagement intérieur" loading="lazy" width="500" height="200">
+        <img src="/assets/img/terra-home-deco.jpg" alt="Terra Home Deco — décoration et aménagement intérieur" loading="lazy" width="500" height="200">
       </div>
       <div class="partenaire-bandeau-texte">
         <span class="partenaire-bandeau-etiquette">Entreprise partenaire</span>
@@ -361,7 +360,7 @@
   }).catch(() => { document.getElementById("stat-biens").textContent = "—"; });
 </script>
 <script type="importmap">
-{ "imports": { "three": "/vendor/three.module.min.js" } }
+{ "imports": { "three": "/assets/vendor/three.module.min.js" } }
 </script>
 <script type="module">
 // ---------------------------------------------------------------------------
@@ -369,7 +368,7 @@
 // Le toit puis la porte se tracent d'un seul geste, le soleil se lève derrière
 // la pente, puis le nom s'inscrit ; ensuite lueur qui respire + étincelles +
 // léger tilt à la souris. Géométrie reprise du logo (image 1024², unité =
-// largeur du logo). Three.js en local (/vendor), nom en PNG (/img/logo-wordmark.png).
+// largeur du logo). Three.js en local (/vendor), nom en PNG (/assets/img/logo-wordmark.png).
 //
 // Rendu (refonte sept. 2026) — les couleurs officielles (vert / jaune) sont
 // conservées, seul le rendu change :
@@ -497,7 +496,7 @@ const enJeu = (() => { try { return window.self !== window.top; } catch (e) { re
 
   // ---- nom (wordmark) ----
   const wu={uIn:{value:0}}; let wmMesh=null;
-  new THREE.TextureLoader().load('/img/logo-wordmark.png',(t)=>{t.colorSpace=THREE.SRGBColorSpace;
+  new THREE.TextureLoader().load('/assets/img/logo-wordmark.png',(t)=>{t.colorSpace=THREE.SRGBColorSpace;
     wmMesh=new THREE.Mesh(new THREE.PlaneGeometry(WM.w,WM.h),new THREE.ShaderMaterial({uniforms:{uTex:{value:t},uIn:wu.uIn},transparent:true,depthWrite:false,
       vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
       fragmentShader:`precision highp float;varying vec2 vUv;uniform sampler2D uTex;uniform float uIn;void main(){vec4 c=texture2D(uTex,vUv);gl_FragColor=vec4(c.rgb,c.a*uIn);}`}));

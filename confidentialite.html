@@ -1,55 +1,100 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Confidentialité — {{nom}}</title>
-  <meta name="description" content="Ce que le site de {{nom}} enregistre, pourquoi, pendant combien de temps, et comment le faire effacer.">
-  <link rel="icon" type="image/png" href="/assets/favicon.png">
-  <link rel="stylesheet" href="/theme.css">
-  <link rel="stylesheet" href="/styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confidentialité & données — Dynasty 8</title>
+<meta name="description" content="Ce que Dynasty 8 enregistre réellement (et ce qu'il n'enregistre pas) : espace agents, cookie de session, Discord, aucun traceur tiers.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dynasty 8">
+<meta property="og:title" content="Confidentialité & données — Dynasty 8">
+<meta property="og:description" content="Ce que Dynasty 8 enregistre réellement (et ce qu'il n'enregistre pas) : espace agents, cookie de session, Discord, aucun traceur tiers.">
+<meta property="og:image" content="{{url}}/assets/og-image.jpg">
+<meta property="og:url" content="{{url}}/confidentialite.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Confidentialité & données — Dynasty 8">
+<meta name="twitter:description" content="Ce que Dynasty 8 enregistre réellement (et ce qu'il n'enregistre pas) : espace agents, cookie de session, Discord, aucun traceur tiers.">
+<meta name="twitter:image" content="{{url}}/assets/og-image.jpg">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/socle/signature.css">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/img/favicon-180.png">
 </head>
 <body>
-<!-- Personnalisable, mais doit rester VRAIE : la compléter dès que le site enregistre autre chose (tables de
-     l'entreprise, images envoyées, événements du bot traités, origine ajoutée à la politique de sécurité). -->
-<main class="page-texte">
-  <a href="/">← Retour au site</a>
-  <h1>Confidentialité</h1>
-  <p>Ce que le site de {{nom}} enregistre, pourquoi, pendant combien de temps, et comment le faire effacer.</p>
 
-  <h2>Si tu visites seulement le site</h2>
-  <p>Rien n'est enregistré sur toi : pas de compte, pas de cookie, pas de mesure d'audience, pas de publicité. Les polices et les scripts sont servis par le site lui-même : ta visite n'est signalée à aucun service extérieur.</p>
-  <p>Comme tout site, le serveur tient un journal technique (adresse IP, page demandée, date), utilisé seulement pour la sécurité et le dépannage.</p>
+<header class="entete" id="site-entete"></header>
 
-  <h2>Si tu te connectes à l'espace employés</h2>
-  <p>La connexion passe par Discord. Discord indique au site ton identifiant, ton pseudo, ton avatar, ton surnom et tes rôles sur le serveur Discord de l'entreprise, et la liste de tes serveurs. Cette liste sert une seule fois, à savoir si tu es le propriétaire du serveur de l'entreprise : elle n'est pas conservée. Le site ne reçoit ni ton adresse e-mail ni ton mot de passe.</p>
-  <p>Le site enregistre :</p>
-  <ul>
-    <li><b>ton compte</b> : identifiant, pseudo et avatar Discord, nom RP, grade, date de la demande, de sa validation et de ta dernière connexion ;</li>
-    <li><b>ce que tu publies</b> dans l'espace employés (annonces).</li>
-  </ul>
-  <p>Un seul cookie est posé, <b>site.sid</b> : il garde ta session ouverte pendant 7 jours. Il est indispensable à la connexion et ne sert à rien d'autre.</p>
-  <p>Le bot Discord de l'entreprise peut transmettre au site certains événements (par exemple une demande d'absence) : ils sont gardés 30 jours.</p>
+<section class="hero" style="padding:70px 24px 50px;">
+  <div class="hero-etiquette">✦ Transparence</div>
+  <h1>Confidentialité & données</h1>
+  <p class="lead">Cette page explique simplement ce que Dynasty 8 enregistre réellement — et surtout, ce qu'il n'enregistre pas.</p>
+</section>
 
-  <h2>Qui voit quoi</h2>
-  <ul>
-    <li><b>Les employés</b> (compte validé) : ton nom RP, ton avatar Discord et ton grade, et ce que tu publies.</li>
-    <li><b>Les responsables</b> qui gèrent les comptes : en plus, ton pseudo Discord, les dates de ton compte et le statut de ta demande.</li>
-    <li><b>Les prestataires techniques</b> : l'hébergeur du site et, s'il y en a, le service qui stocke les images. Les avatars sont affichés depuis Discord.</li>
-  </ul>
-  <p>Rien n'est vendu ni transmis à qui que ce soit d'autre.</p>
+<section class="section serre">
+  <div class="conteneur" style="max-width:760px;">
 
-  <h2>Combien de temps</h2>
-  <ul>
-    <li>Ton compte : tant que tu ne le supprimes pas.</li>
-    <li>Les sauvegardes de la base : 7 jours sur le serveur, et jusqu'à 30 jours pour une éventuelle copie de secours. Une donnée effacée y survit donc quelques semaines au plus.</li>
-  </ul>
+    <div class="encart-info" style="margin-bottom:40px;">
+      <h2>ℹ️ En résumé</h2>
+      <p>Un visiteur qui consulte le catalogue ne laisse <strong>rien</strong> : ni compte, ni cookie, ni traceur. Seuls les agents qui se connectent à l'espace agents ont des données enregistrées, et uniquement pour faire fonctionner cet espace.</p>
+    </div>
 
-  <h2>Tes droits</h2>
-  <p>Tu peux à tout moment <b>corriger</b> ton nom et <b>supprimer ton compte</b> depuis la page « Mon compte » de l'espace employés. Une demande encore en attente se retire de la même façon.</p>
-  <p>Pour toute autre demande (obtenir une copie de tes données), écris aux responsables de l'entreprise sur <a href="{{discord}}" rel="noopener">son serveur Discord</a>. Si la réponse ne te convient pas, tu peux saisir la <a href="https://www.cnil.fr/fr/plaintes" rel="noopener">CNIL</a>.</p>
+    <div class="guide-bloc">
+      <h3>À propos de Dynasty 8</h3>
+      <p>Dynasty 8 est une agence immobilière fictive, utilisée exclusivement dans le cadre de l'univers roleplay du serveur <strong>FlashbackFA</strong> (GTA V / FiveM). Les biens, prix et transactions présentés sur ce site appartiennent à cet univers de jeu et ne constituent pas des offres immobilières réelles.</p>
+    </div>
 
-  <p><i>Les responsables de {{nom}} sont responsables de ces données.</i></p>
-</main>
+    <div class="guide-bloc">
+      <h3>Visiteurs du site</h3>
+      <ul class="guide-liste">
+        <li>Aucun cookie, aucun traceur ni pixel tiers, aucun outil de mesure d'audience.</li>
+        <li>Aucune ressource externe : les polices, images et scripts du site sont servis par le site lui-même. Seules les photos des biens viennent du service de stockage d'images de FlashbackFA (<code>storage.fbfa.fr</code>).</li>
+        <li>Depuis l'ordinateur en jeu (FolkOS), la page charge en plus les petits scripts de l'ordinateur fournis par FlashbackFA (gestion du clavier et de la barre d'adresse).</li>
+        <li>Votre adresse IP n'est retenue que quelques minutes, en mémoire, pour limiter le nombre de requêtes (protection contre les robots).</li>
+      </ul>
+    </div>
+
+    <div class="guide-bloc">
+      <h3>Agents de l'espace agents</h3>
+      <p>La connexion se fait avec <strong>Discord</strong>, réservée aux membres du serveur Discord de Dynasty 8, ou depuis l'ordinateur en jeu. Le site enregistre :</p>
+      <ul class="guide-liste">
+        <li><strong>Compte</strong> : identifiant, pseudo et avatar Discord, surnom sur le serveur Discord de Dynasty 8, grade, dates de création, de validation et de dernière connexion. Aucun email, aucun mot de passe.</li>
+        <li><strong>Cookie de session</strong> (<code>site.sid</code>) : posé à la connexion, valable 7 jours, illisible par un script. La session elle-même est conservée sur le serveur et effacée à la déconnexion.</li>
+        <li><strong>Profil public</strong> (page Équipe) : poste, spécialité, présentation et photo, si l'agent les renseigne.</li>
+        <li><strong>Dossier du personnel</strong> (Ressources humaines) : prénom et nom RP, identifiant employé, téléphone et RIB en jeu, grade, statut, dates d'arrivée et de départ. Téléphone et RIB ne sont visibles que des grades autorisés par la Direction.</li>
+        <li><strong>Activité de l'agence</strong> : annonces des biens, messages de la messagerie interne, agenda personnel (visible du seul agent concerné), ventes, locations et primes, comptabilité.</li>
+        <li><strong>Événements du bot Discord</strong> de l'agence (candidatures, ventes) : conservés 30 jours au plus.</li>
+      </ul>
+    </div>
+
+    <div class="guide-bloc">
+      <h3>Utilisation et conservation</h3>
+      <p>Ces informations servent uniquement à faire fonctionner l'espace agents. Elles ne sont ni vendues, ni partagées, ni utilisées à des fins publicitaires. La base est sauvegardée chaque jour sur le serveur du site ; chaque sauvegarde est gardée 7 jours.</p>
+    </div>
+
+    <div class="guide-bloc">
+      <h3>Suppression de vos données</h3>
+      <p>Un agent peut supprimer son compte lui-même, depuis « Mon compte » dans l'espace agents. Le dossier du personnel tenu par la Direction (historique d'embauche et de départ) n'est pas supprimé avec le compte ; pour toute demande à son sujet, ou pour une question sur les données conservées, contactez l'équipe sur le Discord du serveur.</p>
+    </div>
+
+  </div>
+</section>
+
+<section class="section alterne" style="text-align:center;">
+  <div class="conteneur">
+    <h2>Une question sur cette page ?</h2>
+    <p style="max-width:520px;margin:0 auto 26px;">L'équipe Dynasty 8 / FlashbackFA reste disponible sur le Discord du serveur.</p>
+    <a href="#" id="lien-discord-cta" class="btn btn-or btn-large">Contacter l'équipe sur Discord</a>
+  </div>
+</section>
+
+<footer class="pied-page" id="site-pied"></footer>
+
+<script src="/layout.js"></script>
+<script>
+  initialiserLayout("confidentialite");
+  const cta = document.getElementById("lien-discord-cta");
+  cta.href = LIEN_DISCORD; cta.target = "_blank"; cta.rel = "noopener";
+</script>
 </body>
 </html>

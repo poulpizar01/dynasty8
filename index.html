@@ -1,121 +1,253 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="application-name" content="{{nom}}">
-  <title>{{nom}} — {{slogan}}</title>
-  <meta name="description" content="{{description}}">
-  <link rel="canonical" href="{{url}}/">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="{{nom}}">
-  <meta property="og:description" content="{{description}}">
-  <meta property="og:url" content="{{url}}/">
-  <meta property="og:image" content="{{url}}/assets/og-image.jpg">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="theme-color" content="{{couleur}}">
-  <link rel="icon" type="image/png" href="/assets/favicon.png">
-  <link rel="stylesheet" href="/theme.css">
-  <link rel="stylesheet" href="/styles.css">
-  <link rel="stylesheet" href="/socle/signature.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dynasty 8 — Agence immobilière de Los Santos</title>
+<meta name="description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dynasty 8">
+<meta property="og:title" content="Dynasty 8 — Agence immobilière de Los Santos">
+<meta property="og:description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
+<meta property="og:image" content="{{url}}/assets/og-image.jpg">
+<meta property="og:url" content="{{url}}/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Dynasty 8 — Agence immobilière de Los Santos">
+<meta name="twitter:description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
+<meta name="twitter:image" content="{{url}}/assets/og-image.jpg">
+<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/img/favicon-180.png">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/socle/signature.css">
+<style>
+  :root{--navy-950:#060c1a;--navy-900:#0a1428;--navy-800:#0e1b33;--gold-300:#f2dfa8;--gold-400:#e4c77e;--gold-500:#c9a55c;--gold-600:#a9843f;
+    --cream:#f6efe2;--text:#e3ddd2;--muted:#9aa6be;--serif:"Marcellus","Times New Roman",serif;--ui:"Raleway","Helvetica Neue",Arial,sans-serif}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--navy-950);color:var(--cream);font-family:var(--ui);font-weight:300;-webkit-font-smoothing:antialiased;overflow:hidden}
+  .scene{position:fixed;inset:0;
+    background:radial-gradient(90% 70% at 50% 45%,#122241 0%,#0a1428 45%,#060c1a 100%)}
+  /* veines dorées très discrètes (marbre) */
+  .scene::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.9;
+    background:radial-gradient(55% 30% at 10% 8%,rgba(201,165,92,.14),transparent 60%),radial-gradient(40% 26% at 90% 20%,rgba(201,165,92,.11),transparent 62%),radial-gradient(45% 24% at 20% 90%,rgba(201,165,92,.09),transparent 60%),radial-gradient(38% 22% at 82% 88%,rgba(201,165,92,.08),transparent 60%)}
+  #fx{position:absolute;inset:0;width:100%;height:100%;display:block}
+  /* Repli sans WebGL (ordinateur en jeu) : le logo en image, à la même place. */
+  .logo-statique{position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);
+    width:min(46vw,420px);height:auto;opacity:.96;filter:drop-shadow(0 18px 40px rgba(0,0,0,.45))}
+  /* cadre double filet or, comme sur le site */
+  .cadre{position:fixed;inset:18px;pointer-events:none;border:1px solid rgba(201,165,92,.45);opacity:0;animation:app 1.6s 1.4s ease forwards}
+  .cadre::before{content:"";position:absolute;inset:8px;border:1px solid rgba(201,165,92,.16)}
+  @media (max-width:640px){.cadre{inset:10px}.cadre::before{display:none}}
+
+  .ui{position:fixed;left:0;right:0;top:63%;display:flex;flex-direction:column;align-items:center;gap:26px;text-align:center;padding:0 24px;pointer-events:none}
+  .ui > *{pointer-events:auto}
+  .tag{margin:0;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--gold-400);font-weight:500;opacity:0;animation:app 1.2s 2.0s ease forwards}
+  .tag::before,.tag::after{content:"";display:inline-block;width:34px;height:1px;vertical-align:middle;margin:0 14px;background:linear-gradient(90deg,transparent,rgba(201,165,92,.7))}
+  .tag::after{background:linear-gradient(90deg,rgba(201,165,92,.7),transparent)}
+  .titre{margin:0;font-family:var(--serif);font-style:normal;font-weight:400;letter-spacing:.02em;font-size:clamp(1.5rem,3.2vw,2.3rem);line-height:1.1;color:var(--cream);opacity:0;animation:app 1.2s 2.25s ease forwards;text-wrap:balance}
+  .entrer{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:14px;height:58px;padding:0 40px;margin-top:6px;
+    border:1px solid rgba(201,165,92,.65);border-radius:999px;background:rgba(201,165,92,.06);color:var(--gold-300);
+    font-family:var(--ui);font-size:12.5px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;cursor:pointer;text-decoration:none;
+    opacity:0;animation:app 1.2s 2.6s ease forwards;transition:background .35s,color .35s,box-shadow .35s,transform .35s;overflow:hidden}
+  .entrer::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,#7a5c2e 0%,#c9a55c 22%,#f2dfa8 45%,#c9a55c 70%,#8a6a34 100%);opacity:0;transition:opacity .35s}
+  .entrer span{position:relative}
+  .entrer svg{position:relative;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .35s}
+  .entrer:hover,.entrer:focus-visible{color:#1a1408;box-shadow:0 10px 34px rgba(201,165,92,.28);transform:translateY(-1px);outline:none}
+  .entrer:hover::before,.entrer:focus-visible::before{opacity:1}
+  .entrer:hover svg{transform:translateX(4px)}
+  .pied{position:fixed;left:0;right:0;bottom:30px;text-align:center;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);opacity:0;animation:app 1.2s 3s ease forwards}
+  .pied a{color:var(--gold-500);text-decoration:none}
+  body.sortie .ui,body.sortie .pied,body.sortie .cadre{animation:none;opacity:0;transition:opacity .6s}
+  @keyframes app{to{opacity:1}}
+  @media (prefers-reduced-motion:reduce){.tag,.titre,.entrer,.pied,.cadre{animation-duration:.01s;animation-delay:0s}}
+</style>
+
 </head>
 <body>
-  <!-- VITRINE (personnalisable) : point de départ. Remplacer les textes marqués « Texte à remplacer », ajouter, retirer
-       ou réordonner les sections librement. Garder la signature Roxwood Network en pied de page. -->
-  <header class="entete">
-    <div class="wrap entete__barre">
-      <a class="marque" href="/"><img src="/assets/logo.png" alt="" width="36" height="36"><span>{{nom}}</span></a>
-      <button class="burger" type="button" aria-expanded="false" aria-controls="menu" aria-label="Menu"><span></span></button>
-      <nav class="menu" id="menu">
-        <a href="#services">Services</a>
-        <a href="#entreprise">L'entreprise</a>
-        <a href="#contact">Contact</a>
-        <a class="btn btn--accent" href="/gestion/">Espace employés</a>
-      </nav>
-    </div>
-  </header>
+<!-- Page d'entrée du site (voir accueil.html pour l'accueil proprement dit).
+     Three.js en local : /assets/vendor/three.module.min.js — logo : /assets/img/logo-full.png. -->
+<div class="scene"><canvas id="fx"></canvas></div>
+<div class="cadre"></div>
 
-  <main>
-    <section class="hero">
-      <div class="wrap hero__grille">
-        <div>
-          <p class="surtitre">{{secteur}} · {{serveur}}</p>
-          <h1 class="hero__titre">{{nom}}</h1>
-          <p class="hero__slogan">{{slogan}}</p>
-          <p class="hero__texte">{{description}}</p>
-          <div class="hero__actions">
-            <a class="btn btn--accent" href="#contact">Nous contacter</a>
-            <a class="btn btn--ligne" href="#services">Nos services</a>
-          </div>
-        </div>
-        <img class="hero__logo" src="/assets/logo.png" alt="Logo de {{nom}}" width="360" height="360">
-      </div>
-    </section>
+<div class="ui">
+  <p class="tag">Agence immobilière · Los Santos</p>
+  <h1 class="titre">Trouvez le bien qui porte votre nom.</h1>
+  <a class="entrer" id="entrer" href="/accueil.html"><span>Entrer sur le site</span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+</div>
+<p class="pied">Serveur RP FlashbackFA · Univers fictif · <a href="/gestion/">Espace agents</a></p>
 
-    <section class="section" id="services">
-      <div class="wrap">
-        <p class="surtitre">Services</p>
-        <h2 class="section__titre">Ce que nous proposons</h2>
-        <div class="cartes">
-          <article class="carte">
-            <h3>Service un</h3>
-            <p>Texte à remplacer : une ou deux phrases qui décrivent le service.</p>
-          </article>
-          <article class="carte">
-            <h3>Service deux</h3>
-            <p>Texte à remplacer : une ou deux phrases qui décrivent le service.</p>
-          </article>
-          <article class="carte">
-            <h3>Service trois</h3>
-            <p>Texte à remplacer : une ou deux phrases qui décrivent le service.</p>
-          </article>
-        </div>
-      </div>
-    </section>
+<script type="importmap">
+{ "imports": { "three": "/assets/vendor/three.module.min.js" } }
+</script>
+<noscript><style>.tag,.titre,.entrer,.pied,.cadre{opacity:1;animation:none}</style></noscript>
+</body>
+</html>
+<script type="module">
+// Ordinateur en jeu (FolkOS / FiveM) : le rendu WebGL partagerait le GPU avec
+// le jeu et ferait chuter les FPS du joueur. Dans l'iframe in-game, on ne
+// charge donc même pas Three.js (670 Ko) et on garde un visuel statique.
+const enJeu = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+(async function(){
+  const LOGO = "/assets/img/logo-full.png";
+  const LOGO_ASP = 917/507;
+  const canvas = document.getElementById('fx');
+  if (enJeu) {
+    // Le logo n'existe que dans le canvas : on le remplace par l'image fixe.
+    const image = document.createElement('img');
+    image.className = 'logo-statique';
+    image.src = LOGO;
+    image.alt = 'Dynasty 8';
+    canvas.replaceWith(image);
+    return;
+  }
+  const THREE = await import('three');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'low-power'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1, 1.5)); renderer.setClearColor(0x000000, 0); renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(38, 1, 0.1, 100); cam.position.z = 10;
+  const monde = new THREE.Group(); scene.add(monde);      // tout ce qui s'incline avec la souris
 
-    <section class="section section--alt" id="entreprise">
-      <div class="wrap colonnes">
-        <div>
-          <p class="surtitre">L'entreprise</p>
-          <h2 class="section__titre">Qui sommes-nous</h2>
-        </div>
-        <div class="texte">
-          <p>Texte à remplacer : l'histoire de l'entreprise, ses valeurs, ce qui la distingue.</p>
-          <p>Texte à remplacer : où la trouver en ville, ses horaires, comment se passe une commande.</p>
-        </div>
-      </div>
-    </section>
+  // ---------- particules : halo qui converge autour du logo ----------
+  const N = 2200;
+  const start = new Float32Array(N*3), end = new Float32Array(N*3), seed = new Float32Array(N), size = new Float32Array(N);
+  const gauss = ()=>{ let u=0,v=0; while(!u) u=Math.random(); while(!v) v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+  // demi-axes du logo (largeur de référence 5.2) : le halo commence juste au-delà de son bord
+  const LX = 2.6, LY = 2.6/LOGO_ASP;
+  for (let i=0;i<N;i++){
+    const halo = i < N*0.68;
+    let ex, ey, ez;
+    if (halo){
+      // anneau elliptique face caméra, épaisseur gaussienne vers l'extérieur, jamais sur le logo
+      const a = Math.random()*Math.PI*2, sp = 0.18 + Math.abs(gauss())*0.42;
+      ex = Math.cos(a)*(LX*1.12 + sp*1.35); ey = Math.sin(a)*(LY*1.18 + sp*1.1); ez = (Math.random()*2-1)*0.9;
+    } else {
+      // poussière rare et large, en évitant une ellipse autour du logo
+      do { ex = (Math.random()*2-1)*9.5; ey = (Math.random()*2-1)*5.5; }
+      while ((ex*ex)/((LX*1.9)*(LX*1.9)) + (ey*ey)/((LY*2.4)*(LY*2.4)) < 1.0);
+      ez = (Math.random()*2-1)*3.0 - 1.0;
+    }
+    end[i*3]=ex; end[i*3+1]=ey; end[i*3+2]=ez;
+    // départ : éparpillées loin, en sphère
+    const u=Math.random()*Math.PI*2, v=Math.acos(2*Math.random()-1), d=10+Math.random()*10;
+    start[i*3]=Math.sin(v)*Math.cos(u)*d; start[i*3+1]=Math.sin(v)*Math.sin(u)*d*0.7; start[i*3+2]=Math.cos(v)*d;
+    seed[i]=Math.random()*6.283; size[i]= halo ? 0.45+Math.random()*0.75 : 0.3+Math.random()*0.5;
+  }
+  const pg = new THREE.BufferGeometry();
+  pg.setAttribute('position', new THREE.BufferAttribute(end,3));
+  pg.setAttribute('aStart', new THREE.BufferAttribute(start,3));
+  pg.setAttribute('aSeed', new THREE.BufferAttribute(seed,1));
+  pg.setAttribute('aSize', new THREE.BufferAttribute(size,1));
+  const pu = {uTime:{value:0}, uPix:{value:1}, uIn:{value:0}, uOut:{value:0}};
+  const pm = new THREE.ShaderMaterial({uniforms:pu, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    vertexShader:`
+      uniform float uTime,uPix,uIn,uOut; attribute vec3 aStart; attribute float aSeed,aSize; varying float vA;
+      void main(){
+        float k = 1.0 - pow(1.0 - uIn, 3.0);                         // ease-out
+        vec3 p = mix(aStart, position, k);
+        p.y += sin(uTime*0.6 + aSeed*4.0)*0.06;                       // respiration
+        p += normalize(vec3(p.xy, 0.0) + 0.001) * (uOut*uOut*22.0);  // sortie : explosion douce, dans le plan
+        vec4 mv = modelViewMatrix * vec4(p,1.0);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = aSize * uPix * (38.0 / -mv.z);                 // uPix = échelle liée à la hauteur d'écran
+        vA = (0.35 + 0.65*(0.5+0.5*sin(uTime*1.4 + aSeed*3.0))) * k * (1.0 - uOut);
+      }`,
+    fragmentShader:`
+      precision highp float; varying float vA;
+      void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c); if(d>0.5) discard;
+        float g=smoothstep(0.5,0.0,d); vec3 col=mix(vec3(0.72,0.50,0.22),vec3(0.98,0.90,0.66),g);
+        gl_FragColor=vec4(col, g*g*vA); }`
+  });
+  const halo = new THREE.Points(pg, pm); monde.add(halo);
 
-    <section class="section" id="contact">
-      <div class="wrap contact">
-        <div>
-          <p class="surtitre">Contact</p>
-          <h2 class="section__titre">Nous rejoindre ou passer commande</h2>
-          <p>Toutes les demandes passent par notre serveur Discord : commandes, rendez-vous, candidatures.</p>
-        </div>
-        <a class="btn btn--accent btn--grand" href="{{discord}}" rel="noopener" target="_blank">Rejoindre le Discord</a>
-      </div>
-    </section>
-  </main>
 
-  <footer class="pied">
-    <div class="wrap pied__grille">
-      <p><strong>{{nom}}</strong> · {{slogan}}</p>
-      <p><a href="/confidentialite.html">Confidentialité</a> · <a href="/gestion/">Espace employés</a></p>
-    </div>
-  </footer>
-  <!-- signature commune aux sites Roxwood Network : à garder telle quelle (style : socle/signature.css) -->
-  <div class="signature">
-    <div class="sig-pastille">
-      <img src="/assets/roxwood.png" alt="" width="20" height="20" loading="lazy">
-      <span class="sig-txt">Développé par <b>Roxwood Network</b></span>
-      <span class="sig-trait" aria-hidden="true"></span>
-      <span class="sig-actions">
-        <a href="https://roxwood-network.fbfa.fr/" target="_blank" rel="noopener">Site</a>
-        <a href="https://discord.gg/dZDfarP8zT" target="_blank" rel="noopener">Discord</a>
-      </span>
-    </div>
-  </div>
-  <script src="/main.js"></script>
+  // ---------- lueur derrière le logo ----------
+  const gu = {uTime:{value:0}, uIn:{value:0}, uOut:{value:0}};
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(11,11), new THREE.ShaderMaterial({uniforms:gu, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    vertexShader:`varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`precision highp float; varying vec2 vUv; uniform float uTime,uIn,uOut;
+      void main(){ float d=length((vUv-0.5)*vec2(1.0,1.35)); float g=smoothstep(0.6,0.0,d);
+        float pulse=0.85+0.15*sin(uTime*0.8); float a=g*g*0.30*pulse*uIn*(1.0-uOut);
+        gl_FragColor=vec4(vec3(0.86,0.68,0.36)*a, a); }`}));
+  glow.position.z = -0.4; monde.add(glow);
+
+  // ---------- logo : plan texturé + reflet doré qui balaie ----------
+  const lu = {uTex:{value:null}, uTime:{value:0}, uIn:{value:0}, uOut:{value:0}};
+  const logoMat = new THREE.ShaderMaterial({uniforms:lu, transparent:true, depthWrite:false,
+    vertexShader:`varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`precision highp float; varying vec2 vUv; uniform sampler2D uTex; uniform float uTime,uIn,uOut;
+      void main(){
+        vec4 t = texture2D(uTex, vUv);
+        // balayage lumineux diagonal toutes les ~6 s
+        float sweep = fract(uTime/6.0)*2.2-0.6; float band = exp(-pow((vUv.x + vUv.y*0.35 - sweep)*7.0, 2.0));
+        vec3 col = t.rgb + vec3(0.98,0.90,0.66)*band*0.55*t.a;
+        // apparition : fondu + très léger voile doré au début
+        float a = t.a * smoothstep(0.0,1.0,uIn) * (1.0-uOut);
+        gl_FragColor = vec4(col, a);
+      }`});
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(1,1), logoMat); monde.add(logo);
+  new THREE.TextureLoader().load(LOGO, (tex)=>{ tex.colorSpace=THREE.SRGBColorSpace; tex.minFilter=THREE.LinearMipmapLinearFilter; tex.anisotropy=renderer.capabilities.getMaxAnisotropy(); lu.uTex.value=tex; });
+
+  // ---------- dimensions : le logo occupe ~24 % de la hauteur, jamais plus de 78 % de la largeur ----------
+  function resize(){
+    const w=canvas.clientWidth, h=canvas.clientHeight;
+    renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix();
+    const worldH = 2*Math.tan(THREE.MathUtils.degToRad(cam.fov/2))*cam.position.z, worldW = worldH*cam.aspect;
+    let lh = worldH*0.26, lw = lh*LOGO_ASP;
+    if (lw > worldW*0.78){ lw = worldW*0.78; lh = lw/LOGO_ASP; }
+    logo.scale.set(lw, lh, 1);
+    const s = lw/5.2;                                    // le halo suit la taille du logo
+    halo.scale.set(s,s,s); glow.scale.set(s,s,1);
+    monde.position.y = worldH*0.10;                      // logo légèrement au-dessus du centre
+    pu.uPix.value = (h*renderer.getPixelRatio())/900;   // même rendu visuel en 1080p et en 1440p
+  }
+  addEventListener('resize', resize); resize();
+
+  // ---------- souris : inclinaison de l'ensemble ----------
+  const mouse={x:0,y:0}, ms={x:0,y:0};
+  addEventListener('pointermove', e=>{ mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-((e.clientY/innerHeight)*2-1); }, {passive:true});
+
+  // ---------- timeline ----------
+  const t0 = performance.now(); let sortieT = null;
+  const ENTREE = reduced ? 0.6 : 2.8;
+  function frame(now){
+    const t=(now-t0)/1000;
+    const tIn = Math.min(1, t/ENTREE);
+    const out = sortieT===null ? 0 : Math.min(1, (now-sortieT)/1100);
+    ms.x+=(mouse.x-ms.x)*0.05; ms.y+=(mouse.y-ms.y)*0.05;
+    monde.rotation.y = ms.x*0.18; monde.rotation.x = -ms.y*0.12;
+    if (!reduced) halo.rotation.z = t*0.04;
+    pu.uTime.value=gu.uTime.value=lu.uTime.value=t;
+    pu.uIn.value=tIn; gu.uIn.value=Math.max(0,(tIn-0.25)/0.75); lu.uIn.value=Math.max(0,(tIn-0.3)/0.7);
+    pu.uOut.value=gu.uOut.value=lu.uOut.value=out;
+    logo.scale.z = 1; logo.position.z = out*1.5;         // le logo s'avance vers nous en sortant
+    renderer.render(scene, cam);
+  }
+  // Au repos, 30 images/s au plus (sinon la boucle suit la fréquence de
+  // l'écran, 144 Hz compris) ; l'entrée et la sortie gardent toute leur
+  // fluidité. Pause quand la fenêtre n'a pas le focus.
+  const PAS = 1000/30; let raf = 0, derniere = -Infinity;
+  function boucle(now){
+    raf = requestAnimationFrame(boucle);
+    const auRepos = sortieT===null && now - t0 > ENTREE*1000;
+    if (auRepos && now - derniere < PAS - 2) return;
+    derniere = now; frame(now);
+  }
+  const lancer = ()=>{ if (!raf) raf = requestAnimationFrame(boucle); };
+  addEventListener('blur', ()=>{ cancelAnimationFrame(raf); raf = 0; });
+  addEventListener('focus', lancer);
+  lancer();
+
+  // ---------- « Entrer sur le site » : sortie animée puis navigation ----------
+  const bouton = document.getElementById('entrer');
+  bouton.addEventListener('click', (e)=>{
+    if (sortieT!==null) return;
+    e.preventDefault(); sortieT=performance.now(); document.body.classList.add('sortie');
+    const href = bouton.getAttribute('href');
+    setTimeout(()=>{ window.location.href = href; }, 1150);
+  });
+})();
+</script>
+<noscript><style>.tag,.titre,.entrer,.pied,.cadre{opacity:1;animation:none}</style></noscript>
 </body>
 </html>

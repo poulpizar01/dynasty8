@@ -497,6 +497,8 @@ label, .eyebrow-label {
 .btn:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 3px; }
 
 .btn-large { height: 52px; padding: 0 34px; font-size: 12.5px; }
+/* petit écran : un long libellé passe à la ligne plutôt que de déborder de la page */
+@media (max-width: 480px) { .btn-large { height: auto; min-height: 52px; padding: 12px 22px; white-space: normal; text-align: center; max-width: 100%; } }
 .btn-petit { height: 34px; padding: 0 16px; font-size: 10.5px; }
 
 .btn-or {
@@ -3047,7 +3049,7 @@ body.visionneuse-ouverte { overflow: hidden; }
 .bien-images-outils { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .bien-image-url-groupe { display: flex; gap: 6px; flex: 1 1 260px; }
 .bien-image-url-groupe input { flex: 1; min-height: 34px; padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid rgba(201, 165, 92, 0.28); background: rgba(6, 12, 26, 0.55); color: var(--text); font-size: 0.85rem; font-family: inherit; }
-.dans-folkos #bouton-parcourir { order: 2; }
+.en-jeu #bouton-parcourir { order: 2; }
 
 /* Comptabilité → Tablettes : colonne de suppression (croix discrète, visible au survol de la ligne) */
 .compta-col-actions { width: 44px; text-align: right; padding-right: 8px !important; }

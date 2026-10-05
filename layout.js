@@ -42,7 +42,7 @@ const LIENS_NAV = [
 ];
 
 function logoImg(cssClass) {
-  return `<img src="/img/logo-full.png" alt="Dynasty 8" class="${cssClass || ""}">`;
+  return `<img src="/assets/img/logo-full.png" alt="Dynasty 8" class="${cssClass || ""}">`;
 }
 
 // Petit emblème SVG (losange à pointe centrale) — le motif signature du thème
@@ -77,7 +77,7 @@ function injecterEntete(cleActive) {
   monte.innerHTML = `
     <div class="entete-barre">
       <a href="/accueil.html" class="logo">
-        <img src="/img/logo-mark.png" alt="Dynasty 8" class="logo-marque">
+        <img src="/assets/img/logo-mark.png" alt="Dynasty 8" class="logo-marque">
         <span class="logo-filet" aria-hidden="true"></span>
         <span class="logo-texte">Dynasty 8</span>
       </a>
@@ -88,7 +88,7 @@ function injecterEntete(cleActive) {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>
           <span>WebMap</span>
         </a>
-        <a href="/admin.html" class="btn btn-fantome btn-petit">Espace agents</a>
+        <a href="/gestion/" class="btn btn-fantome btn-petit">Espace agents</a>
       </div>
     </div>`;
   const bouton = document.getElementById("bouton-menu");
@@ -151,7 +151,7 @@ function injecterPied() {
           <ul>
             <li><a href="${LIEN_DISCORD}" id="lien-discord" target="_blank" rel="noopener">Discord du serveur</a></li>
             <li><a href="${LIEN_WEBMAP}">WebMap</a></li>
-            <li><a href="/admin.html">Espace agents</a></li>
+            <li><a href="/gestion/">Espace agents</a></li>
           </ul>
         </div>
       </div>
@@ -159,13 +159,17 @@ function injecterPied() {
         <span>© ${annee} Dynasty 8 — Serveur RP FlashbackFA. Univers fictif : biens, prix et transactions présentés n'ont aucune valeur réelle. Projet communautaire non affilié à Rockstar Games ou Take-Two Interactive.</span>
         <span>Site non officiel réalisé pour la communauté. · <a href="/confidentialite.html">Confidentialité</a></span>
       </div>
-      <div class="pied-credit">
-        <img src="/img/roxwood-logo.png" alt="" class="pied-credit-logo" width="28" height="26" loading="lazy">
-        <span>Développé par <strong>Roxwood Network</strong></span>
-        <span class="pied-credit-sep" aria-hidden="true">|</span>
-        <a href="https://roxwood-network.fbfa.fr/" target="_blank" rel="noopener">Site</a>
-        <span class="pied-credit-sep" aria-hidden="true">|</span>
-        <a href="https://discord.com/invite/dDAFWxeU8" target="_blank" rel="noopener">Discord</a>
+    </div>
+    <!-- signature commune aux sites Roxwood Network : à garder telle quelle (style : socle/signature.css) -->
+    <div class="signature">
+      <div class="sig-pastille">
+        <img src="/assets/roxwood.png" alt="" width="20" height="20" loading="lazy">
+        <span class="sig-txt">Développé par <b>Roxwood Network</b></span>
+        <span class="sig-trait" aria-hidden="true"></span>
+        <span class="sig-actions">
+          <a href="https://roxwood-network.fbfa.fr/" target="_blank" rel="noopener">Site</a>
+          <a href="https://discord.gg/dZDfarP8zT" target="_blank" rel="noopener">Discord</a>
+        </span>
       </div>
     </div>`;
 }
@@ -207,59 +211,14 @@ function ajusterCadre() {
   cadre.style.setProperty("--d8-frame-top", (hauteur + 10) + "px");
 }
 
-// ---------------------------------------------------------------------------
-// FolkOS (ordinateur en jeu, FiveM) : quand le site est affiché dans l'iframe
-// de l'ordinateur in-game, on charge le petit SDK de l'opérateur qui libère le
-// clavier pour nos champs de saisie et gère la touche Échap. Hors iframe
-// (navigateur normal), on ne charge rien. Hôte fourni par l'opérateur.
-// ---------------------------------------------------------------------------
-const FOLKOS_HOTE = "https://computer.game.fbfa.fr";
-
-// Vrai quand le site est affiché dans l'iframe de l'ordinateur en jeu. Sert au
-// SDK FolkOS ci-dessous, et à couper les effets WebGL : dans la CEF de FiveM,
-// le GPU est partagé avec le jeu, et une animation plein écran fait chuter les
-// FPS du joueur. Exposé pour les pages qui n'ont pas layout.js.
+// Ordinateur en jeu (FolkOS, FiveM) : le SDK de l'opérateur est chargé par le socle
+// (socle/folkos.js). EN_JEU sert ici à couper les effets WebGL : dans la CEF de FiveM,
+// le GPU est partagé avec le jeu, et une animation plein écran fait chuter les FPS du
+// joueur. Exposé pour les pages qui n'ont pas layout.js.
 const EN_JEU = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
 window.D8_EN_JEU = EN_JEU;
 
-function initialiserFolkOS() {
-  if (!EN_JEU) return;
-  const script = document.createElement("script");
-  script.src = FOLKOS_HOTE + "/fbfa-game.js";
-  script.async = true;
-  script.onload = () => {
-    try {
-      if (window.FBFAGame && typeof window.FBFAGame.init === "function") {
-        window.FBFAGame.init({
-          typing: { mode: "field" },   // le clavier est rendu au site dès qu'un champ a le focus
-          escape: false,               // le site est une PAGE du navigateur FolkOS : Échap ne ferme pas la fenêtre
-        });
-      }
-    } catch (e) { /* hors FiveM : silencieux */ }
-  };
-  script.onerror = () => { /* SDK indisponible : le site reste utilisable */ };
-  document.head.appendChild(script);
-
-  // Suivi d'adresse : la barre de FolkOS affiche notre sous-page et la restaure
-  // après un rechargement (le script ne transmet que le chemin d'URL).
-  const bridge = document.createElement("script");
-  bridge.src = FOLKOS_HOTE + "/fbfa-bridge.js";
-  bridge.async = true;
-  document.head.appendChild(bridge);
-
-  // En jeu, target="_blank" / window.open n'ouvrent rien : on navigue dans le
-  // cadre (le bouton « précédent » de FolkOS permet de revenir). Gestion par
-  // délégation pour couvrir aussi les liens ajoutés plus tard par le JS.
-  document.addEventListener("click", (ev) => {
-    const lien = ev.target && ev.target.closest ? ev.target.closest('a[target="_blank"]') : null;
-    if (lien) lien.removeAttribute("target");
-  }, true);
-  window.open = (url) => { if (url) window.location.href = String(url); return null; };
-  document.documentElement.classList.add("dans-folkos");
-}
-
 function initialiserLayout(cleActive) {
-  initialiserFolkOS();
   injecterEntete(cleActive);
   injecterPied();
   injecterCadre();
@@ -391,7 +350,8 @@ async function appelAPI(chemin, options) {
     corps = null;
   }
   if (!reponse.ok) {
-    const erreur = new Error((corps && corps.erreur) || "Une erreur est survenue.");
+    // le socle répond { error } ; l'ancien serveur répondait { erreur }
+    const erreur = new Error((corps && (corps.error || corps.erreur)) || "Une erreur est survenue.");
     erreur.status = reponse.status;
     erreur.corps = corps;
     throw erreur;
@@ -628,7 +588,7 @@ function demarrerPoussiereOr() {
   if (EN_JEU) return;
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   if (document.querySelector(".d8-poussiere")) return;
-  import("/vendor/three.module.min.js").then((THREE) => {
+  import("/assets/vendor/three.module.min.js").then((THREE) => {
     const canvas = document.createElement("canvas");
     canvas.className = "d8-poussiere"; canvas.setAttribute("aria-hidden", "true");
     document.body.prepend(canvas);

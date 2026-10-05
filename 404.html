@@ -1,20 +1,25 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
-  <title>Page introuvable — {{nom}}</title>
-  <link rel="icon" type="image/png" href="/assets/favicon.png">
-  <link rel="stylesheet" href="/theme.css">
-  <link rel="stylesheet" href="/styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Page introuvable — Dynasty 8</title>
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/socle/signature.css">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/img/favicon-180.png">
 </head>
 <body>
-  <main class="page-vide">
-    <p class="surtitre">{{nom}}</p>
-    <h1>404</h1>
-    <p>Cette page n'existe pas.</p>
-    <a class="btn btn--accent" href="/">Retour à l'accueil</a>
-  </main>
+<header class="entete" id="site-entete"></header>
+<section class="section" style="text-align:center;padding:120px 24px;">
+  <div class="hero-etiquette">Erreur 404</div>
+  <h1>Cette adresse n'existe pas</h1>
+  <p class="lead" style="max-width:480px;margin:0 auto 30px;">La page que vous cherchez a peut-être été déplacée ou n'a jamais existé.</p>
+  <a href="/accueil.html" class="btn btn-or btn-large">Retour à l'accueil</a>
+</section>
+<footer class="pied-page" id="site-pied"></footer>
+<script src="/layout.js"></script>
+<script>initialiserLayout("");</script>
 </body>
 </html>
