@@ -39,7 +39,7 @@ Porté sur le modèle depuis une première version jamais mise en production (Ja
 
 - Une page par rubrique dans `gestion/`, chacune avec `/style.css` (apparence de l'ancien espace agents), `gestion/gestion.css` et, dans l'ordre, `socle.js`, `layout.js` (aides partagées avec la vitrine : `echapper`, `formaterPrix`, `ameliorerSelect`…), `gestion/gestion.js` (coque : `gestion.coque('<rubrique>')`, menu décrit une seule fois dans `GESTION_NAV`, `gestion.message`, `gestion.confirmer`).
 - Confirmation (les boîtes natives sont interdites, voir docs/folkos.md) : `await gestion.confirmer(texte, titre, libellé)`.
-- Photos (`entreprise/photos.ts`) : une annonce n'affiche que des photos envoyées par ce site (table `photos`) — jamais une image hébergée ailleurs. Un lien collé est téléchargé par le serveur (https, adresses internes refusées au moment de la connexion, 15 Mo, 15 s, 3 redirections) puis traité comme un fichier. Une photo envoyée mais jamais enregistrée est effacée après 24 h ; une photo retirée, au passage suivant du nettoyage (toutes les 15 min).
+- Photos (`entreprise/photos.ts`) : une annonce n'affiche que des photos envoyées par ce site (table `photos`) — jamais une image hébergée ailleurs. Chaque envoi existe en deux routes, fichier (`...recevoirImage`) et lien collé (`...recevoirImageParLien`, téléchargé par le serveur : docs/stockage.md), servies par le même `envoiPhoto`. Une photo envoyée mais jamais enregistrée est effacée après 24 h ; une photo retirée, au passage suivant du nettoyage (toutes les 15 min).
 
 ## Tests
 

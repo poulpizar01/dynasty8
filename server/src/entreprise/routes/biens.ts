@@ -3,9 +3,9 @@
 import { Router } from 'express';
 import { prisma } from '../../socle/db.js';
 import { body, intParam, permission, text } from '../../socle/http.js';
-import { recevoirImage } from '../../socle/images.js';
+import { recevoirImage, recevoirImageParLien } from '../../socle/images.js';
 import { CATEGORIES, COHERENCES, SOUS_CATEGORIES_HABITATION } from '../biens.js';
-import { enregistrerPhoto, MAX_PHOTOS_BIEN, photoParLien, rattacherPhotosBien } from '../photos.js';
+import { envoiPhoto, MAX_PHOTOS_BIEN, rattacherPhotosBien } from '../photos.js';
 
 export const biens = Router();
 const gerer = permission('biens');
@@ -100,11 +100,8 @@ biens.delete('/api/biens/:id', ...gerer, async (req, res) => {
 });
 
 // photo envoyée depuis l'ordinateur (champ « image » du formulaire) : renvoie son adresse, à mettre dans l'annonce
-biens.post('/api/biens/photo', ...gerer, ...recevoirImage, async (req, res) => {
-  const image = await enregistrerPhoto('bien', req.compte.id, req.file?.buffer);
-  res.status(201).json({ url: image.url });
-});
+biens.post('/api/biens/photo', ...gerer, ...recevoirImage, envoiPhoto('bien'));
 
-// photo donnée par lien : téléchargée par le serveur (photos.ts)
-biens.post('/api/biens/photo-lien', ...gerer, ...photoParLien('bien'));
+// photo donnée par lien (ordinateur en jeu) : téléchargée par le serveur, puis traitée comme un fichier
+biens.post('/api/biens/photo-lien', ...gerer, ...recevoirImageParLien, envoiPhoto('bien'));
 

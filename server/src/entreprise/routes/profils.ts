@@ -4,8 +4,8 @@ import { Router, type Request, type Response } from 'express';
 import { prisma } from '../../socle/db.js';
 import { auDessusDe } from '../../socle/droits.js';
 import { body, intParam, permission, text, valide } from '../../socle/http.js';
-import { recevoirImage } from '../../socle/images.js';
-import { enregistrerPhoto, photoParLien, rattacherPhotoProfil } from '../photos.js';
+import { recevoirImage, recevoirImageParLien } from '../../socle/images.js';
+import { envoiPhoto, rattacherPhotoProfil } from '../photos.js';
 
 export const profils = Router();
 
@@ -32,12 +32,10 @@ profils.put('/api/profil', ...valide, async (req, res) => {
 });
 
 // photo envoyée depuis l'ordinateur : renvoie son adresse, à enregistrer ensuite avec le profil
-profils.post('/api/profil/photo', ...valide, ...recevoirImage, async (req, res) => {
-  const image = await enregistrerPhoto('profil', req.compte.id, req.file?.buffer);
-  res.status(201).json({ url: image.url });
-});
+profils.post('/api/profil/photo', ...valide, ...recevoirImage, envoiPhoto('profil'));
 
-profils.post('/api/profil/photo-lien', ...valide, ...photoParLien('profil'));
+// photo donnée par lien (ordinateur en jeu)
+profils.post('/api/profil/photo-lien', ...valide, ...recevoirImageParLien, envoiPhoto('profil'));
 
 // profil d'un autre agent, par la Direction : mêmes règles que la modification de son compte (socle/routes/comptes.ts)
 async function cibleGerable(req: Request, res: Response) {
