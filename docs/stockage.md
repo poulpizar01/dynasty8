@@ -11,13 +11,15 @@ Le socle sait recevoir des images (photo d'article, bannière, pièce jointe…)
 Pour retirer une image : `retirerImage({ cle, url, cleMini, urlMini })`. Elle lève une erreur si le stockage ne répond pas : garder alors la ligne en base (marquée supprimée) et réessayer plus tard, plutôt que de laisser un fichier en ligne sans trace.
 
 ## Deux modes
-| | CDN (production) | Disque local (dev uniquement) |
+| | CDN (production uniquement) | Disque local (dev uniquement) |
 |---|---|---|
-| Réglage `.env` | `STORAGE_URL`, `STORAGE_TOKEN` et `STORAGE_PREFIX` remplis | `STORAGE_URL` et `STORAGE_TOKEN` vides |
+| Quand | Image de production (`NODE_ENV=production`), avec `STORAGE_URL`, `STORAGE_TOKEN` et `STORAGE_PREFIX` remplis | Toujours en dev, **même si le CDN est paramétré** (réglages ignorés, signalé au démarrage) |
 | Emplacement | Service de stockage distant, sous le dossier `STORAGE_PREFIX` | `uploads/` à la racine du dépôt, sur le poste |
 | Adresse publique | Celle renvoyée par le service | `/uploads/<dossier>/<fichier>.webp`, servie par le site |
 
 **En production (`NODE_ENV=production`, c'est-à-dire l'image Docker), le CDN est obligatoire** : sans `STORAGE_URL` / `STORAGE_TOKEN`, le site démarre mais tout envoi est refusé (« L'envoi d'images n'est pas encore configuré sur ce site ») et un avertissement apparaît au démarrage. Les deux variables vont ensemble (une seule remplie bloque le démarrage).
+
+**En dev, jamais le CDN** : des images d'essai n'ont rien à faire sur le stockage de la prod, et un poste de dev ne doit pas pouvoir y supprimer quoi que ce soit. Une base de dev copiée de la prod affiche les images du CDN (adresses publiques), mais ne peut ni en ajouter ni en retirer.
 
 **Un préfixe par site** : plusieurs sites peuvent partager le même service de stockage, chacun dans son dossier (`STORAGE_PREFIX=monentreprise/`). Ne jamais réutiliser le préfixe d'un autre site.
 
