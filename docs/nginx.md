@@ -49,6 +49,9 @@ location = /api/<flux> { …mêmes en-têtes… proxy_set_header Connection ''; 
 ```
 Le fichier de configuration nginx vit sur le VPS : un bloc ajouté dans un site se reporte aussi dans le bloc HTTPS de `/etc/nginx/sites-available/<domaine>.conf`.
 
+## Sous-domaine servi par le site (hôte annexe)
+Un site peut servir un second nom de domaine à part (par exemple `carte.monsite.fr`, qui relaie un service tiers) : il le déclare dans `entreprise.hotes` (`server/src/entreprise/index.ts`), et le serveur le traite avant tout le reste — sans session, sans le cookie du site, sans ses en-têtes de sécurité. Côté nginx : un second fichier `<sous-domaine>.conf`, copie de celui du site (même `HOST_PORT`, même `X-Forwarded-Host`), avec son propre `server_name` et son propre certificat. Le nom transmis par `X-Forwarded-Host` décide de l'aiguillage : sans lui, la requête est servie comme le site.
+
 ## Plusieurs sites sur le même VPS
 Chaque site a son `SITE_ID`, son `HOST_PORT`, son domaine et son fichier `<domaine>.conf` dans `sites-available`. nginx choisit le site d'après le domaine demandé (`server_name`). Exemple : `garage-a` sur le port 3001 pour `a.exemple.fr`, `garage-b` sur 3002 pour `b.exemple.fr`.
 

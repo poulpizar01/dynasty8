@@ -28,6 +28,16 @@ await entreprise.demarrage?.();
 
 const app = express();
 app.set('trust proxy', 1);                     // derrière nginx (adresse IP réelle pour les limites de requêtes)
+app.disable('x-powered-by');                   // ne pas annoncer Express, même sur les hôtes annexes (hors helmet)
+
+// Hôtes annexes de l'entreprise (contrat.ts) : servis avant tout le reste, sans session ni en-têtes du site. Le nom
+// vient de X-Forwarded-Host (nginx) : un hôte non déclaré suit le chemin ordinaire du site.
+const hotes = new Map(Object.entries(entreprise.hotes ?? {}).map(([h, f]) => [h.toLowerCase(), f]));
+for (const h of hotes.keys()) {
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(h) || h === new URL(config.baseUrl).hostname) throw new Error(`entreprise.hotes : nom d'hôte invalide « ${h} »`);
+}
+if (hotes.size) app.use((req, res, next) => { const f = hotes.get(req.hostname); if (f) f(req, res, next); else next(); });
+
 app.use(cspNonce, securityHeaders);
 
 // santé du site (contrôle Docker) : le serveur répond et la base aussi ; hors limites de requêtes et sans session

@@ -39,6 +39,7 @@ export const securityHeaders = helmet({
       'font-src': ["'self'"],
       'img-src': ["'self'", 'data:', 'blob:', 'https://cdn.discordapp.com', ...(config.storage.url ? [new URL(config.storage.url).origin] : []), ...origines(entreprise.csp?.img), ...viaFolkos],
       'connect-src': ["'self'", ...origines(entreprise.csp?.connect), ...viaFolkos],
+      ...(entreprise.csp?.frame?.length && { 'frame-src': ["'self'", ...origines(entreprise.csp.frame)] }),
       'form-action': ["'self'"],
       'frame-ancestors': folkos ? ["'self'", folkos, ...CADRES_FIVEM, ...cadres] : ["'none'"],
       'upgrade-insecure-requests': https ? [] : null,   // en dev (http://localhost), pas de passage forcé en https
