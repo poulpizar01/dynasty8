@@ -33,6 +33,10 @@ services:
       NODE_OPTIONS: --max-old-space-size=${APP_NODE_HEAP:-320}
     ports:
       - "127.0.0.1:${HOST_PORT:-3000}:3000"
+    # nom par lequel le site joint un service de la machine (validateur SSO FolkOS, docs/folkos.md) : ce service doit
+    # alors écouter sur l'adresse du pont Docker, pas sur 127.0.0.1 seulement
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # aucun volume d'images : en prod elles vont au stockage distant (obligatoire, docs/stockage.md), le dossier
     # /app/uploads ne sert qu'au dev (monté par compose.override.yaml)
     # santé : le serveur répond et joint la base (route /healthz). « unhealthy » apparaît dans `docker compose ps`
