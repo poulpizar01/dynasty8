@@ -74,3 +74,27 @@ model Photo {
   @@index([bienId])
   @@map("photos")
 }
+
+// Messagerie interne : conversations privées entre deux agents (widget de la gestion, routes/messagerie.ts).
+model Message {
+  id             Int      @id @default(autoincrement())
+  expediteurId   Int      @map("expediteur_id")
+  destinataireId Int      @map("destinataire_id")
+  type           String   @default("texte") @db.VarChar(10) // texte | clin_oeil
+  contenu        String   @default("") @db.VarChar(1000)
+  lu             Boolean  @default(false)
+  envoyeLe       DateTime @default(now()) @map("envoye_le") @db.Timestamptz(6)
+
+  @@index([expediteurId, destinataireId])
+  @@index([destinataireId, expediteurId])
+  @@map("messages")
+}
+
+// Statut choisi dans la messagerie (disponible, absent, occupé, invisible). La présence en ligne et l'indicateur
+// « en train d'écrire », éphémères, restent en mémoire du serveur.
+model StatutMessagerie {
+  compteId Int    @id @map("compte_id")
+  statut   String @default("disponible") @db.VarChar(12)
+
+  @@map("messagerie_statuts")
+}

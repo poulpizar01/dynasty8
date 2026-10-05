@@ -3,6 +3,7 @@
 import type { Entreprise } from '../socle/contrat.js';
 import { planifierNettoyagePhotos } from './photos.js';
 import { biens } from './routes/biens.js';
+import { messagerie } from './routes/messagerie.js';
 import { profils } from './routes/profils.js';
 import { vitrine } from './routes/vitrine.js';
 
@@ -17,7 +18,7 @@ export const entreprise: Entreprise = {
     grades: 'grades',
   },
 
-  routes: [vitrine, biens, profils],
+  routes: [vitrine, biens, profils, messagerie],
 
   webhooks: {},
 
@@ -26,6 +27,9 @@ export const entreprise: Entreprise = {
   avantSuppressionCompte: async (compteId, tx) => {
     await tx.bien.updateMany({ where: { compteId }, data: { compteId: null } });
     await tx.profil.deleteMany({ where: { compteId } });
+    // ses conversations disparaissent avec lui (des deux côtés, comme sur l'ancien site)
+    await tx.message.deleteMany({ where: { OR: [{ expediteurId: compteId }, { destinataireId: compteId }] } });
+    await tx.statutMessagerie.deleteMany({ where: { compteId } });
     await tx.photo.updateMany({ where: { compteId, usage: 'profil' }, data: { statut: 'a_supprimer' } });
     await tx.photo.updateMany({ where: { compteId, statut: 'temporaire' }, data: { statut: 'a_supprimer' } });
     await tx.photo.updateMany({ where: { compteId }, data: { compteId: null } });

@@ -84,6 +84,11 @@ window.gestion = {
     coque.append(barre, main);
     document.body.classList.add('page-agents', 'admin-connecte');
     fondAnime();
+    // messagerie interne, sur toutes les pages (chargée ici plutôt qu'inscrite dans chaque page)
+    const script = document.createElement('script');
+    script.src = '/gestion/messagerie.js';
+    script.onload = () => demarrerMessagerie(moi);
+    document.head.append(script);
     return moi;
   },
 
