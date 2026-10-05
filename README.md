@@ -51,6 +51,7 @@ Les conflits éventuels ne portent que sur les fichiers personnalisables (`site.
 | Webhooks du bot Discord entreprise | [docs/webhooks.md](docs/webhooks.md) |
 | nginx : HTTPS, rôle de chaque réglage, plusieurs sites, dépannage | [docs/nginx.md](docs/nginx.md) |
 | Stockage des images (disque ou CDN), contrat attendu du service | [docs/stockage.md](docs/stockage.md) |
+| Ordinateur en jeu (FolkOS) : affichage en iframe, connexion « IG » | [docs/folkos.md](docs/folkos.md) |
 | Audits par angle : prompts, commande `/audit` dans Claude Code | [docs/audits.md](docs/audits.md) |
 
 ## Développement

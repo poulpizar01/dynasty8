@@ -8,6 +8,13 @@ import { entreprise } from '../entreprise/index.js';
 
 const https = config.baseUrl.startsWith('https');
 
+// Ordinateur en jeu (FolkOS) : le navigateur FiveM vérifie chaque ancêtre de l'iframe — s'il en manque un, la page
+// reste blanche sans message. Cadres FiveM fixes, plus l'origine FolkOS et ceux de FOLKOS_CADRES. Le SDK de l'opérateur
+// (clavier, touche Échap) vient de FOLKOS_HOTE : origine de confiance pour les scripts, donc aussi pour le reste.
+const { hote: folkos, cadres } = config.folkos;
+const CADRES_FIVEM = ['https://cfx-nui-external-iframe', 'nui://game', 'nui:'];
+const viaFolkos = folkos ? [folkos] : [];
+
 // Jeton à usage unique (nonce) par réponse : seuls les <script> des pages du site, marqués par site.ts, s'exécutent.
 // Un script injecté (contenu d'un utilisateur mal échappé, par exemple) n'a pas le jeton et reste inerte.
 export const cspNonce: RequestHandler = (_req, res, next) => { res.locals.cspNonce = crypto.randomBytes(16).toString('base64'); next(); };
@@ -28,17 +35,19 @@ export const securityHeaders = helmet({
   contentSecurityPolicy: {
     useDefaults: true,
     directives: {
-      'script-src': ["'self'", (_req, res) => `'nonce-${(res as Response).locals.cspNonce}'`],
-      'style-src': ["'self'", "'unsafe-inline'"],
+      'script-src': ["'self'", (_req, res) => `'nonce-${(res as Response).locals.cspNonce}'`, ...viaFolkos],
+      'style-src': ["'self'", "'unsafe-inline'", ...viaFolkos],
       'font-src': ["'self'"],
-      'img-src': ["'self'", 'data:', 'blob:', 'https://cdn.discordapp.com', ...(config.storage.url ? [new URL(config.storage.url).origin] : []), ...origines(entreprise.csp?.img)],
-      'connect-src': ["'self'", ...origines(entreprise.csp?.connect)],
+      'img-src': ["'self'", 'data:', 'blob:', 'https://cdn.discordapp.com', ...(config.storage.url ? [new URL(config.storage.url).origin] : []), ...origines(entreprise.csp?.img), ...viaFolkos],
+      'connect-src': ["'self'", ...origines(entreprise.csp?.connect), ...viaFolkos],
       'form-action': ["'self'"],
-      'frame-ancestors': ["'none'"],
+      'frame-ancestors': folkos ? ["'self'", folkos, ...CADRES_FIVEM, ...cadres] : ["'none'"],
       'upgrade-insecure-requests': https ? [] : null,   // en dev (http://localhost), pas de passage forcé en https
     },
   },
   strictTransportSecurity: https ? { maxAge: 31536000 } : false,
+  // X-Frame-Options ne connaît pas de liste d'ancêtres : avec FolkOS, il contredirait frame-ancestors (page blanche)
+  ...(folkos && { xFrameOptions: false }),
   crossOriginEmbedderPolicy: false,
 });
 

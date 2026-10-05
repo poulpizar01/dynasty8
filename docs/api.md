@@ -26,6 +26,7 @@ Pages de `gestion/` : mêmes niveaux, contrôlés par le serveur avant tout envo
 |---|---|---|
 | `GET /auth/discord` | public | Démarre la connexion Discord (en dev avec `DEV_LOGIN=1` : connexion directe au compte « Dev local », ou `?compte=<ID Discord>`) |
 | `GET /auth/discord/callback` | public | Retour de Discord : vérifie l'appartenance au serveur, crée ou met à jour le compte, son grade, son statut ; erreurs renvoyées à `gestion/?erreur=pas-membre\|oauth\|jeton\|discord\|serveur` |
+| `GET /auth/folkos` | public | Connexion « IG » depuis l'ordinateur en jeu (si FolkOS est configuré, voir [folkos.md](folkos.md)) : `?folkos_ticket=` vérifié auprès du SSO, compte retrouvé par son ID Discord, `?next=` (chemin du site) honoré ; erreurs renvoyées à `gestion/?erreur=folkos-config\|ticket\|reseau\|inconnu\|discord\|serveur` |
 | `POST /auth/logout` | public | Ferme la session |
 | `GET /api/moi` | connecté | Mon compte : `id, discordId, pseudo, nom, avatar, statut, proprietaire, grade { cle, libelle, couleur }, permissions[]` (vide tant que le compte n'est pas validé) |
 | `PATCH /api/moi` | validé | Changer son nom RP (`{ nom }`) |

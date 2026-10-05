@@ -51,8 +51,11 @@ export function renderFile(file: string): string {
   if (config.production) cache.set(file, out);
   return out;
 }
+// FolkOS configuré : chaque page charge socle/folkos.js en tête (inerte hors de l'ordinateur en jeu)
+const scriptFolkos = config.folkos.hote ? `<script src="/socle/folkos.js" data-hote="${esc(config.folkos.hote)}"></script>` : '';
 // page HTML prête à envoyer : chaque <script> reçoit le jeton de la réponse (politique de contenu, security.ts)
-export const withNonce = (html: string, res: Response): string => html.replace(/<script\b/g, `<script nonce="${res.locals.cspNonce}"`);
+export const withNonce = (html: string, res: Response): string =>
+  (scriptFolkos ? html.replace(/<head>/i, m => m + scriptFolkos) : html).replace(/<script\b/g, `<script nonce="${res.locals.cspNonce}"`);
 
 // sert les pages d'un dossier (index.html, extension .html facultative) ; le reste passe au middleware suivant
 export function pages(dir: string): RequestHandler {

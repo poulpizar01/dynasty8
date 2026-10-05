@@ -48,6 +48,20 @@ if (storageUrl && !/^[\w.-]+(\/[\w.-]+)*\/$/.test(storagePrefix)) fail(`STORAGE_
 const webhookSecrets = (env.BOT_WEBHOOK_SECRETS || '').split(',').map(s => s.trim()).filter(Boolean);
 if (webhookSecrets.some(s => s.length < 16)) fail('BOT_WEBHOOK_SECRETS dans .env : chaque secret doit faire 16 caractères au moins (copier celui donné par le bot)');
 
+// Ordinateur en jeu (FolkOS, navigateur FiveM) : facultatif, désactivé sans FOLKOS_HOTE. Le site s'affiche alors dans
+// l'iframe de FolkOS (origine FOLKOS_HOTE, plus les cadres FiveM et ceux de FOLKOS_CADRES), et charge le SDK de
+// l'opérateur depuis cette origine. FOLKOS_ID_BASE + identifiants : connexion « IG » par le SSO FolkOS (routes/auth.ts).
+const folkosHote = adresse('FOLKOS_HOTE');
+if (folkosHote && (!folkosHote.startsWith('https://') || new URL(folkosHote).origin !== folkosHote)) fail(`FOLKOS_HOTE dans .env : une origine https:// sans chemin est attendue (ex. https://computer.exemple.fr) : ${folkosHote}`);
+// cadres supplémentaires : origine https (joker de sous-domaine admis) ou schéma seul (nui:) ; jamais « * » ni guillemets
+const folkosCadres = (env.FOLKOS_CADRES || '').split(/[\s,]+/).filter(Boolean);
+for (const c of folkosCadres) if (!/^(https:\/\/(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?|[a-z][a-z0-9+.-]*:(\/\/[a-z0-9.-]+)?)$/.test(c)) fail(`FOLKOS_CADRES dans .env : « ${c} » n'est ni une origine https:// ni un schéma (nui:)`);
+if (folkosCadres.length && !folkosHote) fail('FOLKOS_CADRES dans .env exige FOLKOS_HOTE');
+const folkosSso = [env.FOLKOS_ID_BASE, env.FOLKOS_CLIENT_ID, env.FOLKOS_CLIENT_SECRET];
+if (folkosSso.some(Boolean) && !folkosSso.every(Boolean)) fail('FOLKOS_ID_BASE, FOLKOS_CLIENT_ID et FOLKOS_CLIENT_SECRET vont ensemble dans .env : remplir les trois, ou aucun');
+// sans iframe autorisée, la connexion IG mènerait à une page que FolkOS ne peut pas afficher
+if (folkosSso.every(Boolean) && !folkosHote) fail('FOLKOS_ID_BASE dans .env exige FOLKOS_HOTE (le site doit pouvoir s’afficher dans l’ordinateur en jeu)');
+
 // racine du dépôt (index.html, gestion/, assets/…) : dist/socle/ ou src/socle/ → server/ → racine
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -59,6 +73,9 @@ export const config = {
   // compte de dev : ID Discord réel (DEV_DISCORD_ID) si besoin, sinon un identifiant fictif
   devDiscordId: env.DEV_DISCORD_ID || 'dev-local',
   sessionSecret,
+  // cookie de session : SameSite=None quand le site s'affiche dans l'iframe FolkOS (autre site : un cookie Lax n'y serait
+  // jamais envoyé), ce qui exige Secure ; en http (dev), Lax — l'iframe ne s'y essaie pas
+  cookie: { sameSite: folkosHote && baseUrl.startsWith('https') ? 'none' as const : 'lax' as const, secure: baseUrl.startsWith('https') },
   discord: {
     clientId: required('DISCORD_CLIENT_ID'),
     clientSecret: required('DISCORD_CLIENT_SECRET'),
@@ -72,4 +89,9 @@ export const config = {
     dir: env.UPLOAD_DIR || join(root, 'uploads'),
   },
   webhookSecrets,
+  folkos: {
+    hote: folkosHote,           // vide : FolkOS désactivé
+    cadres: folkosCadres,
+    sso: folkosSso.every(Boolean) ? { base: adresse('FOLKOS_ID_BASE'), clientId: env.FOLKOS_CLIENT_ID!, clientSecret: env.FOLKOS_CLIENT_SECRET! } : null,
+  },
 };

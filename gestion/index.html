@@ -33,6 +33,13 @@
       jeton: 'Discord a refusé la connexion. Réessaie.',
       discord: 'Discord ne répond pas pour le moment. Réessaie dans un instant.',
       serveur: 'Erreur du site pendant la connexion. Réessaie.',
+      // connexion depuis l'ordinateur en jeu (FolkOS)
+      'folkos-config': 'La connexion en jeu n’est pas activée sur ce site.',
+      'folkos-ticket': 'La connexion en jeu a expiré ou a été refusée. Relance-la depuis l’ordinateur.',
+      'folkos-reseau': 'Le service de connexion en jeu ne répond pas. Réessaie dans un instant.',
+      'folkos-inconnu': 'Aucun compte lié à ce joueur : connecte-toi d’abord une fois avec Discord, depuis un navigateur.',
+      'folkos-discord': 'Ta dernière connexion Discord date de plus de 30 jours : reconnecte-toi avec Discord depuis un navigateur, puis réessaie en jeu.',
+      'folkos-serveur': 'Erreur du site pendant la connexion. Réessaie.',
     };
     const code = new URLSearchParams(location.search).get('erreur');
     if (code) { const el = document.getElementById('erreur'); el.hidden = false; el.textContent = ERREURS[code] || ERREURS.serveur; }

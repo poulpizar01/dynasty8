@@ -48,7 +48,7 @@ const sessions = session({
   secret: config.sessionSecret,
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'lax', secure: config.baseUrl.startsWith('https'), maxAge: 7 * 24 * 3600 * 1000 },
+  cookie: { httpOnly: true, ...config.cookie, maxAge: 7 * 24 * 3600 * 1000 },
 });
 app.use(['/api', '/auth'], sessions);
 // Réponses propres à un compte : jamais gardées par le navigateur, qui les laisserait lisibles sur un ordinateur
@@ -57,7 +57,8 @@ app.use(['/api', '/auth'], (_req, res, next) => { res.set('Cache-Control', 'no-s
 
 // Requêtes qui modifient quelque chose : acceptées seulement depuis les pages du site. Le cookie SameSite=Lax arrête
 // les autres sites, pas un voisin du même domaine (a.exemple.fr → b.exemple.fr), qui pourrait sinon agir au nom d'un
-// compte. Le navigateur joint toujours l'en-tête Origin à ces requêtes ; absent (curl, script), rien à craindre.
+// compte ; avec FolkOS (cookie SameSite=None), ce contrôle est la seule barrière. Le navigateur joint toujours l'en-tête
+// Origin à ces requêtes ; absent (curl, script), rien à craindre.
 const origine = new URL(config.baseUrl).origin;
 app.use(['/api', '/auth'], (req, res, next) => {
   const recue = req.get('origin');

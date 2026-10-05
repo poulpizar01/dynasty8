@@ -134,6 +134,48 @@ auth.get('/auth/discord/callback', async (req, res) => {
   }
 });
 
+// « Se connecter IG » : SSO FolkOS (ordinateur en jeu), si configuré. Le broker de l'opérateur ouvre cette adresse avec
+// ?folkos_ticket=… (usage unique) ; seule la réponse du validateur (/sso/verify) fait foi, jamais le ticket lui-même.
+// Le compte est retrouvé par son ID Discord : il doit exister et être validé. La connexion IG ne revérifie ni
+// l'appartenance au serveur Discord ni les rôles (FolkOS ne les connaît pas) : elle n'est acceptée qu'après une
+// connexion Discord de moins de 30 jours, pour qu'un départ du serveur Discord finisse par couper aussi l'accès en jeu.
+const DISCORD_RECENT_MS = 30 * 24 * 3600 * 1000;
+auth.get('/auth/folkos', async (req, res) => {
+  const sso = config.folkos.sso;
+  const echec = (code: string) => res.redirect(`${PAGE_CONNEXION}?erreur=folkos-${code}`);
+  if (!sso) { echec('config'); return; }
+  const ticket = req.query.folkos_ticket;
+  if (typeof ticket !== 'string' || !ticket || ticket.length > 2048) { echec('ticket'); return; }
+  let identite: { discord_id?: unknown } | undefined;
+  try {
+    const r = await fetch(`${sso.base}/sso/verify`, {
+      method: 'POST', signal: AbortSignal.timeout(10000),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: sso.clientId, client_secret: sso.clientSecret, token: ticket }),
+    });
+    const data = await r.json().catch(() => null) as { valid?: unknown; identity?: { discord_id?: unknown } } | null;
+    if (!r.ok || data?.valid !== true || !data.identity) { echec('ticket'); return; }
+    identite = data.identity;
+  } catch { echec('reseau'); return; }
+  // jamais `sub` (sa forme change selon le chemin d'entrée) : l'ID Discord, en texte
+  const discordId = identite.discord_id == null ? '' : String(identite.discord_id);
+  if (!/^\d{5,32}$/.test(discordId)) { echec('inconnu'); return; }
+  try {
+    const c = await prisma.compte.findUnique({ where: { discordId } });
+    if (!c) { echec('inconnu'); return; }
+    if (!c.connecteLe || Date.now() - c.connecteLe.getTime() > DISCORD_RECENT_MS) { echec('discord'); return; }
+    await ouvrirSession(req, c.id);
+    if (c.statut !== 'valide') { res.redirect(PAGE_ATTENTE); return; }
+    // ?next= : un chemin du site seulement (ni //autre.site, ni /\autre.site)
+    const next = typeof req.query.next === 'string' ? req.query.next : '';
+    res.redirect(/^\/(?![/\\])[^\s\\]*$/.test(next) ? next : PAGE_ACCUEIL);
+  } catch (e) {
+    console.error(e);
+    echec('serveur');
+  }
+});
+
 auth.post('/auth/logout', (req, res) => {
-  req.session.destroy(() => res.clearCookie('site.sid').json({ ok: true }));
+  // mêmes attributs qu'à la pose : dans l'iframe FolkOS, un effacement en SameSite=Lax serait ignoré
+  req.session.destroy(() => res.clearCookie('site.sid', { httpOnly: true, ...config.cookie }).json({ ok: true }));
 });
