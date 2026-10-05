@@ -1,6 +1,6 @@
 # Notes propres à ce site — Dynasty 8
 
-Fichier **personnalisable**, importé par `CLAUDE.md` : ce qu'un agent (ou un développeur) doit savoir de Dynasty 8 en particulier.
+Fichier **personnalisable**, importé par `CLAUDE.md` : ce qu'un agent (ou un développeur) doit savoir de Dynasty 8 en particulier. Seulement ce qui est propre au site : une règle qui vaudrait pour tout site va dans le modèle (`CLAUDE.md`, `docs/`).
 
 ## L'entreprise
 
@@ -10,7 +10,7 @@ Fichier **personnalisable**, importé par `CLAUDE.md` : ce qu'un agent (ou un d�
 
 ## Origine du site
 
-Le site est porté depuis une première version jamais mise en production (JavaScript + SQL écrit à la main, retirée du dépôt une fois le portage fini ; elle reste dans l'historique git, avant le commit qui supprime `ancien/`). Aucune donnée à reprendre : la base de production démarre vide. Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion (annonces, profil, messagerie, agenda, RH, ventes & statistiques, comptabilité, WebMap) ✔ ; 4) guide d'installation pour l'opérateur ✔ (`deploy/INSTALLATION.md`, configurations nginx dans `deploy/nginx/`).
+Porté sur le modèle depuis une première version jamais mise en production (JavaScript + SQL écrit à la main), consultable dans l'historique git avant le commit qui supprime `ancien/`. Certaines formes viennent de là (champs en snake_case, apparence de l'espace agents). Aucune donnée reprise : la base de production démarre vide.
 
 ## Ce que le site ajoute au socle
 
@@ -36,7 +36,7 @@ Le site est porté depuis une première version jamais mise en production (JavaS
 ## Gestion
 
 - Une page par rubrique dans `gestion/`, chacune avec `/style.css` (apparence de l'ancien espace agents), `gestion/gestion.css` et, dans l'ordre, `socle.js`, `layout.js` (aides partagées avec la vitrine : `echapper`, `formaterPrix`, `ameliorerSelect`…), `gestion/gestion.js` (coque : `gestion.coque('<rubrique>')`, menu décrit une seule fois dans `GESTION_NAV`, `gestion.message`, `gestion.confirmer`).
-- **Jamais** `alert`, `confirm` ni `prompt` : l'ordinateur en jeu ne les affiche pas. Confirmation : `await gestion.confirmer(texte, titre, libellé)`.
+- Confirmation (les boîtes natives sont interdites, voir docs/folkos.md) : `await gestion.confirmer(texte, titre, libellé)`.
 - Photos (`entreprise/photos.ts`) : une annonce n'affiche que des photos envoyées par ce site (table `photos`) — jamais une image hébergée ailleurs. Un lien collé est téléchargé par le serveur (https, adresses internes refusées au moment de la connexion, 15 Mo, 15 s, 3 redirections) puis traité comme un fichier. Une photo envoyée mais jamais enregistrée est effacée après 24 h ; une photo retirée, au passage suivant du nettoyage (toutes les 15 min).
 
 ## Tests
@@ -49,6 +49,5 @@ MSYS_NO_PATHCONV=1 docker exec -w /app/server dynasty8-app node --import tsx --t
 
 ## Pièges propres à ce site
 
-- Les `{{cle}}` de `site.json` sont remplacés dans les `.html` et `.css` : ne jamais en mettre dans une chaîne JavaScript (voir CLAUDE.md).
 - Déploiement : guide d'installation propre à Dynasty 8 dans `deploy/INSTALLATION.md` (VPS FlashbackFA, port 3010, sous-domaine de la carte) ; le guide générique du modèle reste `server/README.md`.
 - WebMap : servie sur son sous-domaine, jamais sous le domaine du site (son code tournerait avec les droits du site). En dev : `WEBMAP_HOTE=carte.localhost` (http://carte.localhost:3010) ; l'iframe de la vitrine n'est autorisée qu'en https, la carte s'ouvre alors en pleine page.
