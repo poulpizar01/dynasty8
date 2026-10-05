@@ -8,9 +8,9 @@ Fichier **personnalisable**, importé par `CLAUDE.md` : ce qu'un agent (ou un d�
 - Site : https://dynasty8.fbfa.fr/, aussi affiché dans l'ordinateur en jeu (FolkOS, `docs/folkos.md`).
 - Serveur Discord : *à compléter* (rôles liés aux grades, webhooks abonnés).
 
-## Migration en cours (branche `migration-modele`)
+## Origine du site
 
-Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main), rangée dans `ancien/` le temps du portage (jamais servie : seuls les fichiers de premier niveau le sont). Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion un par un (annonces ✔, profil ✔, messagerie ✔, agenda ✔, RH ✔, ventes & statistiques ✔, comptabilité ✔, WebMap ✔) ; 4) reprise des données de la base actuelle ✔ (script `server/src/entreprise/reprise/reprise.ts`, mode d'emploi `deploy/REPRISE.md`) ; 5) documentation de déploiement pour l'opérateur ✔ (`deploy/INSTALLATION.md`, configurations nginx dans `deploy/nginx/`). `ancien/` disparaît à la fin.
+Le site est porté depuis une première version jamais mise en production (JavaScript + SQL écrit à la main, retirée du dépôt une fois le portage fini ; elle reste dans l'historique git, avant le commit qui supprime `ancien/`). Aucune donnée à reprendre : la base de production démarre vide. Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion (annonces, profil, messagerie, agenda, RH, ventes & statistiques, comptabilité, WebMap) ✔ ; 4) guide d'installation pour l'opérateur ✔ (`deploy/INSTALLATION.md`, configurations nginx dans `deploy/nginx/`).
 
 ## Ce que le site ajoute au socle
 
@@ -37,7 +37,7 @@ Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main
 
 - Une page par rubrique dans `gestion/`, chacune avec `/style.css` (apparence de l'ancien espace agents), `gestion/gestion.css` et, dans l'ordre, `socle.js`, `layout.js` (aides partagées avec la vitrine : `echapper`, `formaterPrix`, `ameliorerSelect`…), `gestion/gestion.js` (coque : `gestion.coque('<rubrique>')`, menu décrit une seule fois dans `GESTION_NAV`, `gestion.message`, `gestion.confirmer`).
 - **Jamais** `alert`, `confirm` ni `prompt` : l'ordinateur en jeu ne les affiche pas. Confirmation : `await gestion.confirmer(texte, titre, libellé)`.
-- Photos (`entreprise/photos.ts`) : une annonce n'affiche que des photos envoyées par ce site (table `photos`) ou celles qu'elle avait déjà (reprises de l'ancien site) — jamais une image hébergée ailleurs. Un lien collé est téléchargé par le serveur (https, adresses internes refusées au moment de la connexion, 15 Mo, 15 s, 3 redirections) puis traité comme un fichier. Une photo envoyée mais jamais enregistrée est effacée après 24 h ; une photo retirée, au passage suivant du nettoyage (toutes les 15 min).
+- Photos (`entreprise/photos.ts`) : une annonce n'affiche que des photos envoyées par ce site (table `photos`) — jamais une image hébergée ailleurs. Un lien collé est téléchargé par le serveur (https, adresses internes refusées au moment de la connexion, 15 Mo, 15 s, 3 redirections) puis traité comme un fichier. Une photo envoyée mais jamais enregistrée est effacée après 24 h ; une photo retirée, au passage suivant du nettoyage (toutes les 15 min).
 
 ## Tests
 

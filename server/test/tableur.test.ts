@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analyserCSV, analyserLignesSheet, semaineArchivable, semaineParis } from '../src/entreprise/stats/tableur.js';
 
-// libellés des grades du site (page Grades), tels qu'à la reprise des données
+// libellés de grades créés dans la page Grades (exemple)
 const GRADES = ['Patron', 'Co Patron', 'Manager', 'Référent Immobilier', 'Agent Expert', 'Agent', 'Agent Novice', 'Stagiaire'];
 const lire = (lignes: string[][]) => analyserLignesSheet(lignes, GRADES);
 test("CSV simple", () => {

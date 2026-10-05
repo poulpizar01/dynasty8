@@ -63,7 +63,7 @@ biens.post('/api/biens', ...gerer, async (req, res) => {
   const auteur = req.compte.nom ?? req.compte.pseudo;
   const cree = await prisma.$transaction(async tx => {
     const bien = await tx.bien.create({ data: { ...d, venduLe: d.vendu ? new Date() : null, auteur, compteId: req.compte.id } });
-    await rattacherPhotosBien(tx, bien.id, d.images, []);
+    await rattacherPhotosBien(tx, bien.id, d.images);
     return bien;
   });
   res.status(201).json({ id: cree.id });
@@ -75,13 +75,13 @@ biens.put('/api/biens/:id', ...gerer, async (req, res) => {
   const id = intParam(req, 'id');
   const trouve = await prisma.$transaction(async tx => {
     // verrou sur la ligne : deux enregistrements simultanés de la même annonce ne mélangent pas leurs photos
-    const [existant] = await tx.$queryRaw<{ id: number; images: string[]; vendu: boolean }[]>`SELECT id, images, vendu FROM biens WHERE id = ${id} FOR UPDATE`;
+    const [existant] = await tx.$queryRaw<{ id: number; vendu: boolean }[]>`SELECT id, vendu FROM biens WHERE id = ${id} FOR UPDATE`;
     if (!existant) return false;
     await tx.bien.update({
       where: { id },
       data: { ...d, venduLe: d.vendu && !existant.vendu ? new Date() : d.vendu ? undefined : null },
     });
-    await rattacherPhotosBien(tx, id, d.images, existant.images);
+    await rattacherPhotosBien(tx, id, d.images);
     return true;
   });
   if (!trouve) { res.status(404).json({ error: 'Bien introuvable.' }); return; }

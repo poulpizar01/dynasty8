@@ -102,7 +102,7 @@ export async function telechargerImage(brut: string): Promise<Buffer> {
 }
 
 // ---------- enregistrement ----------
-export async function enregistrerPhoto(usage: 'bien' | 'profil', compteId: number | null, octets: Buffer | undefined): Promise<ImageEnregistree> {
+export async function enregistrerPhoto(usage: 'bien' | 'profil', compteId: number, octets: Buffer | undefined): Promise<ImageEnregistree> {
   // enregistrerImage ne lit que le contenu du fichier
   const image = await enregistrerImage(usage === 'bien' ? 'biens' : 'profils', octets ? { buffer: octets } as Express.Multer.File : undefined);
   await prisma.photo.create({ data: { usage, cle: image.cle, url: image.url, cleMini: image.cleMini, urlMini: image.urlMini, compteId } });
@@ -110,16 +110,15 @@ export async function enregistrerPhoto(usage: 'bien' | 'profil', compteId: numbe
 }
 
 // Photos d'une annonce, dans la transaction qui l'enregistre. Accepte : une photo envoyée par ce site encore libre
-// (temporaire) ou déjà sur cette annonce, ou une adresse que l'annonce avait déjà (photos reprises de l'ancien site).
-// Toute autre adresse est refusée : une annonce n'affiche jamais une image hébergée ailleurs. Les photos retirées de
-// l'annonce partent au nettoyage.
-export async function rattacherPhotosBien(tx: Prisma.TransactionClient, bienId: number, urls: string[], anciennes: string[]): Promise<void> {
+// (temporaire) ou déjà sur cette annonce. Toute autre adresse est refusée : une annonce n'affiche jamais une image
+// hébergée ailleurs. Les photos retirées de l'annonce partent au nettoyage.
+export async function rattacherPhotosBien(tx: Prisma.TransactionClient, bienId: number, urls: string[]): Promise<void> {
   const connues = await tx.photo.findMany({ where: { url: { in: urls }, usage: 'bien' } });
   const parUrl = new Map(connues.map(p => [p.url, p]));
   for (const url of urls) {
     const p = parUrl.get(url);
     const libre = p && (p.statut === 'temporaire' || (p.statut === 'attachee' && p.bienId === bienId));
-    if (libre || (!p && anciennes.includes(url))) continue;
+    if (libre) continue;
     throw new ImageRefusee(p?.statut === 'attachee' ? 'Une photo est déjà utilisée par une autre annonce : ajoute-la à nouveau (« Parcourir » ou par lien).'
       : p ? 'Une photo a expiré avant l’enregistrement de l’annonce : ajoute-la à nouveau.'
       : 'Une photo de l’annonce n’a pas été envoyée par ce site : ajoute-la avec « Parcourir » ou par lien.');
@@ -129,8 +128,8 @@ export async function rattacherPhotosBien(tx: Prisma.TransactionClient, bienId: 
 }
 
 // Photo du profil public d'un agent, dans la transaction qui l'enregistre. Accepte : une photo de profil encore libre
-// envoyée par l'auteur de la modification (l'agent lui-même, ou la Direction pour lui), celle déjà sur ce profil, ou
-// l'adresse que le profil avait déjà (photo reprise de l'ancien site). L'ancienne photo part au nettoyage.
+// envoyée par l'auteur de la modification (l'agent lui-même, ou la Direction pour lui), ou celle déjà sur ce profil.
+// L'ancienne photo part au nettoyage.
 export async function rattacherPhotoProfil(tx: Prisma.TransactionClient, compteId: number, auteurId: number, url: string | null, ancienne: string | null): Promise<void> {
   if (url && url !== ancienne) {
     const p = await tx.photo.findUnique({ where: { url } });
