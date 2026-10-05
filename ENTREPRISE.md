@@ -2,6 +2,8 @@
 
 Fichier **personnalisable**, importé par `CLAUDE.md` : ce qu'un agent (ou un développeur) doit savoir de cette entreprise en particulier. Dans le dépôt modèle, il ne décrit que l'exemple fourni ; dans un site, le réécrire.
 
+Seulement ce qui est propre au site : ses modules, tables, routes, conventions et pièges. Une règle qui vaudrait pour tout site (sécurité, en jeu, déploiement…) va dans le modèle (`CLAUDE.md`, `docs/`), pour que tous les sites en profitent ; ici, un renvoi suffit.
+
 ## L'entreprise
 
 - Activité : *à compléter* (secteur, ce que le site vend ou gère).
