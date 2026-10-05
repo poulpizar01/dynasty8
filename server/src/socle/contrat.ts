@@ -2,7 +2,7 @@
 // Le socle ne connaît l'entreprise que par deux fichiers : permissions.ts (ses permissions) et index.ts (l'objet
 // Entreprise ci-dessous : niveau d'accès de ses pages, ses routes, ce qu'elle fait des événements du bot…).
 // Tout le reste de src/entreprise/ est libre.
-import type { Router } from 'express';
+import type { RequestHandler, Router } from 'express';
 import type { Prisma } from '../generated/prisma/client.js';
 
 // Permission déclarée par l'entreprise (src/entreprise/permissions.ts), cochée par grade dans la gestion
@@ -31,6 +31,12 @@ export type Entreprise = {
   // au démarrage, après le chargement du socle (tâches planifiées, caches…)
   demarrage?: () => Promise<void>;
   // origines https supplémentaires autorisées par la politique de sécurité : exception à justifier (voir CLAUDE.md),
-  // à déclarer aussi dans confidentialite.html
-  csp?: { img?: string[]; connect?: string[] };
+  // à déclarer aussi dans confidentialite.html. frame : pages d'une autre origine affichées dans une iframe du site.
+  csp?: { img?: string[]; connect?: string[]; frame?: string[] };
+  // Hôtes annexes : un nom de domaine (ex. carte.monsite.fr) servi par ce même serveur, À PART du site — avant toute
+  // session, tout cookie du site, toute limite et toute politique de sécurité du socle : le gestionnaire pose ses propres
+  // en-têtes. Sert à relayer un service tiers sur un sous-domaine sans lui donner accès au site (le cookie de session,
+  // lié au seul domaine de BASE_URL, n'y est jamais envoyé). Nom en minuscules, jamais celui de BASE_URL ; nginx doit y
+  // renvoyer (docs/nginx.md).
+  hotes?: Record<string, RequestHandler>;
 };
