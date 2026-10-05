@@ -31,6 +31,20 @@
       <div class="cellule-compte"><span id="avatar"></span><div><strong id="pseudo"></strong><div class="admin-compte-grade" id="grade"></div></div></div>
     </div>
 
+    <!-- ventes, locations et primes de la ligne du tableur de la Direction reliée à ce compte (primes recalculées avec
+         les barèmes du site, comme partout) -->
+    <h3 class="comptes-sous-titre" style="margin:0 0 4px;">Mes ventes &amp; mon salaire</h3>
+    <p class="champ-aide" id="primes-maj" style="margin:0 0 12px;"></p>
+    <div class="admin-stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:8px;">
+      <div class="stat-carte"><span class="stat-icone stat-icone--or">🏠</span><div><div class="stat-valeur" id="primes-ventes">0</div><div class="stat-libelle">Ventes</div></div></div>
+      <div class="stat-carte"><span class="stat-icone stat-icone--ambre">🔑</span><div><div class="stat-valeur" id="primes-locations">0</div><div class="stat-libelle">Locations</div></div></div>
+      <div class="stat-carte"><span class="stat-icone stat-icone--vert">$</span><div><div class="stat-valeur" id="primes-vente">0 $</div><div class="stat-libelle">Salaire ventes</div></div></div>
+      <div class="stat-carte"><span class="stat-icone stat-icone--vert">$</span><div><div class="stat-valeur" id="primes-location">0 $</div><div class="stat-libelle">Salaire locations</div></div></div>
+      <div class="stat-carte"><span class="stat-icone stat-icone--mauve">Σ</span><div><div class="stat-valeur" id="primes-total">0 $</div><div class="stat-libelle">Total salaire</div></div></div>
+    </div>
+    <p class="champ-aide cache" id="primes-non-relie" style="margin-bottom:22px;">Votre nom n'est pas encore reconnu dans le tableur de la Direction : demandez-lui de vérifier votre fiche (prénom, nom et ID Discord) dans Ressources humaines.</p>
+    <div style="margin-bottom:22px;"></div>
+
     <form id="formNom" class="carte-table" style="padding:20px 22px;margin-bottom:22px;">
       <div class="champ">
         <label for="nom">Nom RP</label>
@@ -59,6 +73,16 @@
       document.getElementById('grade').textContent = moi.grade?.libelle || (moi.proprietaire ? 'Propriétaire' : 'Sans grade');
       document.getElementById('nom').value = moi.nom || '';
       profilEditeur(document.getElementById('profil'), { adresse: '/api/profil', nom: () => document.getElementById('nom').value || moi.pseudo }).charger();
+      socle.api('/api/profil/primes').then(p => {
+        const argent = v => `${Math.round(Number(v) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} $`;
+        document.getElementById('primes-ventes').textContent = p.ventes;
+        document.getElementById('primes-locations').textContent = p.locations;
+        document.getElementById('primes-vente').textContent = argent(p.primeVente);
+        document.getElementById('primes-location').textContent = argent(p.primeLocations);
+        document.getElementById('primes-total').textContent = argent(p.primeTotale);
+        document.getElementById('primes-non-relie').classList.toggle('cache', p.synchronise);
+        document.getElementById('primes-maj').textContent = p.derniereSync ? `Dernière lecture du tableur : ${new Date(p.derniereSync).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' })}` : '';
+      }).catch(() => {});
     });
     document.getElementById('formNom').addEventListener('submit', async e => {
       e.preventDefault();

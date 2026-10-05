@@ -10,6 +10,7 @@ const GESTION_NAV = [
   { cle: 'compte', href: 'compte.html', label: 'Mon profil', icone: 'user' },
   { groupe: 'Direction' },
   { cle: 'comptes', href: 'comptes.html', label: 'Comptes & accès', icone: 'lock', permission: 'comptes' },
+  { cle: 'statistiques', href: 'statistiques.html', label: 'Ventes & statistiques', icone: 'chart', permission: 'ventes' },
   { cle: 'rh', href: 'rh.html', label: 'Ressources humaines', icone: 'users', permission: 'rh-voir' },
   { cle: 'grades', href: 'grades.html', label: 'Grades', icone: 'gear', permission: 'grades' },
   { groupe: 'Outils' },

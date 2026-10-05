@@ -161,3 +161,140 @@ model ArriveeBot {
   @@index([recuLe(sort: Desc)])
   @@map("rh_arrivees_bot")
 }
+
+// ---------- Ventes & statistiques (entreprise/stats/) ----------
+
+// Vente ou location envoyée par le bot de ventes (POST /api/stats/ventes, clé STATS_BOT_SECRET). Les colonnes reprennent
+// celles du Google Sheet d'origine (A à P) : le moteur de calcul (stats/calcul.ts) les lit dans cet ordre. Rattachée à
+// la fiche RH du vendeur dès son arrivée (ID Discord, sinon pseudo) ; sans fiche, signalée dans RH « À rattacher ».
+model Vente {
+  id                 Int      @id @default(autoincrement())
+  numeroVente        String   @default("") @map("numero_vente") @db.VarChar(200)
+  dateVente          String   @default("") @map("date_vente") @db.VarChar(10) // JJ/MM/AAAA, tel que reçu
+  identite           String   @default("") @db.VarChar(200) // pseudo du vendeur reçu du bot
+  formateur          String   @default("") @db.VarChar(200)
+  identiteClient     String   @default("") @map("identite_client") @db.VarChar(200)
+  numeroTel          String   @default("") @map("numero_tel") @db.VarChar(200)
+  interieur          String   @default("") @db.VarChar(200)
+  garage             String   @default("") @db.VarChar(200)
+  garageIndispo      String   @default("") @map("garage_indispo") @db.VarChar(200)
+  garageRefus        String   @default("") @map("garage_refus") @db.VarChar(200)
+  entrepriseIdentite String   @default("") @map("entreprise_identite") @db.VarChar(200)
+  idEntreprise       String   @default("") @map("id_entreprise") @db.VarChar(200)
+  type               String   @default("") @db.VarChar(10) // Vente | Location
+  loc                Int? // quantité louée (Location)
+  achat              Int      @default(0) // montant
+  semaine            String   @default("") @db.VarChar(8) // S41-26 : fait foi pour tous les calculs
+  compteId           Int?     @map("compte_id") // saisie depuis le site ; null = envoyée par le bot
+  eventId            String?  @unique @map("event_id") @db.VarChar(200) // idempotence des renvois du bot
+  employeId          Int?     @map("employe_id")
+  formateurEmployeId Int?     @map("formateur_employe_id")
+  creeLe             DateTime @default(now()) @map("cree_le") @db.Timestamptz(6)
+
+  @@index([semaine])
+  @@index([employeId])
+  @@map("ventes")
+}
+
+// Vente marquée comme doublon exact (marquage réversible, fait hors du site) : exclue des calculs, jamais de l'historique.
+model VenteDoublon {
+  id               Int      @id @default(autoincrement())
+  ligneDoublonId   Int      @unique @map("ligne_doublon_id")
+  ligneOriginaleId Int      @map("ligne_originale_id")
+  classification   String   @db.VarChar(100)
+  justification    String
+  marqueLe         DateTime @default(now()) @map("marque_le") @db.Timestamptz(6)
+  marquePar        String   @map("marque_par") @db.VarChar(100)
+
+  @@map("ventes_doublons")
+}
+
+// Palier de prime : on retient le plus haut seuil atteint (stats/calcul.ts, montantPalier).
+model BaremePrime {
+  id      Int    @id @default(autoincrement())
+  type    String @db.VarChar(10) // vente | location
+  seuil   Int
+  montant Int
+
+  @@unique([type, seuil])
+  @@map("baremes_primes")
+}
+
+// Rémunération par grade du site : salaire fixe et interrupteurs, indépendants et cumulables. Un grade sans ligne a les
+// valeurs par défaut (taux 0,48, pas de salaire, primes actives).
+model RemunerationGrade {
+  gradeCle            String @id @map("grade") @db.VarChar(20)
+  taux                Float  @default(0.48) // commission sur le montant facturé
+  salaireFixe         Int?   @map("salaire_fixe")
+  salaireActif        Boolean @default(false) @map("salaire_actif")
+  primeVenteActive    Boolean @default(true) @map("prime_vente_active")
+  primeLocationActive Boolean @default(true) @map("prime_location_active")
+
+  @@map("remunerations_grades")
+}
+
+// Ligne du Google Sheets de la Direction (colonne D = nom, E = grade, L = ventes, M = locations), remplacée entièrement
+// à chaque synchronisation (table dérivée). RH fait foi : rattachée à la fiche dont le « Prénom Nom » est exactement le
+// nom écrit ; jamais de fiche créée ni de grade changé.
+model LigneTableur {
+  id           Int      @id @default(autoincrement())
+  ligneSheet   Int?     @map("ligne_sheet")
+  nomSheet     String   @map("nom_sheet") @db.VarChar(200)
+  nomNormalise String   @map("nom_normalise") @db.VarChar(200)
+  gradeSheet   String   @default("") @map("grade_sheet") @db.VarChar(40) // libellé du grade du site retrouvé en colonne E
+  nbVentes     Int      @default(0) @map("nb_ventes")
+  nbLocations  Int      @default(0) @map("nb_locations")
+  employeId    Int?     @map("employe_id")
+  compteId     Int?     @map("compte_id") // compte du site relié (« Mon profil »)
+  majLe        DateTime @default(now()) @map("maj_le") @db.Timestamptz(6)
+
+  @@index([employeId])
+  @@index([compteId])
+  @@map("tableur_lignes")
+}
+
+// État de la dernière synchronisation du tableur (une seule ligne, id 1).
+model TableurEtat {
+  id           Int       @id @default(1)
+  derniereSync DateTime? @map("derniere_sync") @db.Timestamptz(6)
+  statut       String    @default("") @db.VarChar(10) // ok | erreur | desactive
+  erreur       String    @default("") @db.VarChar(500)
+  nbLignes     Int       @default(0) @map("nb_lignes")
+  nbApparies   Int       @default(0) @map("nb_apparies")
+
+  @@map("tableur_etat")
+}
+
+// Chiffres du tableur figés chaque dimanche à 23:59 (heure de Paris), sous le code de semaine du site (S41-26) : un
+// changement de barème ultérieur ne réécrit pas le passé.
+model TableurArchive {
+  id        Int      @id @default(autoincrement())
+  semaine   String   @unique @db.VarChar(8)
+  archiveLe DateTime @map("archive_le") @db.Timestamptz(6)
+  donneesDu DateTime @map("donnees_du") @db.Timestamptz(6) // dernière lecture du tableur figée ici
+  enRetard  Boolean  @default(false) @map("en_retard") // archivée après coup (serveur arrêté dimanche soir)
+
+  lignes TableurArchiveLigne[]
+
+  @@map("tableur_archives")
+}
+
+model TableurArchiveLigne {
+  id             Int     @id @default(autoincrement())
+  archiveId      Int     @map("archive_id")
+  ligneSheet     Int?    @map("ligne_sheet")
+  nom            String  @db.VarChar(200)
+  grade          String  @default("") @db.VarChar(40)
+  ventes         Int     @default(0)
+  locations      Int     @default(0)
+  primeVente     Int     @default(0) @map("prime_vente")
+  primeLocations Int     @default(0) @map("prime_locations")
+  compte         String? @db.VarChar(100) // compte du site relié, tel qu'il s'appelait ce jour-là
+  employeId      Int?    @map("employe_id")
+
+  archive TableurArchive @relation(fields: [archiveId], references: [id], onDelete: Cascade)
+
+  @@index([archiveId])
+  @@index([employeId])
+  @@map("tableur_archives_lignes")
+}

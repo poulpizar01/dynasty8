@@ -8,6 +8,8 @@ import { biens } from './routes/biens.js';
 import { messagerie } from './routes/messagerie.js';
 import { profils } from './routes/profils.js';
 import { rh } from './routes/rh.js';
+import { stats } from './routes/stats.js';
+import { planifierTableur } from './stats/tableur.js';
 import { vitrine } from './routes/vitrine.js';
 
 export const entreprise: Entreprise = {
@@ -21,9 +23,11 @@ export const entreprise: Entreprise = {
     comptes: 'comptes',
     grades: 'grades',
     rh: 'rh-voir',
+    statistiques: 'ventes',
+    comptabilite: 'compta',
   },
 
-  routes: [vitrine, biens, profils, messagerie, agenda, rh],
+  routes: [vitrine, biens, profils, messagerie, agenda, rh, stats],
 
   // événements du bot Discord entreprise (docs/webhooks.md) : candidatures acceptées → fiches RH
   webhooks: {
@@ -46,6 +50,7 @@ export const entreprise: Entreprise = {
 
   demarrage: async () => {
     planifierNettoyagePhotos();
+    planifierTableur();
     const purge = () => purgerReponses().catch(e => console.error('[rh]', e));
     purge();
     setInterval(purge, 24 * 3600e3).unref();

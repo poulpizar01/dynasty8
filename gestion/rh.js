@@ -33,6 +33,7 @@ async function chargerRh() {
     ameliorerSelect(filtre);
     ameliorerSelect($rh('filtre-rh-statut'));
     afficherEmployes();
+    chargerARattacher();
     chargerArriveesBot();
   } catch (e) {
     gestion.message('zone-message-rh', `Impossible de charger RH : ${e.message}`);
@@ -102,9 +103,13 @@ async function ouvrirFicheEmploye(id, preremplissage) {
   bouton.classList.toggle('cache', !peutEcrire);
   bouton.textContent = id ? 'Enregistrer les modifications' : 'Ajouter le membre';
   $rh('employe-statut').textContent = id ? `Statut : ${f.statut}${f.idProvisoire ? ' — ID employé provisoire : à remplacer par le vrai.' : ''}` : '';
-  $rh('employe-historique').innerHTML = id
-    ? (f.compteDuSite ? `Compte du site : ${echapper(f.compteDuSite.nom)}${f.compteDuSite.grade ? ` (${echapper(f.compteDuSite.grade)})` : ''}` : 'Aucun compte du site relié (même ID Discord)')
-    : '';
+  const h = f.historique;
+  $rh('employe-historique').innerHTML = h ? [
+    `Ventes rattachées : <strong>${h.ventesEnregistrees}</strong>${h.derniereVente ? ` — dernière reçue le ${dateHeure(h.derniereVente)}` : ''}`,
+    h.tableurSemaineEnCours ? `Tableur, semaine en cours : ${h.tableurSemaineEnCours.ventes} vente(s), ${h.tableurSemaineEnCours.locations} location(s)` : 'Absent du tableur cette semaine',
+    `Semaines archivées du tableur : ${h.semainesArchivees}`,
+    f.compteDuSite ? `Compte du site : ${echapper(f.compteDuSite.nom)}${f.compteDuSite.grade ? ` (${echapper(f.compteDuSite.grade)})` : ''}` : 'Aucun compte du site relié (même ID Discord)',
+  ].join('<br>') : '';
   $rh('modale-employe').classList.remove('cache');
   if (peutEcrire) $rh('employe-prenom').focus();
 }
@@ -147,6 +152,38 @@ async function changerStatutEmploye(id, action) {
     gestion.message('zone-message-rh', action === 'desactiver' ? 'Employé désactivé ✓' : 'Employé réactivé ✓', 'succes');
     chargerRh();
   } catch (err) { gestion.message('zone-message-rh', err.message); }
+}
+
+// « À rattacher » : vendeurs des ventes et lignes du tableur sans fiche RH
+async function chargerARattacher() {
+  const bloc = $rh('rh-a-rattacher'), contenu = $rh('rh-a-rattacher-contenu');
+  try {
+    const r = await socle.api('/api/rh/a-rattacher');
+    const bouton = attributs => (aDroitRh('creer') ? `<button type="button" class="btn btn-fantome btn-petit" ${attributs}>Créer la fiche</button>` : '');
+    const parties = [];
+    if (r.vendeurs.length) {
+      parties.push(`<p class="champ-aide" style="margin:14px 0 6px;"><strong>Ventes reçues du bot sans fiche</strong> — le pseudo envoyé ne correspond au pseudo Discord d'aucune fiche.</p>
+        <div style="overflow-x:auto;"><table class="table-admin"><thead><tr><th>Pseudo reçu</th><th style="text-align:right;">Ventes</th><th>Dernière semaine</th><th></th></tr></thead><tbody>
+        ${r.vendeurs.map(v => `<tr><td>${echapper(v.pseudo)}</td><td style="text-align:right;">${v.ventes}</td><td>${echapper(v.derniereSemaine || '—')}</td><td>${bouton(`data-rh-creer-pseudo="${echapper(v.pseudo)}"`)}</td></tr>`).join('')}
+        </tbody></table></div>`);
+    }
+    if (r.tableur.length) {
+      parties.push(`<p class="champ-aide" style="margin:14px 0 6px;"><strong>Lignes du tableur sans fiche</strong> — le nom écrit ne correspond au « Prénom Nom » d'aucune fiche.</p>
+        <div style="overflow-x:auto;"><table class="table-admin"><thead><tr><th>Nom dans le tableur</th><th>Grade</th><th style="text-align:right;">Ventes</th><th style="text-align:right;">Locations</th><th></th></tr></thead><tbody>
+        ${r.tableur.map(l => `<tr><td>${echapper(l.nom)}</td><td>${echapper(l.grade || '—')}</td><td style="text-align:right;">${l.ventes}</td><td style="text-align:right;">${l.locations}</td>
+          <td>${bouton(`data-rh-creer-nom="${echapper(l.nom)}" data-rh-creer-grade="${echapper(l.grade || '')}"`)}</td></tr>`).join('')}
+        </tbody></table></div>`);
+    }
+    bloc.classList.toggle('cache', !parties.length);
+    contenu.innerHTML = parties.join('');
+    contenu.querySelectorAll('[data-rh-creer-pseudo]').forEach(b => b.addEventListener('click', () => ouvrirFicheEmploye(null, { discordPseudo: b.dataset.rhCreerPseudo })));
+    contenu.querySelectorAll('[data-rh-creer-nom]').forEach(b => b.addEventListener('click', () => {
+      const mots = b.dataset.rhCreerNom.trim().split(/\s+/);
+      // le tableur écrit le libellé du grade ; la fiche attend sa clé
+      const grade = GRADES_EMPLOYES.find(g => g.libelle === b.dataset.rhCreerGrade)?.cle;
+      ouvrirFicheEmploye(null, { prenom: mots.shift() || '', nom: mots.join(' '), ...(grade && { grade }) });
+    }));
+  } catch { bloc.classList.add('cache'); }
 }
 
 // ---- arrivées reçues du bot Discord et réglages de leur lecture ----

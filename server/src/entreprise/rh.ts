@@ -10,6 +10,7 @@ import { auDessusDe, gradeDe, peut, tousLesGrades } from '../socle/droits.js';
 import { definirReglage, reglage } from '../socle/reglages.js';
 import type { EvenementBot } from '../socle/contrat.js';
 import { jourParis, jourValide, normaliserPseudo, normaliserTexte, versDate, versJour } from './texte.js';
+import { rattacherVentes } from './stats/ventes.js';
 
 export const DROITS_RH = ['voir', 'creer', 'modifier', 'desactiver', 'reactiver', 'sensible', 'parametrer'] as const;
 export type DroitRh = typeof DROITS_RH[number];
@@ -17,7 +18,8 @@ export type DroitRh = typeof DROITS_RH[number];
 export const droitsRh = (c: Compte): Set<DroitRh> =>
   peut(c, 'rh-voir') ? new Set(DROITS_RH.filter(d => peut(c, `rh-${d}`))) : new Set();
 
-export class RefusRh extends Error { constructor(message: string, public status = 400) { super(message); } }
+import { Refus } from './refus.js';
+export { Refus };
 
 // ---------- lecture ----------
 
@@ -50,33 +52,33 @@ const texte = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max);
 type Champs = Partial<Omit<Employe, 'id' | 'creeLe' | 'majLe'>>;
 
 // Champs envoyés par le formulaire → valeurs propres. `existante` : la fiche actuelle (modification), absente à la
-// création. Lève RefusRh avec un message à afficher tel quel.
+// création. Lève Refus avec un message à afficher tel quel.
 export function lireChamps(b: Record<string, unknown>, existante: Employe | null): Champs {
   const c: Champs = {};
   const pris = (cle: string) => b[cle] !== undefined;
   if (!existante || pris('idEmploye')) {
     const id = texte(b.idEmploye, 40);
-    if (!id) throw new RefusRh('L’ID employé est obligatoire.');
-    if (!/^[\p{L}\p{N}_.\- ]+$/u.test(id)) throw new RefusRh('L’ID employé ne peut contenir que des lettres, chiffres, espaces, points, tirets et soulignés.');
+    if (!id) throw new Refus('L’ID employé est obligatoire.');
+    if (!/^[\p{L}\p{N}_.\- ]+$/u.test(id)) throw new Refus('L’ID employé ne peut contenir que des lettres, chiffres, espaces, points, tirets et soulignés.');
     c.idEmploye = id;
     c.idEmployeNormalise = id.toLowerCase();
   }
   for (const [cle, libelle] of [['prenom', 'Le prénom'], ['nom', 'Le nom']] as const) {
     if (!existante || pris(cle)) {
       c[cle] = texte(b[cle], 60);
-      if (!c[cle]) throw new RefusRh(`${libelle} est obligatoire.`);
+      if (!c[cle]) throw new Refus(`${libelle} est obligatoire.`);
     }
   }
   if (!existante || pris('grade')) {
     const g = gradeDe(texte(b.grade, 20));
-    if (!g) throw new RefusRh('Grade invalide.');
+    if (!g) throw new Refus('Grade invalide.');
     c.gradeCle = g.cle;
   }
   if (pris('telephone')) c.telephone = texte(b.telephone, 30);
   if (pris('rib')) c.rib = texte(b.rib, 60);
   if (pris('discordId')) {
     const id = texte(b.discordId, 22);
-    if (id && !/^\d{15,22}$/.test(id)) throw new RefusRh('L’ID Discord est un nombre de 15 à 22 chiffres (clic droit sur le profil → Copier l’identifiant).');
+    if (id && !/^\d{15,22}$/.test(id)) throw new Refus('L’ID Discord est un nombre de 15 à 22 chiffres (clic droit sur le profil → Copier l’identifiant).');
     c.discordId = id || null;
   }
   if (pris('discordPseudo')) {
@@ -86,18 +88,18 @@ export function lireChamps(b: Record<string, unknown>, existante: Employe | null
   for (const [cle, colonne, libelle] of [['dateArrivee', 'dateArrivee', 'La date d’arrivée'], ['dateDepart', 'dateDepart', 'La date de départ']] as const) {
     if (pris(cle)) {
       const v = texte(b[cle], 10);
-      if (v && !jourValide(v)) throw new RefusRh(`${libelle} doit être une date valide (AAAA-MM-JJ).`);
+      if (v && !jourValide(v)) throw new Refus(`${libelle} doit être une date valide (AAAA-MM-JJ).`);
       c[colonne] = v ? versDate(v) : null;
     }
   }
-  if (!existante && !c.dateArrivee) throw new RefusRh('La date d’arrivée est obligatoire.');
+  if (!existante && !c.dateArrivee) throw new Refus('La date d’arrivée est obligatoire.');
   if (pris('statut')) {
-    if (b.statut !== 'actif' && b.statut !== 'inactif') throw new RefusRh('Statut invalide.');
+    if (b.statut !== 'actif' && b.statut !== 'inactif') throw new Refus('Statut invalide.');
     c.statut = b.statut;
   }
   const arrivee = c.dateArrivee !== undefined ? c.dateArrivee : existante?.dateArrivee;
   const depart = c.dateDepart !== undefined ? c.dateDepart : existante?.dateDepart;
-  if (arrivee && depart && depart < arrivee) throw new RefusRh('La date de départ ne peut pas précéder la date d’arrivée.');
+  if (arrivee && depart && depart < arrivee) throw new Refus('La date de départ ne peut pas précéder la date d’arrivée.');
   return c;
 }
 
@@ -109,7 +111,7 @@ export async function verifierUnicite(c: Champs, idExclu = 0, tx: Prisma.Transac
     [c.discordPseudoNormalise, { discordPseudoNormalise: c.discordPseudoNormalise }, 'Ce pseudo Discord est déjà sur une autre fiche.'],
   ];
   for (const [valeur, where, message] of verifs) {
-    if (valeur && await tx.employe.findFirst({ where: { ...where, id: { not: idExclu } }, select: { id: true } })) throw new RefusRh(message, 409);
+    if (valeur && await tx.employe.findFirst({ where: { ...where, id: { not: idExclu } }, select: { id: true } })) throw new Refus(message, 409);
   }
 }
 
@@ -117,7 +119,7 @@ export async function verifierUnicite(c: Champs, idExclu = 0, tx: Prisma.Transac
 export function refusUnicite(e: unknown): never {
   if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
     const cible = String((e.meta as { target?: unknown } | undefined)?.target ?? '');
-    throw new RefusRh(cible.includes('discord_id') ? 'Cet ID Discord est déjà sur une autre fiche.'
+    throw new Refus(cible.includes('discord_id') ? 'Cet ID Discord est déjà sur une autre fiche.'
       : cible.includes('pseudo') ? 'Ce pseudo Discord est déjà sur une autre fiche.' : 'Cet ID employé est déjà attribué.', 409);
   }
   throw e;
@@ -151,12 +153,12 @@ export const lireReglagesBot = (): Reglages =>
 export async function reglerBot(b: Record<string, unknown>, acteur: Compte): Promise<void> {
   const v = Object.fromEntries(Object.keys(REGLAGES_BOT).map(champ => [champ, texte(b[champ], 200)])) as Reglages;
   if (v.gradeArrivee) {
-    if (!gradeDe(v.gradeArrivee)) throw new RefusRh('Grade d’arrivée invalide.');
+    if (!gradeDe(v.gradeArrivee)) throw new Refus('Grade d’arrivée invalide.');
     // jamais un grade égal ou supérieur à celui de qui règle (ni un grade de direction donné d'office à un inconnu)
-    if (!auDessusDe(acteur, v.gradeArrivee)) throw new RefusRh('Le grade d’arrivée doit être sous le vôtre.', 403);
+    if (!auDessusDe(acteur, v.gradeArrivee)) throw new Refus('Le grade d’arrivée doit être sous le vôtre.', 403);
   }
-  if (v.questionIdentite && (v.questionPrenom || v.questionNom)) throw new RefusRh('Choisissez soit une question « Prénom Nom », soit deux questions séparées, pas les deux.');
-  if (!!v.questionPrenom !== !!v.questionNom) throw new RefusRh('Avec des questions séparées, réglez à la fois celle du prénom et celle du nom.');
+  if (v.questionIdentite && (v.questionPrenom || v.questionNom)) throw new Refus('Choisissez soit une question « Prénom Nom », soit deux questions séparées, pas les deux.');
+  if (!!v.questionPrenom !== !!v.questionNom) throw new Refus('Avec des questions séparées, réglez à la fois celle du prénom et celle du nom.');
   for (const [champ, cle] of Object.entries(REGLAGES_BOT)) await definirReglage(cle, v[champ as keyof Reglages] || null);
 }
 
@@ -213,7 +215,7 @@ async function creerDepuisCandidature(c: Candidature): Promise<Resultat> {
     }, null);
     await verifierUnicite(champs);
   } catch (e) {
-    if (e instanceof RefusRh) return { resultat: 'refusee', motif: e.message };
+    if (e instanceof Refus) return { resultat: 'refusee', motif: e.message };
     throw e;
   }
   try {
@@ -223,6 +225,7 @@ async function creerDepuisCandidature(c: Candidature): Promise<Resultat> {
       const prov = `PROV-B${String(f.id).padStart(4, '0')}`;
       return tx.employe.update({ where: { id: f.id }, data: { idEmploye: prov, idEmployeNormalise: prov.toLowerCase() } });
     });
+    await rattacherVentes(fiche);
     return { resultat: 'creee', employeId: fiche.id, motif: '' };
   } catch (e) {
     // deux envois simultanés pour le même compte : le second trouve la fiche du premier
@@ -274,9 +277,9 @@ export async function recevoirCandidature(e: EvenementBot): Promise<void> {
 // approuver une embauche en attente, ou retraiter un ticket « à traiter », avec les réglages actuels
 export async function traiterEnSuspens(id: number): Promise<Resultat> {
   const a = await prisma.arriveeBot.findUnique({ where: { id } });
-  if (!a) throw new RefusRh('Candidature introuvable.', 404);
-  if (!EN_SUSPENS.includes(a.resultat)) throw new RefusRh('Cette candidature a déjà été traitée.', 409);
-  if (!a.reponses) throw new RefusRh('Les réponses de cette candidature ne sont plus conservées (30 jours) : créez la fiche à la main.', 410);
+  if (!a) throw new Refus('Candidature introuvable.', 404);
+  if (!EN_SUSPENS.includes(a.resultat)) throw new Refus('Cette candidature a déjà été traitée.', 409);
+  if (!a.reponses) throw new Refus('Les réponses de cette candidature ne sont plus conservées (30 jours) : créez la fiche à la main.', 410);
   const reponses = lireReponses(a.reponses);
   const id_ = identite(reponses, lireReglagesBot());
   const c: Candidature = { ticketId: a.ticketId, discordId: a.discordId, accepteLe: a.accepteLe, reponses, nomRecu: (`${id_.prenom} ${id_.nom}`.trim() || a.nomRecu).slice(0, 130) };
@@ -288,8 +291,8 @@ export async function traiterEnSuspens(id: number): Promise<Resultat> {
 export async function ecarter(id: number): Promise<void> {
   const { count } = await prisma.arriveeBot.updateMany({ where: { id, resultat: { in: EN_SUSPENS } }, data: { resultat: 'ecartee', motif: 'Écartée dans Ressources humaines.', reponses: Prisma.DbNull } });
   if (!count) {
-    if (!await prisma.arriveeBot.findUnique({ where: { id } })) throw new RefusRh('Candidature introuvable.', 404);
-    throw new RefusRh('Cette candidature a déjà été traitée.', 409);
+    if (!await prisma.arriveeBot.findUnique({ where: { id } })) throw new Refus('Candidature introuvable.', 404);
+    throw new Refus('Cette candidature a déjà été traitée.', 409);
   }
 }
 

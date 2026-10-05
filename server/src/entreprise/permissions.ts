@@ -13,4 +13,7 @@ export const permissions: Permission[] = [
   { cle: 'rh-reactiver', libelle: 'RH : réactiver', description: 'Réintégrer un ancien employé' },
   { cle: 'rh-sensible', libelle: 'RH : téléphone et RIB', description: 'Voir et modifier le téléphone et le RIB des employés' },
   { cle: 'rh-parametrer', libelle: 'RH : réglages du bot', description: 'Régler la réception des candidatures du bot (grade d’arrivée, questions du formulaire)' },
+  { cle: 'ventes', libelle: 'Ventes & statistiques', description: 'Voir les ventes reçues du bot, les totaux, les anomalies et les chiffres du tableur de la Direction' },
+  { cle: 'ventes-gerer', libelle: 'Ventes : gérer', description: 'Supprimer une vente reçue, lancer la synchronisation du tableur' },
+  { cle: 'compta', libelle: 'Comptabilité', description: 'Relevé Tablettes, rémunération (salaires, paliers de primes) et déclaration DOT' },
 ];
