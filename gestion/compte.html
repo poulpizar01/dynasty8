@@ -12,15 +12,17 @@
   <script src="/socle/socle.js"></script>
   <script src="/layout.js"></script>
   <script src="/gestion/gestion.js"></script>
-  <title>Mon compte — {{nom}}</title>
+  <script src="/gestion/profil.js"></script>
+  <title>Mon profil — {{nom}}</title>
 </head>
 <body class="page-agents">
-  <!-- GESTION — mon compte : nom RP, suppression du compte (serveur : socle/routes/comptes.ts, /api/moi). -->
+  <!-- GESTION — mon profil : compte Discord, nom RP, profil public de la page équipe, suppression du compte
+       (serveur : socle/routes/comptes.ts pour /api/moi, entreprise/routes/profils.ts pour /api/profil). -->
   <main class="admin-contenu">
     <div class="entete-admin">
       <div>
-        <h2 style="margin-bottom:2px;">Mon compte</h2>
-        <p style="margin:0;font-size:0.88rem;">Votre compte Discord, votre grade et votre nom RP.</p>
+        <h2 style="margin-bottom:2px;">Mon profil</h2>
+        <p style="margin:0;font-size:0.88rem;">Votre nom RP et votre fiche publique, affichée sur la page « Notre équipe » du site.</p>
       </div>
     </div>
     <div id="zone-message"></div>
@@ -38,6 +40,11 @@
       <button class="btn btn-or" type="submit">Enregistrer</button>
     </form>
 
+    <div class="carte-table" style="padding:20px 22px;margin-bottom:22px;">
+      <h3 class="comptes-sous-titre" style="margin-top:0;">Profil public</h3>
+      <div id="profil"></div>
+    </div>
+
     <div class="carte-table" style="padding:20px 22px;">
       <h3 class="comptes-sous-titre" style="margin-top:0;">Supprimer mon compte</h3>
       <p class="champ-aide">Votre compte est effacé du site. Vous pourrez vous reconnecter plus tard, mais il faudra une nouvelle validation.</p>
@@ -51,6 +58,7 @@
       document.getElementById('pseudo').textContent = `@${moi.pseudo}`;
       document.getElementById('grade').textContent = moi.grade?.libelle || (moi.proprietaire ? 'Propriétaire' : 'Sans grade');
       document.getElementById('nom').value = moi.nom || '';
+      profilEditeur(document.getElementById('profil'), { adresse: '/api/profil', nom: () => document.getElementById('nom').value || moi.pseudo }).charger();
     });
     document.getElementById('formNom').addEventListener('submit', async e => {
       e.preventDefault();

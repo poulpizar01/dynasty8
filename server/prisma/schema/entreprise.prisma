@@ -44,8 +44,8 @@ model Bien {
 // Profil public d'un agent (page Équipe de la vitrine), un par compte.
 model Profil {
   compteId   Int     @id @map("compte_id")
-  poste      String? @db.VarChar(60) // à défaut : le libellé du grade
-  specialite String? @db.VarChar(80)
+  poste      String? @db.VarChar(80) // à défaut : le libellé du grade
+  specialite String? @db.VarChar(100)
   bio        String? @db.VarChar(1000)
   photo      String? @db.VarChar(512) // adresse de la photo (stockage d'images)
 

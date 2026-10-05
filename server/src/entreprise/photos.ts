@@ -3,8 +3,12 @@
 import https from 'node:https';
 import { BlockList, isIP } from 'node:net';
 import { lookup } from 'node:dns';
+import type { RequestHandler } from 'express';
 import type { Prisma } from '../generated/prisma/client.js';
 import { prisma } from '../socle/db.js';
+import { body, text } from '../socle/http.js';
+import { limits } from '../socle/limites.js';
+import { storage } from '../socle/storage.js';
 import { enregistrerImage, ImageRefusee, retirerImage, type ImageEnregistree } from '../socle/images.js';
 
 export const MAX_PHOTOS_BIEN = 10;
@@ -124,6 +128,20 @@ export async function rattacherPhotosBien(tx: Prisma.TransactionClient, bienId: 
   await tx.photo.updateMany({ where: { bienId, usage: 'bien', url: { notIn: urls } }, data: { statut: 'a_supprimer', bienId: null } });
 }
 
+// Photo du profil public d'un agent, dans la transaction qui l'enregistre. Accepte : une photo de profil encore libre
+// envoyée par l'auteur de la modification (l'agent lui-même, ou la Direction pour lui), celle déjà sur ce profil, ou
+// l'adresse que le profil avait déjà (photo reprise de l'ancien site). L'ancienne photo part au nettoyage.
+export async function rattacherPhotoProfil(tx: Prisma.TransactionClient, compteId: number, auteurId: number, url: string | null, ancienne: string | null): Promise<void> {
+  if (url && url !== ancienne) {
+    const p = await tx.photo.findUnique({ where: { url } });
+    if (!p || p.usage !== 'profil' || p.statut !== 'temporaire' || p.compteId !== auteurId) {
+      throw new ImageRefusee(p?.statut === 'temporaire' || !p ? 'La photo n’a pas été envoyée par ce site, ou a expiré : choisis-la à nouveau.' : 'Cette photo est déjà utilisée ailleurs : choisis-la à nouveau.');
+    }
+    await tx.photo.update({ where: { id: p.id }, data: { statut: 'attachee', compteId } });
+  }
+  if (ancienne && ancienne !== url) await tx.photo.updateMany({ where: { url: ancienne, usage: 'profil' }, data: { statut: 'a_supprimer' } });
+}
+
 // ---------- nettoyage ----------
 // Une photo envoyée mais jamais enregistrée dans une annonce reste « temporaire » : gardée 24 h (l'agent peut encore
 // enregistrer son annonce), puis effacée. Une photo « a_supprimer » est effacée au passage suivant. Un échec du
@@ -152,3 +170,17 @@ export function planifierNettoyagePhotos(): void {
   setTimeout(run, 60_000).unref();
   setInterval(run, 15 * 60_000).unref();
 }
+
+// ---------- route « photo par lien » (annonces, profils) ----------
+// lien collé (indispensable dans l'ordinateur en jeu, sans sélecteur de fichiers) : le serveur télécharge l'image et la
+// traite comme un fichier envoyé — seule l'adresse de ce site est gardée, jamais le lien. À placer après la garde.
+export const photoParLien = (usage: 'bien' | 'profil'): RequestHandler[] => [limits.upload, async (req, res) => {
+  const lien = text(body(req).url, 2048);
+  if (!lien) { res.status(400).json({ error: 'Colle l’adresse d’une image.' }); return; }
+  if (!storage.accepte) { res.status(503).json({ error: 'L’envoi d’images n’est pas encore configuré sur ce site.' }); return; }
+  let octets: Buffer;
+  try { octets = await telechargerImage(lien); }
+  catch (e) { if (e instanceof ImageRefusee) throw e; throw new ImageRefusee('Image injoignable à cette adresse.'); }
+  const image = await enregistrerPhoto(usage, req.compte.id, octets);
+  res.status(201).json({ url: image.url });
+}];

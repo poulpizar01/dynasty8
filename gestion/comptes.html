@@ -12,6 +12,7 @@
   <script src="/socle/socle.js"></script>
   <script src="/layout.js"></script>
   <script src="/gestion/gestion.js"></script>
+  <script src="/gestion/profil.js"></script>
   <title>Comptes & accès — {{nom}}</title>
 </head>
 <body class="page-agents">
@@ -41,6 +42,13 @@
       </table>
     </div>
   </main>
+
+  <div class="modale-fond cache" id="modale-profil">
+    <div class="modale" style="max-width:760px;">
+      <div class="modale-entete"><h3 id="titre-modale-profil">Profil public</h3><button type="button" id="fermer-profil" aria-label="Fermer">✕</button></div>
+      <div id="editeur-profil"></div>
+    </div>
+  </div>
   <script>
     let moi, comptes = [], grades = [];
     // rang d'un grade (0 = sommet), sans grade = tout en bas ; même règle que le serveur (socle/droits.ts)
@@ -65,6 +73,7 @@
         ${c.statut !== 'valide' ? '<button type="button" class="btn btn-or btn-petit" data-action="valide">Valider</button>' : ''}
         ${c.statut === 'valide' && c.id !== moi.id ? '<button type="button" class="btn btn-fantome btn-petit" data-action="refuse" title="Retire l’accès sans supprimer le compte">Suspendre</button>' : ''}
         ${c.statut === 'attente' ? '<button type="button" class="btn btn-fantome btn-petit" data-action="refuse">Refuser</button>' : ''}
+        ${c.statut === 'valide' ? `<button type="button" class="actions-icone" data-action="profil" title="Profil public" aria-label="Profil public">${gestion.ico('user')}</button>` : ''}
         ${c.id !== moi.id ? `<button type="button" class="actions-icone actions-icone--danger" data-action="supprimer" title="Supprimer" aria-label="Supprimer">${gestion.ico('trash')}</button>` : ''}
       </div>`;
     }
@@ -89,6 +98,7 @@
       const b = e.target.closest('[data-action]'), id = e.target.closest('tr')?.dataset.id;
       if (!b || !id) return;
       const c = comptes.find(x => String(x.id) === id);
+      if (b.dataset.action === 'profil') return ouvrirProfil(c);
       try {
         if (b.dataset.action === 'supprimer') {
           if (!await gestion.confirmer(`Le compte de ${c.nom || c.pseudo} sera supprimé du site. Il pourra refaire une demande en se reconnectant.`, 'Supprimer ce compte ?', 'Supprimer')) return;
@@ -105,6 +115,20 @@
       catch (err) { gestion.message('zone-message', err.message); }
       await charger();
     });
+
+    // profil public d'un agent (page équipe) : même éditeur que « Mon profil »
+    let editeur = null;
+    const modaleProfil = document.getElementById('modale-profil');
+    function ouvrirProfil(c) {
+      document.getElementById('titre-modale-profil').textContent = `Profil public — ${c.nom || c.pseudo}`;
+      editeur = profilEditeur(document.getElementById('editeur-profil'), { adresse: `/api/profils/${c.id}`, nom: () => c.nom || c.pseudo });
+      editeur.charger();
+      modaleProfil.classList.remove('cache');
+    }
+    const fermerProfil = () => { editeur?.fermer(); modaleProfil.classList.add('cache'); };
+    document.getElementById('fermer-profil').addEventListener('click', fermerProfil);
+    modaleProfil.addEventListener('click', e => { if (e.target === modaleProfil) fermerProfil(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modaleProfil.classList.contains('cache')) fermerProfil(); });
 
     gestion.coque('comptes').then(m => { moi = m; return charger(); }).catch(e => gestion.message('zone-message', e.message));
   </script>

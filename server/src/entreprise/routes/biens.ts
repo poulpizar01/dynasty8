@@ -3,11 +3,9 @@
 import { Router } from 'express';
 import { prisma } from '../../socle/db.js';
 import { body, intParam, permission, text } from '../../socle/http.js';
-import { ImageRefusee, recevoirImage } from '../../socle/images.js';
-import { limits } from '../../socle/limites.js';
-import { storage } from '../../socle/storage.js';
+import { recevoirImage } from '../../socle/images.js';
 import { CATEGORIES, COHERENCES, SOUS_CATEGORIES_HABITATION } from '../biens.js';
-import { enregistrerPhoto, MAX_PHOTOS_BIEN, rattacherPhotosBien, telechargerImage } from '../photos.js';
+import { enregistrerPhoto, MAX_PHOTOS_BIEN, photoParLien, rattacherPhotosBien } from '../photos.js';
 
 export const biens = Router();
 const gerer = permission('biens');
@@ -107,16 +105,6 @@ biens.post('/api/biens/photo', ...gerer, ...recevoirImage, async (req, res) => {
   res.status(201).json({ url: image.url });
 });
 
-// photo donnée par lien (indispensable dans l'ordinateur en jeu, sans sélecteur de fichiers) : le serveur la
-// télécharge et la traite comme un fichier envoyé — l'annonce ne garde que l'adresse de ce site, jamais le lien
-biens.post('/api/biens/photo-lien', ...gerer, limits.upload, async (req, res) => {
-  const lien = text(body(req).url, 2048);
-  if (!lien) { res.status(400).json({ error: 'Colle l’adresse d’une image.' }); return; }
-  if (!storage.accepte) { res.status(503).json({ error: 'L’envoi d’images n’est pas encore configuré sur ce site.' }); return; }
-  let octets: Buffer;
-  try { octets = await telechargerImage(lien); }
-  catch (e) { if (e instanceof ImageRefusee) throw e; throw new ImageRefusee('Image injoignable à cette adresse.'); }
-  const image = await enregistrerPhoto('bien', req.compte.id, octets);
-  res.status(201).json({ url: image.url });
-});
+// photo donnée par lien : téléchargée par le serveur (photos.ts)
+biens.post('/api/biens/photo-lien', ...gerer, ...photoParLien('bien'));
 

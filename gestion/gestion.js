@@ -6,7 +6,7 @@ const GESTION_NAV = [
   { groupe: 'Agence' },
   { cle: 'accueil', href: 'accueil.html', label: 'Accueil', icone: 'home' },
   { cle: 'biens', href: 'biens.html', label: 'Annonces', icone: 'grid', permission: 'biens' },
-  { cle: 'compte', href: 'compte.html', label: 'Mon compte', icone: 'user' },
+  { cle: 'compte', href: 'compte.html', label: 'Mon profil', icone: 'user' },
   { groupe: 'Direction' },
   { cle: 'comptes', href: 'comptes.html', label: 'Comptes & accès', icone: 'lock', permission: 'comptes' },
   { cle: 'grades', href: 'grades.html', label: 'Grades', icone: 'users', permission: 'grades' },
