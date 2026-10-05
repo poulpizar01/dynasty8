@@ -10,7 +10,8 @@ const GESTION_NAV = [
   { cle: 'compte', href: 'compte.html', label: 'Mon profil', icone: 'user' },
   { groupe: 'Direction' },
   { cle: 'comptes', href: 'comptes.html', label: 'Comptes & accès', icone: 'lock', permission: 'comptes' },
-  { cle: 'grades', href: 'grades.html', label: 'Grades', icone: 'users', permission: 'grades' },
+  { cle: 'rh', href: 'rh.html', label: 'Ressources humaines', icone: 'users', permission: 'rh-voir' },
+  { cle: 'grades', href: 'grades.html', label: 'Grades', icone: 'gear', permission: 'grades' },
   { groupe: 'Outils' },
   { href: 'https://intra.dynasty8.fbfa.fr/login', label: 'Registre', icone: 'book', externe: true },
 ];
@@ -24,6 +25,7 @@ const GESTION_ICONES = {
   calc: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h2M12 12h2M8 16h2M12 16h2M16 12v4"/>',
   chart: '<path d="M4 20V10M10 20V4M16 20v-7M2 20h20"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
   book: '<path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/>',
   sheet: '<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M4 9h16M4 15h16M10 9v12"/>',
   sync: '<path d="M21 12a9 9 0 0 1-15.5 6.3M3 12a9 9 0 0 1 15.5-6.3"/><path d="M18 2v4h-4M6 22v-4h4"/>',

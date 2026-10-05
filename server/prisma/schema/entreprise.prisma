@@ -114,3 +114,50 @@ model EvenementAgenda {
   @@index([compteId, jour])
   @@map("evenements_agenda")
 }
+
+// Ressources humaines : la fiche employé, source de vérité de l'identité (routes/rh.ts). Les autres modules (ventes,
+// tableur, DOT) ne gardent que employeId et lisent ici nom, grade et statut. Une fiche n'est jamais supprimée : un départ
+// la passe « inactif », son historique reste rattaché. Un employé n'a pas forcément de compte sur le site : le lien
+// avec un compte se fait par l'ID Discord.
+model Employe {
+  id                     Int       @id @default(autoincrement())
+  idEmploye              String    @map("id_employe") @db.VarChar(40) // identifiant métier saisi par RH (ex. D8-0042)
+  idEmployeNormalise     String    @unique @map("id_employe_normalise") @db.VarChar(40) // unicité sans casse
+  idProvisoire           Boolean   @default(false) @map("id_provisoire") // PROV-… : à remplacer par le vrai
+  prenom                 String    @default("") @db.VarChar(60)
+  nom                    String    @default("") @db.VarChar(60)
+  telephone              String    @default("") @db.VarChar(30) // donnée sensible (permission rh-sensible)
+  rib                    String    @default("") @db.VarChar(60) // donnée sensible (permission rh-sensible)
+  discordId              String?   @unique @map("discord_id") @db.VarChar(22)
+  discordPseudo          String    @default("") @map("discord_pseudo") @db.VarChar(100) // pseudo envoyé avec les ventes
+  discordPseudoNormalise String?   @unique @map("discord_pseudo_normalise") @db.VarChar(100)
+  gradeCle               String    @map("grade") @db.VarChar(20) // clé d'un grade du site (page Grades)
+  statut                 String    @default("actif") @db.VarChar(8) // actif | inactif
+  dateArrivee            DateTime? @map("date_arrivee") @db.Date
+  dateDepart             DateTime? @map("date_depart") @db.Date
+  creeLe                 DateTime  @default(now()) @map("cree_le") @db.Timestamptz(6)
+  majLe                  DateTime  @default(now()) @updatedAt @map("maj_le") @db.Timestamptz(6)
+
+  @@index([statut, gradeCle])
+  @@map("employes")
+}
+
+// Candidature reçue du bot Discord (webhook recruitment.updated), une ligne par ticket : un renvoi du même ticket ne
+// crée jamais une deuxième fiche. resultat : creee | existante | refusee (« à traiter », réglage manquant…) |
+// attente (embauche constatée en jeu, à approuver) | ecartee. « reponses » (qui peuvent contenir téléphone et RIB) n'est
+// gardé que pour un ticket en suspens, 30 jours au plus.
+model ArriveeBot {
+  id        Int      @id @default(autoincrement())
+  ticketId  String   @unique @map("ticket_id") @db.VarChar(100)
+  discordId String   @default("") @map("discord_id") @db.VarChar(30)
+  nomRecu   String   @default("") @map("nom_recu") @db.VarChar(130)
+  resultat  String   @db.VarChar(10)
+  motif     String   @default("") @db.VarChar(400)
+  employeId Int?     @map("employe_id")
+  reponses  Json?
+  accepteLe String   @default("") @map("accepte_le") @db.VarChar(40)
+  recuLe    DateTime @default(now()) @map("recu_le") @db.Timestamptz(6)
+
+  @@index([recuLe(sort: Desc)])
+  @@map("rh_arrivees_bot")
+}

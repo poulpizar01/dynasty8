@@ -2,10 +2,12 @@
 // Tout src/entreprise/ est libre : ajouter des routes (routes/), des modules métier, des tâches planifiées.
 import type { Entreprise } from '../socle/contrat.js';
 import { planifierNettoyagePhotos } from './photos.js';
+import { purgerReponses, recevoirCandidature } from './rh.js';
 import { agenda } from './routes/agenda.js';
 import { biens } from './routes/biens.js';
 import { messagerie } from './routes/messagerie.js';
 import { profils } from './routes/profils.js';
+import { rh } from './routes/rh.js';
 import { vitrine } from './routes/vitrine.js';
 
 export const entreprise: Entreprise = {
@@ -18,11 +20,15 @@ export const entreprise: Entreprise = {
     biens: 'biens',
     comptes: 'comptes',
     grades: 'grades',
+    rh: 'rh-voir',
   },
 
-  routes: [vitrine, biens, profils, messagerie, agenda],
+  routes: [vitrine, biens, profils, messagerie, agenda, rh],
 
-  webhooks: {},
+  // événements du bot Discord entreprise (docs/webhooks.md) : candidatures acceptées → fiches RH
+  webhooks: {
+    'recruitment.updated': recevoirCandidature,
+  },
 
   // les biens d'un agent supprimé restent (son nom affiché aussi : c'est l'historique de l'agence) ; son profil public
   // disparaît, et sa photo de profil comme ses photos envoyées mais jamais utilisées partent au nettoyage
@@ -38,5 +44,10 @@ export const entreprise: Entreprise = {
     await tx.photo.updateMany({ where: { compteId }, data: { compteId: null } });
   },
 
-  demarrage: async () => { planifierNettoyagePhotos(); },
+  demarrage: async () => {
+    planifierNettoyagePhotos();
+    const purge = () => purgerReponses().catch(e => console.error('[rh]', e));
+    purge();
+    setInterval(purge, 24 * 3600e3).unref();
+  },
 };
