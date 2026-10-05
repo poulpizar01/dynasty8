@@ -43,11 +43,7 @@ Porté sur le modèle depuis une première version jamais mise en production (Ja
 
 ## Tests
 
-Moteur de calcul des primes et lecture du tableur (fonctions pures, `server/test/`) : dans le conteneur de dev,
-```bash
-MSYS_NO_PATHCONV=1 docker exec -w /app/server dynasty8-app node --import tsx --test test/*.test.ts
-```
-À relancer après toute modification de `stats/calcul.ts` ou `stats/tableur.ts` : une erreur s'y paie en argent RP, sans rien d'anormal à l'écran.
+Tests du site (convention dans CLAUDE.md, `npm test`) : moteur de calcul des primes (`stats-calc.test.ts`) et lecture du tableur (`tableur.test.ts`). À relancer après toute modification de `stats/calcul.ts` ou `stats/tableur.ts` : une erreur s'y paie en argent RP, sans rien d'anormal à l'écran.
 
 ## Pièges propres à ce site
 
