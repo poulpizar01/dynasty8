@@ -1,16 +1,18 @@
 /* SOCLE — stockage des fichiers envoyés (images). Contrat du service : docs/stockage.md.
-   - avec STORAGE_URL + STORAGE_TOKEN : service de stockage distant (CDN) — obligatoire en production
-   - sans : disque local (UPLOAD_DIR), servi par le site sous /uploads — environnement de dev UNIQUEMENT.
-     En production sans CDN, aucun envoi n'est accepté (le disque du VPS n'est ni sauvegardé ni fait pour ça) :
-     le site démarre quand même et l'envoi répond une erreur claire. */
+   - production : service de stockage distant (CDN, STORAGE_URL + STORAGE_TOKEN), obligatoire. Sans lui, aucun envoi
+     n'est accepté (le disque du VPS n'est ni sauvegardé ni fait pour ça) : le site démarre quand même et l'envoi
+     répond une erreur claire.
+   - dev : toujours le disque local (UPLOAD_DIR), servi par le site sous /uploads, même si le CDN est paramétré — des
+     images d'essai n'ont rien à faire sur le stockage de la prod, ni un poste de dev à pouvoir y supprimer quoi que ce soit. */
 import { mkdirSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { config } from './config.js';
 
 const LOCAL_PREFIX = '/uploads/';
 const { url, token, prefix, dir } = config.storage;
-const kind = token ? 'cdn' as const : config.production ? 'aucun' as const : 'local' as const;
+const kind = !config.production ? 'local' as const : token ? 'cdn' as const : 'aucun' as const;
 if (kind === 'local') mkdirSync(dir, { recursive: true });
+if (kind === 'local' && token) console.warn('Stockage : STORAGE_URL / STORAGE_TOKEN ignorés en dev — images enregistrées sur le disque local');
 if (kind === 'aucun') console.warn('Stockage : STORAGE_URL / STORAGE_TOKEN absents en production — envoi de fichiers désactivé');
 
 const base = url.replace(/\/+$/, '');
@@ -56,8 +58,9 @@ export const storage = {
   // supprime un fichier d'après l'URL enregistrée : un fichier local reste local même une fois le CDN activé
   async remove(key: string, publicUrl: string): Promise<void> {
     if (publicUrl.startsWith(LOCAL_PREFIX)) { try { unlinkSync(join(dir, key)); } catch { /* déjà absent */ } return; }
-    // fichier sur le CDN alors que le stockage n'est plus configuré : échec signalé, la ligne en base est à garder
-    if (kind !== 'cdn') throw new Error(`stockage : ${key} est sur le stockage distant, qui n'est pas configuré (STORAGE_URL / STORAGE_TOKEN)`);
+    // fichier sur le CDN alors que le stockage n'est plus configuré (ou en dev, base copiée de la prod) : échec signalé,
+    // la ligne en base est à garder
+    if (kind !== 'cdn') throw new Error(`stockage : ${key} est sur le stockage distant, ${config.production ? 'qui n’est pas configuré (STORAGE_URL / STORAGE_TOKEN)' : 'jamais utilisé en dev'}`);
     await cdn('DELETE', key);
   },
 };
