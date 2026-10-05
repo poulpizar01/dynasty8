@@ -10,7 +10,7 @@ Fichier **personnalisable**, importé par `CLAUDE.md` : ce qu'un agent (ou un d�
 
 ## Migration en cours (branche `migration-modele`)
 
-Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main), rangée dans `ancien/` le temps du portage (jamais servie : seuls les fichiers de premier niveau le sont). Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion un par un (annonces ✔, profil ✔, messagerie ✔, agenda ✔, RH ✔, ventes & statistiques ✔, comptabilité ✔, WebMap ✔) ; 4) reprise des données de la base actuelle ; 5) documentation de déploiement pour l'opérateur. `ancien/` disparaît à la fin.
+Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main), rangée dans `ancien/` le temps du portage (jamais servie : seuls les fichiers de premier niveau le sont). Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion un par un (annonces ✔, profil ✔, messagerie ✔, agenda ✔, RH ✔, ventes & statistiques ✔, comptabilité ✔, WebMap ✔) ; 4) reprise des données de la base actuelle ✔ (script `server/src/entreprise/reprise/reprise.ts`, mode d'emploi `deploy/REPRISE.md`) ; 5) documentation de déploiement pour l'opérateur. `ancien/` disparaît à la fin.
 
 ## Ce que le site ajoute au socle
 

@@ -102,7 +102,7 @@ export async function telechargerImage(brut: string): Promise<Buffer> {
 }
 
 // ---------- enregistrement ----------
-export async function enregistrerPhoto(usage: 'bien' | 'profil', compteId: number, octets: Buffer | undefined): Promise<ImageEnregistree> {
+export async function enregistrerPhoto(usage: 'bien' | 'profil', compteId: number | null, octets: Buffer | undefined): Promise<ImageEnregistree> {
   // enregistrerImage ne lit que le contenu du fichier
   const image = await enregistrerImage(usage === 'bien' ? 'biens' : 'profils', octets ? { buffer: octets } as Express.Multer.File : undefined);
   await prisma.photo.create({ data: { usage, cle: image.cle, url: image.url, cleMini: image.cleMini, urlMini: image.urlMini, compteId } });
