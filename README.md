@@ -1,19 +1,16 @@
-# Modèle de site d'entreprise RP — Roxwood Network
+# Dynasty 8
 
-Base réutilisable pour les sites des entreprises RP : une vitrine publique et un espace de gestion réservé aux employés (connexion Discord), déployés avec Docker derrière nginx. Tout est expliqué dans **[docs/modele.md](docs/modele.md)** : ce qui est commun à tous les sites et ce qui est propre à chacun, comment créer un site, récupérer les améliorations du socle, développer.
+Site de **Dynasty 8**, l'agence immobilière du serveur GTA RP FlashbackFA (univers fictif) :
+- **vitrine publique** : catalogue des biens (habitations, intérieurs, garages, exclusifs), cohérences RP par zone, VIP PLUS, équipe, FAQ, WebMap du serveur ;
+- **espace agents** (connexion Discord, ou « IG » depuis l'ordinateur en jeu) : gestion des annonces, profil public, messagerie, agenda, ressources humaines, ventes et primes, comptabilité et DOT.
 
-<!-- Dans un site créé à partir du modèle, ce fichier est le sien : remplacer tout ce qui précède par la présentation
-     du site (ce qu'il est, son adresse, où lire la suite), par exemple :
-
-# <Nom de l'entreprise>
-
-Site de <l'entreprise>, sur <le serveur RP> : <ce que fait la vitrine>, <ce que fait l'espace de gestion>.
-En ligne sur <adresse>.
+Adresse prévue : https://dynasty8.fbfa.fr (pas encore en ligne).
 
 | Pour… | Lire |
 |---|---|
-| Installer le site sur un serveur | server/README.md |
-| Comprendre le code propre au site (tables, routes, pièges) | ENTREPRISE.md |
-| Règles communes du code (pour Claude Code et les développeurs) | CLAUDE.md |
-| Le modèle sur lequel repose le site, développer en local | docs/modele.md |
--->
+| Installer le site sur le VPS FlashbackFA | [deploy/INSTALLATION.md](deploy/INSTALLATION.md) |
+| Comprendre le code propre au site : modules, tables, routes, pièges | [ENTREPRISE.md](ENTREPRISE.md) |
+| Règles communes du code (pour Claude Code et les développeurs) | [CLAUDE.md](CLAUDE.md) |
+| Le modèle sur lequel repose le site, développer en local, récupérer ses mises à jour | [docs/modele.md](docs/modele.md) |
+
+Construit sur le [modèle de site d'entreprise Roxwood Network](https://github.com/poulpizar01/roxwood-network-site-entreprise-template).

@@ -1,6 +1,6 @@
 # Notes propres à ce site — Dynasty 8
 
-Fichier **personnalisable**, importé par `CLAUDE.md` : ce qu'un agent (ou un développeur) doit savoir de Dynasty 8 en particulier. Seulement ce qui est propre au site : une règle qui vaudrait pour tout site va dans le modèle (`CLAUDE.md`, `docs/`).
+Fichier **personnalisable**, importé par `CLAUDE.md` : ce qu'un agent (ou un développeur) doit savoir de Dynasty 8 en particulier.
 
 Seulement ce qui est propre au site : ses modules, tables, routes, conventions et pièges. Une règle qui vaudrait pour tout site (sécurité, en jeu, déploiement…) va dans le modèle (`CLAUDE.md`, `docs/`), pour que tous les sites en profitent ; ici, un renvoi suffit.
 
