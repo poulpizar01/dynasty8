@@ -20,3 +20,49 @@ model Annonce {
   @@index([compteId])
   @@map("annonces")
 }
+
+// Bien immobilier proposé par l'agence (catalogue public de la vitrine, géré depuis la gestion).
+// Valeurs contrôlées par src/entreprise/biens.ts (catégories, sous-catégories, cohérences).
+model Bien {
+  id             Int       @id @default(autoincrement())
+  categorie      String    @db.VarChar(20) // habitation | garage
+  sousCategorie  String?   @map("sous_categorie") @db.VarChar(40)
+  titre          String    @db.VarChar(120)
+  zone           String?   @db.VarChar(80)
+  prix           Int       @default(0)
+  prixLocation   Int?      @map("prix_location")
+  dispoVente     Boolean   @default(true) @map("dispo_vente")
+  dispoLocation  Boolean   @default(false) @map("dispo_location")
+  places         Int?
+  description    String?   @db.VarChar(4000)
+  images         String[]  @default([]) // adresses des photos, dans l'ordre d'affichage
+  coupDeCoeur    Boolean   @default(false) @map("coup_de_coeur")
+  disponible     Boolean   @default(true) // visible sur le site public
+  vendu          Boolean   @default(false)
+  venduLe        DateTime? @map("vendu_le") @db.Timestamptz(6)
+  meuble         Boolean   @default(true)
+  coherence      String?   @db.VarChar(20)
+  coffreKg       Int?      @map("coffre_kg")
+  vip            Boolean   @default(false)
+  standing       Boolean   @default(false)
+  auteur         String?   @db.VarChar(64) // nom affiché de l'agent qui a créé l'annonce (gardé après son départ)
+  compteId       Int?      @map("compte_id") // agent qui a créé l'annonce ; null si son compte a été supprimé
+  creeLe         DateTime  @default(now()) @map("cree_le") @db.Timestamptz(6)
+  majLe          DateTime  @default(now()) @updatedAt @map("maj_le") @db.Timestamptz(6)
+
+  @@index([categorie])
+  @@index([disponible])
+  @@index([compteId])
+  @@map("biens")
+}
+
+// Profil public d'un agent (page Équipe de la vitrine), un par compte.
+model Profil {
+  compteId   Int     @id @map("compte_id")
+  poste      String? @db.VarChar(60) // à défaut : le libellé du grade
+  specialite String? @db.VarChar(80)
+  bio        String? @db.VarChar(1000)
+  photo      String? @db.VarChar(512) // adresse de la photo (stockage d'images)
+
+  @@map("profils")
+}

@@ -1,7 +1,8 @@
-// ENTREPRISE — ce que ce site branche sur le socle (contrat : src/socle/contrat.ts).
+// ENTREPRISE — ce que Dynasty 8 branche sur le socle (contrat : src/socle/contrat.ts).
 // Tout src/entreprise/ est libre : ajouter des routes (routes/), des modules métier, des tâches planifiées.
 import type { Entreprise } from '../socle/contrat.js';
 import { annonces } from './routes/annonces.js';
+import { vitrine } from './routes/vitrine.js';
 import { prisma } from '../socle/db.js';
 
 export const entreprise: Entreprise = {
@@ -15,7 +16,7 @@ export const entreprise: Entreprise = {
     grades: 'grades',
   },
 
-  routes: [annonces],
+  routes: [vitrine, annonces],
 
   // événements du bot Discord entreprise (voir docs/webhooks.md) : un traitement par type d'événement reçu.
   // Exemple : une absence acceptée devient une annonce. À remplacer par ce dont l'entreprise a besoin.
