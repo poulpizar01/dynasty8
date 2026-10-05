@@ -7,7 +7,7 @@ Sur un serveur FiveM qui fournit un ordinateur en jeu (FolkOS), le site peut s'a
 |---|---|
 | `FOLKOS_HOTE` | Origine de l'ordinateur en jeu (`https://…`, sans chemin), fournie par l'opérateur. Active l'affichage en iframe et le SDK de l'opérateur. |
 | `FOLKOS_CADRES` | Facultatif : autres pages autorisées à encadrer le site (origines `https://`, joker de sous-domaine admis, ou schémas comme `nui:`), séparées par des espaces. |
-| `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | Connexion « IG » : adresse du validateur SSO de l'opérateur (http admis : il est souvent sur la même machine) et identifiants du site. Les trois ensemble, et `FOLKOS_HOTE` avec. |
+| `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | Connexion « IG » : adresse du validateur SSO de l'opérateur (http admis : il est souvent sur la même machine) et identifiants du site. Les trois ensemble, et `FOLKOS_HOTE` avec. Validateur sur la même machine : `http://host.docker.internal:<port>` (déclaré dans `compose.yaml`), à condition qu'il écoute aussi sur l'adresse du pont Docker (`ip -4 addr show docker0`) et pas seulement sur `127.0.0.1`, et que le pare-feu de la machine laisse passer les réseaux Docker (172.16.0.0/12) vers son port ; sinon, son adresse publique en https. |
 
 Le serveur refuse de démarrer sur un réglage incomplet ou mal formé.
 
