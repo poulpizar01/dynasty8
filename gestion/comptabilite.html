@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="application-name" content="{{nom}}">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/gestion/gestion.css">
+  <script src="/socle/socle.js"></script>
+  <script src="/layout.js"></script>
+  <script src="/gestion/gestion.js"></script>
+  <title>Comptabilité — {{nom}}</title>
+</head>
+<body class="page-agents">
+  <!-- GESTION — comptabilité (permission « compta ») : relevé Tablettes, déclaration DOT, rémunération. Serveur :
+       entreprise/routes/compta.ts et routes/stats.ts. -->
+  <main class="admin-contenu">
+    <section id="panneau-comptabilite">
+      <div class="entete-admin">
+        <div>
+          <h2 style="margin-bottom:2px;">Comptabilité</h2>
+          <p style="margin:0;font-size:0.88rem;">Suivi des chiffres de l'entreprise.</p>
+        </div>
+      </div>
+
+      <div class="compta-sous-onglets" role="tablist">
+        <button type="button" class="compta-sous-onglet actif" data-compta-onglet="tablettes">📋 Tablettes</button>
+        <button type="button" class="compta-sous-onglet" data-compta-onglet="dot">🧾 Déclaration DOT</button>
+        <button type="button" class="compta-sous-onglet" data-compta-onglet="parametres">💰 Rémunération</button>
+      </div>
+
+      <!-- Sous-onglet : Tablettes -->
+      <div id="compta-panneau-tablettes">
+        <div class="entete-admin" style="margin-top:20px;">
+          <div>
+            <h3 class="comptes-sous-titre" style="margin:0;">Tablettes</h3>
+            <p class="champ-aide" style="margin:4px 0 0;">Collez un relevé (facturier, runs, ventes...) copié depuis un tableur ou un bot Discord, pour obtenir un tableau propre et lisible.</p>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-danger cache" id="bouton-reinitialiser-tablette">🗑️ Réinitialiser</button>
+            <button type="button" class="btn btn-or" id="bouton-importer-tablette">📋 Importer</button>
+          </div>
+        </div>
+        <div id="zone-message-tablette"></div>
+        <div id="compta-tablette-vide" class="etat-vide">
+          <p>Aucune donnée importée pour le moment. Cliquez sur « Importer » pour coller votre premier relevé.</p>
+        </div>
+        <div id="compta-tablette-resultat" class="cache">
+          <p class="champ-aide" id="compta-tablette-info" style="margin:0 0 10px;"></p>
+          <div style="overflow-x:auto;">
+            <table class="table-admin" id="table-tablette"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sous-onglet : Paramètres — configuration de la rémunération (salaire
+           fixe, primes vente/location par palier, droits par grade). Modifie
+           directement stats_taux_commission et stats_baremes_primes, déjà
+           utilisées par Statistiques et DOT (voir calculerRecapSemaine côté
+           serveur) : aucune donnée séparée, juste l'écran pour les régler. -->
+      <div id="compta-panneau-parametres" class="cache">
+        <div class="entete-admin" style="margin-top:20px;">
+          <div>
+            <h3 class="comptes-sous-titre" style="margin:0;">Rémunération</h3>
+            <p class="champ-aide" style="margin:4px 0 0;">Salaire fixe et salaire par palier de ventes/locations, par grade — utilisés automatiquement dans « Mon profil », le récap de « Ventes &amp; statistiques » et la déclaration DOT.</p>
+          </div>
+        </div>
+        <div id="zone-message-parametres"></div>
+
+        <h4 class="comptes-sous-titre" style="margin:26px 0 4px;">Par grade</h4>
+        <p class="champ-aide" style="margin:0 0 12px;">Les 3 interrupteurs sont indépendants : un grade peut toucher le salaire fixe, le salaire aux paliers, les deux, ou aucun des deux.</p>
+        <div style="overflow-x:auto;">
+          <table class="table-admin" id="table-remuneration-grades">
+            <thead>
+              <tr>
+                <th>Grade</th>
+                <th style="text-align:center;">Salaire fixe</th>
+                <th style="text-align:right;">Montant / semaine</th>
+                <th style="text-align:center;">Paliers ventes</th>
+                <th style="text-align:center;">Paliers locations</th>
+              </tr>
+            </thead>
+            <tbody id="corps-table-remuneration-grades"><tr><td colspan="5">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+
+        <div style="display:flex; gap:28px; flex-wrap:wrap; margin-top:30px;">
+          <div style="flex:1; min-width:280px;">
+            <h4 class="comptes-sous-titre" style="margin:0 0 4px;">Paliers — Salaire selon les ventes</h4>
+            <p class="champ-aide" style="margin:0 0 10px;">Nombre de ventes atteint → montant de salaire (le palier le plus haut atteint s'applique).</p>
+            <div style="overflow-x:auto;">
+              <table class="table-admin" id="table-baremes-vente">
+                <thead><tr><th>Ventes atteintes</th><th style="text-align:right;">Montant</th><th></th></tr></thead>
+                <tbody id="corps-table-baremes-vente"><tr><td colspan="3">Chargement…</td></tr></tbody>
+              </table>
+            </div>
+            <div class="palier-ajout" data-type="vente" style="display:flex;gap:8px;align-items:end;margin-top:12px;">
+              <div class="champ" style="margin:0;flex:1;"><label>Seuil</label><input type="number" min="1" step="1" class="palier-nouveau-seuil" placeholder="ex. 20"></div>
+              <div class="champ" style="margin:0;flex:1;"><label>Montant</label><input type="number" min="0" step="1000" class="palier-nouveau-montant" placeholder="ex. 10000"></div>
+              <button type="button" class="btn btn-fantome btn-petit palier-ajouter" style="margin-bottom:18px;">+ Ajouter</button>
+            </div>
+          </div>
+          <div style="flex:1; min-width:280px;">
+            <h4 class="comptes-sous-titre" style="margin:0 0 4px;">Paliers — Salaire selon les locations</h4>
+            <p class="champ-aide" style="margin:0 0 10px;">Nombre de locations atteint → montant de salaire (le palier le plus haut atteint s'applique).</p>
+            <div style="overflow-x:auto;">
+              <table class="table-admin" id="table-baremes-location">
+                <thead><tr><th>Locations atteintes</th><th style="text-align:right;">Montant</th><th></th></tr></thead>
+                <tbody id="corps-table-baremes-location"><tr><td colspan="3">Chargement…</td></tr></tbody>
+              </table>
+            </div>
+            <div class="palier-ajout" data-type="location" style="display:flex;gap:8px;align-items:end;margin-top:12px;">
+              <div class="champ" style="margin:0;flex:1;"><label>Seuil</label><input type="number" min="1" step="1" class="palier-nouveau-seuil" placeholder="ex. 20"></div>
+              <div class="champ" style="margin:0;flex:1;"><label>Montant</label><input type="number" min="0" step="1000" class="palier-nouveau-montant" placeholder="ex. 10000"></div>
+              <button type="button" class="btn btn-fantome btn-petit palier-ajouter" style="margin-bottom:18px;">+ Ajouter</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sous-onglet : DOT (§6.3) — la déclaration hebdomadaire versée à la
+           DOT (organisme fiscal du serveur RP). Calculée automatiquement à
+           partir du CA Brut (colonne « Total » de l'onglet Tablettes), des
+           dépenses/retraits saisis ci-dessous, et des primes -- qui reprennent
+           désormais exactement les mêmes montants que « Mon profil »
+           (synchronisation Google Sheets + barèmes), quelle que soit la
+           semaine choisie ci-dessus (voir remplacerPrimesParSheet côté
+           serveur). -->
+      <div id="compta-panneau-dot" class="cache">
+        <div class="entete-admin" style="margin-top:20px;">
+          <div>
+            <h3 class="comptes-sous-titre" style="margin:0;">Déclaration DOT</h3>
+            <p class="champ-aide" style="margin:4px 0 0;">Calculée à partir de l'onglet Tablettes ; les salaires reprennent les mêmes montants que « Mon profil » (fixe du grade + palier de ventes/locations).</p>
+          </div>
+          <select id="select-semaine-dot"></select>
+        </div>
+        <div id="zone-message-dot"></div>
+
+        <div id="dot-resume-vide" class="etat-vide cache">
+          <p>Aucune vente/location enregistrée pour cette semaine — le total des salaires ne peut pas être calculé (le reste s'affiche quand même ci-dessous).</p>
+        </div>
+        <div style="overflow-x:auto;margin:16px 0 8px;">
+          <table class="table-admin">
+            <tbody id="corps-table-dot-resume"></tbody>
+          </table>
+        </div>
+        <p class="champ-aide" id="dot-plafonds"></p>
+
+        <div class="entete-admin" style="margin-top:32px;">
+          <div>
+            <h3 style="margin-bottom:2px;">Dépense déductible &amp; retraits</h3>
+            <p style="margin:0;font-size:0.88rem;">Ajoutez-les ici au fil de l'eau — ils entrent directement dans le calcul ci-dessus.</p>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-fantome" id="bouton-nouvelle-depense">+ Dépense déductible</button>
+            <button type="button" class="btn btn-fantome" id="bouton-nouveau-retrait">+ Retrait</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:14px;">
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+              <h4 style="margin:0;font-size:0.92rem;">Dépense déductible</h4>
+              <div style="display:flex;gap:8px;">
+                <button type="button" class="actions-icone" id="bouton-copier-depenses" title="Copier le tableau" aria-label="Copier le tableau">📋</button>
+                <button type="button" class="actions-icone actions-icone--danger" id="bouton-reinitialiser-depenses" title="Réinitialiser" aria-label="Réinitialiser">🗑️</button>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="table-admin">
+                <thead><tr><th>Date</th><th>Justificatif</th><th>Montant</th><th></th></tr></thead>
+                <tbody id="corps-table-dot-depenses"></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+              <h4 style="margin:0;font-size:0.92rem;">Tableau des retraits</h4>
+              <div style="display:flex;gap:8px;">
+                <button type="button" class="actions-icone" id="bouton-copier-retraits" title="Copier le tableau" aria-label="Copier le tableau">📋</button>
+                <button type="button" class="actions-icone actions-icone--danger" id="bouton-reinitialiser-retraits" title="Réinitialiser" aria-label="Réinitialiser">🗑️</button>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="table-admin">
+                <thead><tr><th>Date</th><th>Justificatif</th><th>Montant</th><th></th></tr></thead>
+                <tbody id="corps-table-dot-retraits"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="entete-admin" style="margin-top:36px;">
+          <div>
+            <h3 style="margin-bottom:2px;">Tableau des salariés</h3>
+            <p style="margin:0;font-size:0.88rem;">Prêt à copier-coller dans le document de la DOT (RUN/FACTURE/VENTE viennent du relevé Tablettes — 0$ si le salarié n'y figure pas). Salaire = fixe du grade + palier de ventes/locations ; Prime = à saisir à la main dans le document si besoin. La copie envoie des nombres, et la colonne CA TOTAL REALISE en formule (=RUN+FACTURE+VENTE), sans la ligne de titres.</p>
+          </div>
+          <div class="dot-copie-outils">
+            <label for="dot-copie-premiere-ligne" class="dot-copie-libelle">Coller à partir de la ligne</label>
+            <input type="number" id="dot-copie-premiere-ligne" class="table-input dot-copie-ligne" min="1" step="1" value="2" title="Numéro de la ligne du document DOT où sera collée la première personne (pour que la formule CA TOTAL vise les bonnes cases)">
+            <button type="button" class="btn btn-fantome" id="bouton-copier-salaries">📋 Copier le tableau</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="table-admin">
+            <thead>
+              <tr><th>Nom du salarié</th><th>Grade</th><th>RUN</th><th>FACTURE</th><th>VENTE</th><th>CA TOTAL REALISE</th><th>Salaire</th><th>Prime</th></tr>
+            </thead>
+            <tbody id="corps-table-dot-salaries"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+<div class="modale-fond cache" id="modale-import-tablette">
+  <div class="modale" style="max-width:1100px;">
+    <div class="modale-entete">
+      <h3>Importer un relevé — Tablettes</h3>
+      <button id="fermer-modale-import-tablette">✕</button>
+    </div>
+    <div id="zone-message-modale-import"></div>
+    <div class="champ">
+      <label for="import-tablette-texte">Collez vos données ici</label>
+      <p class="champ-aide" style="margin-top:-4px;">
+        Le plus fiable : copiez les cellules directement depuis Excel, Google Sheets ou un tableau similaire, puis collez-les ici (Ctrl+V) — la première ligne doit contenir les titres des colonnes.
+        Si vous tapez ou collez un texte à espaces (par exemple depuis Discord) et qu'une ligne comme « TOTAL » n'a pas de valeur pour une colonne, mettez un tiret « - » à cet endroit avant de coller, sinon les colonnes suivantes risquent de se décaler — vérifiez toujours l'aperçu ci-dessous avant d'enregistrer.
+      </p>
+      <textarea id="import-tablette-texte" rows="18" wrap="off" style="font-family:monospace;font-size:0.82rem;white-space:pre;overflow-x:auto;" placeholder="Nom    Rang    Factures    Runs    Ventes    Total entreprise    Part employé    Heures de service
+Javier Silva    Co-patron    0    0    0    0    0    0h52min
+TOTAL    -    0    0    0    0    0    -"></textarea>
+    </div>
+    <div id="apercu-import-tablette" class="cache">
+      <p class="champ-aide" style="margin:14px 0 8px;">Aperçu — vérifiez que chaque valeur est dans la bonne colonne avant d'enregistrer :</p>
+      <div style="overflow-x:auto;max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">
+        <table class="table-admin" id="table-apercu-import"></table>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-or" id="bouton-enregistrer-import-tablette" style="flex:1;" disabled>Enregistrer ce tableau</button>
+      <button type="button" class="btn btn-fantome" id="bouton-annuler-import-tablette">Annuler</button>
+    </div>
+  </div>
+</div>
+<div class="modale-fond cache" id="modale-ecriture-dot">
+  <div class="modale" style="max-width:420px;">
+    <div class="modale-entete">
+      <h3 id="titre-modale-ecriture-dot">Nouvelle dépense déductible</h3>
+      <button id="fermer-modale-ecriture-dot">✕</button>
+    </div>
+    <div id="zone-message-modale-ecriture-dot"></div>
+    <form id="formulaire-ecriture-dot">
+      <input type="hidden" id="ecriture-dot-type">
+      <div class="champ">
+        <label for="ecriture-dot-date">Date</label>
+        <input type="text" id="ecriture-dot-date" placeholder="JJ/MM/AAAA" maxlength="10" autocomplete="off">
+      </div>
+      <div class="champ">
+        <label for="ecriture-dot-justificatif">Justificatif</label>
+        <input type="text" id="ecriture-dot-justificatif" required maxlength="200" placeholder="ex : Essence" autocomplete="off">
+      </div>
+      <div class="champ">
+        <label for="ecriture-dot-montant">Montant ($)</label>
+        <input type="number" id="ecriture-dot-montant" required min="0" step="1" autocomplete="off">
+      </div>
+      <button type="submit" class="btn btn-or" style="width:100%;margin-top:18px;">Ajouter</button>
+    </form>
+  </div>
+</div>
+
+  <script src="/gestion/comptabilite.js"></script>
+</body>
+</html>

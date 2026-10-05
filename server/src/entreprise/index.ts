@@ -5,6 +5,7 @@ import { planifierNettoyagePhotos } from './photos.js';
 import { purgerReponses, recevoirCandidature } from './rh.js';
 import { agenda } from './routes/agenda.js';
 import { biens } from './routes/biens.js';
+import { compta } from './routes/compta.js';
 import { messagerie } from './routes/messagerie.js';
 import { profils } from './routes/profils.js';
 import { rh } from './routes/rh.js';
@@ -27,7 +28,7 @@ export const entreprise: Entreprise = {
     comptabilite: 'compta',
   },
 
-  routes: [vitrine, biens, profils, messagerie, agenda, rh, stats],
+  routes: [vitrine, biens, profils, messagerie, agenda, rh, stats, compta],
 
   // événements du bot Discord entreprise (docs/webhooks.md) : candidatures acceptées → fiches RH
   webhooks: {

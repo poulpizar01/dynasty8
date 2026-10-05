@@ -117,7 +117,7 @@ stats.get('/api/stats/remuneration', ...compta, async (_req, res) => {
   res.json({
     grades: tousLesGrades().map(g => {
       const r = parGrade.get(g.cle);
-      return { grade: g.cle, libelle: g.libelle, salaireFixe: r?.salaireFixe ?? 0, salaireActif: r?.salaireActif ?? false, primeVenteActive: r?.primeVenteActive ?? true, primeLocationActive: r?.primeLocationActive ?? true };
+      return { grade: g.cle, libelle: g.libelle, couleur: g.couleur, salaireFixe: r?.salaireFixe ?? 0, salaireActif: r?.salaireActif ?? false, primeVenteActive: r?.primeVenteActive ?? true, primeLocationActive: r?.primeLocationActive ?? true };
     }),
     baremesVentes: baremes.filter(b => b.type === 'vente').map(({ id, seuil, montant }) => ({ id, seuil, montant })),
     baremesLocations: baremes.filter(b => b.type === 'location').map(({ id, seuil, montant }) => ({ id, seuil, montant })),

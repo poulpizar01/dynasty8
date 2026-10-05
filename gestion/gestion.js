@@ -12,6 +12,7 @@ const GESTION_NAV = [
   { cle: 'comptes', href: 'comptes.html', label: 'Comptes & accès', icone: 'lock', permission: 'comptes' },
   { cle: 'statistiques', href: 'statistiques.html', label: 'Ventes & statistiques', icone: 'chart', permission: 'ventes' },
   { cle: 'rh', href: 'rh.html', label: 'Ressources humaines', icone: 'users', permission: 'rh-voir' },
+  { cle: 'comptabilite', href: 'comptabilite.html', label: 'Comptabilité', icone: 'calc', permission: 'compta' },
   { cle: 'grades', href: 'grades.html', label: 'Grades', icone: 'gear', permission: 'grades' },
   { groupe: 'Outils' },
   { href: 'https://intra.dynasty8.fbfa.fr/login', label: 'Registre', icone: 'book', externe: true },

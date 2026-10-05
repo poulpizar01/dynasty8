@@ -10,7 +10,7 @@ Fichier **personnalisable**, importé par `CLAUDE.md` : ce qu'un agent (ou un d�
 
 ## Migration en cours (branche `migration-modele`)
 
-Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main), rangée dans `ancien/` le temps du portage (jamais servie : seuls les fichiers de premier niveau le sont). Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion un par un (annonces ✔, profil ✔, messagerie ✔, agenda ✔, RH ✔, ventes & statistiques ✔) ; 4) reprise des données de la base actuelle ; 5) documentation de déploiement pour l'opérateur. `ancien/` disparaît à la fin.
+Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main), rangée dans `ancien/` le temps du portage (jamais servie : seuls les fichiers de premier niveau le sont). Étapes : 1) FolkOS dans le socle du modèle ✔ ; 2) squelette, vitrine et catalogue ✔ ; 3) modules de la gestion un par un (annonces ✔, profil ✔, messagerie ✔, agenda ✔, RH ✔, ventes & statistiques ✔, comptabilité ✔ ; reste : WebMap sur son sous-domaine) ; 4) reprise des données de la base actuelle ; 5) documentation de déploiement pour l'opérateur. `ancien/` disparaît à la fin.
 
 ## Ce que le site ajoute au socle
 
@@ -23,7 +23,7 @@ Le site est porté depuis l'ancienne version (JavaScript + SQL écrit à la main
 | Agenda personnel | tout compte validé, chacun le sien | `gestion/agenda.html` + `agenda.js` | `routes/agenda.ts` : `GET /api/agenda?debut=&fin=`, `POST`, `PUT` / `DELETE /api/agenda/:id` | `evenements_agenda` |
 | Ressources humaines | `rh-voir` + une par action : `rh-creer`, `rh-modifier`, `rh-desactiver`, `rh-reactiver`, `rh-sensible` (téléphone, RIB), `rh-parametrer` (réglages du bot) | `gestion/rh.html` + `rh.js` | `routes/rh.ts` (`/api/rh/employes…`, `/api/rh/bot…`), logique `rh.ts` ; webhook `recruitment.updated` | `employes`, `rh_arrivees_bot` ; réglages `rh.*` (socle) |
 | Ventes & statistiques | `ventes` (voir), `ventes-gerer` (supprimer, synchroniser) ; bot : clé `STATS_BOT_SECRET` | `gestion/statistiques.html` + `statistiques.js` ; primes dans « Mon profil » | `routes/stats.ts` (`/api/stats/…`, `/api/tableur/…`, `/api/profil/primes`), logique `stats/` (`calcul.ts` : moteur pur, `ventes.ts`, `tableur.ts`) | `ventes`, `ventes_doublons`, `tableur_lignes`, `tableur_etat`, `tableur_archives` (+ `_lignes`) |
-| Rémunération (Comptabilité) | `compta` | page Comptabilité (à venir) | `routes/stats.ts` : `/api/stats/remuneration…`, `/api/stats/baremes…` | `remunerations_grades`, `baremes_primes` |
+| Comptabilité : relevé Tablettes, DOT, rémunération | `compta` | `gestion/comptabilite.html` + `comptabilite.js` | `routes/compta.ts` (`/api/compta/…`), rémunération dans `routes/stats.ts` ; récapitulatif hebdomadaire `stats/recap.ts` | `compta_imports`, `compta_dot_ecritures`, `dot_bareme_imposition`, `remunerations_grades`, `baremes_primes` |
 | Comptes, grades (socle) | `comptes`, `grades` | `comptes.html`, `grades.html`, `compte.html`, `accueil.html` | socle | socle |
 
 ## Vitrine

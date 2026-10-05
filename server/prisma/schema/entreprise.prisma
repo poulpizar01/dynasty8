@@ -298,3 +298,47 @@ model TableurArchiveLigne {
   @@index([employeId])
   @@map("tableur_archives_lignes")
 }
+
+// ---------- Comptabilité (routes/compta.ts) ----------
+
+// Relevé collé (Tablettes) : le navigateur le découpe, le serveur revalide et garde CHAQUE import (rien n'est écrasé ;
+// réinitialiser ou retirer une ligne enregistre un nouvel import). Seul le plus récent est lu.
+model ImportCompta {
+  id        Int      @id @default(autoincrement())
+  type      String   @default("tablettes") @db.VarChar(20)
+  colonnes  Json
+  lignes    Json
+  compteId  Int?     @map("compte_id") // auteur ; null si son compte a été supprimé
+  importeLe DateTime @default(now()) @map("importe_le") @db.Timestamptz(6)
+
+  @@index([type, importeLe(sort: Desc)])
+  @@map("compta_imports")
+}
+
+// Dépense déductible ou retrait de la semaine, saisis à la main pour la déclaration DOT.
+model EcritureDot {
+  id           Int      @id @default(autoincrement())
+  type         String   @db.VarChar(10) // depense | retrait
+  dateEcriture String   @default("") @map("date_ecriture") @db.VarChar(10) // JJ/MM/AAAA
+  justificatif String   @db.VarChar(200)
+  montant      Int
+  compteId     Int?     @map("compte_id")
+  creeLe       DateTime @default(now()) @map("cree_le") @db.Timestamptz(6)
+
+  @@index([type])
+  @@map("compta_dot_ecritures")
+}
+
+// Barème d'imposition de la DOT (fixé par l'organisme du serveur RP, le même pour toutes les entreprises).
+model BaremeImposition {
+  id                Int   @id @default(autoincrement())
+  seuilMin          Int   @map("seuil_min")
+  seuilMax          Int   @map("seuil_max")
+  taux              Float
+  salaireMaxEmploye Int   @map("salaire_max_employe")
+  salaireMaxPatron  Int   @map("salaire_max_patron")
+  primeMaxEmploye   Int   @map("prime_max_employe")
+  primeMaxPatron    Int   @map("prime_max_patron")
+
+  @@map("dot_bareme_imposition")
+}
