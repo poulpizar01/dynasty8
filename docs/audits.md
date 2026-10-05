@@ -80,7 +80,7 @@ Cherche :
 ## 5. Socle et règles du modèle
 
 ```
-Vérifie uniquement le respect des règles propres à ce modèle, décrites dans CLAUDE.md et README.md.
+Vérifie uniquement le respect des règles propres à ce modèle, décrites dans CLAUDE.md et docs/modele.md.
 Cherche :
 - dans un site créé depuis le modèle : toute différence entre les fichiers du socle (liste dans CLAUDE.md) et ceux du modèle (git remote « modele » s'il existe : git diff modele/main -- <fichiers du socle>) ; chaque différence est un point à reporter dans le modèle ou à annuler ;
 - dans le dépôt modèle : contenu propre à une entreprise (nom, lieu, métier) hors de l'exemple « annonces » ;
