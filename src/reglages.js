@@ -34,7 +34,7 @@ export const REGLAGES = [
   { cle: "coherences_url", groupe: "prive", type: "url", ancienneVariable: "COHERENCES_SHEET_URL", libelle: "Document des cohérences",
     aide: "Lien du document ouvert par le bouton « Cohérences » de l'espace agents." },
   { cle: "sheet", groupe: "prive", type: "sheet", ancienneVariable: "GOOGLE_SHEET_ID", libelle: "Google Sheets de la synchronisation",
-    aide: "Collez le lien du tableur de la Direction (onglet voulu ouvert) : l'identifiant et l'onglet en sont extraits. Le tableur doit être partagé en lecture « Tous les utilisateurs disposant du lien »." },
+    aide: "Ouvrez dans Google Sheets l'onglet du récapitulatif des ventes, puis collez ici l'adresse de la barre du navigateur : elle doit se terminer par « gid=… », qui désigne cet onglet (sans gid, c'est le premier onglet du classeur qui est lu). Le tableur doit être partagé en lecture « Tous les utilisateurs disposant du lien »." },
   { cle: "registre_url", groupe: "prive", type: "url", libelle: "Registre (intranet)",
     aide: "Lien du bouton « Registre » de l'espace agents. Vide : le bouton est masqué." },
   { cle: "discord_agence", groupe: "public", type: "url", libelle: "Discord de l'agence",

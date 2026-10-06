@@ -3383,22 +3383,25 @@ async function chargerSyncSheet() {
     const bouton = document.getElementById("bouton-synchroniser-sheet");
     if (bouton) {
       bouton.disabled = nonConfigure;
-      bouton.title = nonConfigure ? "Synchronisation non configurée sur ce serveur" : "";
+      bouton.title = nonConfigure ? "Réglez d’abord le lien du Google Sheets dans « Liens du site »" : "";
     }
 
     if (nonConfigure) {
-      etatLigne.textContent = "Synchronisation non configurée sur ce serveur (GOOGLE_SHEET_ID absent du .env).";
+      etatLigne.textContent = "Synchronisation en attente : réglez le lien du Google Sheets dans « Liens du site », plus haut.";
     } else if (!r.etat || r.etat.statut === "desactive") {
       etatLigne.textContent = "Pas encore synchronisé.";
     } else if (r.etat.statut === "erreur") {
       etatLigne.textContent = `Dernière tentative en échec (${formaterDateAdmin(r.etat.derniere_sync)}) : ${r.etat.erreur}`;
+    } else if (!r.etat.nb_lignes) {
+      // Lecture réussie mais aucun agent trouvé : presque toujours le mauvais onglet du classeur.
+      etatLigne.textContent = `Dernière synchro : ${formaterDateAdmin(r.etat.derniere_sync)} — le classeur a été lu, mais aucune ligne d’agent n’y a été trouvée. Le lien réglé pointe sans doute sur le mauvais onglet : ouvrez l’onglet du récapitulatif des ventes dans Google Sheets, copiez l’adresse de la barre du navigateur (elle se termine par « gid=… ») et collez-la dans « Liens du site ».`;
     } else {
       etatLigne.textContent = `Dernière synchro : ${formaterDateAdmin(r.etat.derniere_sync)} — ${r.etat.nb_lignes} ligne(s) lue(s), ${r.etat.nb_apparies} reconnue(s) (compte du site retrouvé).`;
     }
 
     if (!r.lignes.length) {
       corps.innerHTML = nonConfigure
-        ? `<tr><td colspan="5">Aucune ligne : la synchronisation n'est pas configurée sur ce serveur.</td></tr>`
+        ? `<tr><td colspan="5">Aucune ligne : le lien du Google Sheets n'est pas encore réglé.</td></tr>`
         : `<tr><td colspan="5">Aucune ligne lue pour le moment — cliquez sur « Synchroniser maintenant ».</td></tr>`;
       return;
     }
