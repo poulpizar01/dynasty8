@@ -95,10 +95,10 @@
     <button class="lien-onglet cache" data-onglet="comptes" id="onglet-comptes"><svg class="ico"><use href="#ico-lock"></use></svg><span>Comptes &amp; accès</span></button>
 
     <p class="admin-nav-groupe" id="groupe-outils">Outils</p>
-    <a href="https://intra.dynasty8.fbfa.fr/login" target="_blank" rel="noopener" class="lien-onglet" id="lien-registre" title="Registre Dynasty 8 (intranet)"><svg class="ico"><use href="#ico-book"></use></svg><span>Registre</span></a>
+    <a href="#" hidden target="_blank" rel="noopener" class="lien-onglet" id="lien-registre" title="Registre Dynasty 8 (intranet)"><svg class="ico"><use href="#ico-book"></use></svg><span>Registre</span></a>
     <a href="#" hidden target="_blank" rel="noopener" class="lien-onglet" id="lien-coherence-sheet" title="Tableau des cohérences (Google Sheets, lecture seule)"><svg class="ico"><use href="#ico-sheet"></use></svg><span>Cohérence</span></a>
     <a href="/api/carte/" target="_blank" rel="noopener" class="lien-onglet cache" id="lien-webmap"><svg class="ico"><use href="#ico-map"></use></svg><span>WebMap</span></a>
-    <button class="lien-onglet cache" data-onglet="parametres" id="onglet-parametres"><svg class="ico"><use href="#ico-sync"></use></svg><span>Synchro Sheets</span></button>
+    <button class="lien-onglet cache" data-onglet="parametres" id="onglet-parametres"><svg class="ico"><use href="#ico-sync"></use></svg><span>Paramètres</span></button>
 
     <div class="admin-bas">
       <div class="admin-aide">
@@ -709,10 +709,28 @@
     <section id="panneau-parametres" class="cache">
       <div class="entete-admin">
         <div>
-          <h2 style="margin-bottom:2px;">Synchronisation Google Sheets</h2>
-          <p style="margin:0;font-size:0.88rem;">Lecture du Sheet de l'agence pour alimenter « Mon profil » et la comptabilité (ventes, locations, salaires) — réservé à la Direction.</p>
+          <h2 style="margin-bottom:2px;">Paramètres</h2>
+          <p style="margin:0;font-size:0.88rem;">Liens du site et synchronisation du Google Sheets de l'agence — réservé à la Direction.</p>
         </div>
       </div>
+
+      <!-- Liens du site (WebMap, cohérences, Google Sheets, registre, Discord,
+           boutique...) : aucun n'est écrit dans le code, tout se règle ici et
+           s'applique aussitôt (voir src/reglages.js). Patron, Co Patron et
+           Développeur web seulement. Les champs sont construits par admin.js
+           à partir de GET /api/reglages. -->
+      <div id="reglages-liens" class="cache">
+        <h3 class="comptes-sous-titre" style="margin-top:34px;">🔗 Liens du site</h3>
+        <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">Chaque lien se modifie ici et s'applique tout de suite, sans redémarrer le site. Un champ vidé masque le bouton correspondant — sauf pour la WebMap, les cohérences et le Google Sheets, où c'est alors la valeur du fichier .env du serveur qui sert, si elle existe.</p>
+        <div id="zone-message-reglages"></div>
+        <form id="formulaire-reglages" style="max-width:860px;">
+          <div id="reglages-champs"></div>
+          <button type="submit" class="btn btn-or btn-petit" id="reglages-enregistrer">Enregistrer les liens</button>
+        </form>
+      </div>
+
+      <h3 class="comptes-sous-titre" style="margin-top:40px;">Synchronisation Google Sheets</h3>
+      <p class="champ-aide" style="margin:0 0 4px;max-width:760px;">Lecture du Sheet de l'agence pour alimenter « Mon profil » et la comptabilité (ventes, locations, salaires).</p>
 
       <!-- Synchronisation Google Sheets ("Mon profil" -> ventes/locations/primes
            de chaque membre). Lu directement via son export CSV public (le

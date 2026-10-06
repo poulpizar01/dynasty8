@@ -395,7 +395,7 @@
   chargerBiens({ coherence: zone, cible: "grille-biens", videMessage: `Aucun bien rattaché à la cohérence ${zone} pour le moment.` });
 
   const cta = document.getElementById("lien-discord-cta");
-  cta.href = LIEN_DISCORD; cta.target = "_blank"; cta.rel = "noopener";
+  cta.dataset.lien = "discord_agence"; appliquerLiens(cta.parentNode);
 
   // Diaporama : chaque diapositive du guide officiel a été convertie en image
   // (Google bloque l'affichage direct de ses présentations "Slides" dans une page

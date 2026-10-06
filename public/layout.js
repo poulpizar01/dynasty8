@@ -3,8 +3,22 @@
 // (en-tête, pied de page, petites fonctions utilitaires)
 // ============================================================================
 
-// Adresse d'invitation Discord du serveur — à remplacer par la vraie une fois disponible.
-const LIEN_DISCORD = "https://discord.com/invite/zCsPrrR3uw";
+// Liens externes (Discord de l'agence, boutique, prestataire...) : aucun n'est
+// écrit ici. Ils se règlent dans l'espace agents (onglet Paramètres) et sont
+// lus une fois par page sur /api/liens. Un lien <a data-lien="cle"> reçoit son
+// adresse ; s'il n'est pas réglé, il est masqué plutôt que de pointer nulle part.
+const D8_LIENS_PRETS = fetch("/api/liens")
+  .then((r) => (r.ok ? r.json() : {}))
+  .catch(() => ({}));
+function appliquerLiens(racine) {
+  return D8_LIENS_PRETS.then((liens) => {
+    (racine || document).querySelectorAll("a[data-lien]").forEach((a) => {
+      const adresse = liens[a.dataset.lien];
+      if (adresse) { a.href = adresse; a.target = "_blank"; a.rel = "noopener"; }
+      a.classList.toggle("cache", !adresse);
+    });
+  });
+}
 // Adresse de la WebMap : un chemin sur NOTRE domaine, jamais l'adresse
 // réelle du serveur qui héberge la carte — voir carteProxy() dans
 // src/index.js, qui va la chercher côté serveur et la reproxie ici. La
@@ -38,7 +52,7 @@ const LIENS_NAV = [
       { href: "/equipe.html", texte: "Notre équipe" },
       { href: "/faq.html", texte: "FAQ" },
     ] },
-  { href: LIEN_DISCORD, texte: "Nous contacter", cle: "contact", externe: true },
+  { lien: "discord_agence", texte: "Nous contacter", cle: "contact" },
 ];
 
 function logoImg(cssClass) {
@@ -71,8 +85,9 @@ function injecterEntete(cleActive) {
           <div class="nav-sous-menu">${sousLiens}</div>
         </div>`;
     }
-    const attrsExterne = l.externe ? 'target="_blank" rel="noopener"' : "";
-    return `<a href="${l.href}" ${attrsExterne} ${actif ? 'aria-current="page"' : ""}>${l.texte}</a>`;
+    // Lien réglé dans Paramètres : adresse posée par appliquerLiens().
+    if (l.lien) return `<a data-lien="${l.lien}" class="cache">${l.texte}</a>`;
+    return `<a href="${l.href}" ${actif ? 'aria-current="page"' : ""}>${l.texte}</a>`;
   }).join("");
   monte.innerHTML = `
     <div class="entete-barre">
@@ -149,7 +164,7 @@ function injecterPied() {
         <div>
           <h4>Nous contacter</h4>
           <ul>
-            <li><a href="${LIEN_DISCORD}" id="lien-discord" target="_blank" rel="noopener">Discord du serveur</a></li>
+            <li><a data-lien="discord_agence" id="lien-discord" class="cache">Discord du serveur</a></li>
             <li><a href="${LIEN_WEBMAP}">WebMap</a></li>
             <li><a href="/admin.html">Espace agents</a></li>
           </ul>
@@ -163,9 +178,9 @@ function injecterPied() {
         <img src="/img/roxwood-logo.png" alt="" class="pied-credit-logo" width="28" height="26" loading="lazy">
         <span>Développé par <strong>Roxwood Network</strong></span>
         <span class="pied-credit-sep" aria-hidden="true">|</span>
-        <a href="https://roxwood-network.fbfa.fr/" target="_blank" rel="noopener">Site</a>
+        <a data-lien="prestataire_site" class="cache">Site</a>
         <span class="pied-credit-sep" aria-hidden="true">|</span>
-        <a href="https://discord.com/invite/dDAFWxeU8" target="_blank" rel="noopener">Discord</a>
+        <a data-lien="prestataire_discord" class="cache">Discord</a>
       </div>
     </div>`;
 }
@@ -262,6 +277,7 @@ function initialiserLayout(cleActive) {
   initialiserFolkOS();
   injecterEntete(cleActive);
   injecterPied();
+  appliquerLiens();
   injecterCadre();
   demarrerDiaporamaHero();
   // Grilles déjà présentes dans le HTML statique au chargement (équipe, services,

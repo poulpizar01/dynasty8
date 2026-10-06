@@ -99,7 +99,7 @@
 <script>
   initialiserLayout("confidentialite");
   const cta = document.getElementById("lien-discord-cta");
-  cta.href = LIEN_DISCORD; cta.target = "_blank"; cta.rel = "noopener";
+  cta.dataset.lien = "discord_agence"; appliquerLiens(cta.parentNode);
 </script>
 </body>
 </html>

@@ -14,6 +14,7 @@ import { creerPool, creerAdaptateurDB } from "./src/db-pg.js";
 import {
   synchroniserSheetSansErreur, lireConfigSheet, archiverSemaineSiDue, semaineParis,
 } from "./src/google-sheets.js";
+import { envAvecReglages } from "./src/reglages.js";
 import { lireCorpsLimite, limiteCorpsPour, ErreurCorpsTropGros } from "./src/corps-requete.js";
 import { lireSchema, appliquerSchema as appliquerSchemaSQL, verifierSchema } from "./src/schema.js";
 import { choisirHote } from "./src/entetes-proxy.js";
@@ -230,16 +231,30 @@ function demarrerNettoyageMedias() {
 // configuré ou une coupure réseau ponctuelle ne doit jamais faire planter le
 // reste du site.
 const INTERVALLE_SYNC_SHEET_MS = 20 * 60 * 1000;
-function demarrerSyncSheet() {
-  // Sans GOOGLE_SHEET_ID, rien à synchroniser : on le dit une fois et on ne
-  // programme aucune passe, plutôt que de réveiller la tâche toutes les 20
-  // minutes pour échouer à l'identique.
-  if (!lireConfigSheet(construireEnv())) {
-    console.log("[sync-sheet] GOOGLE_SHEET_ID absent : synchronisation du tableur désactivée.");
-    return;
+// Le tableur se règle dans l'onglet Paramètres (ou, à défaut, par
+// GOOGLE_SHEET_ID dans le .env) : on relit donc le réglage à chaque passe,
+// pour qu'un lien ajouté ou retiré soit pris en compte sans redémarrage. Sans
+// tableur réglé, la passe ne fait rien, et on ne le dit dans les journaux
+// qu'au changement d'état.
+let tableurRegle = null;
+async function passeSyncSheet() {
+  try {
+    const env = await envAvecReglages(construireEnv());
+    const regle = !!lireConfigSheet(env);
+    if (regle !== tableurRegle) {
+      console.log(regle
+        ? "[sync-sheet] Tableur réglé : synchronisation toutes les 20 minutes."
+        : "[sync-sheet] Aucun tableur réglé (onglet Paramètres ou GOOGLE_SHEET_ID) : synchronisation en attente.");
+      tableurRegle = regle;
+    }
+    if (regle) await synchroniserSheetSansErreur(env);
+  } catch (e) {
+    console.error("[sync-sheet] Passe interrompue :", e);
   }
-  synchroniserSheetSansErreur(construireEnv());
-  setInterval(() => synchroniserSheetSansErreur(construireEnv()), INTERVALLE_SYNC_SHEET_MS);
+}
+function demarrerSyncSheet() {
+  passeSyncSheet();
+  setInterval(passeSyncSheet, INTERVALLE_SYNC_SHEET_MS);
   setInterval(archiverTableurSansErreur, INTERVALLE_ARCHIVE_TABLEUR_MS);
 }
 
@@ -252,7 +267,7 @@ const INTERVALLE_ARCHIVE_TABLEUR_MS = 30 * 1000;
 let derniereSemaineArchivee = null;
 async function archiverTableurSansErreur() {
   try {
-    const env = construireEnv();
+    const env = await envAvecReglages(construireEnv());
     const semaine = semaineParis(new Date());
     const maintenant = Date.now();
     const minuteDArchivage = maintenant >= semaine.fin.getTime() && maintenant - semaine.fin.getTime() < 60_000;

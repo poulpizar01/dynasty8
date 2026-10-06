@@ -92,7 +92,7 @@
   chargerBiens({ categorie: "habitation", meuble: false, cible: "grille-non-meubles", videMessage: "Aucun intérieur non meublé en catalogue pour le moment." });
 
   const cta = document.getElementById("lien-discord-cta");
-  cta.href = LIEN_DISCORD; cta.target = "_blank"; cta.rel = "noopener";
+  cta.dataset.lien = "discord_agence"; appliquerLiens(cta.parentNode);
 </script>
 </body>
 </html>

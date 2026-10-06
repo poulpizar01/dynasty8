@@ -82,6 +82,7 @@ async function demarrer() {
         direction: !!moi.direction,
         peutGererAnnonces: !!moi.peut_gerer_annonces,
         droitsRh: moi.droits_rh || [],
+        peutReglerLiens: !!moi.peut_regler_liens,
       };
       // Le lien du tableau des cohérences n'est pas dans la page : le serveur
       // ne le donne qu'aux comptes connectés (voir lienCoherences côté API).
@@ -89,6 +90,12 @@ async function demarrer() {
       if (lienCoherences && moi.lien_coherences) {
         lienCoherences.href = moi.lien_coherences;
         lienCoherences.hidden = false;
+      }
+      // Même principe pour le registre : réglé dans Paramètres, masqué s'il est vide.
+      const lienRegistre = document.getElementById("lien-registre");
+      if (lienRegistre && moi.lien_registre) {
+        lienRegistre.href = moi.lien_registre;
+        lienRegistre.hidden = false;
       }
       return demarrerEspaceAdmin();
     }
@@ -188,7 +195,7 @@ function basculerOnglet(nom) {
   if (nom === "comptabilite") chargerTablette();
   if (nom === "statistiques") { chargerStatistiques(); chargerTableur(); }
   if (nom === "rh") chargerRh();
-  if (nom === "parametres") chargerSyncSheet();
+  if (nom === "parametres") { chargerReglagesLiens(); chargerSyncSheet(); }
 }
 
 // ---------------------------------------------------------------------------
@@ -3295,6 +3302,65 @@ function formaterDateAdmin(iso) {
   if (isNaN(d.getTime())) return echapper(iso);
   return d.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "medium" });
 }
+
+// ---------------------------------------------------------------------------
+// Paramètres -> Liens du site (WebMap, cohérences, Google Sheets, registre,
+// Discord, boutique...). Rien n'est écrit dans le code : la liste des champs
+// vient de GET /api/reglages, et l'enregistrement s'applique aussitôt.
+// Patron, Co Patron et Développeur web seulement.
+// ---------------------------------------------------------------------------
+
+const TITRES_GROUPES_REGLAGES = {
+  prive: "Espace agents et serveur",
+  public: "Pages publiques",
+};
+
+function afficherReglagesLiens(r) {
+  const champ = (d) => {
+    const origine = d.source === "env"
+      ? `<span class="puce puce-masquee" title="Rien n’est réglé ici : la valeur du fichier .env du serveur est utilisée.">valeur du .env</span>`
+      : d.source === "vide" ? '<span class="puce puce-or">non réglé</span>' : "";
+    return `<div class="champ">
+      <label for="reglage-${d.cle}">${echapper(d.libelle)} ${origine}</label>
+      <input type="url" id="reglage-${d.cle}" data-reglage="${d.cle}" maxlength="500" value="${echapper(d.valeur)}" placeholder="${echapper(d.valeurEnv || "https://…")}" autocomplete="off" spellcheck="false">
+      <p class="champ-aide">${echapper(d.aide)}</p>
+    </div>`;
+  };
+  document.getElementById("reglages-champs").innerHTML = Object.keys(TITRES_GROUPES_REGLAGES).map((groupe) => {
+    const champs = r.reglages.filter((d) => d.groupe === groupe);
+    return champs.length ? `<p class="champ-aide" style="margin:14px 0 8px;"><strong>${TITRES_GROUPES_REGLAGES[groupe]}</strong></p>${champs.map(champ).join("")}` : "";
+  }).join("");
+}
+
+async function chargerReglagesLiens() {
+  const bloc = document.getElementById("reglages-liens");
+  bloc.classList.toggle("cache", !SESSION.peutReglerLiens);
+  if (!SESSION.peutReglerLiens) return;
+  afficherMessage("zone-message-reglages", "", null);
+  try {
+    afficherReglagesLiens(await appelAPI("/api/reglages"));
+  } catch (e) {
+    afficherMessage("zone-message-reglages", "Impossible de charger les liens : " + e.message, "erreur");
+  }
+}
+
+document.getElementById("formulaire-reglages").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const bouton = document.getElementById("reglages-enregistrer");
+  const corps = {};
+  document.querySelectorAll("[data-reglage]").forEach((c) => { corps[c.dataset.reglage] = c.value.trim(); });
+  bouton.disabled = true;
+  try {
+    afficherReglagesLiens(await appelAPI("/api/reglages", { method: "PUT", body: JSON.stringify(corps) }));
+    afficherMessage("zone-message-reglages", "Liens enregistrés ✓ — ils sont déjà en service.", "succes");
+    // Le lien du tableur a pu changer : l'état de la synchronisation aussi.
+    chargerSyncSheet();
+  } catch (err) {
+    afficherMessage("zone-message-reglages", err.message, "erreur");
+  } finally {
+    bouton.disabled = false;
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Paramètres -> Synchronisation Google Sheets ("Mon profil" -> ventes/

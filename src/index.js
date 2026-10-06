@@ -27,6 +27,7 @@ import {
   synchroniserSheetSansErreur, lireConfigSheet, lireTableurActuel, lireArchiveTableur, semaineParis,
 } from "./google-sheets.js";
 import { routeRh, permissionsRh, trouverEmploye, nomComplet, recevoirCandidatureBot } from "./rh.js";
+import { envAvecReglages, routeReglages, liensPublics, lienRegle, GRADES_REGLAGES } from "./reglages.js";
 import { ErreurStockage } from "./fbfa-storage.js";
 import { consommer, adresseAppelant } from "./limite-debit.js";
 import { TYPES_IMAGE, decoderDataUrl, estDataUrlImage } from "./images.js";
@@ -285,6 +286,10 @@ export default {
       if (!env.SESSION_SECRET) {
         return json({ erreur: "SESSION_SECRET n'est pas configuré sur le serveur." }, 500);
       }
+      // Les réglages de l'onglet Paramètres (liens : WebMap, cohérences,
+      // Google Sheets...) remplacent les variables du .env correspondantes.
+      const envBrut = env;
+      env = await envAvecReglages(env);
       // Un seul endroit pour toutes les écritures : aucune route ajoutée plus
       // tard ne peut oublier ce contrôle.
       if (!origineAutorisee(request, url, env)) {
@@ -310,6 +315,12 @@ export default {
       if (chemin === "/api/equipe") return await equipe(env);
       if (chemin === "/api/agenda") return await agenda(request, url, env);
       if (chemin.startsWith("/api/chat/")) return await chat(request, url, env);
+      if (chemin === "/api/liens") return await liensPublics(env);
+      if (chemin === "/api/reglages") {
+        const s = await session(request, env);
+        if (!s) return json({ erreur: "Non connecté." }, 401);
+        return await routeReglages(request, envBrut, s);
+      }
       // Appelée par le bot Discord (signature HMAC), sans session : avant le contrôle de session.
       if (chemin === "/api/rh/bot/candidatures") return await recevoirCandidatureBot(request, env);
       if (chemin.startsWith("/api/rh/")) {
@@ -699,6 +710,8 @@ async function moi(request, env) {
     bio: (m && m.bio) || "",
     photo: (m && m.photo) || "",
     lien_coherences: lienCoherences(env),
+    lien_registre: lienRegle(env, "registre_url"),
+    peut_regler_liens: GRADES_REGLAGES.includes(s.grade),
     primes,
   });
 }

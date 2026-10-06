@@ -88,6 +88,11 @@ découlent ensuite de ce grade.
   tableur ou un bot ; paramètres de rémunération par grade (salaires,
   commissions, paliers de primes) ; préparation de la déclaration DOT
   hebdomadaire (chiffre d'affaires, dépenses, retraits, primes, salariés).
+- **Paramètres** — tous les liens du site se règlent ici, sans rien écrire
+  dans le code et sans redémarrage : WebMap, document des cohérences, Google
+  Sheets de la synchronisation, registre, Discord de l'agence, boutique VIP,
+  liens du pied de page (Patron, Co Patron et Développeur web). On y trouve
+  aussi l'état de la synchronisation du tableur (Direction).
 - **Comptes & accès (Direction)** — validation des demandes, grades,
   activation ou désactivation d'un accès, dernière visite, permissions.
 
@@ -141,6 +146,7 @@ tâches de fond (nettoyage des photos, synchronisation du tableur).
 | `src/stats-calc.js` | calculs de primes, quotas et semaines ISO |
 | `src/google-sheets.js` | lecture du tableur de la Direction (export CSV) |
 | `src/rh.js` | fiches employés, effectif, permissions RH (`/api/rh/*`) |
+| `src/reglages.js` | liens du site réglables dans l'onglet Paramètres (`/api/reglages`, `/api/liens`) |
 | `src/corps-requete.js` | limite de taille des requêtes, avant lecture complète |
 | `src/entetes-proxy.js` | choix de l'hôte public derrière le reverse proxy |
 | `src/limite-debit.js` | limitation de débit par adresse et par route |
@@ -302,9 +308,9 @@ Ces en-têtes ne sont pas décoratifs : l'application reconstruit ses URL
 | `STATS_BOT_SECRET` | authentification du bot de ventes |
 | `RECRUTEMENT_WEBHOOK_SECRET` | secret de l'abonnement « Candidatures » du bot Discord (candidatures acceptées → fiches RH) ; vide = réception désactivée |
 | `FBFA_STORAGE_TOKEN` | stockage des photos ; vide = import désactivé, le reste fonctionne |
-| `WEBMAP_ORIGIN` | adresse réelle de la WebMap ; vide = carte indisponible |
-| `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_GID` | classeur de la Direction ; vide = synchronisation du tableur désactivée |
-| `COHERENCES_SHEET_URL` | tableau des cohérences, servi aux seuls comptes connectés ; vide = onglet masqué |
+| `WEBMAP_ORIGIN` | adresse réelle de la WebMap ; vide = carte indisponible. Remplacée par le réglage de l'onglet Paramètres s'il est renseigné |
+| `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_GID` | classeur de la Direction ; vide = synchronisation du tableur désactivée. Remplacées par le réglage de l'onglet Paramètres s'il est renseigné |
+| `COHERENCES_SHEET_URL` | tableau des cohérences, servi aux seuls comptes connectés ; vide = onglet masqué. Remplacée par le réglage de l'onglet Paramètres s'il est renseigné |
 | `FOLKOS_ID_BASE` / `FOLKOS_CLIENT_ID` / `FOLKOS_CLIENT_SECRET` | SSO de l'ordinateur en jeu |
 | `ORIGINES_AUTORISEES` | origines admises en écriture, en plus du site lui-même |
 | `PORT` / `PORT_LOCAL` | port d'écoute |

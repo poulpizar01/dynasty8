@@ -544,6 +544,30 @@ SELECT d.grade, d.permission
 ON CONFLICT DO NOTHING;
 INSERT INTO stats_config (cle, valeur) VALUES ('rh_permissions_initialisees', '1') ON CONFLICT (cle) DO NOTHING;
 
+-- Réglages du site modifiables dans l'onglet Paramètres (Patron, Co Patron,
+-- Développeur web) : tous les liens — WebMap, document des cohérences,
+-- Google Sheets de la synchronisation, registre, Discord, boutique... Aucune
+-- adresse n'est écrite dans le code (voir src/reglages.js). Pour la WebMap,
+-- les cohérences et le Google Sheets, une valeur vide laisse servir la
+-- variable du .env.
+CREATE TABLE IF NOT EXISTS reglages_site (
+  cle TEXT PRIMARY KEY,
+  valeur TEXT NOT NULL DEFAULT '',
+  maj TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')),
+  maj_par TEXT NOT NULL DEFAULT ''
+);
+-- Valeurs de départ : les liens qui étaient écrits dans les pages avant ce
+-- réglage. Posées une seule fois — une ligne existante (même vidée dans
+-- l'onglet Paramètres) n'est jamais réécrite.
+INSERT INTO reglages_site (cle, valeur) VALUES
+  ('discord_agence', 'https://discord.com/invite/zCsPrrR3uw'),
+  ('boutique_vip', 'https://boutique.flashbackfa.fr/category/2099202'),
+  ('discord_partenaire_deco', 'https://discord.gg/e8Ah54yvuw'),
+  ('prestataire_site', 'https://roxwood-network.fbfa.fr/'),
+  ('prestataire_discord', 'https://discord.com/invite/dDAFWxeU8'),
+  ('registre_url', 'https://intra.dynasty8.fbfa.fr/login')
+ON CONFLICT (cle) DO NOTHING;
+
 -- Réglages RH modifiables depuis l'espace agents (Patron, Co Patron,
 -- Développeur web) : rien de propre à l'agence n'est écrit dans le code.
 --   bot_grade_arrivee    grade donné aux candidatures acceptées par le bot
