@@ -14,7 +14,7 @@ import { creerPool, creerAdaptateurDB } from "./src/db-pg.js";
 import {
   synchroniserSheetSansErreur, lireConfigSheet, archiverSemaineSiDue, semaineParis,
 } from "./src/google-sheets.js";
-import { envAvecReglages } from "./src/reglages.js";
+import { envAvecReglages, reprendreReglagesDuEnv } from "./src/reglages.js";
 import { lireCorpsLimite, limiteCorpsPour, ErreurCorpsTropGros } from "./src/corps-requete.js";
 import { lireSchema, appliquerSchema as appliquerSchemaSQL, verifierSchema } from "./src/schema.js";
 import { choisirHote } from "./src/entetes-proxy.js";
@@ -162,17 +162,9 @@ function construireEnv() {
     FOLKOS_ID_BASE: process.env.FOLKOS_ID_BASE,
     FOLKOS_CLIENT_ID: process.env.FOLKOS_CLIENT_ID,
     FOLKOS_CLIENT_SECRET: process.env.FOLKOS_CLIENT_SECRET,
-    // Adresse réelle de la WebMap, proxifiée par /api/carte : elle vit dans le
-    // .env et jamais dans le code, qui est public.
-    WEBMAP_ORIGIN: process.env.WEBMAP_ORIGIN,
-    // Classeur Google de la Direction (récap des ventes par agent). Même
-    // raison que ci-dessus : partagé « toute personne disposant du lien »,
-    // donc son identifiant seul suffit à le lire — il reste hors du dépôt.
-    GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID,
-    GOOGLE_SHEET_GID: process.env.GOOGLE_SHEET_GID,
-    // Tableau des cohérences (lien de l'onglet « Cohérence » de l'espace
-    // agents) : servi par /api/moi aux seuls comptes connectés.
-    COHERENCES_SHEET_URL: process.env.COHERENCES_SHEET_URL,
+    // WebMap, Google Sheets de la synchronisation et document des cohérences
+    // ne sont PAS ici : ces liens se règlent dans l'onglet Paramètres (table
+    // reglages_site, voir src/reglages.js), jamais dans le .env.
     // Stockage externe des photos (storage.fbfa.fr) — voir src/medias.js.
     // Le jeton reste côté serveur : jamais renvoyé au navigateur ni journalisé.
     FBFA_STORAGE_TOKEN: process.env.FBFA_STORAGE_TOKEN,
@@ -231,11 +223,25 @@ function demarrerNettoyageMedias() {
 // configuré ou une coupure réseau ponctuelle ne doit jamais faire planter le
 // reste du site.
 const INTERVALLE_SYNC_SHEET_MS = 20 * 60 * 1000;
-// Le tableur se règle dans l'onglet Paramètres (ou, à défaut, par
-// GOOGLE_SHEET_ID dans le .env) : on relit donc le réglage à chaque passe,
+// Le tableur se règle dans l'onglet Paramètres : on relit donc le réglage à chaque passe,
 // pour qu'un lien ajouté ou retiré soit pris en compte sans redémarrage. Sans
 // tableur réglé, la passe ne fait rien, et on ne le dit dans les journaux
 // qu'au changement d'état.
+// WebMap, cohérences et Google Sheets se réglaient autrefois dans le .env.
+// Si ces variables y sont encore, leur valeur est recopiée une fois dans les
+// réglages du site ; elles ne sont ensuite plus jamais lues et peuvent être
+// retirées du .env. Un échec ici n'empêche pas le site de démarrer.
+async function reprendreAnciennesVariables() {
+  try {
+    const reprises = await reprendreReglagesDuEnv(construireEnv(), process.env);
+    if (reprises.length) {
+      console.log(`[reglages] Repris du .env dans l'onglet Paramètres : ${reprises.join(", ")}. Ces lignes peuvent être retirées du .env.`);
+    }
+  } catch (e) {
+    console.error("[reglages] Reprise des anciennes variables du .env impossible :", e);
+  }
+}
+
 let tableurRegle = null;
 async function passeSyncSheet() {
   try {
@@ -244,7 +250,7 @@ async function passeSyncSheet() {
     if (regle !== tableurRegle) {
       console.log(regle
         ? "[sync-sheet] Tableur réglé : synchronisation toutes les 20 minutes."
-        : "[sync-sheet] Aucun tableur réglé (onglet Paramètres ou GOOGLE_SHEET_ID) : synchronisation en attente.");
+        : "[sync-sheet] Aucun tableur réglé dans l'onglet Paramètres : synchronisation en attente.");
       tableurRegle = regle;
     }
     if (regle) await synchroniserSheetSansErreur(env);
@@ -353,6 +359,7 @@ app.use((req, res) => {
 
 preparerBase()
   .then(() => amorcerPremierAdmin())
+  .then(() => reprendreAnciennesVariables())
   .then(() => demarrerSyncSheet())
   .then(() => demarrerNettoyageMedias())
   .catch((e) => {

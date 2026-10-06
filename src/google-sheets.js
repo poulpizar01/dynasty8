@@ -31,11 +31,12 @@ const GRADE_PAR_NORMALISE = new Map(GRADES_STATS.map((g) => [normaliserTexte(g),
 // Identifiant du classeur et de l'onglet (gid dans l'URL). Volontairement
 // ABSENTS du code : le dépôt est public, et ce classeur est partagé « toute
 // personne disposant du lien — Lecteur », donc son identifiant suffit à le
-// lire. Il vit dans le .env du serveur, comme WEBMAP_ORIGIN.
+// lire. Il se règle dans l'onglet Paramètres (table reglages_site), comme
+// l'adresse de la WebMap : env.GOOGLE_SHEET_ID est rempli par src/reglages.js.
 // Vide = synchronisation désactivée (le site fonctionne, l'onglet le dit).
 export class SheetNonConfigure extends Error {
   constructor() {
-    super("Synchronisation non configurée sur le serveur : renseignez GOOGLE_SHEET_ID dans le .env.");
+    super("Synchronisation non configurée : réglez le lien du Google Sheets dans l'onglet Paramètres.");
     this.name = "SheetNonConfigure";
   }
 }

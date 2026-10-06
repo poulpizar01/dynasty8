@@ -95,7 +95,6 @@ dépôt : Paul vous le transmet par message privé, déjà rempli.
 | `STATS_BOT_SECRET` | clé du bot de ventes (`POST /api/stats/ventes`) |
 | `RECRUTEMENT_WEBHOOK_SECRET` | secret de l'abonnement « Candidatures » du bot Discord (`POST /api/rh/bot/candidatures`) |
 | `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | SSO « Se connecter IG » |
-| `WEBMAP_ORIGIN` | adresse réelle de la carte, proxifiée par `/api/carte` (absente du code : le dépôt est public) |
 | `FBFA_STORAGE_TOKEN` | stockage des photos sur `storage.fbfa.fr` |
 
 `PORT`, `NODE_ENV` et `DB_SCHEMA_AUTO` sont imposés par l'unité systemd : ne

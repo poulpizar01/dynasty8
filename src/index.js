@@ -46,7 +46,8 @@ const COOKIE = "d8_session";
 // part dans le code envoyé au navigateur, ni dans les outils de dev.
 const WEBMAP_PREFIXE = "/api/carte";
 
-// L'adresse réelle de la WebMap vient de WEBMAP_ORIGIN (.env) et n'est
+// L'adresse réelle de la WebMap vient du réglage « WebMap » de l'onglet
+// Paramètres (env.WEBMAP_ORIGIN, rempli par src/reglages.js) et n'est
 // VOLONTAIREMENT écrite nulle part dans le code : le dépôt est public, et
 // tout l'intérêt du proxy /api/carte est que cette adresse n'apparaisse ni
 // dans les sources, ni dans ce que reçoit le navigateur. Sans réglage, la
@@ -286,9 +287,8 @@ export default {
       if (!env.SESSION_SECRET) {
         return json({ erreur: "SESSION_SECRET n'est pas configuré sur le serveur." }, 500);
       }
-      // Les réglages de l'onglet Paramètres (liens : WebMap, cohérences,
-      // Google Sheets...) remplacent les variables du .env correspondantes.
-      const envBrut = env;
+      // Les liens (WebMap, cohérences, Google Sheets...) viennent des réglages
+      // de l'onglet Paramètres, jamais du .env — voir src/reglages.js.
       env = await envAvecReglages(env);
       // Un seul endroit pour toutes les écritures : aucune route ajoutée plus
       // tard ne peut oublier ce contrôle.
@@ -319,7 +319,7 @@ export default {
       if (chemin === "/api/reglages") {
         const s = await session(request, env);
         if (!s) return json({ erreur: "Non connecté." }, 401);
-        return await routeReglages(request, envBrut, s);
+        return await routeReglages(request, env, s);
       }
       // Appelée par le bot Discord (signature HMAC), sans session : avant le contrôle de session.
       if (chemin === "/api/rh/bot/candidatures") return await recevoirCandidatureBot(request, env);
@@ -2792,7 +2792,7 @@ async function syncSheetEtat(env, s) {
 async function syncSheetSynchroniser(request, env, s) {
   if (!estDirection(s)) return json({ erreur: "Réservé à la Direction." }, 403);
   if (!lireConfigSheet(env)) {
-    return json({ erreur: "Synchronisation non configurée sur ce serveur (GOOGLE_SHEET_ID absent du .env)." }, 503);
+    return json({ erreur: "Synchronisation non configurée : réglez le lien du Google Sheets dans l'onglet Paramètres." }, 503);
   }
   const etat = await synchroniserSheetSansErreur(env);
   if (etat.statut !== "ok") return json({ erreur: etat.erreur || "Échec de la synchronisation." }, 502);
@@ -2866,7 +2866,7 @@ function reecrireContenuWebmap(texte, typeContenu, origine) {
 async function carteProxy(request, url, env) {
   const origine = origineWebmap(env);
   if (!origine) {
-    console.error("[carte-proxy] WEBMAP_ORIGIN n'est pas configuré : la carte est indisponible.");
+    console.error("[carte-proxy] WebMap non réglée (onglet Paramètres) : la carte est indisponible.");
     return new Response("La carte n'est pas configurée sur ce serveur.", { status: 503 });
   }
   const sousChemin = url.pathname.slice(WEBMAP_PREFIXE.length) || "/";

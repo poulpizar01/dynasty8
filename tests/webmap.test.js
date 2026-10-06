@@ -10,7 +10,7 @@ import { RACINE } from "./aide-medias.js";
 
 const ENV_MINIMAL = { DB: { prepare: () => ({ bind: () => ({ first: async () => null, all: async () => ({ results: [] }), run: async () => ({}) }) }) }, SESSION_SECRET: "x" };
 
-test("sans WEBMAP_ORIGIN, la carte est indisponible — jamais une adresse devinée", async () => {
+test("sans WebMap réglée, la carte est indisponible — jamais une adresse devinée", async () => {
   const r = await worker.fetch(new Request("https://dynasty8.fbfa.fr/api/carte/"), ENV_MINIMAL);
   assert.equal(r.status, 503);
   const texte = await r.text();
@@ -18,11 +18,9 @@ test("sans WEBMAP_ORIGIN, la carte est indisponible — jamais une adresse devin
   assert.doesNotMatch(texte, /webmap|http/i, "le message ne laisse filtrer aucune adresse");
 });
 
-test("une valeur illisible est traitée comme absente", async () => {
-  for (const valeur of ["pas-une-url", "ftp://exemple.fr", "   "]) {
-    const r = await worker.fetch(new Request("https://dynasty8.fbfa.fr/api/carte/"), { ...ENV_MINIMAL, WEBMAP_ORIGIN: valeur });
-    assert.equal(r.status, 503, JSON.stringify(valeur));
-  }
+test("l'ancienne variable WEBMAP_ORIGIN du .env n'est plus lue : seul le réglage du site compte", async () => {
+  const r = await worker.fetch(new Request("https://dynasty8.fbfa.fr/api/carte/"), { ...ENV_MINIMAL, WEBMAP_ORIGIN: "https://carte.exemple.fr" });
+  assert.equal(r.status, 503);
 });
 
 test("aucune adresse de WebMap codée en dur dans le dépôt", () => {

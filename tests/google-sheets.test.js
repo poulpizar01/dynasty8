@@ -115,7 +115,7 @@ test("sans réglage, la synchro ne sort jamais sur le réseau et le dit", async 
     const etat = await synchroniserSheetSansErreur(env);
     assert.equal(appels, 0, "aucune requête vers Google");
     assert.equal(etat.statut, "desactive", "un réglage absent n'est pas une panne");
-    assert.match(etat.erreur, /GOOGLE_SHEET_ID/, "le message dit quoi renseigner");
+    assert.match(etat.erreur, /onglet Paramètres/, "le message dit où le régler");
     assert.equal(ecrits.length, 1, "l'état est tout de même enregistré pour l'onglet");
   } finally {
     globalThis.fetch = fetchOriginal;
@@ -153,12 +153,14 @@ test("aucun identifiant de classeur codé en dur dans le dépôt", () => {
 // ---------------------------------------------------------------------------
 
 // Base factice : un compte Direction valide, aucune donnée de synchro.
-function envDirection(reglages = {}) {
+// `reglagesSite` : lignes de reglages_site (l'onglet Paramètres), seule
+// source du lien du tableur — une variable d'environnement n'y fait rien.
+function envDirection(reglages = {}, reglagesSite = []) {
   const membre = { id: 1, pseudo: "Direction test", grade: "Patron", statut: "valide", actif: 1, sessions_invalides_avant: null };
   const requete = (sql) => {
     const r = {
       first: async () => (/FROM membres WHERE id/.test(sql) ? membre : null),
-      all: async () => ({ results: [] }),
+      all: async () => ({ results: /FROM reglages_site/.test(sql) ? reglagesSite : [] }),
       run: async () => ({}),
     };
     return { ...r, bind: () => r };
@@ -166,8 +168,8 @@ function envDirection(reglages = {}) {
   return { env: { DB: { prepare: requete }, SESSION_SECRET: SECRET_TEST, ...reglages }, cookie: cookieSession(membre) };
 }
 
-test("sans GOOGLE_SHEET_ID : l'état annonce « non configuré » et le bouton ne tente rien", async () => {
-  const { env, cookie } = envDirection();
+test("sans tableur réglé : l'état annonce « non configuré » et le bouton ne tente rien — même avec l'ancienne variable du .env", async () => {
+  const { env, cookie } = envDirection({ GOOGLE_SHEET_ID: "c".repeat(44) });
   const etat = await (await worker.fetch(new Request("http://localhost/api/sync-sheet/etat", { headers: { Cookie: cookie } }), env)).json();
   assert.equal(etat.configure, false);
 
@@ -177,15 +179,15 @@ test("sans GOOGLE_SHEET_ID : l'état annonce « non configuré » et le bouton n
   try {
     const r = await worker.fetch(new Request("http://localhost/api/sync-sheet/synchroniser", { method: "POST", headers: { Cookie: cookie } }), env);
     assert.equal(r.status, 503, "absence de réglage, pas une panne du classeur (502)");
-    assert.match((await r.json()).erreur, /GOOGLE_SHEET_ID/);
+    assert.match((await r.json()).erreur, /onglet Paramètres/);
     assert.equal(appels, 0);
   } finally {
     globalThis.fetch = fetchOriginal;
   }
 });
 
-test("avec GOOGLE_SHEET_ID : l'état annonce « configuré »", async () => {
-  const { env, cookie } = envDirection({ GOOGLE_SHEET_ID: "c".repeat(44) });
+test("tableur réglé dans l'onglet Paramètres : l'état annonce « configuré »", async () => {
+  const { env, cookie } = envDirection({}, [{ cle: "sheet_id", valeur: "c".repeat(44) }, { cle: "sheet_gid", valeur: "0" }]);
   const etat = await (await worker.fetch(new Request("http://localhost/api/sync-sheet/etat", { headers: { Cookie: cookie } }), env)).json();
   assert.equal(etat.configure, true);
 });

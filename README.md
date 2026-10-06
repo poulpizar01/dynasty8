@@ -234,9 +234,10 @@ section « Photos » de [`deploy/operateur/README-OPERATEUR.md`](deploy/operateu
   « Prénom Nom », sans créer de fiche ni changer de grade ; une ligne sans
   fiche est signalée dans RH (« À rattacher »). Ventes et locations
   alimentent « Chiffres du tableur », « Mon profil » et la DOT.
-- **WebMap FlashbackFA** — proxifiée par `/api/carte`. L'adresse réelle vit
-  dans `WEBMAP_ORIGIN`, jamais dans le dépôt, qui est public ; sans elle, le
-  bouton affiche « carte indisponible » et le reste du site fonctionne.
+- **WebMap FlashbackFA** — proxifiée par `/api/carte`. L'adresse réelle se
+  règle dans l'onglet Paramètres, jamais dans le dépôt, qui est public ; sans
+  elle, le bouton affiche « carte indisponible » et le reste du site
+  fonctionne.
 
 Les deux adresses qui suffiraient, à elles seules, à lire des données de
 l'agence — la WebMap et le classeur — sont pour cette raison hors du dépôt,
@@ -308,9 +309,6 @@ Ces en-têtes ne sont pas décoratifs : l'application reconstruit ses URL
 | `STATS_BOT_SECRET` | authentification du bot de ventes |
 | `RECRUTEMENT_WEBHOOK_SECRET` | secret de l'abonnement « Candidatures » du bot Discord (candidatures acceptées → fiches RH) ; vide = réception désactivée |
 | `FBFA_STORAGE_TOKEN` | stockage des photos ; vide = import désactivé, le reste fonctionne |
-| `WEBMAP_ORIGIN` | adresse réelle de la WebMap ; vide = carte indisponible. Remplacée par le réglage de l'onglet Paramètres s'il est renseigné |
-| `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_GID` | classeur de la Direction ; vide = synchronisation du tableur désactivée. Remplacées par le réglage de l'onglet Paramètres s'il est renseigné |
-| `COHERENCES_SHEET_URL` | tableau des cohérences, servi aux seuls comptes connectés ; vide = onglet masqué. Remplacée par le réglage de l'onglet Paramètres s'il est renseigné |
 | `FOLKOS_ID_BASE` / `FOLKOS_CLIENT_ID` / `FOLKOS_CLIENT_SECRET` | SSO de l'ordinateur en jeu |
 | `ORIGINES_AUTORISEES` | origines admises en écriture, en plus du site lui-même |
 | `PORT` / `PORT_LOCAL` | port d'écoute |

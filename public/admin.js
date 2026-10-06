@@ -3317,12 +3317,10 @@ const TITRES_GROUPES_REGLAGES = {
 
 function afficherReglagesLiens(r) {
   const champ = (d) => {
-    const origine = d.source === "env"
-      ? `<span class="puce puce-masquee" title="Rien n’est réglé ici : la valeur du fichier .env du serveur est utilisée.">valeur du .env</span>`
-      : d.source === "vide" ? '<span class="puce puce-or">non réglé</span>' : "";
+    const origine = d.regle ? "" : '<span class="puce puce-or">non réglé</span>';
     return `<div class="champ">
       <label for="reglage-${d.cle}">${echapper(d.libelle)} ${origine}</label>
-      <input type="url" id="reglage-${d.cle}" data-reglage="${d.cle}" maxlength="500" value="${echapper(d.valeur)}" placeholder="${echapper(d.valeurEnv || "https://…")}" autocomplete="off" spellcheck="false">
+      <input type="url" id="reglage-${d.cle}" data-reglage="${d.cle}" maxlength="500" value="${echapper(d.valeur)}" placeholder="https://…" autocomplete="off" spellcheck="false">
       <p class="champ-aide">${echapper(d.aide)}</p>
     </div>`;
   };

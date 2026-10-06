@@ -8,10 +8,12 @@
 // redémarrage ni déploiement.
 //
 //   - Réglages PRIVÉS : lus seulement par le serveur ou par les comptes
-//     connectés. Trois d'entre eux remplacent une variable du .env (WebMap,
-//     cohérences, Google Sheets) : la valeur réglée ici l'emporte, et tant
-//     qu'elle est vide c'est la variable du .env qui sert — un site déjà
-//     configuré par son .env continue donc de fonctionner tel quel.
+//     connectés. La WebMap, les cohérences et le Google Sheets venaient
+//     autrefois du .env : ce n'est plus le cas, seule la valeur réglée ici
+//     compte. Pour qu'un site déjà en service ne perde rien, une valeur
+//     encore présente dans son .env est recopiée ici UNE fois, au démarrage
+//     (reprendreReglagesDuEnv), puis n'est plus jamais lue : la ligne peut
+//     être retirée du .env.
 //   - Réglages PUBLICS : liens affichés sur les pages publiques, servis par
 //     GET /api/liens. Leur valeur de départ est posée une fois par
 //     schema.postgres.sql.
@@ -25,13 +27,13 @@ export const GRADES_REGLAGES = ["Patron", "Co Patron", "Développeur web"];
 
 // type : "origine" (https://hôte, sans chemin), "url" (lien https complet),
 //        "sheet" (lien ou identifiant d'un Google Sheets -> sheet_id + sheet_gid).
-// env  : variable du .env que ce réglage remplace quand il est renseigné.
+// ancienneVariable : variable du .env qui portait ce réglage, reprise une fois.
 export const REGLAGES = [
-  { cle: "webmap_origine", groupe: "prive", type: "origine", env: "WEBMAP_ORIGIN", libelle: "WebMap",
+  { cle: "webmap_origine", groupe: "prive", type: "origine", ancienneVariable: "WEBMAP_ORIGIN", libelle: "WebMap",
     aide: "Adresse de la carte interactive (ex. https://carte.exemple.fr). Le site la sert par /api/carte : cette adresse n'est jamais envoyée au navigateur." },
-  { cle: "coherences_url", groupe: "prive", type: "url", env: "COHERENCES_SHEET_URL", libelle: "Document des cohérences",
+  { cle: "coherences_url", groupe: "prive", type: "url", ancienneVariable: "COHERENCES_SHEET_URL", libelle: "Document des cohérences",
     aide: "Lien du document ouvert par le bouton « Cohérences » de l'espace agents." },
-  { cle: "sheet", groupe: "prive", type: "sheet", env: "GOOGLE_SHEET_ID", libelle: "Google Sheets de la synchronisation",
+  { cle: "sheet", groupe: "prive", type: "sheet", ancienneVariable: "GOOGLE_SHEET_ID", libelle: "Google Sheets de la synchronisation",
     aide: "Collez le lien du tableur de la Direction (onglet voulu ouvert) : l'identifiant et l'onglet en sont extraits. Le tableur doit être partagé en lecture « Tous les utilisateurs disposant du lien »." },
   { cle: "registre_url", groupe: "prive", type: "url", libelle: "Registre (intranet)",
     aide: "Lien du bouton « Registre » de l'espace agents. Vide : le bouton est masqué." },
@@ -124,20 +126,58 @@ async function lireValeurs(env) {
   return valeurs;
 }
 
-// L'environnement vu par le reste du code : les réglages du site remplacent
-// les variables du .env correspondantes quand ils sont renseignés. Une base
-// injoignable ne bloque rien : on garde alors le .env seul.
+// L'environnement vu par le reste du code. WEBMAP_ORIGIN, COHERENCES_SHEET_URL
+// et GOOGLE_SHEET_ID / _GID y sont des noms INTERNES, toujours remplis depuis
+// les réglages du site — jamais depuis le .env, même s'il en contient encore.
+// Réglages illisibles (base injoignable) : ces liens sont alors simplement
+// indisponibles.
 export async function envAvecReglages(env) {
-  let v;
+  let v = {};
   try { v = await lireValeurs(env); } catch (e) {
-    console.error("[reglages] Lecture impossible, variables du .env seules :", e && e.message);
-    return env;
+    console.error("[reglages] Lecture des réglages impossible :", e && e.message);
   }
-  const effectif = { ...env, REGLAGES_SITE: v };
-  if (v.webmap_origine) effectif.WEBMAP_ORIGIN = v.webmap_origine;
-  if (v.coherences_url) effectif.COHERENCES_SHEET_URL = v.coherences_url;
-  if (v.sheet_id) { effectif.GOOGLE_SHEET_ID = v.sheet_id; effectif.GOOGLE_SHEET_GID = v.sheet_gid || "0"; }
-  return effectif;
+  return {
+    ...env,
+    REGLAGES_SITE: v,
+    WEBMAP_ORIGIN: v.webmap_origine || "",
+    COHERENCES_SHEET_URL: v.coherences_url || "",
+    GOOGLE_SHEET_ID: v.sheet_id || "",
+    GOOGLE_SHEET_GID: v.sheet_id ? (v.sheet_gid || "0") : "",
+  };
+}
+
+// Reprise unique des anciennes variables du .env (WEBMAP_ORIGIN,
+// COHERENCES_SHEET_URL, GOOGLE_SHEET_ID / GOOGLE_SHEET_GID), au démarrage du
+// serveur : une valeur encore présente est recopiée dans les réglages SI ce
+// réglage n'a jamais été enregistré. Une fois la ligne créée (même vidée
+// ensuite dans l'onglet Paramètres), la variable n'est plus jamais reprise.
+// Renvoie les noms des variables reprises, qui peuvent être retirées du .env.
+export async function reprendreReglagesDuEnv(env, variables) {
+  const reprises = [];
+  for (const d of REGLAGES) {
+    if (!d.ancienneVariable) continue;
+    let saisie = String((variables && variables[d.ancienneVariable]) || "").trim();
+    if (!saisie) continue;
+    if (d.type === "sheet") {
+      const gid = String((variables && variables.GOOGLE_SHEET_GID) || "").trim();
+      saisie = lienSheet(saisie, /^\d+$/.test(gid) ? gid : "0");
+    }
+    const r = validerReglage(d, saisie);
+    if (r.erreur) {
+      console.error(`[reglages] ${d.ancienneVariable} du .env non reprise (${r.erreur}) : à régler dans l'onglet Paramètres.`);
+      continue;
+    }
+    let creee = false;
+    for (const [cle, valeur] of Object.entries(r.lignes)) {
+      const ligne = await env.DB.prepare(
+        "INSERT INTO reglages_site (cle, valeur, maj_par) VALUES (?1, ?2, 'reprise du .env') ON CONFLICT (cle) DO NOTHING RETURNING cle"
+      ).bind(cle, valeur).first();
+      if (ligne) creee = true;
+    }
+    if (creee) reprises.push(d.ancienneVariable);
+  }
+  if (reprises.length) caches.delete(env.DB);
+  return reprises;
 }
 
 // Lien privé réglé sur le site (ex. le registre), pour un compte connecté.
@@ -158,31 +198,18 @@ export async function liensPublics(env) {
 
 const lienSheet = (id, gid) => (id ? `https://docs.google.com/spreadsheets/d/${id}/edit#gid=${gid || "0"}` : "");
 
-// `envBrut` : l'environnement AVANT application des réglages, pour dire d'où
-// vient la valeur en service (réglée ici, ou variable du .env).
-async function lister(envBrut) {
-  caches.delete(envBrut.DB);
-  const v = await lireValeurs(envBrut);
+async function lister(env) {
+  caches.delete(env.DB);
+  const v = await lireValeurs(env);
   return {
     reglages: REGLAGES.map((d) => {
-      const duSite = d.type === "sheet" ? lienSheet(v.sheet_id, v.sheet_gid) : (v[d.cle] || "");
-      let duEnv = "";
-      if (d.env === "GOOGLE_SHEET_ID") {
-        const id = String(envBrut.GOOGLE_SHEET_ID || "").trim();
-        duEnv = RE_SHEET_ID.test(id) ? lienSheet(id, String(envBrut.GOOGLE_SHEET_GID || "").trim()) : "";
-      } else if (d.env) duEnv = String(envBrut[d.env] || "").trim();
-      return {
-        cle: d.cle, groupe: d.groupe, type: d.type, libelle: d.libelle, aide: d.aide,
-        valeur: duSite,
-        // Valeur en service quand rien n'est réglé ici : celle du .env du serveur.
-        valeurEnv: duSite ? "" : duEnv,
-        source: duSite ? "site" : duEnv ? "env" : "vide",
-      };
+      const valeur = d.type === "sheet" ? lienSheet(v.sheet_id, v.sheet_gid) : (v[d.cle] || "");
+      return { cle: d.cle, groupe: d.groupe, type: d.type, libelle: d.libelle, aide: d.aide, valeur, regle: !!valeur };
     }),
   };
 }
 
-async function enregistrer(envBrut, request, s) {
+async function enregistrer(env, request, s) {
   const b = await request.json().catch(() => null);
   if (!b || typeof b !== "object" || Array.isArray(b)) return json({ erreur: "Requête illisible." }, 400);
   const lignes = {};
@@ -193,7 +220,7 @@ async function enregistrer(envBrut, request, s) {
     Object.assign(lignes, r.lignes);
   }
   if (!Object.keys(lignes).length) return json({ erreur: "Rien à enregistrer." }, 400);
-  await envBrut.DB.transaction(async (tx) => {
+  await env.DB.transaction(async (tx) => {
     for (const [cle, valeur] of Object.entries(lignes)) {
       // RETURNING explicite : reglages_site n'a pas de colonne « id ».
       await tx.prepare(
@@ -203,16 +230,16 @@ async function enregistrer(envBrut, request, s) {
       ).bind(cle, valeur, String((s && s.pseudo) || "").slice(0, 100)).run();
     }
   });
-  caches.delete(envBrut.DB);
-  return json({ ok: true, ...(await lister(envBrut)) });
+  caches.delete(env.DB);
+  return json({ ok: true, ...(await lister(env)) });
 }
 
 // /api/reglages — session déjà vérifiée par l'appelant.
-export async function routeReglages(request, envBrut, s) {
+export async function routeReglages(request, env, s) {
   if (!s || !GRADES_REGLAGES.includes(s.grade)) {
     return json({ erreur: "Réservé au Patron, au Co Patron et au Développeur web." }, 403);
   }
-  if (request.method === "GET") return json(await lister(envBrut));
-  if (request.method === "PUT") return enregistrer(envBrut, request, s);
+  if (request.method === "GET") return json(await lister(env));
+  if (request.method === "PUT") return enregistrer(env, request, s);
   return json({ erreur: "Méthode non autorisée." }, 405);
 }
