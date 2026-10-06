@@ -545,11 +545,9 @@ ON CONFLICT DO NOTHING;
 INSERT INTO stats_config (cle, valeur) VALUES ('rh_permissions_initialisees', '1') ON CONFLICT (cle) DO NOTHING;
 
 -- Réglages du site modifiables dans l'onglet Paramètres (Patron, Co Patron,
--- Développeur web) : tous les liens — WebMap, document des cohérences,
--- Google Sheets de la synchronisation, registre, Discord, boutique... Aucune
--- adresse n'est écrite dans le code (voir src/reglages.js). Pour la WebMap,
--- les cohérences et le Google Sheets, une valeur vide laisse servir la
--- variable du .env.
+-- Développeur web) : tous les liens — WebMap, Google Sheets de la
+-- synchronisation, registre, Discord, boutique... Aucune adresse n'est
+-- écrite dans le code (voir src/reglages.js), et aucune ne vient du .env.
 CREATE TABLE IF NOT EXISTS reglages_site (
   cle TEXT PRIMARY KEY,
   valeur TEXT NOT NULL DEFAULT '',

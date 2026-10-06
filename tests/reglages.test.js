@@ -25,7 +25,7 @@ before(async () => {
   base = await creerBaseDeTest("reglages");
   pool = creerPool(base.url);
   // Un .env qui contient encore l'ancienne variable : elle ne doit plus servir.
-  env = { DB: creerAdaptateurDB(), SESSION_SECRET: SECRET_TEST, COHERENCES_SHEET_URL: "https://env.exemple.fr/coherences" };
+  env = { DB: creerAdaptateurDB(), SESSION_SECRET: SECRET_TEST, GOOGLE_SHEET_ID: ID_SHEET, WEBMAP_ORIGIN: "https://env.exemple.fr" };
   for (const grade of ["Patron", "Manager"]) {
     const m = (await pool.query(
       `INSERT INTO membres (pseudo, grade, code_hash, code_indice, actif, cree_le, statut)
@@ -101,39 +101,34 @@ it("réglages : réservés à Patron, Co Patron et Développeur web, et validés
   assert.equal(reglage(ok, "webmap_origine").valeur, "https://carte.exemple.fr", "seule l'origine est gardée");
 });
 
-it("le .env n'est plus une source : seul le réglage du site compte, appliqué aussitôt", async () => {
-  const lienVu = async () => (await appel("Patron", "/api/moi")).corps.lien_coherences;
-  assert.equal(await lienVu(), "", "la variable du .env est ignorée");
-  assert.equal(reglage(await appel("Patron", "/api/reglages"), "coherences_url").regle, false);
-
-  const regle = await regler({ coherences_url: "https://site.exemple.fr/coherences" });
-  assert.equal(reglage(regle, "coherences_url").regle, true);
-  assert.equal(await lienVu(), "https://site.exemple.fr/coherences", "appliqué sans redémarrage");
-  await regler({ coherences_url: "" });
-  assert.equal(await lienVu(), "", "vidé : pas de retour à la variable du .env");
+it("le .env n'est plus une source : seul le réglage du site compte", async () => {
+  // Le .env de ce test contient encore GOOGLE_SHEET_ID et WEBMAP_ORIGIN : ils ne servent à rien.
+  assert.equal((await appel("Patron", "/api/sync-sheet/etat")).corps.configure, false);
+  assert.equal(reglage(await appel("Patron", "/api/reglages"), "sheet").regle, false);
+  assert.ok(!("lien_coherences" in (await appel("Patron", "/api/moi")).corps), "plus de lien de cohérences : elles sont dans le site");
 });
 
 it("reprise unique des anciennes variables du .env, au démarrage", async () => {
-  await pool.query("DELETE FROM reglages_site WHERE cle IN ('webmap_origine', 'coherences_url', 'sheet_id', 'sheet_gid')");
-  const ancienEnv = { WEBMAP_ORIGIN: "https://carte.exemple.fr/", COHERENCES_SHEET_URL: "https://docs.exemple.fr/coherences",
-    GOOGLE_SHEET_ID: ID_SHEET, GOOGLE_SHEET_GID: "7" };
-  assert.deepEqual((await reprendreReglagesDuEnv(env, ancienEnv)).sort(), ["COHERENCES_SHEET_URL", "GOOGLE_SHEET_ID", "WEBMAP_ORIGIN"]);
+  await pool.query("DELETE FROM reglages_site WHERE cle IN ('webmap_origine', 'sheet_id', 'sheet_gid')");
+  const ancienEnv = { WEBMAP_ORIGIN: "https://carte.exemple.fr/", GOOGLE_SHEET_ID: ID_SHEET, GOOGLE_SHEET_GID: "7",
+    COHERENCES_SHEET_URL: "https://docs.exemple.fr/coherences" };
+  assert.deepEqual((await reprendreReglagesDuEnv(env, ancienEnv)).sort(), ["GOOGLE_SHEET_ID", "WEBMAP_ORIGIN"], "COHERENCES_SHEET_URL n'existe plus");
   const apres = await appel("Patron", "/api/reglages");
   assert.equal(reglage(apres, "webmap_origine").valeur, "https://carte.exemple.fr");
-  assert.equal(reglage(apres, "coherences_url").valeur, "https://docs.exemple.fr/coherences");
+  assert.equal(reglage(apres, "coherences_url"), undefined, "les cohérences ne sont plus un réglage");
   assert.equal(reglage(apres, "sheet").valeur, `https://docs.google.com/spreadsheets/d/${ID_SHEET}/edit#gid=7`);
 
   // Redémarrages suivants : rien n'est repris, même si le .env change ou si le réglage a été vidé.
   await regler({ webmap_origine: "" });
-  assert.deepEqual(await reprendreReglagesDuEnv(env, { ...ancienEnv, COHERENCES_SHEET_URL: "https://autre.exemple.fr/x" }), []);
+  assert.deepEqual(await reprendreReglagesDuEnv(env, { ...ancienEnv, GOOGLE_SHEET_GID: "99" }), []);
   const ensuite = await appel("Patron", "/api/reglages");
   assert.equal(reglage(ensuite, "webmap_origine").valeur, "", "un réglage vidé n'est pas réécrit par le .env");
-  assert.equal(reglage(ensuite, "coherences_url").valeur, "https://docs.exemple.fr/coherences");
+  assert.equal(reglage(ensuite, "sheet").valeur, `https://docs.google.com/spreadsheets/d/${ID_SHEET}/edit#gid=7`);
 
   // Une ancienne valeur invalide (adresse interne) n'est pas reprise.
   await pool.query("DELETE FROM reglages_site WHERE cle = 'webmap_origine'");
   assert.deepEqual(await reprendreReglagesDuEnv(env, { WEBMAP_ORIGIN: "http://127.0.0.1:8080" }), []);
-  await regler({ sheet: "", coherences_url: "" });
+  await regler({ sheet: "" });
 });
 
 it("Google Sheets : la synchronisation devient configurée dès que le lien est réglé", async () => {

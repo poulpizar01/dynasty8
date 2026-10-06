@@ -84,14 +84,8 @@ async function demarrer() {
         droitsRh: moi.droits_rh || [],
         peutReglerLiens: !!moi.peut_regler_liens,
       };
-      // Le lien du tableau des cohérences n'est pas dans la page : le serveur
-      // ne le donne qu'aux comptes connectés (voir lienCoherences côté API).
-      const lienCoherences = document.getElementById("lien-coherence-sheet");
-      if (lienCoherences && moi.lien_coherences) {
-        lienCoherences.href = moi.lien_coherences;
-        lienCoherences.hidden = false;
-      }
-      // Même principe pour le registre : réglé dans Paramètres, masqué s'il est vide.
+      // Le lien du registre n'est pas dans la page : réglé dans Paramètres,
+      // donné aux seuls comptes connectés, masqué s'il est vide.
       const lienRegistre = document.getElementById("lien-registre");
       if (lienRegistre && moi.lien_registre) {
         lienRegistre.href = moi.lien_registre;
@@ -185,6 +179,7 @@ function basculerOnglet(nom) {
   document.getElementById("panneau-comptabilite").classList.toggle("cache", nom !== "comptabilite");
   document.getElementById("panneau-statistiques").classList.toggle("cache", nom !== "statistiques");
   document.getElementById("panneau-rh").classList.toggle("cache", nom !== "rh");
+  document.getElementById("panneau-coherences").classList.toggle("cache", nom !== "coherences");
   document.getElementById("panneau-parametres").classList.toggle("cache", nom !== "parametres");
   // L'agenda a besoin de toute la largeur disponible (voir style.css) : le
   // reste des onglets garde la mise en page habituelle, limitée en largeur.
@@ -195,7 +190,29 @@ function basculerOnglet(nom) {
   if (nom === "comptabilite") chargerTablette();
   if (nom === "statistiques") { chargerStatistiques(); chargerTableur(); }
   if (nom === "rh") chargerRh();
+  if (nom === "coherences") afficherCoherences();
   if (nom === "parametres") { chargerReglagesLiens(); chargerSyncSheet(); }
+}
+
+// ---------------------------------------------------------------------------
+// Onglet « Cohérences » — les guides de cohérence du site public, consultés
+// ici sans ouvrir d'autre fenêtre. Le contenu est écrit une seule fois dans
+// coherences-guides.js (GUIDES_COHERENCE), partagé avec /coherence.html.
+// ---------------------------------------------------------------------------
+
+let ZONE_COHERENCE = null;
+
+function afficherCoherences(zone) {
+  ZONE_COHERENCE = zone || ZONE_COHERENCE || ZONES_COHERENCE[0];
+  const guide = GUIDES_COHERENCE[ZONE_COHERENCE];
+  const zones = document.getElementById("coherences-zones");
+  zones.innerHTML = ZONES_COHERENCE.map((z) =>
+    `<button type="button" class="compta-sous-onglet ${z === ZONE_COHERENCE ? "actif" : ""}" data-coherence-zone="${echapper(z)}">${GUIDES_COHERENCE[z].icone} ${echapper(z)}</button>`).join("");
+  zones.querySelectorAll("[data-coherence-zone]").forEach((b) => b.addEventListener("click", () => afficherCoherences(b.dataset.coherenceZone)));
+  document.getElementById("coherences-intro").textContent = guide.intro;
+  document.getElementById("coherences-guide-titre").textContent = `Guide complet — ${ZONE_COHERENCE}`;
+  monterDiaporamaCoherence(document.getElementById("coherences-diaporama"), ZONE_COHERENCE);
+  document.getElementById("coherences-sections").innerHTML = rendreResumeCoherence(ZONE_COHERENCE);
 }
 
 // ---------------------------------------------------------------------------

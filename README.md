@@ -89,7 +89,7 @@ découlent ensuite de ce grade.
   commissions, paliers de primes) ; préparation de la déclaration DOT
   hebdomadaire (chiffre d'affaires, dépenses, retraits, primes, salariés).
 - **Paramètres** — tous les liens du site se règlent ici, sans rien écrire
-  dans le code et sans redémarrage : WebMap, document des cohérences, Google
+  dans le code et sans redémarrage : WebMap, Google
   Sheets de la synchronisation, registre, Discord de l'agence, boutique VIP,
   liens du pied de page (Patron, Co Patron et Développeur web). On y trouve
   aussi l'état de la synchronisation du tableur (Direction).

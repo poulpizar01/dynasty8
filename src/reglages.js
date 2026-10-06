@@ -1,14 +1,14 @@
 // ============================================================================
 // Dynasty 8 — réglages du site modifiables depuis l'espace agents
 // ----------------------------------------------------------------------------
-// Tout ce qui est « un lien » (WebMap, document des cohérences, Google Sheets
-// de la synchronisation, registre, Discord, boutique...) vit dans la table
+// Tout ce qui est « un lien » (WebMap, Google Sheets de la synchronisation,
+// registre, Discord, boutique...) vit dans la table
 // reglages_site et se règle dans l'onglet Paramètres : aucune adresse n'est
 // écrite dans le code, et un changement s'applique tout de suite, sans
 // redémarrage ni déploiement.
 //
 //   - Réglages PRIVÉS : lus seulement par le serveur ou par les comptes
-//     connectés. La WebMap, les cohérences et le Google Sheets venaient
+//     connectés. La WebMap et le Google Sheets venaient
 //     autrefois du .env : ce n'est plus le cas, seule la valeur réglée ici
 //     compte. Pour qu'un site déjà en service ne perde rien, une valeur
 //     encore présente dans son .env est recopiée ici UNE fois, au démarrage
@@ -31,8 +31,6 @@ export const GRADES_REGLAGES = ["Patron", "Co Patron", "Développeur web"];
 export const REGLAGES = [
   { cle: "webmap_origine", groupe: "prive", type: "origine", ancienneVariable: "WEBMAP_ORIGIN", libelle: "WebMap",
     aide: "Adresse de la carte interactive (ex. https://carte.exemple.fr). Le site la sert par /api/carte : cette adresse n'est jamais envoyée au navigateur." },
-  { cle: "coherences_url", groupe: "prive", type: "url", ancienneVariable: "COHERENCES_SHEET_URL", libelle: "Document des cohérences",
-    aide: "Lien du document ouvert par le bouton « Cohérences » de l'espace agents." },
   { cle: "sheet", groupe: "prive", type: "sheet", ancienneVariable: "GOOGLE_SHEET_ID", libelle: "Google Sheets de la synchronisation",
     aide: "Ouvrez dans Google Sheets l'onglet du récapitulatif des ventes, puis collez ici l'adresse de la barre du navigateur : elle doit se terminer par « gid=… », qui désigne cet onglet (sans gid, c'est le premier onglet du classeur qui est lu). Le tableur doit être partagé en lecture « Tous les utilisateurs disposant du lien »." },
   { cle: "registre_url", groupe: "prive", type: "url", libelle: "Registre (intranet)",
@@ -126,8 +124,8 @@ async function lireValeurs(env) {
   return valeurs;
 }
 
-// L'environnement vu par le reste du code. WEBMAP_ORIGIN, COHERENCES_SHEET_URL
-// et GOOGLE_SHEET_ID / _GID y sont des noms INTERNES, toujours remplis depuis
+// L'environnement vu par le reste du code. WEBMAP_ORIGIN et
+// GOOGLE_SHEET_ID / _GID y sont des noms INTERNES, toujours remplis depuis
 // les réglages du site — jamais depuis le .env, même s'il en contient encore.
 // Réglages illisibles (base injoignable) : ces liens sont alors simplement
 // indisponibles.
@@ -140,14 +138,13 @@ export async function envAvecReglages(env) {
     ...env,
     REGLAGES_SITE: v,
     WEBMAP_ORIGIN: v.webmap_origine || "",
-    COHERENCES_SHEET_URL: v.coherences_url || "",
     GOOGLE_SHEET_ID: v.sheet_id || "",
     GOOGLE_SHEET_GID: v.sheet_id ? (v.sheet_gid || "0") : "",
   };
 }
 
 // Reprise unique des anciennes variables du .env (WEBMAP_ORIGIN,
-// COHERENCES_SHEET_URL, GOOGLE_SHEET_ID / GOOGLE_SHEET_GID), au démarrage du
+// GOOGLE_SHEET_ID / GOOGLE_SHEET_GID), au démarrage du
 // serveur : une valeur encore présente est recopiée dans les réglages SI ce
 // réglage n'a jamais été enregistré. Une fois la ligne créée (même vidée
 // ensuite dans l'onglet Paramètres), la variable n'est plus jamais reprise.

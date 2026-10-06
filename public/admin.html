@@ -96,7 +96,7 @@
 
     <p class="admin-nav-groupe" id="groupe-outils">Outils</p>
     <a href="#" hidden target="_blank" rel="noopener" class="lien-onglet" id="lien-registre" title="Registre Dynasty 8 (intranet)"><svg class="ico"><use href="#ico-book"></use></svg><span>Registre</span></a>
-    <a href="#" hidden target="_blank" rel="noopener" class="lien-onglet" id="lien-coherence-sheet" title="Tableau des cohérences (Google Sheets, lecture seule)"><svg class="ico"><use href="#ico-sheet"></use></svg><span>Cohérence</span></a>
+    <button class="lien-onglet" data-onglet="coherences" id="onglet-coherences"><svg class="ico"><use href="#ico-sheet"></use></svg><span>Cohérences</span></button>
     <a href="/api/carte/" target="_blank" rel="noopener" class="lien-onglet cache" id="lien-webmap"><svg class="ico"><use href="#ico-map"></use></svg><span>WebMap</span></a>
     <button class="lien-onglet cache" data-onglet="parametres" id="onglet-parametres"><svg class="ico"><use href="#ico-sync"></use></svg><span>Paramètres</span></button>
 
@@ -545,6 +545,31 @@
          grade et du statut de chacun (src/rh.js). Ventes, DOT, tableur et
          statistiques ne gardent que la clé de la fiche et relisent tout ici.
          Accès selon les permissions RH du grade (vérifiées côté serveur). -->
+    <!-- Onglet Cohérences : les mêmes guides que la page publique
+         /coherence.html (contenu unique dans coherences-guides.js), consultables
+         ici sans quitter l'espace agents. Ouvert à tous les comptes. -->
+    <section id="panneau-coherences" class="cache">
+      <div class="entete-admin">
+        <div>
+          <h2 style="margin-bottom:2px;">Cohérences</h2>
+          <p style="margin:0;font-size:0.88rem;">Le règlement de cohérence de chaque zone, identique à celui du site public.</p>
+        </div>
+      </div>
+      <div class="compta-sous-onglets" role="tablist" id="coherences-zones"></div>
+      <p id="coherences-intro" style="max-width:860px;margin:18px 0 22px;"></p>
+
+      <h3 class="comptes-sous-titre" id="coherences-guide-titre">Guide complet</h3>
+      <div style="max-width:900px;">
+        <div class="guide-astuce">
+          💡&nbsp;<span>Conseil : utilisez les flèches de votre clavier (← →) ou les boutons ci-dessous pour parcourir les diapositives.</span>
+        </div>
+        <div id="coherences-diaporama"></div>
+      </div>
+
+      <h3 class="comptes-sous-titre" style="margin-top:36px;">En résumé — ce que cette cohérence justifie</h3>
+      <div id="coherences-sections" style="max-width:980px;"></div>
+    </section>
+
     <section id="panneau-rh" class="cache">
       <div class="entete-admin">
         <div>
@@ -714,7 +739,7 @@
         </div>
       </div>
 
-      <!-- Liens du site (WebMap, cohérences, Google Sheets, registre, Discord,
+      <!-- Liens du site (WebMap, Google Sheets, registre, Discord,
            boutique...) : aucun n'est écrit dans le code, tout se règle ici et
            s'applique aussitôt (voir src/reglages.js). Patron, Co Patron et
            Développeur web seulement. Les champs sont construits par admin.js
@@ -1168,6 +1193,7 @@ TOTAL    -    0    0    0    0    0    -"></textarea>
 </div>
 
 <script src="/layout.js"></script>
+<script src="/coherences-guides.js"></script>
 <script src="/admin.js"></script>
 <script type="module">
   // Fond animé « aurore » de l'espace agents. Isolé dans un try/catch : si le
