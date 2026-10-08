@@ -53,10 +53,18 @@ export function consommer(cle, max, fenetreMs, maintenant = Date.now()) {
   return { autorise: true, restant: max - horodatages.length, reessayerDansSecondes: 0 };
 }
 
-/** Adresse de l'appelant, telle que la transmet le reverse proxy. */
+/**
+ * Adresse de l'appelant, telle que la voit le reverse proxy.
+ *
+ * nginx (deploy/vps, deploy/systemd, deploy/operateur) AJOUTE l'adresse qu'il
+ * voit à la fin de X-Forwarded-For ($proxy_add_x_forwarded_for) : c'est donc
+ * le DERNIER maillon qui est fiable. Les premiers viennent du visiteur, qui
+ * peut y écrire n'importe quoi — en prendre un lui permettrait de changer de
+ * compteur à chaque requête et d'échapper à toute limite.
+ */
 export function adresseAppelant(request) {
-  const transmis = String(request.headers.get("x-forwarded-for") || "").split(",")[0].trim();
-  return transmis || request.headers.get("x-real-ip") || "inconnue";
+  const maillons = String(request.headers.get("x-forwarded-for") || "").split(",").map((m) => m.trim()).filter(Boolean);
+  return maillons[maillons.length - 1] || request.headers.get("x-real-ip") || "inconnue";
 }
 
 /** Uniquement pour les tests : vide les compteurs. */

@@ -36,10 +36,15 @@ test("le délai d'attente diminue à mesure que la fenêtre avance", () => {
   assert.equal(consommer("b", 1, 10_000, t0 + 7_000).reessayerDansSecondes, 3);
 });
 
-test("adresse de l'appelant : premier maillon de X-Forwarded-For", () => {
+test("adresse de l'appelant : dernier maillon de X-Forwarded-For (celui ajouté par nginx)", () => {
   const avec = (entetes) => adresseAppelant(new Request("https://exemple.fr", { headers: entetes }));
-  assert.equal(avec({ "X-Forwarded-For": "203.0.113.7, 10.0.0.1" }), "203.0.113.7");
+  // Le visiteur a envoyé « X-Forwarded-For: 1.2.3.4 » ; nginx a ajouté son adresse réelle.
+  assert.equal(avec({ "X-Forwarded-For": "1.2.3.4, 203.0.113.7" }), "203.0.113.7");
   assert.equal(avec({ "X-Forwarded-For": "  203.0.113.7  " }), "203.0.113.7");
+  assert.equal(avec({ "X-Forwarded-For": "203.0.113.7, " }), "203.0.113.7", "maillon vide ignoré");
+  const r1 = avec({ "X-Forwarded-For": "10.0.0.1, 203.0.113.7" });
+  const r2 = avec({ "X-Forwarded-For": "10.0.0.2, 203.0.113.7" });
+  assert.equal(r1, r2, "changer la valeur envoyée ne change pas de compteur");
   assert.equal(avec({ "X-Real-IP": "203.0.113.9" }), "203.0.113.9");
   assert.equal(avec({}), "inconnue", "sans en-tête, tout le monde partage la même clé");
 });

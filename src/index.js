@@ -501,6 +501,19 @@ async function discordCallback(request, url, env) {
 // par discord_id — le même identifiant que la connexion Discord classique — donc
 // aucune donnée supplémentaire à gérer : un agent déjà lié à son Discord se
 // connecte en jeu sans rien faire de plus.
+
+// ?next= après la connexion : uniquement une page de CE site. Un navigateur
+// lit « /\exemple.fr » comme « //exemple.fr » (un autre site) : on résout donc
+// le chemin comme le ferait le navigateur et on exige qu'il reste sur place.
+export function cheminDeRetour(next) {
+  const brut = String(next || "");
+  if (!brut.startsWith("/") || /[\\\s\x00-\x1f]/.test(brut)) return "/admin.html";
+  let u;
+  try { u = new URL(brut, "https://site.invalid"); } catch { return "/admin.html"; }
+  if (u.origin !== "https://site.invalid") return "/admin.html";
+  return u.pathname + u.search + u.hash;
+}
+
 async function folkosCallback(url, env) {
   const echec = (raison) => {
     console.error(`[folkos-login] Échec de connexion : ${raison}`);
@@ -537,10 +550,7 @@ async function folkosCallback(url, env) {
     if (m.statut !== "valide" || !m.actif) return echec("desactive");
     await env.DB.prepare("UPDATE membres SET derniere_visite = datetime('now') WHERE id = ?1").bind(m.id).run();
     const jeton = await creerSession(env.SESSION_SECRET, { id: m.id, pseudo: m.pseudo, grade: m.grade, exp: maintenant() + DUREE });
-    // ?next= : uniquement un chemin relatif du site (jamais une URL externe).
-    const next = url.searchParams.get("next") || "";
-    const cible = /^\/(?!\/)[^\s]*$/.test(next) ? next : "/admin.html";
-    return redirection(cible, [poserCookie(COOKIE, jeton, DUREE, env)]);
+    return redirection(cheminDeRetour(url.searchParams.get("next")), [poserCookie(COOKIE, jeton, DUREE, env)]);
   } catch (e) {
     return echec("bd_" + String(e && e.message).slice(0, 60).replace(/[^a-zA-Z0-9]/g, ""));
   }
