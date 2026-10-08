@@ -25,7 +25,6 @@
 //     vers {base}/view/{id}.
 // ============================================================================
 
-export const FBFA_BASE_PAR_DEFAUT = "https://storage.fbfa.fr";
 export const FBFA_DELAI_PAR_DEFAUT_MS = 15_000;
 
 // Codes internes (stables, utilisés par src/medias.js et les tests) :
@@ -68,9 +67,10 @@ function cheminObjet(cle) {
 function normaliserBase(base) {
   let u;
   try {
-    u = new URL(base || FBFA_BASE_PAR_DEFAUT);
+    if (!base) throw new Error("absente");
+    u = new URL(base);
   } catch (e) {
-    throw new ErreurStockage("config", "Adresse du service de stockage invalide.");
+    throw new ErreurStockage("config", "Adresse du service de stockage absente ou invalide (FBFA_STORAGE_BASE).");
   }
   // HTTP simple toléré uniquement sur la machine locale (faux service des
   // tests) : ailleurs, le jeton circulerait en clair.

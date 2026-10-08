@@ -226,9 +226,11 @@ function ajusterCadre() {
 // FolkOS (ordinateur en jeu, FiveM) : quand le site est affiché dans l'iframe
 // de l'ordinateur in-game, on charge le petit SDK de l'opérateur qui libère le
 // clavier pour nos champs de saisie et gère la touche Échap. Hors iframe
-// (navigateur normal), on ne charge rien. Hôte fourni par l'opérateur.
+// (navigateur normal), on ne charge rien. Hôte fourni par l'opérateur, lu dans
+// le .env du serveur (FOLKOS_SDK_ORIGINE) et posé par lui dans la balise
+// <meta name="d8-folkos"> de chaque page : aucune adresse écrite ici.
 // ---------------------------------------------------------------------------
-const FOLKOS_HOTE = "https://computer.game.fbfa.fr";
+const FOLKOS_HOTE = (document.querySelector('meta[name="d8-folkos"]') || {}).content || "";
 
 // Vrai quand le site est affiché dans l'iframe de l'ordinateur en jeu. Sert au
 // SDK FolkOS ci-dessous, et à couper les effets WebGL : dans la CEF de FiveM,
@@ -239,6 +241,12 @@ window.D8_EN_JEU = EN_JEU;
 
 function initialiserFolkOS() {
   if (!EN_JEU) return;
+  // Sans hôte réglé, pas de SDK ; le reste (liens, fenêtres) est géré plus bas.
+  if (FOLKOS_HOTE) chargerSdkFolkOS();
+  neutraliserNouvellesFenetres();
+}
+
+function chargerSdkFolkOS() {
   const script = document.createElement("script");
   script.src = FOLKOS_HOTE + "/fbfa-game.js";
   script.async = true;
@@ -261,7 +269,9 @@ function initialiserFolkOS() {
   bridge.src = FOLKOS_HOTE + "/fbfa-bridge.js";
   bridge.async = true;
   document.head.appendChild(bridge);
+}
 
+function neutraliserNouvellesFenetres() {
   // En jeu, target="_blank" / window.open n'ouvrent rien : on navigue dans le
   // cadre (le bouton « précédent » de FolkOS permet de revenir). Gestion par
   // délégation pour couvrir aussi les liens ajoutés plus tard par le JS.

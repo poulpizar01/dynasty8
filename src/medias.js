@@ -31,7 +31,7 @@
 // suivi ne sont jamais touchés, même s'ils figurent dans une annonce.
 // ============================================================================
 
-import { creerClientFbfa, cleValide, ErreurStockage, FBFA_BASE_PAR_DEFAUT, FBFA_DELAI_PAR_DEFAUT_MS } from "./fbfa-storage.js";
+import { creerClientFbfa, cleValide, ErreurStockage, FBFA_DELAI_PAR_DEFAUT_MS } from "./fbfa-storage.js";
 import { analyserImage } from "./images.js";
 
 export const MODES_NETTOYAGE = ["desactive", "simulation", "actif"];
@@ -61,9 +61,15 @@ function nombreBorne(valeur, defaut, min, max) {
 export function lireConfigMedias(env = {}) {
   const prefixe = String(env.FBFA_STORAGE_PREFIXE || "dynasty8").trim().replace(/^\/+|\/+$/g, "");
   const mode = String(env.FBFA_NETTOYAGE || "simulation").trim().toLowerCase();
+  const token = String(env.FBFA_STORAGE_TOKEN || "").trim();
+  const base = String(env.FBFA_STORAGE_BASE || "").trim();
   return {
-    token: env.FBFA_STORAGE_TOKEN || "",
-    base: env.FBFA_STORAGE_BASE || FBFA_BASE_PAR_DEFAUT,
+    token,
+    // Aucune adresse de stockage n'est écrite dans le code : sans
+    // FBFA_STORAGE_BASE ET FBFA_STORAGE_TOKEN dans le .env, le stockage des
+    // photos est simplement « non configuré ».
+    base,
+    configure: !!(token && base),
     prefixe: cleValide(prefixe) ? prefixe : "dynasty8",
     delaiMs: nombreBorne(env.FBFA_STORAGE_DELAI_MS, FBFA_DELAI_PAR_DEFAUT_MS, 1000, 120_000),
     tailleMax: nombreBorne(env.FBFA_PHOTO_TAILLE_MAX, 8 * 1024 * 1024, 1024, 50 * 1024 * 1024),

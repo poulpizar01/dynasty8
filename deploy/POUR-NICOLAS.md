@@ -97,8 +97,8 @@ dépôt : Paul vous le transmet par message privé, déjà rempli.
 | `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | SSO « Se connecter IG » |
 | `FBFA_STORAGE_TOKEN` | stockage des photos sur `storage.fbfa.fr` |
 
-`PORT`, `NODE_ENV` et `DB_SCHEMA_AUTO` sont imposés par l'unité systemd : ne
-pas les mettre dans `.env`.
+`NODE_ENV`, `PORT`, `HOST` et `DB_SCHEMA_AUTO` sont imposés par l'unité systemd
+(ligne `ExecStart`) : inutile de les mettre dans `.env`, ils y seraient ignorés.
 
 L'URL de redirection Discord doit être déclarée **à l'identique** dans
 l'application RoxwoodLegal (portail développeur → OAuth2 → Redirects), sinon la
@@ -180,8 +180,9 @@ systemctl status dynasty8-api
 Elle fixe `User=dev`, `WorkingDirectory`, `EnvironmentFile`, un `ExecStart` en
 chemin absolu (`/usr/bin/node /opt/dynasty8/server.js`), `Restart=always` /
 `RestartSec=5`, et un durcissement : `NoNewPrivileges`, `PrivateTmp`,
-`ProtectSystem=full`. Le site n'écrivant jamais sur disque, aucun dossier ne
-lui est ouvert en écriture.
+`ProtectSystem=strict`, `ProtectHome=true`. Le site n'écrivant jamais sur disque,
+tout le système de fichiers, dossier du projet compris, est en lecture seule
+pour le service.
 
 ## nginx
 

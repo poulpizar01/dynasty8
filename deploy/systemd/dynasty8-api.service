@@ -22,17 +22,19 @@ WorkingDirectory=/opt/dynasty8
 
 # Secrets : fichier lisible par dev uniquement (chmod 600).
 EnvironmentFile=/opt/dynasty8/.env
-# Réglages imposés par le déploiement (placés APRÈS EnvironmentFile : ils
-# l'emportent sur le .env, pour éviter toute divergence).
-Environment=NODE_ENV=production
-Environment=PORT=3010
-# Le serveur ne crée aucune table : le schéma est appliqué séparément, avec
-# le compte administrateur PostgreSQL (psql, voir README-SYSTEMD.md).
-Environment=DB_SCHEMA_AUTO=0
 
+# Réglages IMPOSÉS par le déploiement. Sous systemd, les valeurs d'un
+# EnvironmentFile écrasent celles de Environment=, quel que soit l'ordre des
+# lignes : on les passe donc à Node par /usr/bin/env, au lancement même, pour
+# qu'aucune ligne du .env ne puisse les remplacer.
+#   NODE_ENV=production  détail des erreurs jamais envoyé au navigateur
+#   PORT=3010            port local relayé par nginx
+#   HOST=127.0.0.1       Node n'écoute que sur la machine : seul nginx est exposé
+#   DB_SCHEMA_AUTO=0     le serveur ne crée aucune table (schéma appliqué
+#                        séparément par psql, compte administrateur)
 # Chemin ABSOLU du binaire Node (jamais $(command -v node) : un Node installé
 # par nvm sous /root n'est pas lisible par dev -> status=203/EXEC).
-ExecStart=/usr/bin/node /opt/dynasty8/server.js
+ExecStart=/usr/bin/env NODE_ENV=production PORT=3010 HOST=127.0.0.1 DB_SCHEMA_AUTO=0 /usr/bin/node /opt/dynasty8/server.js
 
 Restart=always
 RestartSec=5
@@ -45,10 +47,13 @@ SyslogIdentifier=dynasty8-api
 
 # ---- durcissement ----
 # L'application n'écrit jamais sur disque : tout passe par PostgreSQL et le
-# stockage distant des photos.
+# stockage distant des photos. ProtectSystem=strict monte TOUT le système de
+# fichiers en lecture seule pour le service, dossier du projet compris
+# (/opt/dynasty8), même s'il appartient au compte dev ; /tmp reste privé.
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=full
+ProtectSystem=strict
+ProtectHome=true
 ProtectControlGroups=true
 ProtectKernelTunables=true
 ProtectKernelModules=true

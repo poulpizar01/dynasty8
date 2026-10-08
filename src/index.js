@@ -696,6 +696,8 @@ async function moi(request, env) {
     photo: (m && m.photo) || "",
     lien_registre: lienRegle(env, "registre_url"),
     peut_regler_liens: GRADES_REGLAGES.includes(s.grade),
+    // Envoi de photos possible seulement si le stockage (CDN) est réglé dans le .env.
+    stockage_photos: lireConfigMedias(env).configure,
     primes,
   });
 }
@@ -2339,7 +2341,7 @@ async function importerPhoto(request, env, usage) {
     return json({ erreur: "Votre grade ne permet pas de gérer les annonces." }, 403);
   }
   const config = lireConfigMedias(env);
-  if (!config.token) {
+  if (!config.configure) {
     return json({ erreur: "Le stockage des photos n'est pas configuré sur le serveur." }, 503);
   }
 
@@ -2398,7 +2400,7 @@ async function mediasEtat(request, env) {
   const config = lireConfigMedias(env);
   const etat = await etatMedias(env.DB);
   return json({
-    configure: !!config.token,
+    configure: config.configure,
     prefixe: config.prefixe,
     nettoyage: { mode: config.modeNettoyage, delai_heures: config.delaiNettoyageHeures },
     par_statut: etat.parStatut,

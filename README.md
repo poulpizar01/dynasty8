@@ -22,7 +22,7 @@ Aucune étape de build, aucun framework : deux dépendances en tout (`express`,
 ```bash
 npm install
 DATABASE_URL=postgres://user:motdepasse@127.0.0.1:5432/dynasty8 \
-SESSION_SECRET=valeur-aleatoire \
+SESSION_SECRET=une-valeur-aleatoire-longue \
 npm start                      # http://localhost:3000
 ```
 
@@ -103,7 +103,8 @@ source extérieure, même quand cette source contient une colonne « montant ».
 ### Depuis l'ordinateur en jeu (FolkOS)
 
 Le site est affiché dans une iframe du navigateur FiveM. Ce qui en découle,
-côté code : `Content-Security-Policy: frame-ancestors …` sur **toutes** les
+côté code : `Content-Security-Policy: frame-ancestors …` (sources lues dans
+`FRAME_ANCESTORS`) sur **toutes** les
 réponses (et jamais `X-Frame-Options`, qui donnerait une page blanche sans
 message), cookies de session en `Secure; SameSite=None`, aucune boîte de
 dialogue native, clavier géré par le SDK de l'opérateur (`fbfa-game.js`), et
@@ -304,14 +305,19 @@ Ces en-têtes ne sont pas décoratifs : l'application reconstruit ses URL
 |---|---|
 | `DATABASE_URL` | base PostgreSQL — **compte applicatif restreint** en production |
 | `DB_SCHEMA_AUTO` | `0` : le serveur vérifie le schéma sans rien créer (recommandé) |
-| `SESSION_SECRET` | signature des cookies de session |
+| `SESSION_SECRET` | signature des cookies de session — **obligatoire** : le serveur refuse de démarrer si elle est vide, trop courte ou laissée à une valeur d'exemple |
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` / `DISCORD_REDIRECT_URI` | connexion Discord — l'URL de redirection est la **seule** valeur liée à la machine |
 | `STATS_BOT_SECRET` | authentification du bot de ventes |
 | `RECRUTEMENT_WEBHOOK_SECRET` | secret de l'abonnement « Candidatures » du bot Discord (candidatures acceptées → fiches RH) ; vide = réception désactivée |
-| `FBFA_STORAGE_TOKEN` | stockage des photos ; vide = import désactivé, le reste fonctionne |
+| `FBFA_STORAGE_BASE` / `FBFA_STORAGE_TOKEN` | stockage des photos (CDN) : adresse du service et jeton, **les deux** requis ; sinon l'envoi de photos est indisponible (l'espace agents l'indique), le reste fonctionne. Aucune adresse n'est écrite dans le code |
+| `SITE_URL_PUBLIQUE` | facultatif : adresse publique du site pour les balises de partage (`og:url`, `og:image`) ; vide = l'adresse par laquelle le visiteur arrive |
+| `FOLKOS_SDK_ORIGINE` | hôte du SDK de l'ordinateur en jeu (clavier, Échap), donné aux pages par le serveur ; vide = SDK non chargé |
+| `FRAME_ANCESTORS` | sites autorisés à afficher le site dans un cadre (CSP `frame-ancestors`, en plus du site lui-même) ; vide = pas d'affichage dans l'ordinateur en jeu |
 | `FOLKOS_ID_BASE` / `FOLKOS_CLIENT_ID` / `FOLKOS_CLIENT_SECRET` | SSO de l'ordinateur en jeu |
 | `ORIGINES_AUTORISEES` | origines admises en écriture, en plus du site lui-même |
 | `PORT` / `PORT_LOCAL` | port d'écoute |
+| `HOST` | facultatif : adresse d'écoute (`127.0.0.1` imposé par l'unité systemd) |
+| `NODE_ENV` | `production` : le détail des erreurs n'est jamais envoyé au navigateur (imposé par le Dockerfile et l'unité systemd) |
 | `COOKIES_HTTP` | `1` en HTTP simple (cookies non `Secure`) — jamais en HTTPS |
 | `PGSSL` | `disable` ou `require` selon l'hébergement |
 
@@ -320,7 +326,8 @@ Réglages facultatifs du stockage des photos : `FBFA_STORAGE_PREFIXE`,
 `FBFA_IMPORTS_EN_ATTENTE_MAX`, `FBFA_NETTOYAGE`,
 `FBFA_NETTOYAGE_DELAI_HEURES`. `API_TAILLE_CORPS_MAX` borne les requêtes
 `/api/*` (32 Mo par défaut). Valeurs par défaut commentées dans chaque
-`deploy/*/.env.example`.
+`deploy/*/.env.example` ; un test vérifie que chaque variable lue par le
+serveur y est documentée.
 
 `SESSION_SECRET`, les identifiants Discord, les mots de passe PostgreSQL,
 `STATS_BOT_SECRET`, `RECRUTEMENT_WEBHOOK_SECRET` et `FBFA_STORAGE_TOKEN` sont
@@ -346,7 +353,10 @@ Ce qui est en place dans le code :
 - **Images** : type réel contrôlé en lisant les octets, pas le nom de fichier
   ni le type déclaré.
 - **Base** : le site tourne avec un compte sans droit de création.
-- **Conteneur** : l'application tourne sous l'utilisateur `node`, jamais root.
+- **Conteneur** : l'application tourne sous l'utilisateur `node`, jamais root,
+  avec un système de fichiers en lecture seule (`read_only`, `/tmp` en
+  mémoire) ; elle n'écrit jamais sur le disque (photos sur le CDN, journaux
+  sur la sortie standard). En systemd : `ProtectSystem=strict`.
 - **En-têtes** : `X-Content-Type-Options`, `Referrer-Policy`, et une CSP dont
   la directive `frame-ancestors` autorise l'ordinateur en jeu.
 

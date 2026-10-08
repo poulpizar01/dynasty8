@@ -9,12 +9,12 @@
 <meta property="og:site_name" content="Dynasty 8">
 <meta property="og:title" content="Dynasty 8 — Agence immobilière de Los Santos">
 <meta property="og:description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
-<meta property="og:image" content="https://dynasty8.fbfa.fr/img/og-image.jpg">
-<meta property="og:url" content="https://dynasty8.fbfa.fr/">
+<meta property="og:image" content="%ORIGINE_SITE%/img/og-image.jpg">
+<meta property="og:url" content="%ORIGINE_SITE%/">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Dynasty 8 — Agence immobilière de Los Santos">
 <meta name="twitter:description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
-<meta name="twitter:image" content="https://dynasty8.fbfa.fr/img/og-image.jpg">
+<meta name="twitter:image" content="%ORIGINE_SITE%/img/og-image.jpg">
 <link rel="icon" type="image/png" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/favicon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -85,7 +85,10 @@
   let dansIframe = true;
   try { dansIframe = window.self !== window.top; } catch (e) { dansIframe = true; }
   if (!dansIframe) return;
-  const HOTE = "https://computer.game.fbfa.fr";
+  // Hôte du SDK lu dans le .env du serveur (FOLKOS_SDK_ORIGINE), posé dans
+  // <meta name="d8-folkos"> : aucune adresse écrite ici. Vide = pas de SDK.
+  const HOTE = (document.querySelector('meta[name="d8-folkos"]') || {}).content || "";
+  if (!HOTE) return;
   const jeu = document.createElement('script');
   jeu.src = HOTE + "/fbfa-game.js";
   jeu.async = true;

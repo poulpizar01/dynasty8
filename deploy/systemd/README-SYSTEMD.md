@@ -63,8 +63,10 @@ Modèle commenté : [`.env.example`](.env.example). Variables indispensables :
 | `FOLKOS_*` | SSO « Se connecter IG » |
 | `FBFA_STORAGE_TOKEN` | stockage externe des photos |
 
-`PORT`, `NODE_ENV` et `DB_SCHEMA_AUTO` sont imposés par l'unité systemd : ne
-pas les mettre dans `.env`. Mot de passe `APP_DB_PASSWORD` : lettres et
+`NODE_ENV`, `PORT`, `HOST` et `DB_SCHEMA_AUTO` sont imposés par l'unité systemd,
+sur la ligne `ExecStart` (`/usr/bin/env …`) : sous systemd, un `EnvironmentFile`
+écrase les `Environment=` quel que soit l'ordre des lignes, la ligne de
+commande est donc le seul moyen de les garantir. Inutile de les mettre dans `.env`. Mot de passe `APP_DB_PASSWORD` : lettres et
 chiffres uniquement (il entre dans une URL et dans `PGOPTIONS`).
 
 ## Permissions du `.env`
@@ -124,8 +126,10 @@ curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3010/   # 200 attendu
 ```
 L'unité fixe `User=dev`, `WorkingDirectory`, `EnvironmentFile`, un `ExecStart`
 en chemin absolu, `Restart=always` / `RestartSec=5`, et un durcissement
-(`NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=full`…). L'application
-n'écrivant jamais sur disque, aucun dossier ne lui est ouvert en écriture.
+(`NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=strict`, `ProtectHome=true`…).
+L'application n'écrivant jamais sur disque, tout le système de fichiers, dossier
+du projet compris, est en lecture seule pour le service, même si ce dossier
+appartient au compte `dev`.
 
 ## Configuration nginx
 nginx écoute en 80/443 et proxifie **tout** vers Node (pages comprises), sur le

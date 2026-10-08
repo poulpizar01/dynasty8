@@ -56,7 +56,8 @@ docker compose up -d app
   de `Host`).
 - **Ne pas** ajouter `X-Frame-Options`, **ne pas** écraser `Content-Security-Policy` :
   l'app pose sur chaque réponse
-  `Content-Security-Policy: frame-ancestors 'self' https://*.fbfa.fr https://fbfa.fr https://cfx-nui-external-iframe nui://game nui:`
+  `Content-Security-Policy: frame-ancestors 'self' …`, avec les sources de la
+  variable `FRAME_ANCESTORS` du `.env` (valeur à reprendre de `.env.example`).
 - Taille de requête : une photo est envoyée seule, en binaire (8 Mo maximum
   par défaut), mais une annonce qui contient encore d'anciennes photos base64
   peut peser jusqu'à ~30 Mo à l'enregistrement → garder `client_max_body_size 32m`

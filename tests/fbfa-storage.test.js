@@ -37,7 +37,7 @@ async function attendErreur(promesse, code) {
 
 test("envoi conforme : PUT sur la clé encodée, en-têtes, résultat vérifié", async () => {
   const fetch = fauxFetch(() => reponse(200, { id: "abc123", url: `${BASE}/view/abc123`, size: 3, mimeType: "image/jpeg" }));
-  const client = creerClientFbfa({ token: JETON, fetchImpl: fetch });
+  const client = creerClientFbfa({ token: JETON, base: BASE, fetchImpl: fetch });
   const r = await client.envoyer("dynasty8/biens/2026/09/x.jpg", new Uint8Array([1, 2, 3]), "image/jpeg");
   assert.deepEqual(r, { id: "abc123", url: `${BASE}/view/abc123`, taille: 3, mime: "image/jpeg" });
   const { url, options } = fetch.appels[0];
@@ -60,7 +60,7 @@ test("réponses d'envoi inattendues refusées", async () => {
     ["tableau JSON", reponse(200, [])],
   ];
   for (const [nom, rep] of cas) {
-    const client = creerClientFbfa({ token: JETON, fetchImpl: async () => rep.clone() });
+    const client = creerClientFbfa({ token: JETON, base: BASE, fetchImpl: async () => rep.clone() });
     await attendErreur(client.envoyer("a/b.jpg", new Uint8Array([1, 2, 3]), "image/jpeg"), "reponse_invalide").catch((e) => {
       throw new Error(`${nom} : ${e.message}`);
     });
@@ -81,7 +81,7 @@ test("erreurs HTTP traduites en codes internes (format d'erreur réel observé)"
     [400, { error: { code: "bad_request" } }, "requete"],
   ];
   for (const [status, corps, code] of cas) {
-    const client = creerClientFbfa({ token: JETON, fetchImpl: async () => reponse(status, corps) });
+    const client = creerClientFbfa({ token: JETON, base: BASE, fetchImpl: async () => reponse(status, corps) });
     const e = await attendErreur(client.envoyer("a/b.jpg", new Uint8Array([1]), "image/jpeg"), code);
     assert.equal(e.status, status);
   }
@@ -91,7 +91,7 @@ test("délai maximal : un service qui ne répond pas est abandonné", async () =
   const fetchBloque = (url, { signal }) => new Promise((_, reject) => {
     signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
   });
-  const client = creerClientFbfa({ token: JETON, delaiMs: 50, fetchImpl: fetchBloque });
+  const client = creerClientFbfa({ token: JETON, base: BASE, delaiMs: 50, fetchImpl: fetchBloque });
   const debut = Date.now();
   await attendErreur(client.envoyer("a/b.jpg", new Uint8Array([1]), "image/jpeg"), "delai");
   assert.ok(Date.now() - debut < 2000);
@@ -103,19 +103,19 @@ test("délai maximal : la lecture d'un corps de réponse bloqué est aussi aband
     ok: true,
     text: () => new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted")))),
   });
-  const client = creerClientFbfa({ token: JETON, delaiMs: 50, fetchImpl: fetchCorpsBloque });
+  const client = creerClientFbfa({ token: JETON, base: BASE, delaiMs: 50, fetchImpl: fetchCorpsBloque });
   await attendErreur(client.usage(), "delai");
 });
 
 test("service injoignable : erreur réseau sans détail sensible", async () => {
-  const client = creerClientFbfa({ token: JETON, fetchImpl: async () => { throw new TypeError(`fetch failed Bearer ${JETON}`); } });
+  const client = creerClientFbfa({ token: JETON, base: BASE, fetchImpl: async () => { throw new TypeError(`fetch failed Bearer ${JETON}`); } });
   await attendErreur(client.envoyer("a/b.jpg", new Uint8Array([1]), "image/jpeg"), "reseau");
 });
 
 test("configuration : jeton absent ou clé invalide refusés sans appel réseau", async () => {
   const fetch = fauxFetch(() => reponse(200, {}));
-  await attendErreur(creerClientFbfa({ token: "", fetchImpl: fetch }).envoyer("a/b.jpg", new Uint8Array([1]), "image/jpeg"), "config");
-  const client = creerClientFbfa({ token: JETON, fetchImpl: fetch });
+  await attendErreur(creerClientFbfa({ token: "", base: BASE, fetchImpl: fetch }).envoyer("a/b.jpg", new Uint8Array([1]), "image/jpeg"), "config");
+  const client = creerClientFbfa({ token: JETON, base: BASE, fetchImpl: fetch });
   for (const cle of ["../x.jpg", "a//b.jpg", "a/./b", "", "a/b c.jpg", "a/%2e%2e/b"]) {
     await attendErreur(client.supprimer(cle), "config");
   }
@@ -129,22 +129,23 @@ test("configuration : jeton absent ou clé invalide refusés sans appel réseau"
 
 test("suppression par clé : 404 considéré comme déjà supprimé, 500 remonté", async () => {
   const f404 = fauxFetch(() => reponse(404, { error: { code: "not_found" } }));
-  assert.deepEqual(await creerClientFbfa({ token: JETON, fetchImpl: f404 }).supprimer("a/b.jpg"), { supprime: true, dejaAbsent: true });
+  assert.deepEqual(await creerClientFbfa({ token: JETON, base: BASE, fetchImpl: f404 }).supprimer("a/b.jpg"), { supprime: true, dejaAbsent: true });
   assert.equal(f404.appels[0].options.method, "DELETE");
   assert.equal(f404.appels[0].url, `${BASE}/api/object/a/b.jpg`);
-  await attendErreur(creerClientFbfa({ token: JETON, fetchImpl: async () => reponse(500, "") }).supprimer("a/b.jpg"), "distant");
+  await attendErreur(creerClientFbfa({ token: JETON, base: BASE, fetchImpl: async () => reponse(500, "") }).supprimer("a/b.jpg"), "distant");
 });
 
 test("liste et usage : structure vérifiée, champs non documentés renvoyés tels quels", async () => {
   const client = creerClientFbfa({
     token: JETON,
+    base: BASE,
     fetchImpl: async (url) => url.includes("/api/objects")
       ? reponse(200, { items: [{ id: "1", url: `${BASE}/view/1` }], nextCursor: "c2" })
       : reponse(200, { champ_inconnu: 42 }),
   });
   assert.deepEqual(await client.lister({ prefix: "dynasty8/", limit: 5 }), { items: [{ id: "1", url: `${BASE}/view/1` }], nextCursor: "c2" });
   assert.deepEqual(await client.usage(), { champ_inconnu: 42 });
-  const invalide = creerClientFbfa({ token: JETON, fetchImpl: async () => reponse(200, { items: "non" }) });
+  const invalide = creerClientFbfa({ token: JETON, base: BASE, fetchImpl: async () => reponse(200, { items: "non" }) });
   await attendErreur(invalide.lister(), "reponse_invalide");
 });
 
@@ -154,4 +155,8 @@ test("urlPubliqueValide : uniquement {base}/view/{id}", () => {
   assert.equal(urlPubliqueValide(`${BASE}/api/object/a1`, BASE, "a1"), false);
   assert.equal(urlPubliqueValide(`https://user:mdp@storage.fbfa.fr/view/a1`, BASE, "a1"), false);
   assert.equal(urlPubliqueValide("javascript:alert(1)", BASE, "a1"), false);
+});
+
+test("aucune adresse de stockage écrite dans le code : sans FBFA_STORAGE_BASE, le stockage n'est pas configuré", () => {
+  assert.throws(() => creerClientFbfa({ token: JETON }), (e) => e.code === "config");
 });

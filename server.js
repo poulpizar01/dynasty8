@@ -18,6 +18,8 @@ import { envAvecReglages, reprendreReglagesDuEnv } from "./src/reglages.js";
 import { lireCorpsLimite, limiteCorpsPour, ErreurCorpsTropGros } from "./src/corps-requete.js";
 import { lireSchema, appliquerSchema as appliquerSchemaSQL, verifierSchema } from "./src/schema.js";
 import { choisirHote } from "./src/entetes-proxy.js";
+import { lirePage, preparerPage, origineDuSite, origineReglee } from "./src/pages.js";
+import { secretSessionValide, LONGUEUR_MIN_SECRET_SESSION } from "./src/verifications.js";
 import { lireConfigMedias, creerClientDepuisConfig, nettoyerMedias } from "./src/medias.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -35,8 +37,16 @@ const PORT = process.env.PORT || 3000;
 // frame-ancestors : s'il en manque un, la page reste blanche sans message.
 // Vrai en-tête HTTP sur TOUTES les réponses (une balise <meta> serait ignorée),
 // et surtout jamais de X-Frame-Options (il contredirait cette règle).
-const CSP_FRAME_ANCESTORS =
-  "frame-ancestors 'self' https://*.fbfa.fr https://fbfa.fr https://cfx-nui-external-iframe nui://game nui:";
+// Les sources autorisées (hors 'self') viennent du .env, FRAME_ANCESTORS :
+// rien n'est écrit en dur. Seuls des jetons sans espace, virgule ni
+// point-virgule sont gardés (aucune autre directive ne peut s'y glisser).
+const SOURCES_FRAME_ANCESTORS = String(process.env.FRAME_ANCESTORS || "")
+  .split(/\s+/)
+  .filter((t) => t && /^[^;,'"<>]+$/.test(t));
+if (!SOURCES_FRAME_ANCESTORS.length) {
+  console.warn("[csp] FRAME_ANCESTORS vide : le site ne s'affichera pas dans l'ordinateur en jeu (FolkOS).");
+}
+const CSP_FRAME_ANCESTORS = ["frame-ancestors 'self'", ...SOURCES_FRAME_ANCESTORS].join(" ");
 app.use((req, res, next) => {
   res.setHeader("Content-Security-Policy", CSP_FRAME_ANCESTORS);
   res.removeHeader("X-Frame-Options");
@@ -48,6 +58,14 @@ app.use((req, res, next) => {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   next();
 });
+
+if (!secretSessionValide(process.env.SESSION_SECRET)) {
+  console.error(
+    `SESSION_SECRET absent, trop court (${LONGUEUR_MIN_SECRET_SESSION} caractères minimum) ou laissé à la valeur d'exemple : ` +
+    "le serveur refuse de démarrer, sinon n'importe qui pourrait fabriquer une session. Générez une valeur longue et aléatoire dans le .env."
+  );
+  process.exit(1);
+}
 
 if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL n'est pas définie — vérifie le fichier .env (deploy/vps ou deploy/operateur).");
@@ -187,8 +205,12 @@ async function nettoyerMediasSansErreur() {
   const env = construireEnv();
   const config = lireConfigMedias(env);
   if (config.modeNettoyage === "desactive") return;
-  if (config.modeNettoyage === "actif" && !config.token) {
-    console.error("[medias] nettoyage actif demandé mais FBFA_STORAGE_TOKEN absent : passe ignorée.");
+  if (!config.configure) {
+    // Sans stockage configuré, aucune photo ne peut avoir été envoyée : rien à
+    // nettoyer. On ne le signale que si le nettoyage réel était demandé.
+    if (config.modeNettoyage === "actif") {
+      console.error("[medias] nettoyage actif demandé mais stockage non configuré (FBFA_STORAGE_TOKEN et FBFA_STORAGE_BASE) : passe ignorée.");
+    }
     return;
   }
   try {
@@ -348,13 +370,38 @@ app.use("/api", async (req, res) => {
   }
 });
 
-// ---- tout le reste : fichiers statiques du dossier /public ----
-app.use(express.static(path.join(__dirname, "public")));
+// ---- pages HTML : adresse du site et hôte FolkOS remplis depuis la configuration ----
+// (voir src/pages.js : aucune adresse n'est écrite dans les pages).
+const RACINE_PUBLIC = path.join(__dirname, "public");
+const FOLKOS_SDK_ORIGINE = origineReglee(process.env.FOLKOS_SDK_ORIGINE);
+function optionsPage(req) {
+  return {
+    origineSite: origineDuSite({
+      siteUrlPublique: process.env.SITE_URL_PUBLIQUE,
+      protocole: req.protocol,
+      hote: hotePublic(req),
+    }),
+    folkosOrigine: FOLKOS_SDK_ORIGINE,
+  };
+}
+app.get(/^\/(?:[^?]*\.html)?$/, async (req, res, next) => {
+  try {
+    const page = await lirePage(RACINE_PUBLIC, req.path);
+    if (page === null) return next();
+    res.setHeader("Cache-Control", "no-cache");
+    res.type("html").send(preparerPage(page, optionsPage(req)));
+  } catch (e) {
+    next(e);
+  }
+});
 
-app.use((req, res) => {
-  res.status(404).sendFile(path.join(__dirname, "public", "404.html"), (err) => {
-    if (err) res.status(404).send("Page introuvable.");
-  });
+// ---- tout le reste : fichiers statiques du dossier /public ----
+app.use(express.static(RACINE_PUBLIC));
+
+app.use(async (req, res) => {
+  const page = await lirePage(RACINE_PUBLIC, "/404.html").catch(() => null);
+  if (page === null) return res.status(404).send("Page introuvable.");
+  res.status(404).type("html").send(preparerPage(page, optionsPage(req)));
 });
 
 preparerBase()
@@ -373,7 +420,11 @@ preparerBase()
     console.error("Impossible de préparer la base PostgreSQL au démarrage :", e);
   })
   .finally(() => {
-    app.listen(PORT, () => {
-      console.log(`Dynasty 8 en écoute sur le port ${PORT}`);
+    // HOST (facultatif) : adresse d'écoute. L'unité systemd impose 127.0.0.1
+    // (seul nginx est exposé) ; en Docker, le conteneur écoute partout et le
+    // port n'est publié que sur la boucle locale de l'hôte.
+    const hote = String(process.env.HOST || "").trim() || undefined;
+    app.listen(PORT, hote, () => {
+      console.log(`Dynasty 8 en écoute sur ${hote || "toutes les interfaces"}, port ${PORT}`);
     });
   });

@@ -47,9 +47,20 @@ services:
       context: ../..
       dockerfile: deploy/vps/Dockerfile
     restart: unless-stopped
+    # Système de fichiers du conteneur en LECTURE SEULE : le site n'écrit
+    # jamais sur le disque (photos envoyées au CDN, journaux sur la sortie
+    # standard). Seul /tmp, en mémoire, reste inscriptible au cas où.
+    read_only: true
+    tmpfs:
+      - /tmp
     env_file: .env
     environment:
       PORT: "3000"
+      # Les mots de passe PostgreSQL du .env ne servent qu'à la migration et à
+      # construire DATABASE_URL ci-dessous : le site ne les reçoit pas, et en
+      # particulier jamais celui du compte ADMINISTRATEUR.
+      POSTGRES_PASSWORD: ""
+      APP_DB_PASSWORD: ""
       # Compte RESTREINT (créé par le service « migration ») : l'application
       # n'a aucun droit de création ni de suppression de table.
       DATABASE_URL: postgres://${APP_DB_USER}:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}

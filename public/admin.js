@@ -83,6 +83,7 @@ async function demarrer() {
         peutGererAnnonces: !!moi.peut_gerer_annonces,
         droitsRh: moi.droits_rh || [],
         peutReglerLiens: !!moi.peut_regler_liens,
+        stockagePhotos: !!moi.stockage_photos,
       };
       // Le lien du registre n'est pas dans la page : réglé dans Paramètres,
       // donné aux seuls comptes connectés, masqué s'il est vide.
@@ -138,6 +139,18 @@ function initialesPseudo(pseudo) {
 }
 
 function demarrerEspaceAdmin() {
+  // Stockage des photos non réglé sur le serveur (FBFA_STORAGE_TOKEN et
+  // FBFA_STORAGE_BASE absents du .env) : on le dit tout de suite, au lieu de
+  // laisser choisir un fichier pour échouer ensuite.
+  if (!SESSION.stockagePhotos) {
+    for (const id of ["bouton-parcourir", "bouton-profil-photo", "bouton-profil-compte-photo"]) {
+      const bouton = document.getElementById(id);
+      if (!bouton) continue;
+      bouton.disabled = true;
+      bouton.title = "Envoi de photos indisponible : le stockage des photos n'est pas configuré sur le serveur.";
+      bouton.insertAdjacentHTML("afterend", '<p class="champ-aide" style="margin:6px 0 0;">Envoi de photos indisponible : le stockage n’est pas encore configuré sur le serveur.</p>');
+    }
+  }
   document.body.classList.add("admin-connecte");
   document.getElementById("pseudo-connecte").textContent = SESSION.pseudo;
   document.getElementById("grade-connecte").textContent = SESSION.grade || "—";
@@ -1681,7 +1694,7 @@ function redessinerImagesBien() {
   document.getElementById("bien-images-compteur").textContent =
     IMAGES_BIEN.length + " / " + MAX_PHOTOS_BIEN + (n ? ` · ${n} en cours d'envoi` : "");
   const bloque = IMAGES_BIEN.length + n >= MAX_PHOTOS_BIEN || SAUVEGARDE_BIEN_EN_COURS;
-  document.getElementById("bouton-parcourir").disabled = bloque;
+  document.getElementById("bouton-parcourir").disabled = bloque || !SESSION.stockagePhotos;
   if (!SAUVEGARDE_BIEN_EN_COURS) {
     const enregistrer = document.querySelector('#formulaire-bien button[type="submit"]');
     enregistrer.disabled = n > 0;
