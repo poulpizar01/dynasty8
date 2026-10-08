@@ -209,7 +209,7 @@ function basculerOnglet(nom) {
   if (nom === "rh") chargerRh();
   if (nom === "coherences") afficherCoherences();
   if (nom === "webmap") afficherCarte();
-  if (nom === "parametres") { chargerReglagesLiens(); chargerRangsGrades(); chargerSyncSheet(); }
+  if (nom === "parametres") { chargerReglagesLiens(); chargerApparence(); chargerRangsGrades(); chargerSyncSheet(); }
 }
 
 // ---------------------------------------------------------------------------
@@ -3399,6 +3399,106 @@ document.getElementById("formulaire-reglages").addEventListener("submit", async 
     afficherMessage("zone-message-reglages", err.message, "erreur");
   } finally {
     bouton.disabled = false;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Paramètres -> Apparence (images de la marque, voir src/apparence.js).
+// Direction ; vérifié aussi côté serveur. L'image est envoyée telle quelle,
+// sans passer par redimensionnerImage() : un logo PNG garde sa transparence.
+// ---------------------------------------------------------------------------
+
+let APPARENCE_CIBLE = null; // clé de l'image en cours de remplacement
+
+function afficherApparence(r) {
+  const bloque = !r.stockage_configure;
+  if (bloque) {
+    afficherMessage("zone-message-apparence", "Le stockage des images n'est pas configuré sur le serveur : les images d'origine restent en place et ne peuvent pas être remplacées pour l'instant.", "erreur");
+  }
+  document.getElementById("apparence-cartes").innerHTML = r.images.map((i) => {
+    const version = encodeURIComponent(i.maj || "origine");
+    const etat = i.personnalisee
+      ? `<span class="puce puce-or">Remplacée</span> <span class="champ-aide">le ${echapper(formaterHorodatageParis(i.maj))}${i.maj_par ? " par " + echapper(i.maj_par) : ""}</span>`
+      : `<span class="puce puce-masquee">Image d'origine</span>`;
+    return `<div class="apparence-carte">
+      <div class="apparence-apercu"><img src="${echapper(i.apercu)}?v=${version}" alt="${echapper(i.libelle)}" loading="lazy"></div>
+      <div class="apparence-infos">
+        <strong>${echapper(i.libelle)}</strong>
+        <p class="champ-aide" style="margin:4px 0;">${echapper(i.aide)} Taille d'origine : ${i.largeur} × ${i.hauteur} px.</p>
+        <div>${etat}</div>
+        <div class="apparence-actions">
+          <button type="button" class="btn btn-or btn-petit" data-apparence-remplacer="${echapper(i.cle)}" ${bloque ? "disabled" : ""}>Remplacer…</button>
+          ${i.personnalisee ? `<button type="button" class="btn btn-fantome btn-petit" data-apparence-retablir="${echapper(i.cle)}">Rétablir l'origine</button>` : ""}
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// « 2026-10-08 14:05:00 » (UTC, format de la base) -> date et heure de Paris.
+function formaterHorodatageParis(texte) {
+  const d = new Date(String(texte || "").replace(" ", "T") + "Z");
+  return isNaN(d) ? String(texte || "") : d.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" });
+}
+
+async function chargerApparence() {
+  const bloc = document.getElementById("reglages-apparence");
+  bloc.classList.toggle("cache", !SESSION.direction);
+  if (!SESSION.direction) return;
+  afficherMessage("zone-message-apparence", "", null);
+  try {
+    afficherApparence(await appelAPI("/api/apparence"));
+  } catch (e) {
+    afficherMessage("zone-message-apparence", "Impossible de charger les images : " + e.message, "erreur");
+  }
+}
+
+document.getElementById("apparence-cartes").addEventListener("click", async (e) => {
+  const remplacer = e.target.closest("[data-apparence-remplacer]");
+  if (remplacer) {
+    APPARENCE_CIBLE = remplacer.dataset.apparenceRemplacer;
+    const champ = document.getElementById("apparence-fichier");
+    champ.value = "";
+    champ.click();
+    return;
+  }
+  const retablir = e.target.closest("[data-apparence-retablir]");
+  if (!retablir) return;
+  if (!(await confirmerAction("Remettre l'image d'origine du site à la place de l'image actuelle ?", "Rétablir l'image d'origine"))) return;
+  retablir.disabled = true;
+  try {
+    const r = await appelAPI(`/api/apparence/image?cle=${encodeURIComponent(retablir.dataset.apparenceRetablir)}`, { method: "DELETE" });
+    afficherApparence(r);
+    afficherMessage("zone-message-apparence", "Image d'origine rétablie ✓", "succes");
+  } catch (err) {
+    retablir.disabled = false;
+    afficherMessage("zone-message-apparence", err.message, "erreur");
+  }
+});
+
+document.getElementById("apparence-fichier").addEventListener("change", async (e) => {
+  const fichier = e.target.files && e.target.files[0];
+  const cle = APPARENCE_CIBLE;
+  if (!fichier || !cle) return;
+  if (!TYPES_PHOTO_ACCEPTES.includes(fichier.type)) {
+    afficherMessage("zone-message-apparence", `« ${fichier.name} » : formats acceptés PNG, JPG ou WEBP.`, "erreur");
+    return;
+  }
+  document.querySelectorAll("[data-apparence-remplacer], [data-apparence-retablir]").forEach((b) => { b.disabled = true; });
+  const bouton = document.querySelector(`[data-apparence-remplacer="${cle}"]`);
+  if (bouton) bouton.textContent = "Envoi…";
+  afficherMessage("zone-message-apparence", "", null);
+  try {
+    const r = await appelAPI(`/api/apparence/image?cle=${encodeURIComponent(cle)}`, {
+      method: "POST",
+      headers: { "Content-Type": fichier.type },
+      body: fichier,
+    });
+    afficherApparence(r);
+    afficherMessage("zone-message-apparence", r.avertissement || "Image remplacée ✓ — elle est déjà en ligne.", r.avertissement ? "erreur" : "succes");
+  } catch (err) {
+    chargerApparence();
+    afficherMessage("zone-message-apparence", err.status ? err.message : "Connexion au serveur perdue pendant l'envoi. Réessayez.", "erreur");
   }
 });
 

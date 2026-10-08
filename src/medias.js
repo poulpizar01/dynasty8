@@ -35,7 +35,7 @@ import { creerClientFbfa, cleValide, ErreurStockage, FBFA_DELAI_PAR_DEFAUT_MS } 
 import { analyserImage } from "./images.js";
 
 export const MODES_NETTOYAGE = ["desactive", "simulation", "actif"];
-export const USAGES = { bien: "biens", profil: "profils" };
+export const USAGES = { bien: "biens", profil: "profils", apparence: "apparence" };
 const STATUTS_RATTACHABLES = ["temporaire", "attache", "a_supprimer"];
 
 // Erreur « métier » destinée à être renvoyée telle quelle au navigateur.
@@ -203,6 +203,8 @@ async function mediaEncoreUtilise(db, media) {
   const ref = await db.prepare("SELECT 1 AS x FROM medias_references WHERE media_id = ?1 LIMIT 1").bind(media.id).first();
   if (ref) return true;
   if (!media.url) return false;
+  // Les images de la marque (Paramètres → Apparence, table apparence_images)
+  // n'ont pas de ligne dans medias_references : leur URL enregistrée suffit.
   // Correspondance EXACTE : dans biens.images (tableau JSON), l'URL apparaît
   // entre guillemets ; « …/view/obj1 » ne doit pas être trouvé dans
   // « …/view/obj10 ». Une URL valide ne contient ni guillemet ni antislash,
@@ -211,6 +213,8 @@ async function mediaEncoreUtilise(db, media) {
     `SELECT 1 AS x FROM biens WHERE strpos(images, ?1) > 0
      UNION ALL
      SELECT 1 AS x FROM membres WHERE photo = ?2
+     UNION ALL
+     SELECT 1 AS x FROM apparence_images WHERE url = ?2
      LIMIT 1`
   ).bind(JSON.stringify(media.url), media.url).first();
   return !!cite;
@@ -349,7 +353,8 @@ export async function nettoyerMedias({ db, client, mode = "simulation", delaiSec
       WHERE (m.statut = 'temporaire' AND m.envoye_le < ${sqlDecalage("?1")})
          OR (m.statut = 'envoi' AND m.maj < ${sqlDecalage("?1")})
          OR (m.statut = 'attache' AND m.maj < ${sqlDecalage("?1")}
-             AND NOT EXISTS (SELECT 1 FROM medias_references r WHERE r.media_id = m.id))
+             AND NOT EXISTS (SELECT 1 FROM medias_references r WHERE r.media_id = m.id)
+             AND NOT EXISTS (SELECT 1 FROM apparence_images a WHERE a.media_id = m.id))
       ORDER BY m.id LIMIT ?2`
   ).bind(-delaiSecondes, limite).all();
 

@@ -25,7 +25,7 @@ function entierPositif(valeur, defaut) {
   return Number.isFinite(n) && n > 0 ? n : defaut;
 }
 
-const ROUTES_PHOTO = new Set(["/api/biens/photo", "/api/profil/photo"]);
+const ROUTES_PHOTO = new Set(["/api/biens/photo", "/api/profil/photo", "/api/apparence/image"]);
 
 // Les routes d'import de photo ont leur propre limite (taille maximale
 // d'une photo, + marge pour l'ancien format JSON/base64 qui grossit d'un tiers).

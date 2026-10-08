@@ -3064,3 +3064,37 @@ tr:hover .compta-supprimer-ligne, .compta-supprimer-ligne:focus-visible { opacit
 .dot-copie-outils { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .dot-copie-libelle { font-family: var(--d8-font-ui); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
 .dot-copie-ligne { width: 72px; text-align: center; }
+
+/* ---- Paramètres → Apparence : une carte par image de la marque ---- */
+.apparence-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+  max-width: 1000px;
+}
+.apparence-carte {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.apparence-apercu {
+  flex: 0 0 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  /* damier discret : la transparence d'un logo PNG reste visible */
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.07) 0% 25%, transparent 0% 50%) 0 0 / 14px 14px;
+  overflow: hidden;
+}
+.apparence-apercu img { max-width: 100%; max-height: 100%; object-fit: contain; image-rendering: auto; }
+.apparence-infos { min-width: 0; flex: 1; }
+.apparence-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+@media (max-width: 520px) {
+  .apparence-grille { grid-template-columns: 1fr; }
+  .apparence-apercu { flex-basis: 80px; height: 80px; }
+}

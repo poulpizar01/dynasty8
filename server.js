@@ -22,6 +22,7 @@ import { lirePage, preparerPage, origineDuSite, origineReglee } from "./src/page
 import { secretSessionValide, LONGUEUR_MIN_SECRET_SESSION } from "./src/verifications.js";
 import { GRADES_DIRECTION } from "./src/grades.js";
 import { lireConfigMedias, creerClientDepuisConfig, nettoyerMedias } from "./src/medias.js";
+import { FICHIERS_MARQUE, imageMarque } from "./src/apparence.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -390,6 +391,23 @@ app.get(/^\/(?:[^?]*\.html)?$/, async (req, res, next) => {
     if (page === null) return next();
     res.setHeader("Cache-Control", "no-cache");
     res.type("html").send(preparerPage(page, optionsPage(req)));
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---- images de la marque : celle réglée dans Paramètres → Apparence, sinon
+// le fichier livré (voir src/apparence.js). Même adresse dans les deux cas.
+app.get(FICHIERS_MARQUE, async (req, res, next) => {
+  try {
+    const image = await imageMarque({ db: adaptateurDB, env: process.env, chemin: req.path });
+    if (!image) return next();
+    // Revalidée à chaque affichage (304 si inchangée) : un logo remplacé ou
+    // rétabli se voit tout de suite.
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("ETag", image.etag);
+    if (req.get("if-none-match") === image.etag) return res.status(304).end();
+    res.type(image.mime).send(Buffer.from(image.octets));
   } catch (e) {
     next(e);
   }

@@ -98,6 +98,8 @@ découlent ensuite de ce grade.
   fixe les droits de Comptes & accès : on ne gère que les comptes d'un grade
   inférieur au sien, et seuls Patron, Co Patron et Développeur web nomment à
   ces trois grades.
+  L'**Apparence** (Direction) remplace les images de la marque — logo,
+  emblème, lettrage, icônes, image de partage — ou rétablit celles d'origine.
 - **Comptes & accès (Direction)** — validation des demandes, grades,
   activation ou désactivation d'un accès, dernière visite, permissions.
 
@@ -154,6 +156,7 @@ tâches de fond (nettoyage des photos, synchronisation du tableur).
 | `src/rh.js` | fiches employés, effectif, permissions RH (`/api/rh/*`) |
 | `src/grades.js` | la seule définition des grades : niveau d'accès, couleur, rang (hiérarchie réglable dans Paramètres) et règles contre l'élévation de droits |
 | `src/reglages.js` | liens du site réglables dans l'onglet Paramètres (`/api/reglages`, `/api/liens`) |
+| `src/apparence.js` | images de la marque remplacées dans Paramètres → Apparence (`/api/apparence`), relayées à l'adresse de l'image d'origine |
 | `src/corps-requete.js` | limite de taille des requêtes, avant lecture complète |
 | `src/entetes-proxy.js` | choix de l'hôte public derrière le reverse proxy |
 | `src/limite-debit.js` | limitation de débit par adresse et par route |
@@ -210,6 +213,13 @@ autre référence et un délai de grâce. Le nettoyage est en **simulation par
 défaut** (`FBFA_NETTOYAGE=simulation`) : il écrit un rapport sans rien
 supprimer. Les anciennes photos base64 et les liens collés restent affichés
 et ne sont jamais supprimés.
+
+Les images de la marque (Paramètres → Apparence) suivent le même chemin :
+l'image envoyée telle quelle (un PNG garde sa transparence) part sur le
+stockage, seule son URL est enregistrée (`apparence_images`). Les pages
+gardent les adresses d'origine (`/img/logo-full.png`…) : le serveur y relaie
+l'image réglée depuis le stockage, ou sert le fichier livré s'il n'y en a pas
+— ou si le stockage ne répond pas. Le dossier du projet reste en lecture seule.
 
 Procédures (diagnostic du service, migration des photos base64, nettoyage) :
 section « Photos » de [`deploy/operateur/README-OPERATEUR.md`](deploy/operateur/README-OPERATEUR.md).

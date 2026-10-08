@@ -772,6 +772,19 @@
         </form>
       </div>
 
+      <!-- Apparence : images de la marque (logo, emblème, icônes, image de
+           partage). Remplacer envoie l'image sur le stockage externe ;
+           Rétablir remet l'image livrée avec le site. Direction (vérifié
+           aussi côté serveur, voir src/apparence.js). Cartes construites par
+           admin.js à partir de GET /api/apparence. -->
+      <div id="reglages-apparence" class="cache">
+        <h3 class="comptes-sous-titre" style="margin-top:34px;">🎨 Apparence</h3>
+        <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">Les images de la marque, sur les pages publiques comme dans l'espace agents. Une image remplacée s'affiche partout dès l'enregistrement ; « Rétablir » remet l'image d'origine du site. Gardez les mêmes proportions que l'image d'origine pour qu'elle ne soit pas déformée.</p>
+        <div id="zone-message-apparence"></div>
+        <div class="apparence-grille" id="apparence-cartes"></div>
+        <input type="file" id="apparence-fichier" accept="image/png,image/jpeg,image/webp" class="cache">
+      </div>
+
       <!-- Hiérarchie des grades : rang de chaque grade (1 = le plus haut ; deux
            grades peuvent partager un rang). Sert aux tris (RH, équipe, DOT…) et
            aux droits de Comptes & accès. Patron, Co Patron et Développeur web

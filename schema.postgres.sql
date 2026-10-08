@@ -376,7 +376,7 @@ CREATE TABLE IF NOT EXISTS medias (
   url TEXT,
   taille INTEGER,
   mime TEXT,
-  usage TEXT NOT NULL CHECK (usage IN ('bien', 'profil')),
+  usage TEXT NOT NULL CHECK (usage IN ('bien', 'profil')), -- élargie plus bas (medias_usage_valide)
   origine TEXT NOT NULL DEFAULT 'import' CHECK (origine IN ('import', 'migration')),
   statut TEXT NOT NULL DEFAULT 'envoi'
     CHECK (statut IN ('envoi', 'echec', 'temporaire', 'attache', 'a_supprimer', 'suppression', 'supprime', 'conflit')),
@@ -412,6 +412,28 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_medias_ref_bien ON medias_references(media
 CREATE UNIQUE INDEX IF NOT EXISTS idx_medias_ref_membre ON medias_references(media_id, membre_id) WHERE membre_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_medias_ref_bien_seul ON medias_references(bien_id);
 CREATE INDEX IF NOT EXISTS idx_medias_ref_membre_seul ON medias_references(membre_id);
+
+-- ---- Paramètres → Apparence (oct. 2026) ------------------------------------
+-- Images de la marque remplacées par la Direction (logo, emblème, icônes,
+-- image de partage) : une ligne par image remplacée, avec la seule URL du
+-- fichier sur le stockage externe. Sans ligne, l'image livrée dans
+-- public/img est servie. Voir src/apparence.js.
+CREATE TABLE IF NOT EXISTS apparence_images (
+  cle TEXT PRIMARY KEY,
+  url TEXT NOT NULL,
+  media_id INTEGER REFERENCES medias(id) ON DELETE SET NULL,
+  maj TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')),
+  maj_par TEXT NOT NULL DEFAULT ''
+);
+-- medias.usage accepte désormais « apparence ». La contrainte d'origine
+-- (créée avec la table, sans ce cas) est remplacée par celle-ci.
+ALTER TABLE medias DROP CONSTRAINT IF EXISTS medias_usage_check;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'medias_usage_valide') THEN
+    ALTER TABLE medias ADD CONSTRAINT medias_usage_valide CHECK (usage IN ('bien', 'profil', 'apparence'));
+  END IF;
+END $$;
 
 -- Sauvegarde des anciennes images base64 remplacées par une migration vers
 -- storage.fbfa.fr, pour un retour arrière exact sans dépendre d'un dump.

@@ -26,6 +26,7 @@ import * as statsCalc from "./stats-calc.js";
 import {
   synchroniserSheetSansErreur, lireConfigSheet, lireTableurActuel, lireArchiveTableur, semaineParis,
 } from "./google-sheets.js";
+import { routeApparence } from "./apparence.js";
 import { routeRh, permissionsRh, trouverEmploye, nomComplet, recevoirCandidatureBot } from "./rh.js";
 import { envAvecReglages, routeReglages, routeRangsGrades, liensPublics, lienRegle, GRADES_REGLAGES } from "./reglages.js";
 import {
@@ -302,6 +303,11 @@ export default {
         if (!s) return json({ erreur: "Non connecté." }, 401);
         if (chemin === "/api/reglages/grades") return await routeRangsGrades(request, env, s);
         return await routeReglages(request, env, s);
+      }
+      if (chemin === "/api/apparence" || chemin === "/api/apparence/image") {
+        const s = await session(request, env);
+        if (!s) return json({ erreur: "Non connecté." }, 401);
+        return await routeApparence(request, url, env, s);
       }
       // Appelée par le bot Discord (signature HMAC), sans session : avant le contrôle de session.
       if (chemin === "/api/rh/bot/candidatures") return await recevoirCandidatureBot(request, env);
