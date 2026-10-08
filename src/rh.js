@@ -18,15 +18,12 @@
 
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { normaliserPseudo, normaliserTexte } from "./stats-calc.js";
+import { NOMS_GRADES, GRADES_ADMINISTRATEURS, rangsGrades, comparerGrades } from "./grades.js";
 
 export const PERMISSIONS_RH = ["voir", "creer", "modifier", "desactiver", "reactiver", "sensible"];
-export const GRADES_ADMIN_RH = ["Patron", "Co Patron", "Développeur web"];
-
-// Les grades de l'agence, dans l'ordre d'affichage (mêmes noms que les comptes du site).
-export const GRADES_EMPLOYES = [
-  "Patron", "Co Patron", "Manager", "DRH", "Secrétaire de Direction", "Développeur web",
-  "Référent Immobilier", "Agent Expert", "Agent", "Agent Novice", "Stagiaire",
-];
+// Grades : la seule définition est src/grades.js (ordre réglable dans Paramètres).
+export const GRADES_ADMIN_RH = GRADES_ADMINISTRATEURS;
+export const GRADES_EMPLOYES = NOMS_GRADES;
 
 function json(donnees, status = 200) {
   return new Response(JSON.stringify(donnees), {
@@ -182,17 +179,18 @@ async function rattacherVentes(env, e) {
 
 // ---- routes /api/rh/* ---------------------------------------------------------
 
-// Ordre d'affichage : actifs d'abord, puis par grade, puis par nom.
-function ordreEmployes(a, b) {
-  const rang = (g) => { const i = GRADES_EMPLOYES.indexOf(g); return i === -1 ? GRADES_EMPLOYES.length : i; };
-  return (a.statut === b.statut ? 0 : a.statut === "actif" ? -1 : 1)
-    || rang(a.grade) - rang(b.grade)
+// Ordre par défaut : actifs d'abord, puis hiérarchie (rangs de src/grades.js),
+// puis nom. L'espace agents propose aussi un tri alphabétique.
+function ordreEmployes(rangs) {
+  return (a, b) => (a.statut === b.statut ? 0 : a.statut === "actif" ? -1 : 1)
+    || comparerGrades(a.grade, b.grade, rangs)
     || a.nomComplet.localeCompare(b.nomComplet, "fr");
 }
 
 async function lister(env, perms) {
   const r = await env.DB.prepare("SELECT * FROM employes").all();
-  const employes = (r.results || []).map((e) => fichePublique(e, perms)).sort(ordreEmployes);
+  const rangs = rangsGrades(env.REGLAGES_SITE);
+  const employes = (r.results || []).map((e) => fichePublique(e, perms)).sort(ordreEmployes(rangs));
   const actifs = employes.filter((e) => e.statut === "actif");
   const parGrade = {};
   for (const e of actifs) parGrade[e.grade] = (parGrade[e.grade] || 0) + 1;
@@ -201,7 +199,8 @@ async function lister(env, perms) {
     effectif: {
       actifs: actifs.length,
       inactifs: employes.length - actifs.length,
-      parGrade: GRADES_EMPLOYES.filter((g) => parGrade[g]).map((g) => ({ grade: g, nombre: parGrade[g] })),
+      parGrade: [...GRADES_EMPLOYES].sort((a, b) => comparerGrades(a, b, rangs))
+        .filter((g) => parGrade[g]).map((g) => ({ grade: g, nombre: parGrade[g] })),
     },
   };
 }
@@ -304,7 +303,8 @@ async function lirePermissions(env) {
   return {
     permissions: PERMISSIONS_RH,
     gradesAdmin: GRADES_ADMIN_RH,
-    grades: GRADES_EMPLOYES.filter((g) => !GRADES_ADMIN_RH.includes(g)).map((g) => ({ grade: g, permissions: parGrade[g] || [] })),
+    grades: [...GRADES_EMPLOYES].sort((a, b) => comparerGrades(a, b, rangsGrades(env.REGLAGES_SITE)))
+      .filter((g) => !GRADES_ADMIN_RH.includes(g)).map((g) => ({ grade: g, permissions: parGrade[g] || [] })),
   };
 }
 

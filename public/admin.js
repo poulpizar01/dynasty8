@@ -85,6 +85,7 @@ async function demarrer() {
         peutReglerLiens: !!moi.peut_regler_liens,
         stockagePhotos: !!moi.stockage_photos,
       };
+      definirGrades(moi.grades);
       // Le lien du registre n'est pas dans la page : réglé dans Paramètres,
       // donné aux seuls comptes connectés, masqué s'il est vide.
       const lienRegistre = document.getElementById("lien-registre");
@@ -139,6 +140,7 @@ function initialesPseudo(pseudo) {
 }
 
 function demarrerEspaceAdmin() {
+  construireListesGrades();
   // Stockage des photos non réglé sur le serveur (FBFA_STORAGE_TOKEN et
   // FBFA_STORAGE_BASE absents du .env) : on le dit tout de suite, au lieu de
   // laisser choisir un fichier pour échouer ensuite.
@@ -171,7 +173,7 @@ function demarrerEspaceAdmin() {
   document.getElementById("onglet-rh").classList.toggle("cache", !SESSION.droitsRh.includes("voir"));
   // Le lien Webmap est réservé au Patron, au Co Patron, et au Développeur web
   // (qui a exactement les mêmes accès que le Patron, y compris ici).
-  document.getElementById("lien-webmap").classList.toggle("cache", !["Patron", "Co Patron", "Développeur web"].includes(SESSION.grade));
+  document.getElementById("lien-webmap").classList.toggle("cache", !SESSION.peutReglerLiens);
   // [data-onglet] exclut volontairement le lien Webmap : c'est un vrai lien externe
   // (nouvel onglet), pas un onglet à basculer dans la page.
   document.querySelectorAll(".lien-onglet[data-onglet]").forEach((btn) => {
@@ -204,7 +206,7 @@ function basculerOnglet(nom) {
   if (nom === "statistiques") { chargerStatistiques(); chargerTableur(); }
   if (nom === "rh") chargerRh();
   if (nom === "coherences") afficherCoherences();
-  if (nom === "parametres") { chargerReglagesLiens(); chargerSyncSheet(); }
+  if (nom === "parametres") { chargerReglagesLiens(); chargerRangsGrades(); chargerSyncSheet(); }
 }
 
 // ---------------------------------------------------------------------------
@@ -340,17 +342,24 @@ function formaterArgentStats(valeur) {
 // masquer ce qui serait de toute façon refusé.
 // ---------------------------------------------------------------------------
 
-const GRADES_EMPLOYES = [
-  "Patron", "Co Patron", "Manager", "DRH", "Secrétaire de Direction", "Développeur web",
-  "Référent Immobilier", "Agent Expert", "Agent", "Agent Novice", "Stagiaire",
-];
 const LIBELLES_PERMISSIONS_RH = {
   voir: "Consulter", creer: "Ajouter", modifier: "Modifier",
   desactiver: "Désactiver", reactiver: "Réactiver", sensible: "Téléphone et RIB",
 };
-const OPTIONS_GRADES_EMPLOYES = GRADES_EMPLOYES.map((g) => `<option value="${echapper(g)}">${echapper(g)}</option>`).join("");
-document.getElementById("employe-grade").innerHTML = OPTIONS_GRADES_EMPLOYES;
-document.getElementById("filtre-rh-grade").innerHTML = `<option value="">Tous les grades</option>${OPTIONS_GRADES_EMPLOYES}`;
+// Grades dans l'ordre hiérarchique en vigueur (reçus de /api/moi, voir
+// definirGrades dans layout.js). Les menus sont construits après la connexion.
+const nomsGrades = () => D8_GRADES.map((g) => g.nom);
+const rangGrade = (nom) => { const g = D8_GRADES.find((x) => x.nom === nom); return g ? g.rang : 999; };
+let OPTIONS_GRADES_HTML = "";
+function construireListesGrades() {
+  OPTIONS_GRADES_HTML = nomsGrades().map((g) => `<option value="${echapper(g)}">${echapper(g)}</option>`).join("");
+  document.getElementById("employe-grade").innerHTML = OPTIONS_GRADES_HTML;
+  const filtre = document.getElementById("filtre-rh-grade");
+  const choisi = filtre.value;
+  filtre.innerHTML = `<option value="">Tous les grades</option>${OPTIONS_GRADES_HTML}`;
+  filtre.value = choisi;
+  document.getElementById("membre-grade").innerHTML = OPTIONS_GRADES_HTML;
+}
 
 let CACHE_EMPLOYES = [];
 let DROITS_RH = new Set();
@@ -378,6 +387,7 @@ async function chargerRh() {
       : "";
     ameliorerSelect(document.getElementById("filtre-rh-grade"));
     ameliorerSelect(document.getElementById("filtre-rh-statut"));
+    ameliorerSelect(document.getElementById("tri-rh"));
     afficherEmployes();
     chargerARattacher();
     chargerArriveesBot();
@@ -392,12 +402,20 @@ function afficherEmployes() {
   const recherche = document.getElementById("recherche-employes").value.trim().toLowerCase();
   const grade = document.getElementById("filtre-rh-grade").value;
   const statut = document.getElementById("filtre-rh-statut").value;
+  const tri = document.getElementById("tri-rh").value;
   const liste = CACHE_EMPLOYES.filter((e) =>
     (!grade || e.grade === grade)
     && (!statut || e.statut === statut)
     && (!recherche || [e.nomComplet, e.idEmploye, e.discordPseudo, e.discordId]
       .some((v) => String(v || "").toLowerCase().includes(recherche)))
   );
+  // Tri : hiérarchie (rang du grade, réglable dans Paramètres, puis nom) ou
+  // ordre alphabétique des noms. Les actifs restent devant les anciens.
+  const parNom = (a, b) => a.nomComplet.localeCompare(b.nomComplet, "fr", { sensitivity: "base" });
+  const parStatut = (a, b) => (a.statut === b.statut ? 0 : a.statut === "actif" ? -1 : 1);
+  liste.sort(tri === "alpha"
+    ? (a, b) => parStatut(a, b) || parNom(a, b)
+    : (a, b) => parStatut(a, b) || rangGrade(a.grade) - rangGrade(b.grade) || parNom(a, b));
   document.getElementById("rh-vide").classList.toggle("cache", liste.length > 0);
   document.getElementById("rh-resultat").classList.toggle("cache", liste.length === 0);
   const corps = document.getElementById("corps-table-employes");
@@ -429,6 +447,7 @@ function afficherEmployes() {
 
 document.getElementById("recherche-employes").addEventListener("input", afficherEmployes);
 document.getElementById("filtre-rh-grade").addEventListener("change", afficherEmployes);
+document.getElementById("tri-rh").addEventListener("change", afficherEmployes);
 document.getElementById("filtre-rh-statut").addEventListener("change", afficherEmployes);
 
 // Fiche : consultation, modification, ou création (id absent, avec un
@@ -459,7 +478,11 @@ async function ouvrirFicheEmploye(id, preremplissage) {
     champ.disabled = !peutEcrire;
   }
   const grade = document.getElementById("employe-grade");
-  grade.value = GRADES_EMPLOYES.includes(f.grade) ? f.grade : "Agent";
+  // Grade hors liste (ancienne fiche) : affiché tel quel, jamais réécrit en silence.
+  if (f.grade && !nomsGrades().includes(f.grade)) {
+    grade.insertAdjacentHTML("beforeend", `<option value="${echapper(f.grade)}">${echapper(f.grade)} (hors liste)</option>`);
+  }
+  grade.value = f.grade || "Agent";
   grade.disabled = !peutEcrire;
   // La date d'arrivée est exigée à la création ; une fiche reprise de
   // l'existant peut ne pas en avoir encore.
@@ -2658,8 +2681,6 @@ document.getElementById("bouton-reinitialiser-tablette").addEventListener("click
 // suspension, suppression) et la création de comptes pré-autorisés.
 // ---------------------------------------------------------------------------
 
-const OPTIONS_GRADES_HTML = GRADES.map((g) => `<option value="${echapper(g.nom)}">${echapper(g.nom)}</option>`).join("");
-document.getElementById("membre-grade").innerHTML = OPTIONS_GRADES_HTML;
 
 // Affiche la vraie photo de profil Discord de la personne (récupérée à sa
 // dernière connexion) si on l'a, sinon retombe sur le rond avec ses initiales.
@@ -3360,6 +3381,50 @@ document.getElementById("formulaire-reglages").addEventListener("submit", async 
     chargerSyncSheet();
   } catch (err) {
     afficherMessage("zone-message-reglages", err.message, "erreur");
+  } finally {
+    bouton.disabled = false;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Paramètres -> Hiérarchie des grades (rangs, voir src/grades.js). Patron,
+// Co Patron et Développeur web seulement ; vérifié aussi côté serveur.
+// ---------------------------------------------------------------------------
+
+function afficherRangsGrades(r) {
+  document.getElementById("grades-corps").innerHTML = r.grades.map((g) => `<tr>
+      <td><span class="puce" style="background:${g.couleur}26;color:${g.couleur};">${echapper(g.nom)}</span></td>
+      <td><input type="number" min="1" max="99" step="1" required value="${g.rang}" data-rang-grade="${echapper(g.nom)}" aria-label="Rang de ${echapper(g.nom)}" style="width:80px;"></td>
+    </tr>`).join("");
+}
+
+async function chargerRangsGrades() {
+  const bloc = document.getElementById("reglages-grades");
+  bloc.classList.toggle("cache", !SESSION.peutReglerLiens);
+  if (!SESSION.peutReglerLiens) return;
+  afficherMessage("zone-message-grades", "", null);
+  try {
+    afficherRangsGrades(await appelAPI("/api/reglages/grades"));
+  } catch (e) {
+    afficherMessage("zone-message-grades", "Impossible de charger la hiérarchie : " + e.message, "erreur");
+  }
+}
+
+document.getElementById("formulaire-grades").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const rangs = {};
+  document.querySelectorAll("[data-rang-grade]").forEach((c) => { rangs[c.dataset.rangGrade] = Number(c.value); });
+  const bouton = document.getElementById("grades-enregistrer");
+  bouton.disabled = true;
+  try {
+    const r = await appelAPI("/api/reglages/grades", { method: "PUT", body: JSON.stringify({ rangs }) });
+    afficherRangsGrades(r);
+    // Les menus et les tris de l'espace agents suivent aussitôt le nouvel ordre.
+    definirGrades(r.grades);
+    construireListesGrades();
+    afficherMessage("zone-message-grades", "Hiérarchie enregistrée ✓ — elle s'applique tout de suite.", "succes");
+  } catch (err) {
+    afficherMessage("zone-message-grades", err.message, "erreur");
   } finally {
     bouton.disabled = false;
   }

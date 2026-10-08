@@ -20,6 +20,7 @@ import { lireSchema, appliquerSchema as appliquerSchemaSQL, verifierSchema } fro
 import { choisirHote } from "./src/entetes-proxy.js";
 import { lirePage, preparerPage, origineDuSite, origineReglee } from "./src/pages.js";
 import { secretSessionValide, LONGUEUR_MIN_SECRET_SESSION } from "./src/verifications.js";
+import { GRADES_DIRECTION } from "./src/grades.js";
 import { lireConfigMedias, creerClientDepuisConfig, nettoyerMedias } from "./src/medias.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -118,7 +119,6 @@ async function preparerBase() {
 // validée et promue "Patron". Dès qu'un compte Direction existe, cette
 // fonction ne fait plus jamais rien — elle ne sert qu'à débloquer le tout
 // premier démarrage, sans quoi personne ne pourrait jamais rien valider.
-const GRADES_DIRECTION = ["Développeur web", "Patron", "Co Patron", "Manager", "DRH", "Secrétaire de Direction"];
 async function amorcerPremierAdmin() {
   const admin = await pool.query(
     `SELECT id FROM membres WHERE statut = 'valide' AND actif = 1 AND grade = ANY($1) LIMIT 1`,

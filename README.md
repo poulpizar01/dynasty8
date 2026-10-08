@@ -93,6 +93,11 @@ découlent ensuite de ce grade.
   Sheets de la synchronisation, registre, Discord de l'agence, boutique VIP,
   liens du pied de page (Patron, Co Patron et Développeur web). On y trouve
   aussi l'état de la synchronisation du tableur (Direction).
+  On y règle aussi la **hiérarchie des grades** (rang de chaque grade ;
+  Patron et Développeur web au même rang), qui ordonne tous les tableaux et
+  fixe les droits de Comptes & accès : on ne gère que les comptes d'un grade
+  inférieur au sien, et seuls Patron, Co Patron et Développeur web nomment à
+  ces trois grades.
 - **Comptes & accès (Direction)** — validation des demandes, grades,
   activation ou désactivation d'un accès, dernière visite, permissions.
 
@@ -147,6 +152,7 @@ tâches de fond (nettoyage des photos, synchronisation du tableur).
 | `src/stats-calc.js` | calculs de primes, quotas et semaines ISO |
 | `src/google-sheets.js` | lecture du tableur de la Direction (export CSV) |
 | `src/rh.js` | fiches employés, effectif, permissions RH (`/api/rh/*`) |
+| `src/grades.js` | la seule définition des grades : niveau d'accès, couleur, rang (hiérarchie réglable dans Paramètres) et règles contre l'élévation de droits |
 | `src/reglages.js` | liens du site réglables dans l'onglet Paramètres (`/api/reglages`, `/api/liens`) |
 | `src/corps-requete.js` | limite de taille des requêtes, avant lecture complète |
 | `src/entetes-proxy.js` | choix de l'hôte public derrière le reverse proxy |

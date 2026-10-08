@@ -27,7 +27,11 @@ import {
   synchroniserSheetSansErreur, lireConfigSheet, lireTableurActuel, lireArchiveTableur, semaineParis,
 } from "./google-sheets.js";
 import { routeRh, permissionsRh, trouverEmploye, nomComplet, recevoirCandidatureBot } from "./rh.js";
-import { envAvecReglages, routeReglages, liensPublics, lienRegle, GRADES_REGLAGES } from "./reglages.js";
+import { envAvecReglages, routeReglages, routeRangsGrades, liensPublics, lienRegle, GRADES_REGLAGES } from "./reglages.js";
+import {
+  NOMS_GRADES, NIVEAU_PAR_GRADE, GRADE_PAR_DEFAUT, rangsGrades, comparerGrades, gradesOrdonnes,
+  peutGererCompte, peutAttribuerGrade,
+} from "./grades.js";
 import { ErreurStockage } from "./fbfa-storage.js";
 import { consommer, adresseAppelant } from "./limite-debit.js";
 import { TYPES_IMAGE, decoderDataUrl, estDataUrlImage } from "./images.js";
@@ -91,31 +95,8 @@ const COHERENCES = ["Habitation", "Garage", "Cayo Perico", "Roxwood"];
 // pas gérés par l'agence elle-même) — voir le texte affiché sur les pages publiques.
 const VALEURS_VIP = ["", "vip"];
 
-// Les 10 grades de la hiérarchie Dynasty 8, du plus élevé au plus bas. "niveau"
-// détermine les droits réels dans l'espace agents :
-//   "direction"  -> accès total (annonces + comptes & accès)
-//   "commercial" -> gestion des annonces uniquement
-//   "membre"     -> aucun accès, seulement "Mon profil"
-// (même liste côté site public, dans layout.js — à garder synchronisée si elle change un jour)
-const GRADES = [
-  { nom: "Développeur web", niveau: "direction" },
-  { nom: "Patron", niveau: "direction" },
-  { nom: "Co Patron", niveau: "direction" },
-  { nom: "Manager", niveau: "direction" },
-  { nom: "DRH", niveau: "direction" },
-  { nom: "Secrétaire de Direction", niveau: "direction" },
-  { nom: "Référent Immobilier", niveau: "commercial" },
-  { nom: "Agent Expert", niveau: "commercial" },
-  { nom: "Agent", niveau: "commercial" },
-  { nom: "Agent Novice", niveau: "commercial" },
-  { nom: "Stagiaire", niveau: "membre" },
-];
-const NOMS_GRADES = GRADES.map((g) => g.nom);
-const NIVEAU_PAR_GRADE = Object.fromEntries(GRADES.map((g) => [g.nom, g.niveau]));
-// Grade attribué automatiquement quand la Direction clique "✓ Valider" sur une
-// demande : le plus prudent (aucun accès annonces). La Direction l'ajuste
-// ensuite via le menu déroulant de la ligne, dans le tableau des comptes.
-const GRADE_PAR_DEFAUT = "Stagiaire";
+// Grades : définis UNE seule fois, dans src/grades.js (noms, niveau d'accès,
+// couleur, rang réglable dans Paramètres).
 
 const maintenant = () => Math.floor(Date.now() / 1000);
 
@@ -316,9 +297,10 @@ export default {
       if (chemin === "/api/agenda") return await agenda(request, url, env);
       if (chemin.startsWith("/api/chat/")) return await chat(request, url, env);
       if (chemin === "/api/liens") return await liensPublics(env);
-      if (chemin === "/api/reglages") {
+      if (chemin === "/api/reglages" || chemin === "/api/reglages/grades") {
         const s = await session(request, env);
         if (!s) return json({ erreur: "Non connecté." }, 401);
+        if (chemin === "/api/reglages/grades") return await routeRangsGrades(request, env, s);
         return await routeReglages(request, env, s);
       }
       // Appelée par le bot Discord (signature HMAC), sans session : avant le contrôle de session.
@@ -611,7 +593,7 @@ async function session(request, env) {
   return { id: m.id, pseudo: m.pseudo, grade: m.grade, exp: s.exp };
 }
 
-// "niveau" résume le grade en 3 paliers de droits (voir GRADES ci-dessus).
+// "niveau" résume le grade en 3 paliers de droits (voir src/grades.js).
 // Un grade vide/inconnu (ex: demande en attente) n'a par sécurité aucun accès.
 function niveauAcces(s) {
   return NIVEAU_PAR_GRADE[(s && s.grade) || ""] || "membre";
@@ -696,6 +678,8 @@ async function moi(request, env) {
     photo: (m && m.photo) || "",
     lien_registre: lienRegle(env, "registre_url"),
     peut_regler_liens: GRADES_REGLAGES.includes(s.grade),
+    // Grades dans l'ordre hiérarchique en vigueur (nom, niveau, couleur, rang).
+    grades: gradesOrdonnes(rangsGrades(env.REGLAGES_SITE)),
     // Envoi de photos possible seulement si le stockage (CDN) est réglé dans le .env.
     stockage_photos: lireConfigMedias(env).configure,
     primes,
@@ -1904,8 +1888,8 @@ async function calculerRecapSemaine(env, semaine) {
     };
   });
 
-  const ordreGrade = (g) => { const i = statsCalc.GRADES_STATS.indexOf(g); return i === -1 ? statsCalc.GRADES_STATS.length : i; };
-  agents.sort((a, b) => ordreGrade(a.grade) - ordreGrade(b.grade) || b.totalGagne - a.totalGagne);
+  const rangs = rangsGrades(env.REGLAGES_SITE);
+  agents.sort((a, b) => comparerGrades(a.grade, b.grade, rangs) || b.totalGagne - a.totalGagne);
   return agents;
 }
 
@@ -2030,7 +2014,8 @@ async function statsRemunerationLire(env, s) {
     env.DB.prepare("SELECT * FROM stats_baremes_primes ORDER BY type ASC, seuil ASC").all(),
   ]);
   const tauxParGrade = new Map((tauxR.results || []).map((t) => [t.grade, t]));
-  const grades = statsCalc.GRADES_STATS.map((grade) => {
+  const rangsRemu = rangsGrades(env.REGLAGES_SITE);
+  const grades = [...statsCalc.GRADES_STATS].sort((a, b) => comparerGrades(a, b, rangsRemu)).map((grade) => {
     const t = tauxParGrade.get(grade) || {};
     return {
       grade,
@@ -2177,15 +2162,13 @@ async function equipe(env) {
   const r = await env.DB.prepare(
     `SELECT id, pseudo, grade, poste, specialite, bio, photo
        FROM membres
-       WHERE statut = 'valide' AND actif = 1
-       ORDER BY CASE grade
-         WHEN 'Développeur web' THEN 0 WHEN 'Patron' THEN 1 WHEN 'Co Patron' THEN 2 WHEN 'Manager' THEN 3
-         WHEN 'DRH' THEN 4 WHEN 'Secrétaire de Direction' THEN 5 WHEN 'Référent Immobilier' THEN 6
-         WHEN 'Agent Expert' THEN 7 WHEN 'Agent' THEN 8 WHEN 'Agent Novice' THEN 9
-         WHEN 'Stagiaire' THEN 10 ELSE 11 END,
-         pseudo COLLATE NOCASE`
+       WHERE statut = 'valide' AND actif = 1`
   ).all();
-  const liste = (r.results || []).map((m) => ({
+  // Ordre hiérarchique (rangs de src/grades.js, réglables), puis pseudo.
+  const rangs = rangsGrades(env.REGLAGES_SITE);
+  const tries = (r.results || []).sort((a, b) =>
+    comparerGrades(a.grade, b.grade, rangs) || String(a.pseudo).localeCompare(String(b.pseudo), "fr", { sensitivity: "base" }));
+  const liste = tries.map((m) => ({
     id: m.id,
     pseudo: m.pseudo,
     poste: m.poste || m.grade || "Agent immobilier",
@@ -2638,6 +2621,9 @@ async function comptes(request, url, env) {
     const discordPseudo = txt(b && b.discord_pseudo, 40).trim();
     const grade = NOMS_GRADES.includes(b && b.grade) ? b.grade : GRADE_PAR_DEFAUT;
     if (!discordPseudo) return json({ erreur: "Le pseudo Discord exact est obligatoire." }, 400);
+    if (!peutAttribuerGrade(s.grade, grade, rangsGrades(env.REGLAGES_SITE))) {
+      return json({ erreur: `Vous ne pouvez pas attribuer le grade « ${grade} ».` }, 403);
+    }
     const existe = await env.DB.prepare(
       "SELECT id FROM membres WHERE statut != 'desactive' AND lower(discord_pseudo) = lower(?1)"
     ).bind(discordPseudo).first();
@@ -2663,8 +2649,16 @@ async function comptes(request, url, env) {
       return json({ ok: true });
     }
 
-    const cible = await env.DB.prepare("SELECT id FROM membres WHERE id = ?1 AND statut != 'desactive'").bind(id).first();
+    const cible = await env.DB.prepare("SELECT id, grade FROM membres WHERE id = ?1 AND statut != 'desactive'").bind(id).first();
     if (!cible) return json({ erreur: "Introuvable." }, 404);
+    // On ne gère qu'un compte de grade STRICTEMENT inférieur au sien. Sur son
+    // propre compte, seuls les champs sans effet sur les droits restent
+    // modifiables (grade et suspension, eux, ne le sont pas).
+    const rangs = rangsGrades(env.REGLAGES_SITE);
+    const soiMeme = String(cible.id) === String(s.id);
+    if (!soiMeme && !peutGererCompte(s.grade, cible.grade, rangs)) {
+      return json({ erreur: "Vous ne pouvez modifier que les comptes d'un grade inférieur au vôtre." }, 403);
+    }
 
     const champs = [];
     const binds = [id];
@@ -2676,8 +2670,9 @@ async function comptes(request, url, env) {
     }
     if (b.grade !== undefined) {
       if (!NOMS_GRADES.includes(b.grade)) return json({ erreur: "Grade invalide." }, 400);
-      if (String(id) === String(s.id) && NIVEAU_PAR_GRADE[b.grade] !== "direction") {
-        return json({ erreur: "Vous ne pouvez pas retirer vos propres droits de Direction." }, 400);
+      if (soiMeme) return json({ erreur: "Vous ne pouvez pas changer votre propre grade." }, 400);
+      if (!peutAttribuerGrade(s.grade, b.grade, rangs)) {
+        return json({ erreur: `Vous ne pouvez pas attribuer le grade « ${b.grade} ».` }, 403);
       }
       binds.push(b.grade);
       champs.push(`grade = ?${binds.length}`);
@@ -2744,6 +2739,10 @@ async function comptes(request, url, env) {
       return json({ erreur: "Vous ne pouvez pas supprimer votre propre accès." }, 400);
     }
     if (!/^\d+$/.test(id)) return json({ ok: true });
+    const visee = await env.DB.prepare("SELECT grade FROM membres WHERE id = ?1").bind(id).first();
+    if (visee && !peutGererCompte(s.grade, visee.grade, rangsGrades(env.REGLAGES_SITE))) {
+      return json({ erreur: "Vous ne pouvez supprimer que les comptes d'un grade inférieur au vôtre." }, 403);
+    }
     await env.DB.transaction(async (tx) => {
       const existant = await tx.prepare("SELECT id FROM membres WHERE id = ?1 FOR UPDATE").bind(id).first();
       if (!existant) return;

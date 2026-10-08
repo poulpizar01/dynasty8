@@ -23,7 +23,10 @@
 // n'est pas un réglage à laisser à tout le monde.
 // ============================================================================
 
-export const GRADES_REGLAGES = ["Patron", "Co Patron", "Développeur web"];
+import { GRADES_ADMINISTRATEURS, CLE_REGLAGE_RANGS, rangsGrades, gradesOrdonnes, validerRangs } from "./grades.js";
+
+// Patron, Co Patron, Développeur web (voir src/grades.js).
+export const GRADES_REGLAGES = GRADES_ADMINISTRATEURS;
 
 // type : "origine" (https://hôte, sans chemin), "url" (lien https complet),
 //        "sheet" (lien ou identifiant d'un Google Sheets -> sheet_id + sheet_gid).
@@ -238,5 +241,33 @@ export async function routeReglages(request, env, s) {
   }
   if (request.method === "GET") return json(await lister(env));
   if (request.method === "PUT") return enregistrer(env, request, s);
+  return json({ erreur: "Méthode non autorisée." }, 405);
+}
+
+// ---- hiérarchie des grades (rangs réglables, voir src/grades.js) -------------
+
+// /api/reglages/grades — session déjà vérifiée par l'appelant. Mêmes droits
+// que les liens : Patron, Co Patron et Développeur web.
+export async function routeRangsGrades(request, env, s) {
+  if (!s || !GRADES_REGLAGES.includes(s.grade)) {
+    return json({ erreur: "Réservé au Patron, au Co Patron et au Développeur web." }, 403);
+  }
+  const reponse = async () => {
+    caches.delete(env.DB);
+    const v = await lireValeurs(env);
+    return { grades: gradesOrdonnes(rangsGrades(v)), administrateurs: GRADES_ADMINISTRATEURS };
+  };
+  if (request.method === "GET") return json(await reponse());
+  if (request.method === "PUT") {
+    const b = await request.json().catch(() => null);
+    const { rangs, erreur } = validerRangs(b && b.rangs);
+    if (erreur) return json({ erreur }, 400);
+    await env.DB.prepare(
+      `INSERT INTO reglages_site (cle, valeur, maj, maj_par) VALUES (?1, ?2, datetime('now'), ?3)
+       ON CONFLICT (cle) DO UPDATE SET valeur = excluded.valeur, maj = excluded.maj, maj_par = excluded.maj_par
+       RETURNING cle`
+    ).bind(CLE_REGLAGE_RANGS, JSON.stringify(rangs), String((s && s.pseudo) || "").slice(0, 100)).first();
+    return json({ ok: true, ...(await reponse()) });
+  }
   return json({ erreur: "Méthode non autorisée." }, 405);
 }

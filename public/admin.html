@@ -603,6 +603,10 @@
           <option value="inactif">Anciens employés</option>
           <option value="">Tous</option>
         </select>
+        <select id="tri-rh" aria-label="Trier le tableau">
+          <option value="hierarchie">Tri : hiérarchie</option>
+          <option value="alpha">Tri : nom (A → Z)</option>
+        </select>
       </div>
 
       <div id="rh-vide" class="etat-vide cache"><p>Aucun employé ne correspond à ces critères.</p></div>
@@ -751,6 +755,20 @@
         <form id="formulaire-reglages" style="max-width:860px;">
           <div id="reglages-champs"></div>
           <button type="submit" class="btn btn-or btn-petit" id="reglages-enregistrer">Enregistrer les liens</button>
+        </form>
+      </div>
+
+      <!-- Hiérarchie des grades : rang de chaque grade (1 = le plus haut ; deux
+           grades peuvent partager un rang). Sert aux tris (RH, équipe, DOT…) et
+           aux droits de Comptes & accès. Patron, Co Patron et Développeur web
+           seulement ; ces trois grades restent toujours au-dessus des autres. -->
+      <div id="reglages-grades" class="cache">
+        <h3 class="comptes-sous-titre" style="margin-top:40px;">🏅 Hiérarchie des grades</h3>
+        <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">Le rang de chaque grade : 1 = le plus haut. Deux grades peuvent avoir le même rang (par exemple Patron et Développeur web). Cet ordre sert à tous les tris du site et aux droits de Comptes &amp; accès : on ne peut gérer que les comptes d'un grade inférieur au sien. Patron, Co Patron et Développeur web restent toujours au-dessus des autres grades.</p>
+        <div id="zone-message-grades"></div>
+        <form id="formulaire-grades" style="max-width:520px;">
+          <div style="overflow-x:auto;"><table class="table-admin"><thead><tr><th>Grade</th><th style="width:110px;">Rang</th></tr></thead><tbody id="grades-corps"></tbody></table></div>
+          <button type="submit" class="btn btn-or btn-petit" style="margin-top:12px;" id="grades-enregistrer">Enregistrer la hiérarchie</button>
         </form>
       </div>
 
