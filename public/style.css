@@ -3042,12 +3042,8 @@ body.visionneuse-ouverte { overflow: hidden; }
 /* champ de repli « copier le lien » (fiche) quand le presse-papiers n'est pas disponible */
 .fiche-lien-copie { width: min(100%, 420px); height: 34px; padding: 0 12px; border-radius: var(--d8-r-pill); border: 1px solid var(--border); background: rgba(6, 12, 26, 0.6); color: var(--d8-gold-300); font-family: var(--d8-font-ui); font-size: 0.8rem; }
 
-/* ordinateur en jeu (FolkOS) : le sélecteur de fichiers natif est peu fiable
-   en NUI, on met en avant l'ajout de photo par lien */
+/* Outils photos d'une annonce (bouton « Parcourir mes fichiers »). */
 .bien-images-outils { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.bien-image-url-groupe { display: flex; gap: 6px; flex: 1 1 260px; }
-.bien-image-url-groupe input { flex: 1; min-height: 34px; padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid rgba(201, 165, 92, 0.28); background: rgba(6, 12, 26, 0.55); color: var(--text); font-size: 0.85rem; font-family: inherit; }
-.dans-folkos #bouton-parcourir { order: 2; }
 
 /* Comptabilité → Tablettes : colonne de suppression (croix discrète, visible au survol de la ligne) */
 .compta-col-actions { width: 44px; text-align: right; padding-right: 8px !important; }

@@ -234,7 +234,12 @@ export async function planifierOrphelins(tx, ids, delaiSecondes) {
 // liste de valeurs enregistrée (URL, anciennes data URL, liens externes —
 // seules les URL de médias suivis sont concernées). Refuse (409) si une URL
 // correspond à un média qui n'est plus disponible.
-export async function synchroniserReferences(tx, cible, valeurs, { delaiSecondes }) {
+//
+// `valeursActuelles` (ce qui est déjà enregistré sur la cible) : toute AUTRE
+// valeur doit être une photo envoyée par le site sur le CDN (média suivi).
+// Plus aucun lien vers une image extérieure ni aucune image base64 n'entre en
+// base ; les anciennes valeurs déjà enregistrées restent acceptées telles quelles.
+export async function synchroniserReferences(tx, cible, valeurs, { delaiSecondes, valeursActuelles = [] }) {
   const colonne = colonneCible(cible);
   const liste = (valeurs || []).filter((v) => typeof v === "string");
   const urls = [...new Set(liste.filter((v) => /^https?:\/\//i.test(v)))];
@@ -258,6 +263,15 @@ export async function synchroniserReferences(tx, cible, valeurs, { delaiSecondes
       409,
       `Photo n° ${positions.join(", ")} : ce fichier n'est plus disponible sur le stockage. Retirez-la puis importez-la à nouveau.`,
       "media_indisponible"
+    );
+  }
+  const connues = new Set((valeursActuelles || []).filter((v) => typeof v === "string" && v));
+  const nonSuivie = liste.findIndex((v) => v && !connues.has(v) && !parUrl.has(v));
+  if (nonSuivie !== -1) {
+    throw new ErreurMedia(
+      400,
+      `Photo n° ${nonSuivie + 1} : seules les photos envoyées depuis l'ordinateur sont acceptées (les liens vers des images extérieures ne le sont plus).`,
+      "image_non_importee"
     );
   }
 

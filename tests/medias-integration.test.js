@@ -211,12 +211,35 @@ it("import : jeton refusé, quota, délai, réponse inattendue -> messages clair
 
 it("annonce : l'URL importée devient attachée à la sauvegarde et s'affiche publiquement", async () => {
   const url = await importer();
-  const id = await creerAnnonce([url, "https://exemple.fr/lien-colle.jpg"]);
+  const id = await creerAnnonce([url]);
   const m = await mediaParUrl(url);
   assert.equal(m.statut, "attache");
   assert.deepEqual(await references(m.id), [{ bien_id: id, membre_id: null }]);
   const publique = await api("GET", `/api/biens?id=${id}`);
-  assert.deepEqual(publique.json.images, [url, "https://exemple.fr/lien-colle.jpg"]);
+  assert.deepEqual(publique.json.images, [url]);
+});
+
+it("annonce : un lien vers une image extérieure est refusé ; un ancien lien déjà enregistré reste accepté", async () => {
+  const url = await importer();
+  const refus = await api("POST", "/api/biens", { membre: membres.agent, corps: annonce([url, "https://exemple.fr/lien-colle.jpg"]) });
+  assert.equal(refus.status, 400);
+  assert.match(refus.json.erreur, /Photo n° 2/);
+  assert.equal((await mediaParUrl(url)).statut, "temporaire", "rien n'est rattaché quand l'annonce est refusée");
+
+  // Annonce enregistrée avant l'arrêt de l'ajout par lien : son lien extérieur reste valable.
+  const ancienne = (await pool.query(
+    "INSERT INTO biens (categorie, titre, images, auteur, cree_le, maj) VALUES ('habitation', 'Ancienne', $1, 'test', '2026-01-01', '2026-01-01') RETURNING id",
+    [JSON.stringify(["https://exemple.fr/ancien-lien.jpg"])]
+  )).rows[0].id;
+  const garde = await api("PUT", `/api/biens?id=${ancienne}`, { membre: membres.agent, corps: annonce(["https://exemple.fr/ancien-lien.jpg", url]) });
+  assert.equal(garde.status, 200, garde.texte);
+  const nouveau = await api("PUT", `/api/biens?id=${ancienne}`, { membre: membres.agent, corps: annonce(["https://exemple.fr/autre-lien.jpg"]) });
+  assert.equal(nouveau.status, 400, "un NOUVEAU lien extérieur reste refusé en modification");
+});
+
+it("profil : une photo par lien extérieur est refusée", async () => {
+  const r = await api("PUT", "/api/moi", { membre: membres.agent, corps: { poste: "", specialite: "", bio: "", photo: "https://exemple.fr/moi.jpg" } });
+  assert.equal(r.status, 400);
 });
 
 it("annonce : échec de sauvegarde -> photo toujours temporaire, aucune annonce ni référence", async () => {

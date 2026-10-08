@@ -1533,11 +1533,10 @@ document.getElementById("bien-dispo-location").addEventListener("change", (ev) =
   document.getElementById("ligne-bien-prix-location").classList.toggle("cache", !ev.target.checked);
 });
 
-// ---- photos : import vers le stockage externe, ajout par lien, aperçu ------
+// ---- photos : import vers le stockage externe, aperçu ----------------------
 
 // Formats sources acceptés ; le navigateur les convertit ensuite en JPEG.
 const TYPES_PHOTO_ACCEPTES = ["image/jpeg", "image/png", "image/webp"];
-const RE_LIEN_PHOTO = /^https?:\/\/[^\s"'<>\\`]+$/i; // même règle que le serveur (valeurImageValide, src/index.js)
 
 // Réduit et compresse la photo dans le navigateur et renvoie un Blob JPEG,
 // envoyé tel quel (en binaire) au serveur. Le fond est peint en blanc pour
@@ -1683,8 +1682,6 @@ function redessinerImagesBien() {
     IMAGES_BIEN.length + " / " + MAX_PHOTOS_BIEN + (n ? ` · ${n} en cours d'envoi` : "");
   const bloque = IMAGES_BIEN.length + n >= MAX_PHOTOS_BIEN || SAUVEGARDE_BIEN_EN_COURS;
   document.getElementById("bouton-parcourir").disabled = bloque;
-  document.getElementById("bouton-ajouter-url").disabled = bloque;
-  document.getElementById("bien-image-url").disabled = bloque;
   if (!SAUVEGARDE_BIEN_EN_COURS) {
     const enregistrer = document.querySelector('#formulaire-bien button[type="submit"]');
     enregistrer.disabled = n > 0;
@@ -1740,27 +1737,6 @@ async function traiterFileBien() {
     if (edition !== EDITION_BIEN && TRANSFERTS_BIEN.length) traiterFileBien();
   }
 }
-
-// Ajout d'une photo par lien (indispensable depuis l'ordinateur en jeu, où le
-// sélecteur de fichiers natif n'est pas fiable).
-function ajouterImageParLien() {
-  const champ = document.getElementById("bien-image-url");
-  const url = (champ.value || "").trim();
-  if (!url || SAUVEGARDE_BIEN_EN_COURS) return;
-  if (url.length > 2048 || !RE_LIEN_PHOTO.test(url)) {
-    ajouterErreurImagesBien("Le lien doit commencer par http:// ou https:// et ne contenir ni espace ni guillemet.");
-    return;
-  }
-  if (IMAGES_BIEN.length + TRANSFERTS_BIEN.length >= MAX_PHOTOS_BIEN) { afficherErreursImagesBien(); return; }
-  if (IMAGES_BIEN.includes(url)) { ajouterErreurImagesBien("Cette photo figure déjà dans l'annonce."); return; }
-  IMAGES_BIEN.push(url);
-  champ.value = "";
-  redessinerImagesBien();
-}
-document.getElementById("bouton-ajouter-url").addEventListener("click", ajouterImageParLien);
-document.getElementById("bien-image-url").addEventListener("keydown", (ev) => {
-  if (ev.key === "Enter") { ev.preventDefault(); ajouterImageParLien(); }
-});
 
 document.getElementById("bouton-parcourir").addEventListener("click", () => {
   document.getElementById("bien-image-fichier").click();
@@ -1908,7 +1884,6 @@ function ouvrirModaleBien(id) {
   document.querySelectorAll("#formulaire-bien .champ-erreur").forEach((p) => p.classList.add("cache"));
   afficherMessage("zone-message-modale-bien", "", null);
   reinitialiserTransfertsBien();
-  document.getElementById("bien-image-url").value = "";
   IMAGES_BIEN = bien && bien.images ? bien.images.slice(0, MAX_PHOTOS_BIEN) : [];
   redessinerImagesBien();
   document.getElementById("modale-bien").classList.remove("cache");
@@ -2009,7 +1984,7 @@ document.getElementById("formulaire-bien").addEventListener("submit", async (ev)
   const texteInitial = boutonEnregistrer.textContent;
   boutonEnregistrer.disabled = true;
   boutonEnregistrer.textContent = "Enregistrement…";
-  SAUVEGARDE_BIEN_EN_COURS = true; // bloque imports, ajouts par lien et retraits pendant l'envoi du formulaire
+  SAUVEGARDE_BIEN_EN_COURS = true; // bloque imports et retraits pendant l'envoi du formulaire
   redessinerImagesBien();
   const edition = EDITION_BIEN;
   try {

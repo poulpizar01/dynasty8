@@ -728,7 +728,10 @@ async function enregistrerPhotoProfil(tx, env, membreId, photo, autresChamps) {
     throw new ErreurMedia(400, "Les nouvelles photos doivent être importées avec le bouton « Changer la photo ».", "base64_refuse");
   }
   await autresChamps();
-  await synchroniserReferences(tx, { type: "membre", id: actuel.id }, [photo], { delaiSecondes: delaiGraceMedias(env) });
+  await synchroniserReferences(tx, { type: "membre", id: actuel.id }, [photo], {
+    delaiSecondes: delaiGraceMedias(env),
+    valeursActuelles: [actuel.photo || ""],
+  });
   return true;
 }
 
@@ -2235,14 +2238,17 @@ function validerBien(b) {
   const images = Array.isArray(b.images) ? b.images : [];
   if (images.length > MAX_PHOTOS_BIEN) return `${MAX_PHOTOS_BIEN} photos maximum par bien.`;
   const invalide = images.findIndex((u) => typeof u !== "string" || !valeurImageValide(u.trim(), 2_000_000));
-  if (invalide !== -1) return `La photo n° ${invalide + 1} est invalide (lien http(s) attendu) ou trop volumineuse.`;
+  if (invalide !== -1) return `La photo n° ${invalide + 1} est invalide ou trop volumineuse.`;
   return null;
 }
 
 const MAX_PHOTOS_BIEN = 10;
 
-// Valeurs acceptées pour une photo (annonce ou profil) :
-//   - un lien http(s) sans espace, guillemet ni chevron (import FBFA ou lien collé) ;
+// Forme acceptée pour une photo (annonce ou profil) — la provenance est
+// contrôlée ensuite par synchroniserReferences (src/medias.js) : toute
+// NOUVELLE photo doit être un fichier envoyé par le site sur le CDN.
+//   - un lien http(s) sans espace, guillemet ni chevron (photo du CDN, ou
+//     ancien lien extérieur déjà enregistré avant l'arrêt de l'ajout par lien) ;
 //   - une ancienne image « data:image/…;base64,… » déjà enregistrée en base
 //     (compatibilité — les nouvelles sont refusées plus loin, voir
 //     base64Nouvelles()).
@@ -2488,7 +2494,7 @@ async function biens(request, url, env) {
     const n = normaliserBien(b);
     const images = JSON.parse(n.images);
     if (base64Nouvelles(images, [])) {
-      return json({ erreur: "Les nouvelles photos doivent être importées avec « Parcourir » ou ajoutées par lien." }, 400);
+      return json({ erreur: "Les nouvelles photos doivent être importées avec « Parcourir »." }, 400);
     }
     try {
       const nouvelId = await env.DB.transaction(async (tx) => {
@@ -2506,7 +2512,7 @@ async function biens(request, url, env) {
           n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu,
           n.meuble, n.coherence, n.coffre_kg, n.vip, n.standing, s.pseudo
         ).run();
-        await synchroniserReferences(tx, { type: "bien", id: r.meta.last_row_id }, images, { delaiSecondes });
+        await synchroniserReferences(tx, { type: "bien", id: r.meta.last_row_id }, images, { delaiSecondes, valeursActuelles: [] });
         return r.meta.last_row_id;
       });
       return json({ id: nouvelId });
@@ -2528,7 +2534,7 @@ async function biens(request, url, env) {
         const existant = await tx.prepare("SELECT id, images FROM biens WHERE id = ?1 FOR UPDATE").bind(id).first();
         if (!existant) return false;
         if (base64Nouvelles(images, lireImagesStockees(existant.images))) {
-          throw new ErreurMedia(400, "Les nouvelles photos doivent être importées avec « Parcourir » ou ajoutées par lien.", "base64_refuse");
+          throw new ErreurMedia(400, "Les nouvelles photos doivent être importées avec « Parcourir ».", "base64_refuse");
         }
         await tx.prepare(
           `UPDATE biens SET categorie=?2, sous_categorie=?3, titre=?4, zone=?5, prix=?6,
@@ -2548,7 +2554,10 @@ async function biens(request, url, env) {
           n.places, n.description, n.images, n.coup_de_coeur, n.disponible, n.vendu,
           n.meuble, n.coherence, n.coffre_kg, n.vip, n.standing
         ).run();
-        await synchroniserReferences(tx, { type: "bien", id: existant.id }, images, { delaiSecondes });
+        await synchroniserReferences(tx, { type: "bien", id: existant.id }, images, {
+          delaiSecondes,
+          valeursActuelles: lireImagesStockees(existant.images),
+        });
         return true;
       });
       if (!trouve) return json({ erreur: "Introuvable." }, 404);
