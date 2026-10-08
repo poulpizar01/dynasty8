@@ -685,23 +685,26 @@ function demarrerPoussiereOr() {
 // insère la carte dans un <iframe> juste en dessous du bouton (jamais de
 // nouvel onglet) et ne la charge qu'une seule fois, au premier clic, pour
 // ne pas imposer ce script tiers à tous les visiteurs de la page.
+// Cadre de la carte (proxy /api/carte) dans `boite`, créé une seule fois, au
+// premier affichage : la carte n'est chargée que pour qui la demande. Partagé
+// par les pages publiques et l'onglet WebMap de l'espace agents.
+function monterCadreCarte(boite) {
+  if (!boite || boite.querySelector("iframe")) return;
+  const iframe = document.createElement("iframe");
+  iframe.src = LIEN_WEBMAP;
+  iframe.title = "Carte interactive du serveur";
+  iframe.referrerPolicy = "no-referrer";
+  boite.appendChild(iframe);
+}
+
 function initialiserWebmapInline() {
   const bouton = document.querySelector("[data-webmap-toggle]");
   const boite = document.querySelector("[data-webmap-boite]");
   if (!bouton || !boite) return;
-  let chargee = false;
   bouton.addEventListener("click", () => {
     const maintenantCachee = boite.classList.toggle("cache");
     if (maintenantCachee) { bouton.textContent = "Voir la WebMap"; return; }
-    if (!chargee) {
-      const iframe = document.createElement("iframe");
-      iframe.src = LIEN_WEBMAP;
-      iframe.title = "Carte interactive du serveur";
-      iframe.loading = "lazy";
-      iframe.referrerPolicy = "no-referrer";
-      boite.appendChild(iframe);
-      chargee = true;
-    }
+    monterCadreCarte(boite);
     bouton.textContent = "Masquer la carte";
     boite.scrollIntoView({ behavior: "smooth", block: "nearest" });
   });

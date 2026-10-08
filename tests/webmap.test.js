@@ -44,3 +44,21 @@ test("aucune adresse de WebMap codée en dur dans le dépôt", () => {
   aExaminer.forEach(parcourir);
   assert.deepEqual(fautifs, [], "adresse de WebMap trouvée dans : " + fautifs.join(", "));
 });
+
+test("cookies de la carte : préfixés wm_, limités à /api/carte, attributs gardés et bien séparés", async () => {
+  const { reecrireCookieCarte } = await import("../src/index.js");
+  assert.equal(
+    reecrireCookieCarte("sid=abc; Path=/; HttpOnly; SameSite=Lax"),
+    "wm_sid=abc; HttpOnly; SameSite=Lax; Path=/api/carte",
+    "le dernier attribut n'est plus collé à Path="
+  );
+  assert.equal(reecrireCookieCarte("pref=1; Domain=exemple.fr; Max-Age=60; Secure"), "wm_pref=1; Max-Age=60; Secure; Path=/api/carte");
+  assert.equal(reecrireCookieCarte("sans-egal"), null);
+});
+
+test("espace agents : la carte est intégrée dans la page, jamais ouverte dans un autre onglet", () => {
+  const html = fs.readFileSync(path.join(RACINE, "public/admin.html"), "utf8");
+  assert.match(html, /data-onglet="webmap"/);
+  assert.ok(html.includes('id="boite-carte-agents"'));
+  assert.doesNotMatch(html, /href="\/api\/carte\/"[^>]*target="_blank"/);
+});

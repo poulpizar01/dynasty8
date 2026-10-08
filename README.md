@@ -244,7 +244,9 @@ section « Photos » de [`deploy/operateur/README-OPERATEUR.md`](deploy/operateu
 - **WebMap FlashbackFA** — proxifiée par `/api/carte`. L'adresse réelle se
   règle dans l'onglet Paramètres, jamais dans le dépôt, qui est public ; sans
   elle, le bouton affiche « carte indisponible » et le reste du site
-  fonctionne.
+  fonctionne. Dans l'espace agents, l'onglet « WebMap » affiche la carte
+  dans la page, sans ouvrir de nouvel onglet ; les cookies posés par la
+  carte sont préfixés `wm_` et limités au chemin `/api/carte`.
 
 Les deux adresses qui suffiraient, à elles seules, à lire des données de
 l'agence — la WebMap et le classeur — sont pour cette raison hors du dépôt,

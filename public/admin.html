@@ -97,7 +97,7 @@
     <p class="admin-nav-groupe" id="groupe-outils">Outils</p>
     <a href="#" hidden target="_blank" rel="noopener" class="lien-onglet" id="lien-registre" title="Registre Dynasty 8 (intranet)"><svg class="ico"><use href="#ico-book"></use></svg><span>Registre</span></a>
     <button class="lien-onglet" data-onglet="coherences" id="onglet-coherences"><svg class="ico"><use href="#ico-sheet"></use></svg><span>Cohérences</span></button>
-    <a href="/api/carte/" target="_blank" rel="noopener" class="lien-onglet cache" id="lien-webmap"><svg class="ico"><use href="#ico-map"></use></svg><span>WebMap</span></a>
+    <button class="lien-onglet cache" data-onglet="webmap" id="onglet-webmap"><svg class="ico"><use href="#ico-map"></use></svg><span>WebMap</span></button>
     <button class="lien-onglet cache" data-onglet="parametres" id="onglet-parametres"><svg class="ico"><use href="#ico-sync"></use></svg><span>Paramètres</span></button>
 
     <div class="admin-bas">
@@ -548,6 +548,20 @@
     <!-- Onglet Cohérences : les mêmes guides que la page publique
          /coherence.html (contenu unique dans coherences-guides.js), consultables
          ici sans quitter l'espace agents. Ouvert à tous les comptes. -->
+    <!-- Onglet WebMap : la carte interactive du serveur, intégrée dans la page
+         comme sur les pages publiques (cadre vers le proxy /api/carte, créé au
+         premier affichage), sans ouvrir d'autre onglet. -->
+    <section id="panneau-webmap" class="cache panneau-carte">
+      <div class="entete-admin">
+        <div>
+          <h2 style="margin-bottom:2px;">WebMap</h2>
+          <p style="margin:0;font-size:0.88rem;">La carte interactive du serveur.</p>
+        </div>
+      </div>
+      <p class="champ-aide cache" id="carte-non-reglee">La carte n'est pas encore réglée : son adresse se renseigne dans l'onglet Paramètres → Liens du site.</p>
+      <div class="webmap-boite" id="boite-carte-agents"></div>
+    </section>
+
     <section id="panneau-coherences" class="cache">
       <div class="entete-admin">
         <div>

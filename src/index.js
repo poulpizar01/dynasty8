@@ -682,6 +682,8 @@ async function moi(request, env) {
     grades: gradesOrdonnes(rangsGrades(env.REGLAGES_SITE)),
     // Envoi de photos possible seulement si le stockage (CDN) est réglé dans le .env.
     stockage_photos: lireConfigMedias(env).configure,
+    // La carte est-elle réglée (onglet Paramètres) ? Jamais son adresse.
+    carte_reglee: !!origineWebmap(env),
     primes,
   });
 }
@@ -2805,6 +2807,20 @@ async function syncSheet(request, url, env) {
 
 // ---- proxy de la WebMap (voir WEBMAP_ORIGIN / WEBMAP_PREFIXE plus haut) ---
 
+// Cookie posé par la carte -> cookie préfixé wm_, limité à /api/carte. Les
+// attributs Domain et Path de la carte sont remplacés ; les autres (HttpOnly,
+// Secure, SameSite, Max-Age…) sont gardés, séparés par « ; ».
+export function reecrireCookieCarte(entete) {
+  const [pairePart, ...attributs] = String(entete || "").split(";");
+  const i = pairePart.indexOf("=");
+  if (i === -1) return null;
+  const nom = pairePart.slice(0, i).trim();
+  if (!nom) return null;
+  const valeur = pairePart.slice(i + 1).trim();
+  const gardes = attributs.map((a) => a.trim()).filter((a) => a && !/^(domain|path)\s*=/i.test(a));
+  return [`wm_${nom}=${valeur}`, ...gardes, `Path=${WEBMAP_PREFIXE}`].join("; ");
+}
+
 // Cookies : le navigateur envoie un seul en-tete Cookie qui melange le cookie
 // de session Dynasty 8 (d8_session) et, si la WebMap en pose, les siens. On
 // ne transmet a la WebMap (adresse dans WEBMAP_ORIGIN) QUE les cookies qu'elle a elle-meme
@@ -2907,13 +2923,8 @@ async function carteProxy(request, url, env) {
 
   const cookiesRecus = typeof reponseDistante.headers.getSetCookie === "function" ? reponseDistante.headers.getSetCookie() : [];
   for (const c of cookiesRecus) {
-    const [pairePart, ...attributs] = c.split(";");
-    const i = pairePart.indexOf("=");
-    if (i === -1) continue;
-    const nom = pairePart.slice(0, i).trim();
-    const valeur = pairePart.slice(i + 1);
-    const attributsPropres = attributs.filter((a) => !/^\s*(domain|path)\s*=/i.test(a));
-    entetesSortie.append("set-cookie", `wm_${nom}=${valeur};${attributsPropres.join(";")}Path=${WEBMAP_PREFIXE}`);
+    const reecrit = reecrireCookieCarte(c);
+    if (reecrit) entetesSortie.append("set-cookie", reecrit);
   }
 
   const reecriture = typeContenu.includes("text/html") || typeContenu.includes("javascript")

@@ -84,6 +84,7 @@ async function demarrer() {
         droitsRh: moi.droits_rh || [],
         peutReglerLiens: !!moi.peut_regler_liens,
         stockagePhotos: !!moi.stockage_photos,
+        carteReglee: !!moi.carte_reglee,
       };
       definirGrades(moi.grades);
       // Le lien du registre n'est pas dans la page : réglé dans Paramètres,
@@ -173,9 +174,9 @@ function demarrerEspaceAdmin() {
   document.getElementById("onglet-rh").classList.toggle("cache", !SESSION.droitsRh.includes("voir"));
   // Le lien Webmap est réservé au Patron, au Co Patron, et au Développeur web
   // (qui a exactement les mêmes accès que le Patron, y compris ici).
-  document.getElementById("lien-webmap").classList.toggle("cache", !SESSION.peutReglerLiens);
-  // [data-onglet] exclut volontairement le lien Webmap : c'est un vrai lien externe
-  // (nouvel onglet), pas un onglet à basculer dans la page.
+  document.getElementById("onglet-webmap").classList.toggle("cache", !SESSION.peutReglerLiens);
+  // Chaque bouton [data-onglet] (WebMap compris, intégrée dans la page) bascule
+  // le panneau correspondant.
   document.querySelectorAll(".lien-onglet[data-onglet]").forEach((btn) => {
     btn.addEventListener("click", () => basculerOnglet(btn.dataset.onglet));
   });
@@ -195,10 +196,11 @@ function basculerOnglet(nom) {
   document.getElementById("panneau-statistiques").classList.toggle("cache", nom !== "statistiques");
   document.getElementById("panneau-rh").classList.toggle("cache", nom !== "rh");
   document.getElementById("panneau-coherences").classList.toggle("cache", nom !== "coherences");
+  document.getElementById("panneau-webmap").classList.toggle("cache", nom !== "webmap");
   document.getElementById("panneau-parametres").classList.toggle("cache", nom !== "parametres");
   // L'agenda a besoin de toute la largeur disponible (voir style.css) : le
   // reste des onglets garde la mise en page habituelle, limitée en largeur.
-  document.getElementById("admin-contenu").classList.toggle("admin-contenu--pleine", nom === "agenda");
+  document.getElementById("admin-contenu").classList.toggle("admin-contenu--pleine", nom === "agenda" || nom === "webmap");
   if (nom === "profil") chargerMonProfil();
   if (nom === "comptes") chargerTableMembres();
   if (nom === "agenda") chargerAgenda(true);
@@ -206,7 +208,21 @@ function basculerOnglet(nom) {
   if (nom === "statistiques") { chargerStatistiques(); chargerTableur(); }
   if (nom === "rh") chargerRh();
   if (nom === "coherences") afficherCoherences();
+  if (nom === "webmap") afficherCarte();
   if (nom === "parametres") { chargerReglagesLiens(); chargerRangsGrades(); chargerSyncSheet(); }
+}
+
+// ---------------------------------------------------------------------------
+// Onglet « WebMap » — même intégration que les pages publiques (monterCadreCarte
+// dans layout.js) : le cadre n'est créé qu'à la première ouverture de l'onglet.
+// ---------------------------------------------------------------------------
+
+function afficherCarte() {
+  const reglee = SESSION.carteReglee;
+  document.getElementById("carte-non-reglee").classList.toggle("cache", reglee);
+  const boite = document.getElementById("boite-carte-agents");
+  boite.classList.toggle("cache", !reglee);
+  if (reglee) monterCadreCarte(boite);
 }
 
 // ---------------------------------------------------------------------------

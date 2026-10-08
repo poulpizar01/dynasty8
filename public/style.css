@@ -1958,6 +1958,11 @@ section.section.serre {
   height: 100vh;
 }
 .panneau-agenda { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+/* Onglet WebMap de l'espace agents : la carte occupe toute la hauteur visible
+   (comme l'agenda), au lieu de la hauteur fixe des pages publiques. */
+.panneau-carte { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.panneau-carte .webmap-boite { flex: 1; min-height: 360px; margin-top: 0; margin-bottom: 70px; }
+.panneau-carte .webmap-boite iframe { height: 100%; }
 
 .agenda-entete { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; flex-shrink: 0; }
 .agenda-sous-titre { margin: 0; font-size: 0.86rem; color: var(--text-faint); }
