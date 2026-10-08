@@ -27,6 +27,7 @@ import {
   synchroniserSheetSansErreur, lireConfigSheet, lireTableurActuel, lireArchiveTableur, semaineParis,
 } from "./google-sheets.js";
 import { routeApparence } from "./apparence.js";
+import { calculerPaieHoraire } from "./paie-horaire.js";
 import { routeRh, permissionsRh, trouverEmploye, nomComplet, recevoirCandidatureBot } from "./rh.js";
 import { envAvecReglages, routeReglages, routeRangsGrades, liensPublics, lienRegle, GRADES_REGLAGES } from "./reglages.js";
 import {
@@ -1069,16 +1070,34 @@ async function comptaDernier(env, s, type) {
   // on le traite exactement comme "aucune donnée", ce qui réutilise tel quel
   // l'état vide déjà prévu côté interface — aucun code d'affichage en plus.
   if (!colonnes.length) return json({ import: null });
+  const lignes = corrigerLigneTotaleDecalee(colonnes, JSON.parse(r.lignes));
   return json({
+    // Grades payés à l'heure (stagiaires) : heures de service × taux, ligne par ligne.
+    paie_horaire: await paieHoraireTablette(env, colonnes, lignes),
     import: {
       colonnes,
       // corrigerLigneTotaleDecalee tourne ici (à la LECTURE) plutôt que
       // seulement à l'import : ça corrige aussi les relevés déjà importés
       // avant ce correctif, sans obliger à recoller le tableau.
-      lignes: corrigerLigneTotaleDecalee(colonnes, JSON.parse(r.lignes)),
+      lignes,
       importe_le: r.importe_le,
       importe_par: r.importe_par_pseudo || null,
     },
+  });
+}
+
+// Paie à l'heure du relevé (voir src/paie-horaire.js) : taux horaire par
+// grade (Comptabilité -> Paramètres) et grade lu dans les fiches RH.
+async function paieHoraireTablette(env, colonnes, lignes) {
+  const [tauxR, employesR] = await Promise.all([
+    env.DB.prepare("SELECT grade, taux_horaire FROM stats_taux_commission").all(),
+    env.DB.prepare("SELECT prenom, nom, grade FROM employes").all(),
+  ]);
+  return calculerPaieHoraire({
+    colonnes,
+    lignes,
+    tauxParGrade: new Map((tauxR.results || []).map((t) => [t.grade, t.taux_horaire || 0])),
+    employes: employesR.results || [],
   });
 }
 
@@ -1295,10 +1314,17 @@ async function comptaDotSalaries(env, url, s) {
 
   let colonnes = [];
   let lignesEmployes = [];
+  // Paie à l'heure (stagiaires), par nom du relevé : ajoutée au salaire déclaré.
+  const paieParNom = new Map();
   if (tabletteR) {
     colonnes = JSON.parse(tabletteR.colonnes);
     const lignes = JSON.parse(tabletteR.lignes);
     lignesEmployes = lignes.filter((l) => String(l[0] || "").trim().toLowerCase() !== "total");
+    if (colonnes.length) {
+      for (const p of (await paieHoraireTablette(env, colonnes, lignes)).lignes) {
+        paieParNom.set(p.nom.trim().toLowerCase(), p.montant);
+      }
+    }
   }
   const colonnesNormalisees = colonnes.map((c) => String(c).trim().toLowerCase());
   const iNom = indexColonneTablette(colonnesNormalisees, COMPTA_ALIAS_NOM);
@@ -1313,7 +1339,7 @@ async function comptaDotSalaries(env, url, s) {
   const lignesUtilisees = new Set();
 
   const resultat = agents.map((a) => {
-    let run = 0, facture = 0, vente = 0, trouveDansTablette = false;
+    let run = 0, facture = 0, vente = 0, trouveDansTablette = false, paieHoraire = 0;
     if (iNom !== -1) {
       const ligne = lignesEmployes.find((l) => {
         const nomTablette = normaliser(l[iNom]);
@@ -1322,6 +1348,7 @@ async function comptaDotSalaries(env, url, s) {
       if (ligne) {
         trouveDansTablette = true;
         lignesUtilisees.add(ligne);
+        paieHoraire = paieParNom.get(normaliser(ligne[iNom])) || 0;
         if (iRun !== -1) run = Math.round(versNombreTablette(ligne[iRun]));
         if (iFacture !== -1) facture = Math.round(versNombreTablette(ligne[iFacture]));
         if (iVente !== -1) vente = Math.round(versNombreTablette(ligne[iVente]));
@@ -1345,7 +1372,8 @@ async function comptaDotSalaries(env, url, s) {
       // Salaire déclaré à la DOT = fixe du grade + montant du palier de
       // ventes/locations (ce que le Sheet appelle « prime » est en réalité
       // un salaire variable).
-      salaireTotal: (a.salaireFixe || 0) + (a.primeTotale || 0),
+      paieHoraire,
+      salaireTotal: (a.salaireFixe || 0) + (a.primeTotale || 0) + paieHoraire,
     };
   });
 
@@ -1377,7 +1405,8 @@ async function comptaDotSalaries(env, url, s) {
         horsReferentiel: true,
         salaireFixe: t && t.salaire_actif ? (t.salaire_fixe || 0) : 0,
         primeTotale: primeSheetPour(primesSheet, null, nom).primeTotale,
-        salaireTotal: (t && t.salaire_actif ? (t.salaire_fixe || 0) : 0) + primeSheetPour(primesSheet, null, nom).primeTotale,
+        paieHoraire: paieParNom.get(normaliser(nom)) || 0,
+        salaireTotal: (t && t.salaire_actif ? (t.salaire_fixe || 0) : 0) + primeSheetPour(primesSheet, null, nom).primeTotale + (paieParNom.get(normaliser(nom)) || 0),
       });
     }
   }
@@ -2041,6 +2070,7 @@ async function statsRemunerationLire(env, s) {
       salaireActif: !!t.salaire_actif,
       primeVenteActive: t.prime_vente_active == null ? true : !!t.prime_vente_active,
       primeLocationActive: t.prime_location_active == null ? true : !!t.prime_location_active,
+      tauxHoraire: t.taux_horaire || 0,
     };
   });
   const baremes = baremesR.results || [];
@@ -2065,6 +2095,11 @@ async function statsRemunerationModifierGrade(request, env, s, gradeBrut) {
     const n = b.salaireFixe === null || b.salaireFixe === "" ? 0 : Number(b.salaireFixe);
     if (!isFinite(n) || n < 0) return json({ erreur: "Le montant du salaire doit être un nombre positif." }, 400);
     binds.push(Math.round(n)); champs.push(`salaire_fixe = ?${binds.length}`);
+  }
+  if (b.tauxHoraire !== undefined) {
+    const n = b.tauxHoraire === null || b.tauxHoraire === "" ? 0 : Number(b.tauxHoraire);
+    if (!isFinite(n) || n < 0 || n > 10_000_000) return json({ erreur: "Le taux horaire doit être un nombre positif." }, 400);
+    binds.push(Math.round(n)); champs.push(`taux_horaire = ?${binds.length}`);
   }
   if (b.salaireActif !== undefined) { binds.push(b.salaireActif ? 1 : 0); champs.push(`salaire_actif = ?${binds.length}`); }
   if (b.primeVenteActive !== undefined) { binds.push(b.primeVenteActive ? 1 : 0); champs.push(`prime_vente_active = ?${binds.length}`); }

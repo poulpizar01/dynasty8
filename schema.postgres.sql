@@ -174,6 +174,10 @@ SELECT * FROM (VALUES
   ('Agent Novice', 0.48, NULL::INTEGER, 0, 1, 1), ('Stagiaire', 0.48, NULL::INTEGER, 0, 0, 0)
 ) AS v(grade, taux, salaire_fixe, salaire_actif, prime_vente_active, prime_location_active)
 ON CONFLICT (grade) DO NOTHING;
+-- Paie à l'heure (oct. 2026) : $ par heure de service (colonne « Heures de
+-- service » du relevé Tablettes), en plus des paliers. 0 = grade non payé à
+-- l'heure. Réglé dans Comptabilité -> Paramètres (voir src/paie-horaire.js).
+ALTER TABLE stats_taux_commission ADD COLUMN IF NOT EXISTS taux_horaire INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS stats_config (
   cle TEXT PRIMARY KEY,

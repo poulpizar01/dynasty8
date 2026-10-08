@@ -88,6 +88,9 @@ découlent ensuite de ce grade.
   tableur ou un bot ; paramètres de rémunération par grade (salaires,
   commissions, paliers de primes) ; préparation de la déclaration DOT
   hebdomadaire (chiffre d'affaires, dépenses, retraits, primes, salariés).
+  **Paie à l'heure** : un grade avec un taux horaire (les stagiaires) est payé
+  selon la colonne « Heures de service » du relevé Tablettes (heures × taux,
+  détail affiché sous le relevé), en plus des paliers et inclus dans la DOT.
 - **Paramètres** — tous les liens du site se règlent ici, sans rien écrire
   dans le code et sans redémarrage : WebMap, Google
   Sheets de la synchronisation, registre, Discord de l'agence, boutique VIP,
