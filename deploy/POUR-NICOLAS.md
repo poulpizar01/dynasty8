@@ -4,6 +4,9 @@ Site public + espace agents de l'agence immobilière Dynasty 8, à servir sur
 **https://dynasty8.fbfa.fr**, et à embarquer dans l'ordinateur en jeu (FolkOS).
 Contact : Thomas / Paul (Dynasty 8).
 
+> **Mise à jour d'octobre 2026** : migration du schéma, nouvelles variables du
+> `.env` et droits Discord du bot — voir [`NOTE-MISE-EN-LIGNE-OCT-2026.md`](NOTE-MISE-EN-LIGNE-OCT-2026.md).
+
 Ce document est fait pour être lu de bout en bout avant la première
 installation. Il suit la même organisation que `web-map-multipoints`, que vous
 hébergez déjà : mêmes conventions de service, même port local, même séparation
