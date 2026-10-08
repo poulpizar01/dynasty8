@@ -1117,7 +1117,7 @@ function rendreGrilleAgenda(jours) {
       const top = (debutMin / 60) * AGENDA_HEURE_HAUTEUR;
       const hauteur = Math.max(((finMin - debutMin) / 60) * AGENDA_HEURE_HAUTEUR, 22);
       return `
-        <div class="agenda-evenement" style="top:${top}px;height:${hauteur}px;" data-id="${e.id}" tabindex="0" role="button" aria-label="${echapper(e.titre)}, de ${e.heure_debut} à ${e.heure_fin}">
+        <div class="agenda-evenement agenda-vis-${e.visibilite || "perso"}" title="${LIBELLES_VISIBILITE[e.visibilite] || "Perso"}${e.auteur && !e.mien ? " — ajouté par " + echapper(e.auteur) : ""}" style="top:${top}px;height:${hauteur}px;" data-id="${e.id}" tabindex="0" role="button" aria-label="${echapper(e.titre)}, de ${e.heure_debut} à ${e.heure_fin}">
           <span class="agenda-evenement-heure">${e.heure_debut}–${e.heure_fin}</span>
           <span class="agenda-evenement-titre">${echapper(e.titre)}</span>
         </div>`;
@@ -1147,7 +1147,7 @@ function rendreGrilleAgenda(jours) {
     const ouvrir = () => {
       const e = CACHE_EVENEMENTS.find((x) => String(x.id) === el.dataset.id);
       if (!e) return;
-      ouvrirModaleEvenement({ id: e.id, jour: e.jour, heureDebut: e.heure_debut, heureFin: e.heure_fin, titre: e.titre, notes: e.notes });
+      ouvrirModaleEvenement({ id: e.id, jour: e.jour, heureDebut: e.heure_debut, heureFin: e.heure_fin, titre: e.titre, notes: e.notes, evenement: e });
     };
     el.addEventListener("click", ouvrir);
     el.addEventListener("keydown", (ev) => {
@@ -1172,7 +1172,7 @@ function rendreMoisAgenda() {
     const evs = CACHE_EVENEMENTS.filter((e) => e.jour === iso)
       .sort((a, b) => minutesDepuisMinuit(a.heure_debut) - minutesDepuisMinuit(b.heure_debut));
     const chips = evs.slice(0, 4).map((e) => `
-      <div class="agenda-mois-evenement" data-id="${e.id}" tabindex="0" role="button" aria-label="${echapper(e.titre)} à ${e.heure_debut}">
+      <div class="agenda-mois-evenement agenda-vis-${e.visibilite || "perso"}" data-id="${e.id}" tabindex="0" role="button" aria-label="${echapper(e.titre)} à ${e.heure_debut}">
         <span class="agenda-mois-heure">${e.heure_debut}</span><span class="agenda-mois-evenement-titre">${echapper(e.titre)}</span>
       </div>`).join("");
     const plus = evs.length > 4 ? `<div class="agenda-mois-plus">+${evs.length - 4} autre${evs.length - 4 > 1 ? "s" : ""}</div>` : "";
@@ -1190,7 +1190,7 @@ function rendreMoisAgenda() {
       ev.stopPropagation();
       const e = CACHE_EVENEMENTS.find((x) => String(x.id) === el.dataset.id);
       if (!e) return;
-      ouvrirModaleEvenement({ id: e.id, jour: e.jour, heureDebut: e.heure_debut, heureFin: e.heure_fin, titre: e.titre, notes: e.notes });
+      ouvrirModaleEvenement({ id: e.id, jour: e.jour, heureDebut: e.heure_debut, heureFin: e.heure_fin, titre: e.titre, notes: e.notes, evenement: e });
     };
     el.addEventListener("click", ouvrir);
     el.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); ouvrir(ev); } });
@@ -1209,6 +1209,7 @@ async function chargerAgenda(reinitialiserDefilement) {
   try {
     const data = await appelAPI(`/api/agenda?debut=${formaterDateISO(debut)}&fin=${formaterDateISO(fin)}`);
     CACHE_EVENEMENTS = data.evenements || [];
+    if (data.droits) AGENDA_DROITS = data.droits;
   } catch (e) {
     afficherMessage("zone-message-agenda", "Impossible de charger votre agenda : " + e.message, "erreur");
     CACHE_EVENEMENTS = [];
@@ -1256,22 +1257,75 @@ document.getElementById("agenda-nouvel-evenement").addEventListener("click", () 
 
 // ---- modale « ajouter / modifier un événement » ---------------------------
 
+// Droits renvoyés par GET /api/agenda (voir src/agenda.js) et fiches RH
+// proposées pour un « Perso » destiné à quelqu'un d'autre (chargées une fois).
+let AGENDA_DROITS = { cree: ["perso"], perso_autrui: false };
+let AGENDA_PERSONNES = null;
+const LIBELLES_VISIBILITE = { perso: "Perso", patrons: "Patrons", direction: "Direction", tous: "Tous" };
+
+async function remplirChoixPour() {
+  const select = document.getElementById("evenement-pour");
+  if (AGENDA_PERSONNES === null) {
+    try {
+      AGENDA_PERSONNES = (await appelAPI("/api/agenda/personnes")).personnes || [];
+    } catch (e) {
+      AGENDA_PERSONNES = [];
+    }
+  }
+  select.innerHTML = `<option value="">Moi (note privée)</option>` + AGENDA_PERSONNES
+    .map((p) => `<option value="${p.id}"${p.discord ? "" : " disabled"}>${echapper(p.nom)}${p.discord ? "" : " — sans ID Discord dans sa fiche"}</option>`).join("");
+  ameliorerSelect(select);
+}
+
+function majChampPour() {
+  const edition = !!document.getElementById("evenement-id").value;
+  const perso = document.getElementById("evenement-visibilite").value === "perso";
+  document.getElementById("champ-evenement-pour").classList.toggle("cache", edition || !perso || !AGENDA_DROITS.perso_autrui);
+}
+
 function ouvrirModaleEvenement(options) {
   const o = options || {};
+  const e = o.evenement || null;
   const estEdition = !!o.id;
-  document.getElementById("titre-modale-evenement").textContent = estEdition ? "Modifier l'événement" : "Nouvel événement";
+  const modifiable = !e || e.modifiable;
+  document.getElementById("titre-modale-evenement").textContent = !modifiable ? "Événement" : estEdition ? "Modifier l'événement" : "Nouvel événement";
   document.getElementById("evenement-id").value = o.id || "";
   document.getElementById("evenement-titre").value = o.titre || "";
   document.getElementById("evenement-jour").value = o.jour || formaterDateISO(new Date());
   document.getElementById("evenement-heure-debut").value = o.heureDebut || "09:00";
   document.getElementById("evenement-heure-fin").value = o.heureFin || "10:00";
   document.getElementById("evenement-notes").value = o.notes || "";
-  document.getElementById("bouton-supprimer-evenement").classList.toggle("cache", !estEdition);
+
+  // Visible par : ce que ce compte peut créer (+ la valeur actuelle en édition).
+  const visibilite = e ? e.visibilite : "perso";
+  const choix = [...new Set([...AGENDA_DROITS.cree, visibilite])];
+  const selectVis = document.getElementById("evenement-visibilite");
+  selectVis.innerHTML = choix.map((v) => `<option value="${v}">${LIBELLES_VISIBILITE[v] || v}</option>`).join("");
+  selectVis.value = visibilite;
+  ameliorerSelect(selectVis);
+  document.getElementById("evenement-pour").value = "";
+  if (!estEdition && AGENDA_DROITS.perso_autrui) remplirChoixPour();
+  majChampPour();
+
+  // Origine : qui l'a ajouté, pour qui, envoyé dans un ticket.
+  const origine = document.getElementById("evenement-origine");
+  const lignes = [];
+  if (e && !e.mien && e.auteur) lignes.push(`Ajouté par ${e.auteur}.`);
+  if (e && e.pour) lignes.push(`Pour ${e.pour}${e.envoye_discord ? " — envoyé dans son ticket Discord" : ""}.`);
+  origine.textContent = lignes.join(" ");
+  origine.classList.toggle("cache", !lignes.length);
+
+  document.querySelectorAll("#formulaire-evenement input, #formulaire-evenement textarea, #formulaire-evenement select")
+    .forEach((c) => { c.disabled = !modifiable; });
+  document.getElementById("bouton-enregistrer-evenement").classList.toggle("cache", !modifiable);
+  document.getElementById("bouton-supprimer-evenement").classList.toggle("cache", !estEdition || !modifiable);
   document.querySelectorAll("#formulaire-evenement .champ-erreur").forEach((p) => p.classList.add("cache"));
   afficherMessage("zone-message-modale-evenement", "", null);
   document.getElementById("modale-evenement").classList.remove("cache");
-  document.getElementById("evenement-titre").focus();
+  if (modifiable) document.getElementById("evenement-titre").focus();
 }
+
+document.getElementById("evenement-visibilite").addEventListener("change", majChampPour);
 
 function fermerModaleEvenement() {
   fermerSelectOuvert();
@@ -1318,19 +1372,24 @@ document.getElementById("formulaire-evenement").addEventListener("submit", async
     heure_debut: heureDebut,
     heure_fin: heureFin,
     notes: document.getElementById("evenement-notes").value.trim(),
+    visibilite: document.getElementById("evenement-visibilite").value || "perso",
   };
+  const pour = document.getElementById("evenement-pour").value;
+  if (!id && payload.visibilite === "perso" && pour) payload.pour_employe_id = Number(pour);
   const bouton = document.querySelector('#formulaire-evenement button[type="submit"]');
   const texteInitial = bouton.textContent;
   bouton.disabled = true;
   bouton.textContent = "Enregistrement…";
+  let envoyeDiscord = false;
   try {
     if (id) {
       await appelAPI("/api/agenda?id=" + id, { method: "PUT", body: JSON.stringify(payload) });
     } else {
-      await appelAPI("/api/agenda", { method: "POST", body: JSON.stringify(payload) });
+      envoyeDiscord = !!(await appelAPI("/api/agenda", { method: "POST", body: JSON.stringify(payload) })).envoye_discord;
     }
     fermerModaleEvenement();
-    chargerAgenda(false);
+    await chargerAgenda(false);
+    if (envoyeDiscord) afficherMessage("zone-message-agenda", "Événement créé ✓ — envoyé dans le ticket Discord de la personne.", "succes");
   } catch (e) {
     afficherMessage("zone-message-modale-evenement", e.message, "erreur");
   } finally {
@@ -3429,6 +3488,7 @@ function formaterDateAdmin(iso) {
 const TITRES_GROUPES_REGLAGES = {
   prive: "Espace agents et serveur",
   services: "Membres en service (salon Discord des prises et fins de service)",
+  agenda: "Agenda (rôles Discord et tickets)",
   public: "Pages publiques",
 };
 
@@ -3437,7 +3497,9 @@ function afficherReglagesLiens(r) {
     const origine = d.regle ? "" : '<span class="puce puce-or">non réglé</span>';
     // Selon le type du réglage (voir REGLAGES dans src/reglages.js) : lien,
     // identifiant Discord, ou nombre.
-    const attributs = d.type === "snowflake"
+    const attributs = d.type === "snowflakes"
+      ? `type="text" maxlength="500" placeholder="ex. 1234567890123456789 9876543210987654321"`
+      : d.type === "snowflake"
       ? `type="text" inputmode="numeric" maxlength="21" placeholder="ex. 1234567890123456789"`
       : d.type === "entier"
         ? `type="number" min="${d.min}" max="${d.max}" step="1" placeholder="${d.defaut}" style="max-width:140px;"`

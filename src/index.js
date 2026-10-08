@@ -29,6 +29,7 @@ import {
 import { routeApparence } from "./apparence.js";
 import { calculerPaieHoraire } from "./paie-horaire.js";
 import { servicesEnCours, servicesEtat } from "./services.js";
+import { routeAgenda } from "./agenda.js";
 import { routeRh, permissionsRh, trouverEmploye, nomComplet, recevoirCandidatureBot } from "./rh.js";
 import { envAvecReglages, routeReglages, routeRangsGrades, liensPublics, lienRegle, GRADES_REGLAGES } from "./reglages.js";
 import {
@@ -297,7 +298,7 @@ export default {
       if (chemin === "/api/biens") return await biens(request, url, env);
       if (chemin === "/api/membres") return await comptes(request, url, env);
       if (chemin === "/api/equipe") return await equipe(env);
-      if (chemin === "/api/agenda") return await agenda(request, url, env);
+      if (chemin === "/api/agenda" || chemin === "/api/agenda/personnes") return await agenda(request, url, env);
       if (chemin.startsWith("/api/chat/")) return await chat(request, url, env);
       if (chemin === "/api/liens") return await liensPublics(env);
       if (chemin === "/api/reglages" || chemin === "/api/reglages/grades") {
@@ -360,7 +361,9 @@ async function discordAutoriser(request, env) {
     client_id: env.DISCORD_CLIENT_ID,
     redirect_uri: env.DISCORD_REDIRECT_URI,
     response_type: "code",
-    scope: "identify",
+    // guilds.members.read : lire SES rôles sur le serveur de l'agence
+    // (visibilité de l'agenda, voir src/agenda.js). Aucun autre accès.
+    scope: "identify guilds.members.read",
     state: etat,
     prompt: "consent",
   });
@@ -385,6 +388,30 @@ function urlAvatarDiscord(discordId, avatarHash) {
     return `https://cdn.discordapp.com/embed/avatars/${index}.png`;
   } catch (e) {
     return "";
+  }
+}
+
+// Rôles de la personne connectée sur le serveur DISCORD_GUILD_ID, avec SON
+// jeton OAuth (autorisation guilds.members.read). [] si elle n'est pas sur le
+// serveur ; null si la lecture est impossible (on garde alors les anciens).
+async function rolesDiscordDuMembre(env, jetonDiscord) {
+  const serveur = String(env.DISCORD_GUILD_ID || "").trim();
+  if (!/^\d{15,21}$/.test(serveur)) return null;
+  try {
+    const r = await fetch(`https://discord.com/api/users/@me/guilds/${serveur}/member`, {
+      signal: AbortSignal.timeout(DELAI_DISCORD_MS),
+      headers: { Authorization: `${jetonDiscord.token_type || "Bearer"} ${jetonDiscord.access_token}` },
+    });
+    if (r.status === 404) return [];
+    if (!r.ok) {
+      console.error(`[discord-login] Rôles illisibles (HTTP ${r.status}) : les derniers connus sont gardés.`);
+      return null;
+    }
+    const membre = await r.json();
+    return Array.isArray(membre.roles) ? membre.roles.map(String).filter((x) => /^\d{15,21}$/.test(x)) : [];
+  } catch (e) {
+    console.error("[discord-login] Rôles illisibles (réseau) : les derniers connus sont gardés.");
+    return null;
   }
 }
 
@@ -487,6 +514,13 @@ async function discordCallback(request, url, env) {
     // On rafraîchit aussi l'avatar à chaque connexion : la photo Discord de la
     // personne a pu changer depuis la dernière fois.
     await env.DB.prepare("UPDATE membres SET derniere_visite = datetime('now'), discord_avatar = ?2 WHERE id = ?1").bind(m.id, discordAvatar).run();
+    // Rôles sur le serveur de l'agence (agenda) : relus à chaque connexion.
+    // Illisibles (serveur non réglé, Discord lent) : les derniers connus restent.
+    const roles = await rolesDiscordDuMembre(env, jetonDiscord);
+    if (roles) {
+      await env.DB.prepare("UPDATE membres SET discord_roles = ?2, discord_roles_le = datetime('now') WHERE id = ?1")
+        .bind(m.id, JSON.stringify(roles)).run();
+    }
     const jeton = await creerSession(env.SESSION_SECRET, {
       id: m.id,
       pseudo: m.pseudo,
@@ -775,80 +809,13 @@ async function modifierMonProfil(request, env, s) {
   return json({ ok: true });
 }
 
-// ---- « Mon agenda » : planning personnel de chaque membre ----------------
-// Strictement privé : accessible à tout membre connecté, quel que soit son
-// grade (comme « Mon profil »), mais chaque personne ne voit et ne modifie
-// QUE ses propres événements. La clause "membre_id = s.id" vient toujours de
-// la session signée, jamais d'une valeur envoyée par le client — impossible
-// donc de lire ou modifier l'agenda d'un collègue en devinant un identifiant.
-
-const RE_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const RE_HEURE = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-function validerEvenementAgenda(b) {
-  if (!b) return "Formulaire invalide.";
-  if (!txt(b.titre, 80).trim()) return "Le titre de l'événement est obligatoire.";
-  if (!RE_DATE.test(String(b.jour || ""))) return "Date invalide.";
-  if (!RE_HEURE.test(String(b.heure_debut || ""))) return "Heure de début invalide.";
-  if (!RE_HEURE.test(String(b.heure_fin || ""))) return "Heure de fin invalide.";
-  if (String(b.heure_fin) <= String(b.heure_debut)) return "L'heure de fin doit être après l'heure de début.";
-  if (String(b.notes || "").length > 500) return "Les notes sont trop longues (500 caractères maximum).";
-  return null;
-}
-
+// ---- Agenda : voir src/agenda.js (visibilité par rôle Discord, événements
+// « Perso » envoyés dans le ticket de la personne). L'identité vient toujours
+// de la session signée, jamais du corps envoyé par le navigateur.
 async function agenda(request, url, env) {
   const s = await session(request, env);
   if (!s) return json({ erreur: "Non connecté." }, 401);
-  const id = url.searchParams.get("id");
-  const m = request.method;
-
-  if (m === "GET") {
-    const debut = url.searchParams.get("debut");
-    const fin = url.searchParams.get("fin");
-    if (!RE_DATE.test(debut || "") || !RE_DATE.test(fin || "")) {
-      return json({ erreur: "Plage de dates invalide." }, 400);
-    }
-    const r = await env.DB.prepare(
-      `SELECT id, titre, jour, heure_debut, heure_fin, notes FROM evenements_agenda
-       WHERE membre_id = ?1 AND jour >= ?2 AND jour <= ?3 ORDER BY jour, heure_debut`
-    ).bind(s.id, debut, fin).all();
-    return json({ evenements: r.results || [] });
-  }
-
-  if (m === "POST") {
-    const b = await request.json().catch(() => null);
-    const erreur = validerEvenementAgenda(b);
-    if (erreur) return json({ erreur }, 400);
-    const r = await env.DB.prepare(
-      `INSERT INTO evenements_agenda (membre_id, titre, jour, heure_debut, heure_fin, notes, cree_le, maj)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'), datetime('now'))`
-    ).bind(s.id, txt(b.titre, 80).trim(), b.jour, b.heure_debut, b.heure_fin, txt(b.notes, 500).trim()).run();
-    return json({ id: r.meta.last_row_id });
-  }
-
-  if (m === "PUT") {
-    if (!id) return json({ erreur: "Identifiant manquant." }, 400);
-    const existe = await env.DB.prepare(
-      "SELECT id FROM evenements_agenda WHERE id = ?1 AND membre_id = ?2"
-    ).bind(id, s.id).first();
-    if (!existe) return json({ erreur: "Introuvable." }, 404);
-    const b = await request.json().catch(() => null);
-    const erreur = validerEvenementAgenda(b);
-    if (erreur) return json({ erreur }, 400);
-    await env.DB.prepare(
-      `UPDATE evenements_agenda SET titre=?3, jour=?4, heure_debut=?5, heure_fin=?6, notes=?7, maj=datetime('now')
-       WHERE id=?1 AND membre_id=?2`
-    ).bind(id, s.id, txt(b.titre, 80).trim(), b.jour, b.heure_debut, b.heure_fin, txt(b.notes, 500).trim()).run();
-    return json({ ok: true });
-  }
-
-  if (m === "DELETE") {
-    if (!id) return json({ erreur: "Identifiant manquant." }, 400);
-    await env.DB.prepare("DELETE FROM evenements_agenda WHERE id = ?1 AND membre_id = ?2").bind(id, s.id).run();
-    return json({ ok: true });
-  }
-
-  return json({ erreur: "Méthode non gérée." }, 405);
+  return routeAgenda(request, url, env, s);
 }
 
 // ---- messagerie interne (widget façon MSN) ---------------------------------

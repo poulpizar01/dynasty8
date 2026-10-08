@@ -65,7 +65,14 @@ découlent ensuite de ce grade.
   recherche, filtres, vue liste ou grille.
 - **Messagerie interne** — discussions entre agents, présence en ligne et
   indicateur de frappe (`/api/chat/*`).
-- **Agenda privé** — semaine par semaine, visible du seul compte concerné.
+- **Agenda** — mois, semaine ou jour, heure de Paris. Chaque événement est
+  « Visible par » : **Perso** (soi-même, ou une personne choisie dans les
+  fiches RH : l'événement est alors posté par le bot Roxwood dans le ticket
+  Ticket Tool qu'elle a ouvert et apparaît dans son agenda ; sans ticket
+  trouvé, il n'est pas créé), **Patrons**, **Direction** ou **Tous** — selon
+  les rôles Discord réglés dans Paramètres, relus à chaque connexion Discord
+  (autorisation `guilds.members.read`). Les rôles autorisés à créer chaque
+  visibilité se règlent aussi dans Paramètres.
 - **Profil agent** — photo, poste, spécialité, biographie affichés sur la
   page équipe.
 - **Statistiques et rémunérations** — volumes de ventes et locations reçus du
@@ -159,6 +166,7 @@ tâches de fond (nettoyage des photos, synchronisation du tableur).
 | `src/rh.js` | fiches employés, effectif, permissions RH (`/api/rh/*`) |
 | `src/grades.js` | la seule définition des grades : niveau d'accès, couleur, rang (hiérarchie réglable dans Paramètres) et règles contre l'élévation de droits |
 | `src/reglages.js` | liens du site réglables dans l'onglet Paramètres (`/api/reglages`, `/api/liens`) |
+| `src/agenda.js` | agenda : visibilité par rôle Discord, droits de création, envoi des événements « Perso » dans le ticket de la personne |
 | `src/services.js` | membres en service : lecture du salon Discord des prises/fins de service, cas particuliers, encadré « En service » |
 | `src/paie-horaire.js` | paie à l'heure (stagiaires) : heures de service du relevé Tablettes × taux horaire du grade |
 | `src/apparence.js` | images de la marque remplacées dans Paramètres → Apparence (`/api/apparence`), relayées à l'adresse de l'image d'origine |

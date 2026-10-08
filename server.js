@@ -198,6 +198,8 @@ function construireEnv() {
     // Jeton du bot Discord Roxwood : lecture du salon des prises et fins de
     // service (src/services.js). Côté serveur uniquement, jamais renvoyé.
     DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN,
+    // Serveur Discord de l'agence : rôles des membres (agenda) et tickets.
+    DISCORD_GUILD_ID: process.env.DISCORD_GUILD_ID,
   };
 }
 

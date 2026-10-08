@@ -180,7 +180,7 @@
       <div class="agenda-entete">
         <div>
           <h2 style="margin-bottom:2px;">Mon agenda</h2>
-          <p class="agenda-sous-titre">🔒 Personnel — visible uniquement par vous · <span id="agenda-plage-dates"></span></p>
+          <p class="agenda-sous-titre"><span id="agenda-plage-dates"></span></p>
         </div>
         <div class="agenda-entete-actions">
           <div class="agenda-vue-toggle" role="group" aria-label="Choisir la vue">
@@ -198,7 +198,7 @@
       <div class="agenda-grille-conteneur" id="agenda-grille-conteneur">
         <div class="agenda-grille" id="agenda-grille"></div>
       </div>
-      <p class="agenda-note">Cliquez sur une case pour ajouter un événement, sur un événement pour le modifier. Chaque compte Discord ne voit que son propre agenda.</p>
+      <p class="agenda-note">Cliquez sur une case pour ajouter un événement, sur un événement pour le voir ou le modifier. <span class="agenda-legende agenda-legende-perso">Perso</span> vous seul (et la personne concernée) · <span class="agenda-legende agenda-legende-patrons">Patrons</span> <span class="agenda-legende agenda-legende-direction">Direction</span> <span class="agenda-legende agenda-legende-tous">Tous</span> selon vos rôles Discord.</p>
     </section>
 
     <!-- Onglet Mon profil (visible à tous les membres connectés) -->
@@ -1127,12 +1127,25 @@
         </div>
       </div>
       <p class="champ-erreur cache" id="erreur-evenement-heures">L'heure de fin doit être après l'heure de début.</p>
+      <!-- Visible par (voir src/agenda.js) : seules les visibilités que le
+           compte peut créer sont proposées. « Pour » : la personne d'un
+           événement « Perso » (soi-même, ou une fiche RH : envoi dans son ticket). -->
       <div class="champ">
-        <label for="evenement-notes">Notes (optionnel)</label>
+        <label for="evenement-visibilite">Visible par</label>
+        <select id="evenement-visibilite"></select>
+      </div>
+      <div class="champ cache" id="champ-evenement-pour">
+        <label for="evenement-pour">Pour</label>
+        <select id="evenement-pour"></select>
+        <p class="champ-aide" id="aide-evenement-pour">Pour quelqu'un d'autre : l'événement est posté dans le ticket Discord qu'il ou elle a ouvert, et apparaît aussi dans son agenda.</p>
+      </div>
+      <div class="champ">
+        <label for="evenement-notes">Descriptif (optionnel)</label>
         <textarea id="evenement-notes" maxlength="500" placeholder="Détails, lieu de rendez-vous, contact..."></textarea>
       </div>
+      <p class="champ-aide cache" id="evenement-origine" style="margin:6px 0 0;"></p>
       <div style="display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;">
-        <button type="submit" class="btn btn-or" style="flex:1;">Enregistrer</button>
+        <button type="submit" class="btn btn-or" style="flex:1;" id="bouton-enregistrer-evenement">Enregistrer</button>
         <button type="button" class="btn btn-fantome" id="bouton-annuler-evenement">Annuler</button>
         <button type="button" class="btn btn-danger cache" id="bouton-supprimer-evenement">Supprimer</button>
       </div>

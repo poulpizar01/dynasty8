@@ -636,6 +636,32 @@ BEGIN
   END IF;
 END $$;
 
+-- ---- Agenda partagé (oct. 2026) -------------------------------------------
+-- Rôles Discord de chaque membre sur le serveur de l'agence, relus à chaque
+-- connexion Discord (JSON : ["123…", …]) — visibilité de l'agenda.
+ALTER TABLE membres ADD COLUMN IF NOT EXISTS discord_roles TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE membres ADD COLUMN IF NOT EXISTS discord_roles_le TEXT;
+-- Visible par : perso (créateur + personne choisie), patrons, direction, tous
+-- (rôles Discord réglés dans Paramètres). Les événements existants, tous
+-- privés jusqu'ici, restent « perso ». Voir src/agenda.js.
+ALTER TABLE evenements_agenda ADD COLUMN IF NOT EXISTS visibilite TEXT NOT NULL DEFAULT 'perso';
+-- « Perso » pour quelqu'un d'autre : sa fiche RH, son ID Discord, son nom, et
+-- le message posté dans son ticket.
+ALTER TABLE evenements_agenda ADD COLUMN IF NOT EXISTS cible_employe_id INTEGER REFERENCES employes(id) ON DELETE SET NULL;
+ALTER TABLE evenements_agenda ADD COLUMN IF NOT EXISTS cible_discord_id TEXT;
+ALTER TABLE evenements_agenda ADD COLUMN IF NOT EXISTS cible_nom TEXT NOT NULL DEFAULT '';
+ALTER TABLE evenements_agenda ADD COLUMN IF NOT EXISTS discord_salon_id TEXT;
+ALTER TABLE evenements_agenda ADD COLUMN IF NOT EXISTS discord_message_id TEXT;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'evenements_agenda_visibilite_valide') THEN
+    ALTER TABLE evenements_agenda ADD CONSTRAINT evenements_agenda_visibilite_valide
+      CHECK (visibilite IN ('perso', 'patrons', 'direction', 'tous'));
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_agenda_visibilite_jour ON evenements_agenda(visibilite, jour);
+CREATE INDEX IF NOT EXISTS idx_agenda_cible_jour ON evenements_agenda(cible_discord_id, jour) WHERE cible_discord_id IS NOT NULL;
+
 -- ---- Membres en service (oct. 2026) ----------------------------------------
 -- Une ligne par « ID service » publié par le bot des services dans le salon
 -- Discord réglé dans Paramètres (voir src/services.js). fin vide = en service.

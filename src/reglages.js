@@ -42,6 +42,24 @@ export const REGLAGES = [
     aide: "Salon où le bot des services publie « Service démarré » / « Service terminé » (clic droit sur le salon → Copier l'identifiant, mode développeur Discord activé). Le site le lit chaque minute avec le jeton du bot Roxwood (DISCORD_BOT_TOKEN du serveur), qui doit pouvoir voir ce salon et ses anciens messages. Vide : encadré « En service » désactivé." },
   { cle: "services_cloture_heures", groupe: "services", type: "entier", min: 1, max: 72, defaut: 12, libelle: "Clôture automatique (heures)",
     aide: "Un service resté ouvert plus longtemps (fin jamais publiée) est fermé automatiquement à son début + ce nombre d'heures. Une vraie fin publiée plus tard la remplace. Vide : 12 heures." },
+  // Agenda (voir src/agenda.js). IDs de rôles Discord : clic droit sur le rôle
+  // → Copier l'identifiant (mode développeur Discord activé).
+  { cle: "agenda_roles_patrons", groupe: "agenda", type: "snowflakes", libelle: "Rôles qui voient les événements « Patrons »",
+    aide: "Un ou plusieurs IDs de rôles Discord, séparés par des espaces." },
+  { cle: "agenda_roles_direction", groupe: "agenda", type: "snowflakes", libelle: "Rôles qui voient les événements « Direction »",
+    aide: "Un ou plusieurs IDs de rôles Discord, séparés par des espaces." },
+  { cle: "agenda_role_tous", groupe: "agenda", type: "snowflake", libelle: "Rôle qui voit les événements « Tous »",
+    aide: "Un seul ID de rôle Discord (par exemple le rôle commun à tous les employés)." },
+  { cle: "agenda_createurs_patrons", groupe: "agenda", type: "snowflakes", libelle: "Rôles qui créent des événements « Patrons »",
+    aide: "Patron, Co Patron et Développeur web le peuvent toujours." },
+  { cle: "agenda_createurs_direction", groupe: "agenda", type: "snowflakes", libelle: "Rôles qui créent des événements « Direction »",
+    aide: "Patron, Co Patron et Développeur web le peuvent toujours." },
+  { cle: "agenda_createurs_tous", groupe: "agenda", type: "snowflakes", libelle: "Rôles qui créent des événements « Tous »",
+    aide: "Patron, Co Patron et Développeur web le peuvent toujours." },
+  { cle: "agenda_createurs_perso", groupe: "agenda", type: "snowflakes", libelle: "Rôles qui créent un événement « Perso » pour quelqu'un d'autre",
+    aide: "L'événement est posté dans le ticket ouvert par cette personne. Un « Perso » pour soi-même reste ouvert à tous. Patron, Co Patron et Développeur web le peuvent toujours." },
+  { cle: "agenda_categories_tickets", groupe: "agenda", type: "snowflakes", libelle: "Catégories des tickets",
+    aide: "IDs des catégories Discord où Ticket Tool crée les tickets. Le site y cherche le ticket ouvert par la personne (le plus récent) ; le bot Roxwood doit pouvoir y écrire." },
   { cle: "discord_agence", groupe: "public", type: "url", libelle: "Discord de l'agence",
     aide: "« Nous contacter », pied de page et boutons de contact des pages publiques." },
   { cle: "boutique_vip", groupe: "public", type: "url", libelle: "Boutique VIP",
@@ -107,6 +125,12 @@ function validerReglage(definition, saisie) {
     return { lignes: { sheet_id: sheet.id, sheet_gid: sheet.gid } };
   }
   if (!valeur) return { lignes: { [definition.cle]: "" } };
+  if (definition.type === "snowflakes") {
+    const ids = valeur.split(/[\s,;]+/).filter(Boolean);
+    const invalide = ids.find((x) => !/^\d{15,21}$/.test(x));
+    if (invalide) return { erreur: `${definition.libelle} : « ${invalide.slice(0, 30)} » n'est pas un identifiant Discord (15 à 21 chiffres).` };
+    return { lignes: { [definition.cle]: [...new Set(ids)].join(" ") } };
+  }
   if (definition.type === "snowflake") {
     if (!/^\d{15,21}$/.test(valeur)) return { erreur: `${definition.libelle} : un identifiant Discord est un nombre de 15 à 21 chiffres.` };
     return { lignes: { [definition.cle]: valeur } };
