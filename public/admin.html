@@ -101,6 +101,12 @@
     <button class="lien-onglet cache" data-onglet="parametres" id="onglet-parametres"><svg class="ico"><use href="#ico-sync"></use></svg><span>Paramètres</span></button>
 
     <div class="admin-bas">
+      <!-- Qui est en service, et depuis quand (salon Discord des services, voir
+           src/services.js). Masqué tant que le salon n'est pas réglé. -->
+      <div class="admin-en-service cache" id="encadre-en-service" aria-live="polite">
+        <p class="admin-en-service-titre"><span class="pastille-service" aria-hidden="true"></span> En service <span class="admin-en-service-nombre" id="en-service-nombre">0</span></p>
+        <ul class="admin-en-service-liste" id="liste-en-service"></ul>
+      </div>
       <div class="admin-aide">
         <p class="admin-aide-titre"><svg class="ico"><use href="#ico-headset"></use></svg> Besoin d'aide ?</p>
         <a href="/faq.html" target="_blank" rel="noopener">Consultez notre FAQ</a>
@@ -777,13 +783,15 @@
            Développeur web seulement. Les champs sont construits par admin.js
            à partir de GET /api/reglages. -->
       <div id="reglages-liens" class="cache">
-        <h3 class="comptes-sous-titre" style="margin-top:34px;">🔗 Liens du site</h3>
+        <h3 class="comptes-sous-titre" style="margin-top:34px;">🔗 Liens et réglages du site</h3>
         <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">Chaque lien se modifie ici et s'applique tout de suite, sans redémarrer le site. Un lien vidé masque le bouton correspondant (WebMap vidée : carte indisponible ; Google Sheets vidé : synchronisation en attente). Ces liens ne se règlent qu'ici, plus dans le fichier .env du serveur.</p>
         <div id="zone-message-reglages"></div>
         <form id="formulaire-reglages" style="max-width:860px;">
           <div id="reglages-champs"></div>
-          <button type="submit" class="btn btn-or btn-petit" id="reglages-enregistrer">Enregistrer les liens</button>
+          <button type="submit" class="btn btn-or btn-petit" id="reglages-enregistrer">Enregistrer les réglages</button>
         </form>
+        <!-- État de la lecture du salon des services (GET /api/services/etat). -->
+        <div id="etat-services" class="champ-aide" style="margin-top:14px;max-width:860px;"></div>
       </div>
 
       <!-- Apparence : images de la marque (logo, emblème, icônes, image de

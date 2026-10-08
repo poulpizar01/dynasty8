@@ -184,6 +184,46 @@ function demarrerEspaceAdmin() {
   basculerOnglet(ongletDepart);
   if (ongletDepart === "annonces") chargerTableBiens();
   demarrerMessagerie();
+  demarrerEnService();
+}
+
+// ---------------------------------------------------------------------------
+// Encadré « En service » (barre latérale) : qui est en service et depuis
+// quand, d'après le salon Discord des services (src/services.js). Relu chaque
+// minute ; masqué tant que le salon n'est pas réglé dans Paramètres.
+// ---------------------------------------------------------------------------
+
+function dureeDepuis(debutUtc) {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(String(debutUtc).replace(" ", "T") + "Z").getTime()) / 60000));
+  return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")}`;
+}
+
+function heureParis(debutUtc) {
+  const d = new Date(String(debutUtc).replace(" ", "T") + "Z");
+  return isNaN(d) ? "" : d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+}
+
+async function chargerEnService() {
+  const encadre = document.getElementById("encadre-en-service");
+  try {
+    const r = await appelAPI("/api/services/en-cours");
+    encadre.classList.toggle("cache", !r.regle);
+    if (!r.regle) return;
+    document.getElementById("en-service-nombre").textContent = r.en_service.length;
+    document.getElementById("liste-en-service").innerHTML = r.en_service.length
+      ? r.en_service.map((p) => `<li title="En service depuis ${echapper(heureParis(p.depuis))}${p.mode ? " — " + echapper(p.mode) : ""}">
+          <span class="admin-en-service-nom">${echapper(p.nom)}</span>
+          <span class="admin-en-service-depuis">depuis ${echapper(heureParis(p.depuis))} · ${dureeDepuis(p.depuis)}</span>
+        </li>`).join("")
+      : '<li class="admin-en-service-vide">Personne pour le moment.</li>';
+  } catch (e) {
+    // Erreur passagère (réseau) : on garde le dernier affichage.
+  }
+}
+
+function demarrerEnService() {
+  chargerEnService();
+  setInterval(chargerEnService, 60 * 1000);
 }
 
 function basculerOnglet(nom) {
@@ -3388,15 +3428,23 @@ function formaterDateAdmin(iso) {
 
 const TITRES_GROUPES_REGLAGES = {
   prive: "Espace agents et serveur",
+  services: "Membres en service (salon Discord des prises et fins de service)",
   public: "Pages publiques",
 };
 
 function afficherReglagesLiens(r) {
   const champ = (d) => {
     const origine = d.regle ? "" : '<span class="puce puce-or">non réglé</span>';
+    // Selon le type du réglage (voir REGLAGES dans src/reglages.js) : lien,
+    // identifiant Discord, ou nombre.
+    const attributs = d.type === "snowflake"
+      ? `type="text" inputmode="numeric" maxlength="21" placeholder="ex. 1234567890123456789"`
+      : d.type === "entier"
+        ? `type="number" min="${d.min}" max="${d.max}" step="1" placeholder="${d.defaut}" style="max-width:140px;"`
+        : `type="url" maxlength="500" placeholder="https://…"`;
     return `<div class="champ">
       <label for="reglage-${d.cle}">${echapper(d.libelle)} ${origine}</label>
-      <input type="url" id="reglage-${d.cle}" data-reglage="${d.cle}" maxlength="500" value="${echapper(d.valeur)}" placeholder="https://…" autocomplete="off" spellcheck="false">
+      <input ${attributs} id="reglage-${d.cle}" data-reglage="${d.cle}" value="${echapper(d.valeur)}" autocomplete="off" spellcheck="false">
       <p class="champ-aide">${echapper(d.aide)}</p>
     </div>`;
   };
@@ -3416,6 +3464,34 @@ async function chargerReglagesLiens() {
   } catch (e) {
     afficherMessage("zone-message-reglages", "Impossible de charger les liens : " + e.message, "erreur");
   }
+  chargerEtatServices();
+}
+
+const LIBELLES_ANOMALIES_SERVICE = {
+  fin_sans_debut: "fin sans début lu",
+  debut_en_double: "nouvelle prise de service sans fin de la précédente",
+  cloture_auto: "fermé automatiquement",
+};
+
+// Lecture du salon des services : dernière passe, erreur, anomalies récentes.
+async function chargerEtatServices() {
+  const zone = document.getElementById("etat-services");
+  try {
+    const r = await appelAPI("/api/services/etat");
+    const lignes = [];
+    if (!r.jeton_present) lignes.push("⚠️ Membres en service : DISCORD_BOT_TOKEN absent du .env du serveur — le salon ne peut pas être lu.");
+    else if (!r.salon_regle) lignes.push("Membres en service : réglez l'ID du salon ci-dessus pour activer l'encadré « En service ».");
+    else if (!r.etat || !r.etat.derniere_lecture) lignes.push("Membres en service : première lecture du salon dans moins d'une minute.");
+    else if (r.etat.statut === "erreur") lignes.push(`⚠️ Lecture du salon des services : ${echapper(r.etat.erreur)} (${echapper(formaterHorodatageParis(r.etat.derniere_lecture))}).`);
+    else lignes.push(`✓ Salon des services lu le ${echapper(formaterHorodatageParis(r.etat.derniere_lecture))} : ${r.etat.nb_lus} nouveau(x) message(s), ${r.etat.nb_reconnus} prise(s)/fin(s) de service reconnue(s). ${r.en_service} personne(s) en service. Clôture automatique après ${r.cloture_heures} h.`);
+    if (r.anomalies && r.anomalies.length) {
+      lignes.push("Derniers cas particuliers : " + r.anomalies.map((a) =>
+        `${echapper(a.employe_nom || "?")} (${echapper(LIBELLES_ANOMALIES_SERVICE[a.anomalie] || a.anomalie)}, début ${echapper(formaterHorodatageParis(a.debut))})`).join(" ; ") + ".");
+    }
+    zone.innerHTML = lignes.map((l) => `<p style="margin:0 0 6px;">${l}</p>`).join("");
+  } catch (e) {
+    zone.textContent = "";
+  }
 }
 
 document.getElementById("formulaire-reglages").addEventListener("submit", async (e) => {
@@ -3426,7 +3502,9 @@ document.getElementById("formulaire-reglages").addEventListener("submit", async 
   bouton.disabled = true;
   try {
     afficherReglagesLiens(await appelAPI("/api/reglages", { method: "PUT", body: JSON.stringify(corps) }));
-    afficherMessage("zone-message-reglages", "Liens enregistrés ✓ — ils sont déjà en service.", "succes");
+    afficherMessage("zone-message-reglages", "Réglages enregistrés ✓ — ils sont déjà en service.", "succes");
+    chargerEtatServices();
+    chargerEnService();
     // Le lien du tableur a pu changer : l'état de la synchronisation aussi.
     chargerSyncSheet();
   } catch (err) {

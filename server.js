@@ -23,6 +23,7 @@ import { secretSessionValide, LONGUEUR_MIN_SECRET_SESSION } from "./src/verifica
 import { GRADES_DIRECTION } from "./src/grades.js";
 import { lireConfigMedias, creerClientDepuisConfig, nettoyerMedias } from "./src/medias.js";
 import { FICHIERS_MARQUE, imageMarque } from "./src/apparence.js";
+import { lireServices } from "./src/services.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -194,6 +195,9 @@ function construireEnv() {
     FBFA_IMPORTS_EN_ATTENTE_MAX: process.env.FBFA_IMPORTS_EN_ATTENTE_MAX,
     FBFA_NETTOYAGE: process.env.FBFA_NETTOYAGE,
     FBFA_NETTOYAGE_DELAI_HEURES: process.env.FBFA_NETTOYAGE_DELAI_HEURES,
+    // Jeton du bot Discord Roxwood : lecture du salon des prises et fins de
+    // service (src/services.js). Côté serveur uniquement, jamais renvoyé.
+    DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN,
   };
 }
 
@@ -237,6 +241,36 @@ async function nettoyerMediasSansErreur() {
 function demarrerNettoyageMedias() {
   nettoyerMediasSansErreur();
   setInterval(nettoyerMediasSansErreur, INTERVALLE_NETTOYAGE_MEDIAS_MS);
+}
+
+// Membres en service : lecture du salon Discord des prises et fins de service
+// toutes les minutes (voir src/services.js). Salon réglé dans Paramètres,
+// jeton DISCORD_BOT_TOKEN dans le .env ; sans l'un des deux, rien n'est lu.
+// L'état (« non réglé », erreur d'accès...) n'est journalisé qu'au changement.
+const INTERVALLE_SERVICES_MS = 60 * 1000;
+let etatServices = null;
+let lectureServicesEnCours = false;
+async function passeServices() {
+  if (lectureServicesEnCours) return;
+  lectureServicesEnCours = true;
+  try {
+    const r = await lireServices(await envAvecReglages(construireEnv()));
+    const resume = r.statut === "erreur" ? `erreur : ${r.erreur}` : r.statut;
+    if (resume !== etatServices) {
+      console.log(r.statut === "non_regle"
+        ? "[services] Salon des services ou DISCORD_BOT_TOKEN non réglé : lecture en attente."
+        : `[services] Lecture du salon des services : ${resume}.`);
+      etatServices = resume;
+    }
+  } catch (e) {
+    console.error("[services] Passe interrompue :", (e && e.message) || e);
+  } finally {
+    lectureServicesEnCours = false;
+  }
+}
+function demarrerLectureServices() {
+  passeServices();
+  setInterval(passeServices, INTERVALLE_SERVICES_MS);
 }
 
 // Synchro Google Sheets ("Mon profil") : une fois au démarrage, puis toutes
@@ -427,6 +461,7 @@ preparerBase()
   .then(() => reprendreAnciennesVariables())
   .then(() => demarrerSyncSheet())
   .then(() => demarrerNettoyageMedias())
+  .then(() => demarrerLectureServices())
   .catch((e) => {
     if (e instanceof SchemaIncomplet) {
       // Sans schéma, l'application ne peut rien servir de correct : on

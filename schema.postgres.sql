@@ -636,6 +636,43 @@ BEGIN
   END IF;
 END $$;
 
+-- ---- Membres en service (oct. 2026) ----------------------------------------
+-- Une ligne par « ID service » publié par le bot des services dans le salon
+-- Discord réglé dans Paramètres (voir src/services.js). fin vide = en service.
+-- Heures en UTC, « AAAA-MM-JJ HH:MM:SS » comme le reste de la base.
+CREATE TABLE IF NOT EXISTS services (
+  id SERIAL PRIMARY KEY,
+  service_id TEXT NOT NULL UNIQUE,              -- « ID service » du bot
+  employe_nom TEXT NOT NULL DEFAULT '',         -- nom affiché par le bot
+  discord_id TEXT,                              -- lu dans l'avatar du message, si présent
+  employe_id INTEGER REFERENCES employes(id) ON DELETE SET NULL,
+  mode TEXT NOT NULL DEFAULT '',
+  debut TEXT NOT NULL,
+  fin TEXT,
+  cause_fin TEXT NOT NULL DEFAULT '',
+  fin_source TEXT NOT NULL DEFAULT '' CHECK (fin_source IN ('', 'bot', 'auto', 'doublon')),
+  message_debut TEXT,
+  message_fin TEXT,
+  -- '', 'fin_sans_debut', 'debut_en_double', 'cloture_auto'
+  anomalie TEXT NOT NULL DEFAULT '',
+  maj TEXT NOT NULL DEFAULT (to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'))
+);
+CREATE INDEX IF NOT EXISTS idx_services_ouverts ON services(debut) WHERE fin IS NULL;
+CREATE INDEX IF NOT EXISTS idx_services_anomalies ON services(maj DESC) WHERE anomalie <> '';
+
+-- État de la lecture du salon : dernier message lu (pour ne relire que la
+-- suite) et résultat de la dernière passe, affiché dans Paramètres.
+CREATE TABLE IF NOT EXISTS services_etat (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  salon_id TEXT,
+  dernier_message_id TEXT,
+  derniere_lecture TEXT,
+  statut TEXT NOT NULL DEFAULT '',
+  erreur TEXT NOT NULL DEFAULT '',
+  nb_lus INTEGER NOT NULL DEFAULT 0,
+  nb_reconnus INTEGER NOT NULL DEFAULT 0
+);
+
 -- ============================================================================
 -- Compte applicatif restreint — À GARDER EN DERNIER DANS CE FICHIER
 -- ----------------------------------------------------------------------------

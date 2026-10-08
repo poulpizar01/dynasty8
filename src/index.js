@@ -28,6 +28,7 @@ import {
 } from "./google-sheets.js";
 import { routeApparence } from "./apparence.js";
 import { calculerPaieHoraire } from "./paie-horaire.js";
+import { servicesEnCours, servicesEtat } from "./services.js";
 import { routeRh, permissionsRh, trouverEmploye, nomComplet, recevoirCandidatureBot } from "./rh.js";
 import { envAvecReglages, routeReglages, routeRangsGrades, liensPublics, lienRegle, GRADES_REGLAGES } from "./reglages.js";
 import {
@@ -304,6 +305,14 @@ export default {
         if (!s) return json({ erreur: "Non connecté." }, 401);
         if (chemin === "/api/reglages/grades") return await routeRangsGrades(request, env, s);
         return await routeReglages(request, env, s);
+      }
+      if (chemin === "/api/services/en-cours" || chemin === "/api/services/etat") {
+        if (request.method !== "GET") return json({ erreur: "Méthode non gérée." }, 405, { Allow: "GET" });
+        const s = await session(request, env);
+        if (!s) return json({ erreur: "Non connecté." }, 401);
+        if (chemin === "/api/services/en-cours") return await servicesEnCours(env);
+        if (!GRADES_REGLAGES.includes(s.grade)) return json({ erreur: "Réservé au Patron, au Co Patron et au Développeur web." }, 403);
+        return await servicesEtat(env);
       }
       if (chemin === "/api/apparence" || chemin === "/api/apparence/image") {
         const s = await session(request, env);

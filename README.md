@@ -159,6 +159,8 @@ tâches de fond (nettoyage des photos, synchronisation du tableur).
 | `src/rh.js` | fiches employés, effectif, permissions RH (`/api/rh/*`) |
 | `src/grades.js` | la seule définition des grades : niveau d'accès, couleur, rang (hiérarchie réglable dans Paramètres) et règles contre l'élévation de droits |
 | `src/reglages.js` | liens du site réglables dans l'onglet Paramètres (`/api/reglages`, `/api/liens`) |
+| `src/services.js` | membres en service : lecture du salon Discord des prises/fins de service, cas particuliers, encadré « En service » |
+| `src/paie-horaire.js` | paie à l'heure (stagiaires) : heures de service du relevé Tablettes × taux horaire du grade |
 | `src/apparence.js` | images de la marque remplacées dans Paramètres → Apparence (`/api/apparence`), relayées à l'adresse de l'image d'origine |
 | `src/corps-requete.js` | limite de taille des requêtes, avant lecture complète |
 | `src/entetes-proxy.js` | choix de l'hôte public derrière le reverse proxy |
@@ -231,6 +233,15 @@ section « Photos » de [`deploy/operateur/README-OPERATEUR.md`](deploy/operateu
 
 ## Intégrations externes
 
+- **Membres en service** — le bot des services (« Agatha ») publie chaque
+  prise et fin de service dans un salon Discord, avec un « ID service ». Le
+  site lit ce salon chaque minute avec le jeton du bot Roxwood
+  (`DISCORD_BOT_TOKEN`, droits « Voir le salon » et « Voir les anciens
+  messages ») ; l'ID du salon et la clôture automatique (12 h par défaut) se
+  règlent dans Paramètres. Une fin sans début, une double prise de service
+  et un service jamais fermé sont gérés et signalés dans Paramètres.
+  L'encadré « En service » de la barre latérale montre qui est en service et
+  depuis quand.
 - **Bot de ventes** — un bot Discord envoie les ventes et locations faites en
   jeu à une API protégée par `STATS_BOT_SECRET`. Chaque événement porte un
   `eventId` : un renvoi réseau ne compte jamais deux fois la même vente.
