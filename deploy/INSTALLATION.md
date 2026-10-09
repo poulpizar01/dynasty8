@@ -1,6 +1,6 @@
 # Dynasty 8 — installation sur le VPS FlashbackFA
 
-Pour l'opérateur du VPS. Première mise en ligne de **https://dynasty8.fbfa.fr** : vitrine de l'agence immobilière et espace agents, aussi affiché dans l'ordinateur en jeu (FolkOS). Contact : Paul (Dynasty 8).
+Pour l'opérateur du VPS. Première mise en ligne de **https://dynasty8.fbfa.fr** : vitrine de l'agence immobilière et espace agents, aussi affiché dans l'ordinateur en jeu (FolkOS). Contact : la Direction de Dynasty 8.
 
 ## En deux mots
 
@@ -39,16 +39,16 @@ Modèle commenté : [`.env.example`](../.env.example), à copier en `.env`. Vale
 | `COMPOSE_FILE`, `SITE_ID`, `HOST_PORT` | `compose.yaml`, `dynasty8`, `3010` | — |
 | `BASE_URL` | `https://dynasty8.fbfa.fr` | — |
 | `SESSION_SECRET`, `POSTGRES_PASSWORD` | `openssl rand -hex 32` chacun ; `POSTGRES_PASSWORD` ne se change plus une fois la base créée | vous |
-| `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | application Discord RoxwoodLegal (`1546523997980852294`) | Paul |
-| `DISCORD_GUILD_ID` | ID du serveur Discord de Dynasty 8 : seuls ses membres peuvent se connecter, son propriétaire a tous les droits sur le site | Paul |
+| `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | application Discord RoxwoodLegal (`1546523997980852294`) | Direction de Dynasty 8 |
+| `DISCORD_GUILD_ID` | ID du serveur Discord de Dynasty 8 : seuls ses membres peuvent se connecter, son propriétaire a tous les droits sur le site | Direction de Dynasty 8 |
 | `STORAGE_URL`, `STORAGE_TOKEN`, `STORAGE_PREFIX` | `https://storage.fbfa.fr`, jeton du stockage, `dynasty8/` | vous (jeton) |
 | `BOT_WEBHOOK_SECRETS` | secret de l'abonnement « Candidatures » du bot Discord (étape 5) | Dynasty 8, depuis le bot |
 | `FOLKOS_HOTE` | hôte de l'ordinateur en jeu (point 4) | vous |
 | `FOLKOS_CADRES` | `https://*.fbfa.fr https://fbfa.fr` : autres pages FlashbackFA autorisées à afficher le site | — |
 | `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | validateur `id` **vu depuis le conteneur** (point 5), identifiants du site dans le broker `access` | vous |
 | `STATS_BOT_SECRET` | `openssl rand -hex 32` ; à transmettre en privé à qui programme le bot de ventes | vous |
-| `GOOGLE_SHEET_ID`, `GOOGLE_SHEET_GID` | classeur de la Direction (dans son adresse : `…/spreadsheets/d/<ID>/edit#gid=<GID>`) | Paul |
-| `COHERENCES_SHEET_URL` | lien du tableau des cohérences | Paul |
+| `GOOGLE_SHEET_ID`, `GOOGLE_SHEET_GID` | classeur de la Direction (dans son adresse : `…/spreadsheets/d/<ID>/edit#gid=<GID>`) | Direction de Dynasty 8 |
+| `COHERENCES_SHEET_URL` | lien du tableau des cohérences | Direction de Dynasty 8 |
 | `WEBMAP_ORIGIN` | adresse réelle de la WebMap, **vue depuis le conteneur** (point 5) | vous |
 | `WEBMAP_HOTE` | `carte.dynasty8.fbfa.fr` | — |
 
@@ -97,7 +97,7 @@ Dans les fichiers, ne jamais ajouter `X-Frame-Options` ni `Content-Security-Poli
 
 Dans l'application RoxwoodLegal (portail développeur → OAuth2 → Redirects), ajouter `https://dynasty8.fbfa.fr/auth/discord/callback`, à l'identique.
 
-## 4. Première connexion (avec Paul)
+## 4. Première connexion (avec la Direction de Dynasty 8)
 
 1. Le **propriétaire du serveur Discord** de Dynasty 8 se connecte le premier : https://dynasty8.fbfa.fr/gestion/. Il a tous les droits.
 2. Dans **Gestion → Grades**, il crée les grades de l'agence et lie chacun à son **rôle Discord**.
