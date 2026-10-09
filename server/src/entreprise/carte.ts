@@ -3,10 +3,12 @@
 // ce que reçoit le navigateur : ce serveur va la chercher et la réécrit au passage.
 // Isolée du site : le cookie de session, lié au seul domaine du site, n'est jamais envoyé au sous-domaine, et une
 // requête de la carte vers l'API du site est refusée (lecture bloquée par le navigateur, écriture par le contrôle
-// d'origine du socle). L'ancien site relayait la carte sous /api/carte/ de son propre domaine : son code tournait alors
-// avec les droits du site.
+// d'origine du socle). Jamais sous le domaine du site : le code de la carte y tournerait avec les droits du site.
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import type { Request, RequestHandler, Response } from 'express';
 import { adresse, config, fail } from '../socle/config.js';
+import { limiter } from '../socle/limites.js';
 
 const origine = adresse('WEBMAP_ORIGIN');   // vide : carte désactivée
 const hote = (process.env.WEBMAP_HOTE || '').trim().toLowerCase();
@@ -36,8 +38,33 @@ const versSousDomaine = (lien: string) => {
   return lien;
 };
 
-export const relaisCarte: RequestHandler = async (req: Request, res: Response) => {
+// Ce relais passe avant tout le socle, limites de requêtes comprises : il a les siennes. Par adresse (une carte charge
+// beaucoup de tuiles d'un coup), et un nombre de relais en cours borné pour tout le site, chacun gardant au plus un
+// texte de TEXTE_MAX en mémoire (les autres fichiers passent en flux).
+const limite = limiter(1, 1200, 'Trop de requêtes vers la carte, réessaie dans une minute.');
+const EN_COURS_MAX = 20, TEXTE_MAX = 5 * 1024 * 1024;
+let enCours = 0;
+
+export const relaisCarte: RequestHandler = (req, res, next) => limite(req, res, async err => {
+  if (err) { next(err); return; }
+  if (!['GET', 'HEAD', 'POST'].includes(req.method)) { res.status(405).type('text').send('Méthode refusée.'); return; }
+  if (enCours >= EN_COURS_MAX) { res.status(503).set('Retry-After', '5').type('text').send('La carte est très demandée, réessaie dans quelques secondes.'); return; }
+  enCours++;
+  try { await relayer(req, res); }
+  catch (e) {
+    console.error('[carte] relais interrompu :', (e as Error).message);
+    if (!res.headersSent) res.status(502).type('text').send('La carte est momentanément indisponible.');
+    else res.destroy();
+  } finally { enCours--; }
+});
+
+async function relayer(req: Request, res: Response): Promise<void> {
   res.set({ 'Content-Security-Policy': `frame-ancestors ${ancetres.join(' ')}`, 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' });
+  // Cible : un chemin de la carte, rien d'autre. Concaténée telle quelle, une cible de requête en forme absolue
+  // (« GET pany://x/y ») rallongerait le nom d'hôte de la carte et ferait aller ce serveur vers un autre domaine.
+  if (!req.originalUrl.startsWith('/') || req.originalUrl.startsWith('//')) { res.status(400).type('text').send('Adresse refusée.'); return; }
+  const cible = new URL(req.originalUrl, origineCarte);
+  if (cible.origin !== origineCarte) { res.status(400).type('text').send('Adresse refusée.'); return; }
   const entetes = new Headers();
   for (const nom of ['accept', 'accept-language', 'content-type', 'range', 'if-none-match', 'if-modified-since']) {
     const v = req.get(nom);
@@ -47,26 +74,34 @@ export const relaisCarte: RequestHandler = async (req: Request, res: Response) =
   const cookies = (req.get('cookie') ?? '').split(';').map(c => c.trim()).filter(c => c && !c.startsWith('site.sid='));
   if (cookies.length) entetes.set('cookie', cookies.join('; '));
   entetes.set('user-agent', req.get('user-agent') || 'Mozilla/5.0');
-  let distante: globalThis.Response;
-  try {
-    const corps = ['GET', 'HEAD'].includes(req.method) ? undefined : new Uint8Array(await lireCorps(req));
-    distante = await fetch(origineCarte + req.originalUrl, { method: req.method, headers: entetes, body: corps, redirect: 'manual', signal: AbortSignal.timeout(DELAI_MS) });
-  } catch (e) {
-    console.error('[carte] injoignable :', (e as Error).message);
-    res.status(502).type('text').send('La carte est momentanément indisponible.');
-    return;
-  }
+  // délai global : connexion ET lecture complète de la réponse (une erreur de lecture remonte au catch de relaisCarte)
+  const corps = req.method === 'POST' ? new Uint8Array(await lireCorps(req)) : undefined;
+  const distante = await fetch(cible, { method: req.method, headers: entetes, body: corps, redirect: 'manual', signal: AbortSignal.timeout(DELAI_MS) });
   // redirection de la carte : suivie vers son équivalent sur le sous-domaine, jamais l'adresse réelle
   if ([301, 302, 303, 307, 308].includes(distante.status)) { res.redirect(distante.status, versSousDomaine(distante.headers.get('location') || '/')); return; }
   const type = distante.headers.get('content-type') || 'application/octet-stream';
+  const texte = /text\/html|javascript|text\/css|json/i.test(type);
+  // l'adresse réelle de la carte n'apparaît pas dans ce que reçoit le navigateur : un texte est lu en entier (borné)
+  // pour la réécrire, avant d'envoyer quoi que ce soit
+  const contenu = texte && distante.body ? (await lireBorne(distante.body, TEXTE_MAX)).toString('utf8').split(origineCarte).join(carte!.url) : null;
   res.status(distante.status).type(type);
-  for (const nom of ['cache-control', 'etag', 'last-modified', 'content-range', 'accept-ranges']) { const v = distante.headers.get(nom); if (v) res.set(nom, v); }
+  for (const nom of ['cache-control', 'etag', 'last-modified', 'content-range', 'accept-ranges', ...(texte ? [] : ['content-length'])]) { const v = distante.headers.get(nom); if (v) res.set(nom, v); }
   // cookies de la carte : reposés sur le sous-domaine (sans Domain, qui viserait celui de la carte réelle)
   for (const c of distante.headers.getSetCookie()) res.append('Set-Cookie', c.split(';').filter(a => !/^\s*domain\s*=/i.test(a)).join(';'));
-  if (/text\/html|javascript|text\/css|json/i.test(type)) {
-    // l'adresse réelle de la carte n'apparaît pas dans ce que reçoit le navigateur
-    res.send((await distante.text()).split(origineCarte).join(carte!.url));
-    return;
+  if (contenu !== null) { res.send(contenu); return; }
+  if (!distante.body || req.method === 'HEAD') { res.end(); return; }
+  // tuiles, images, polices : transmises en flux, jamais gardées entières en mémoire
+  await pipeline(Readable.fromWeb(distante.body as import('node:stream/web').ReadableStream), res);
+}
+
+// lit un flux jusqu'au bout, refusé au-delà de max octets
+async function lireBorne(flux: ReadableStream<Uint8Array>, max: number): Promise<Buffer> {
+  const morceaux: Uint8Array[] = [];
+  let total = 0;
+  for await (const m of flux as unknown as AsyncIterable<Uint8Array>) {
+    total += m.length;
+    if (total > max) throw new Error(`réponse de la carte trop lourde (plus de ${max} octets)`);
+    morceaux.push(m);
   }
-  res.send(Buffer.from(await distante.arrayBuffer()));
-};
+  return Buffer.concat(morceaux);
+}
