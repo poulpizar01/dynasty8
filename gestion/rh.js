@@ -224,7 +224,7 @@ async function chargerArriveesBot() {
       ? `<div style="overflow-x:auto;"><table class="table-admin"><thead><tr><th>Reçu le</th><th>Candidat</th><th>ID Discord</th><th>Résultat</th><th>Fiche</th></tr></thead><tbody>
         ${r.arrivees.map(a => `<tr>
           <td>${dateHeure(a.recuLe)}</td>
-          <td>${echapper(a.nomRecu || '—')}</td>
+          <td>${echapper(a.nomRecu || (a.discordId ? `Discord ${a.discordId}` : '—'))}</td>
           <td>${echapper(a.discordId || '—')}</td>
           <td>${LIBELLES_ARRIVEE_BOT[a.resultat] || echapper(a.resultat)}${a.motif ? `<div class="champ-aide">${echapper(a.motif)}</div>` : ''}</td>
           <td>${a.employe

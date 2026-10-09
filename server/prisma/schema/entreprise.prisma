@@ -156,6 +156,7 @@ model ArriveeBot {
   employeId Int?     @map("employe_id")
   reponses  Json?
   accepteLe String   @default("") @map("accepte_le") @db.VarChar(40)
+  evenementLe DateTime? @map("evenement_le") @db.Timestamptz(6) // date (sentAt) du dernier événement du bot appliqué à ce ticket
   recuLe    DateTime @default(now()) @map("recu_le") @db.Timestamptz(6)
 
   @@index([recuLe(sort: Desc)])

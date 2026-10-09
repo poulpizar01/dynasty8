@@ -246,42 +246,51 @@ async function creerDepuisCandidature(c: Candidature): Promise<Resultat> {
   }
 }
 
-// consigne le résultat d'un ticket ; un ticket abouti ou écarté n'est plus jamais modifié
-async function consigner(c: Candidature, r: Resultat) {
+// Consigne le résultat d'un ticket. Seul un ticket dans l'un des états `depuis` est mis à jour : un ticket abouti
+// n'est plus jamais modifié. `quand` : date de l'événement du bot appliqué (absente pour une action dans le site).
+async function consigner(c: Candidature, r: Resultat, quand?: Date | null, depuis: string[] = EN_SUSPENS) {
   const data = {
     discordId: c.discordId, nomRecu: c.nomRecu, resultat: r.resultat, motif: r.motif.slice(0, 400), employeId: r.employeId ?? null,
     reponses: EN_SUSPENS.includes(r.resultat) ? (c.reponses as unknown as Prisma.InputJsonValue) : Prisma.DbNull, accepteLe: c.accepteLe, recuLe: new Date(),
+    ...(quand && { evenementLe: quand }),
   };
   await prisma.arriveeBot.upsert({ where: { ticketId: c.ticketId }, create: { ticketId: c.ticketId, ...data }, update: {} });
-  await prisma.arriveeBot.updateMany({ where: { ticketId: c.ticketId, resultat: { in: EN_SUSPENS } }, data });
+  await prisma.arriveeBot.updateMany({ where: { ticketId: c.ticketId, resultat: { in: depuis } }, data });
 }
 
-// traitement de l'événement recruitment.updated (entreprise.webhooks). Une forme inattendue s'ignore : la relancer ne
-// la rendrait pas valide (voir docs/webhooks.md).
+const dateEvenement = (v: unknown): Date | null => { const d = new Date(texte(v, 40)); return Number.isNaN(d.getTime()) ? null : d; };
+
+// Traitement de l'événement recruitment.updated (entreprise.webhooks). Une forme inattendue s'ignore : la relancer ne
+// la rendrait pas valide (voir docs/webhooks.md). Le bot réessaie un envoi en échec plus tard : un événement peut donc
+// arriver après un plus récent du même ticket. Seul compte le plus récent (date d'envoi `sentAt`).
 export async function recevoirCandidature(e: EvenementBot): Promise<void> {
   const p = e.payload as Record<string, unknown>;
   if (!p || typeof p !== 'object') return;
   const ticketId = texte(p.ticketId, 100);
   if (!ticketId) return;
+  const quand = dateEvenement(e.sentAt);
   const deja = await prisma.arriveeBot.findUnique({ where: { ticketId } });
-  // refusée dans Discord : un ticket encore en suspens est écarté (réponses effacées)
+  if (deja?.evenementLe && quand && quand <= deja.evenementLe) return;   // plus ancien que ce qui est déjà appliqué
+  const discordId = texte(p.submittedById, 30) || texte(p.candidateId, 30);
   if (p.status === 'REJECTED') {
-    if (deja && EN_SUSPENS.includes(deja.resultat)) await prisma.arriveeBot.update({ where: { id: deja.id }, data: { resultat: 'ecartee', motif: 'Candidature refusée dans Discord.', reponses: Prisma.DbNull } });
+    // ticket inconnu : consigné écarté, pour qu'une acceptation plus ancienne arrivée en retard ne crée pas de fiche
+    if (!deja) await prisma.arriveeBot.create({ data: { ticketId, discordId, resultat: 'ecartee', motif: 'Candidature refusée dans Discord.', evenementLe: quand } }).catch(e => { if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e; });
+    else if (EN_SUSPENS.includes(deja.resultat)) await prisma.arriveeBot.update({ where: { id: deja.id }, data: { resultat: 'ecartee', motif: 'Candidature refusée dans Discord.', reponses: Prisma.DbNull, evenementLe: quand } });
+    // fiche déjà créée : rien n'est défait, RH est prévenue
+    else if (deja.resultat === 'creee') await prisma.arriveeBot.update({ where: { id: deja.id }, data: { motif: 'Refusée dans Discord après la création de la fiche : à vérifier.', evenementLe: quand } });
     return;
   }
-  if (p.status !== 'ACCEPTED' || (deja && !EN_SUSPENS.includes(deja.resultat))) return;
+  if (p.status !== 'ACCEPTED') return;
+  // abouti (fiche créée ou déjà existante) : jamais repris ; écarté puis de nouveau accepté dans Discord : retraité
+  if (deja && !EN_SUSPENS.includes(deja.resultat) && deja.resultat !== 'ecartee') return;
   const reponses = lireReponses(p.answers);
   const id = identite(reponses, lireReglagesBot());
-  const c: Candidature = {
-    ticketId, reponses,
-    // la personne qui a soumis le formulaire ; à défaut, celle qui a ouvert le ticket
-    discordId: texte(p.submittedById, 30) || texte(p.candidateId, 30),
-    accepteLe: texte(e.sentAt, 40),
-    nomRecu: (`${id.prenom} ${id.nom}`.trim() || reponses.map(x => x.answer).find(Boolean) || '').slice(0, 130),
-  };
+  // nom affiché à RH (rh-voir) : l'identité lue avec les réglages, sinon rien — jamais une autre réponse, qui pourrait
+  // être le téléphone ou le RIB (réservés à rh-sensible)
+  const c: Candidature = { ticketId, reponses, discordId, accepteLe: texte(e.sentAt, 40), nomRecu: `${id.prenom} ${id.nom}`.trim().slice(0, 130) };
   const r = p.statusChangedVia === 'DISCORD' ? await creerDepuisCandidature(c)
     : (await ficheDuCompte(c.discordId)) ?? { resultat: 'attente', motif: 'Embauche constatée en jeu, sans validation dans Discord : à approuver.' };
-  await consigner(c, r);
+  await consigner(c, r, quand, [...EN_SUSPENS, 'ecartee']);
 }
 
 // approuver une embauche en attente, ou retraiter un ticket « à traiter », avec les réglages actuels
