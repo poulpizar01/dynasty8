@@ -139,7 +139,7 @@ rh.post('/api/rh/bot/arrivees/:id/traiter', ...voir, exiger('creer', 'Vous n’a
   // la fiche sera créée au grade d'arrivée : comme une création à la main, il doit être sous celui de l'approbateur
   verifierHierarchie(req.compte, null, await reglage('rh.grade_arrivee'));
   const r = await traiterEnSuspens(intParam(req, 'id'));
-  res.json({ ok: !['refusee', 'attente'].includes(r.resultat), ...r });
+  res.json({ ok: r.resultat !== 'refusee', ...r });
 }));
 rh.post('/api/rh/bot/arrivees/:id/ecarter', ...voir, exiger('creer', 'Vous n’avez pas le droit d’ajouter un employé.'), traiter(async (req, res) => {
   await ecarter(intParam(req, 'id'));

@@ -13,8 +13,8 @@ async function purger(): Promise<void> {
   const [messages, agenda, candidatures] = await Promise.all([
     prisma.message.deleteMany({ where: { envoyeLe: { lt: avant(MESSAGES_JOURS) } } }),
     prisma.evenementAgenda.deleteMany({ where: { jour: { lt: avant(AGENDA_JOURS) } } }),
-    // une candidature encore à traiter (en attente, ou refusée faute de réglage) reste, quel que soit son âge
-    prisma.arriveeBot.deleteMany({ where: { resultat: { notIn: ['attente', 'refusee'] }, recuLe: { lt: avant(CANDIDATURES_JOURS) } } }),
+    // une candidature encore à traiter (refusée faute de réglage) reste, quel que soit son âge
+    prisma.arriveeBot.deleteMany({ where: { resultat: { not: 'refusee' }, recuLe: { lt: avant(CANDIDATURES_JOURS) } } }),
   ]);
   // relevés Tablettes : chaque retrait d'une ligne en enregistre une nouvelle copie ; seuls les plus récents servent
   const gardes = await prisma.importCompta.findMany({ where: { type: 'tablettes' }, orderBy: [{ importeLe: 'desc' }, { id: 'desc' }], take: RELEVES_GARDES, select: { id: true } });

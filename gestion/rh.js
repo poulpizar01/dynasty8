@@ -195,7 +195,6 @@ const LIBELLES_ARRIVEE_BOT = {
   creee: '<span class="puce puce-ok">Fiche créée</span>',
   existante: '<span class="puce puce-masquee">Déjà une fiche</span>',
   refusee: '<span class="puce puce-or">À traiter</span>',
-  attente: '<span class="puce puce-or">En attente d’approbation</span>',
   ecartee: '<span class="puce puce-masquee">Écartée</span>',
 };
 const CHAMPS_REGLAGES_BOT = {
@@ -230,7 +229,7 @@ async function chargerArriveesBot() {
           <td>${a.employe
             ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-fiche="${a.employe.id}">${echapper(a.employe.idEmploye)} — ${echapper(a.employe.nomComplet)}</button>${a.employe.statut === 'inactif' ? ' <span class="puce puce-masquee">Inactif</span>' : ''}`
             : peutCreer && (a.traitable || a.ecartable)
-              ? (a.traitable ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-action="traiter" data-rh-bot-id="${a.id}">${a.resultat === 'attente' ? 'Approuver' : 'Retraiter'}</button> ` : '')
+              ? (a.traitable ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-action="traiter" data-rh-bot-id="${a.id}">Retraiter</button> ` : '')
                 + `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-action="ecarter" data-rh-bot-id="${a.id}">Écarter</button>`
               : '—'}</td>
         </tr>`).join('')}

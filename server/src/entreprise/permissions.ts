@@ -7,7 +7,7 @@ export const permissions: Permission[] = [
   { cle: 'biens', libelle: 'Gérer les biens', description: 'Créer, modifier, masquer et supprimer les biens du catalogue ; voir les biens masqués' },
   // Ressources humaines : chaque permission rh-* suppose rh-voir (vérifié par les routes)
   { cle: 'rh-voir', libelle: 'RH : consulter', description: 'Voir les fiches employés, l’effectif et les arrivées reçues du bot' },
-  { cle: 'rh-creer', libelle: 'RH : ajouter', description: 'Créer une fiche ; approuver, retraiter ou écarter une candidature reçue du bot' },
+  { cle: 'rh-creer', libelle: 'RH : ajouter', description: 'Créer une fiche ; retraiter ou écarter une candidature reçue du bot' },
   { cle: 'rh-modifier', libelle: 'RH : modifier', description: 'Modifier une fiche employé' },
   { cle: 'rh-desactiver', libelle: 'RH : désactiver', description: 'Passer un employé « inactif » (départ)' },
   { cle: 'rh-reactiver', libelle: 'RH : réactiver', description: 'Réintégrer un ancien employé' },

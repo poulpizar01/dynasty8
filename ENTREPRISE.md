@@ -47,7 +47,7 @@ Tests du site (convention dans CLAUDE.md, `npm test`) : moteur de calcul des pri
 
 ## Pièges propres à ce site
 
-- Candidatures du bot (`recruitment.updated`, `rh.ts`) : le site lit en plus de la forme documentée (docs/webhooks.md) `submittedById` (qui a soumis le formulaire : son ID Discord va sur la fiche) et `statusChangedVia` (`DISCORD` : validée par le staff → fiche créée ; sinon embauche constatée en jeu → « en attente d'approbation »). Ces champs viennent d'une version du bot propre à Dynasty 8 : avec un bot qui ne les envoie pas, toute candidature acceptée arrive en attente et l'ID Discord est celui de l'ouvreur du ticket. Le dernier événement appliqué à un ticket est daté (`evenement_le`) : un renvoi plus ancien du bot est ignoré.
+- Candidatures du bot (`recruitment.updated`, `rh.ts`) : forme du bot officiel (docs/webhooks.md). Une candidature passée « Acceptée » dans Discord crée la fiche ; l'ID Discord est celui du candidat qui a ouvert le ticket. Le dernier événement appliqué à un ticket est daté (`evenement_le`) : un renvoi plus ancien du bot est ignoré.
 
 - Déploiement : guide d'installation propre à Dynasty 8 dans `deploy/INSTALLATION.md` (VPS FlashbackFA, port 3010, sous-domaine de la carte) ; le guide générique du modèle reste `server/README.md`.
 - WebMap : servie sur son sous-domaine, jamais sous le domaine du site (son code tournerait avec les droits du site). En dev : `WEBMAP_HOTE=carte.localhost` (http://carte.localhost:3010) ; l'iframe de la vitrine n'est autorisée qu'en https, la carte s'ouvre alors en pleine page.

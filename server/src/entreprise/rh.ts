@@ -137,11 +137,10 @@ export function refusUnicite(e: unknown): never {
 
 // ---------- candidatures du bot Discord « Roxwood Network Entreprise » ----------
 // Le socle reçoit l'événement recruitment.updated (signature, serveur Discord, doublons : socle/routes/webhooks.ts) :
-//   payload { ticketId, candidateId, submittedById, status, statusChangedVia, answers: [{ question, answer }], … }
-// Seule une validation par le staff dans Discord (status ACCEPTED, statusChangedVia DISCORD) crée la fiche d'office.
-// Une embauche constatée en jeu (statusChangedVia MONITORING, ou origine inconnue) arrive « en attente
-// d'approbation ». Les questions du formulaire sont libres (réglées dans le bot) : la question qui donne chaque champ
-// de la fiche se règle dans Ressources humaines. Le bot ne renvoie jamais un événement traité : une candidature acceptée
+//   payload { ticketId, candidateId (qui a ouvert le ticket), status, answers: [{ question, answer }], … }
+// Le statut ne change que par le staff dans Discord : une candidature passée à ACCEPTED crée la fiche. Les questions du
+// formulaire sont libres (réglées dans le bot) : la question qui donne chaque champ de la fiche se règle dans
+// Ressources humaines. Le bot ne renvoie jamais un événement traité : une candidature acceptée
 // qui ne peut pas encore devenir une fiche (réglage manquant, nom incomplet…) est gardée « à traiter », et RH la
 // retraite après correction.
 // Règles : un ticket = une fiche ; un compte Discord qui a déjà une fiche n'en reçoit pas une deuxième, et sa fiche
@@ -173,7 +172,7 @@ export async function reglerBot(b: Record<string, unknown>, acteur: Compte): Pro
 }
 
 type Reponse = { question: string; answer: string };
-const EN_SUSPENS = ['refusee', 'attente'];
+const EN_SUSPENS = ['refusee'];
 const RE_ID_DISCORD = /^\d{15,22}$/;
 
 const reponseA = (reponses: Reponse[], libelle: string) => {
@@ -271,7 +270,7 @@ export async function recevoirCandidature(e: EvenementBot): Promise<void> {
   const quand = dateEvenement(e.sentAt);
   const deja = await prisma.arriveeBot.findUnique({ where: { ticketId } });
   if (deja?.evenementLe && quand && quand <= deja.evenementLe) return;   // plus ancien que ce qui est déjà appliqué
-  const discordId = texte(p.submittedById, 30) || texte(p.candidateId, 30);
+  const discordId = texte(p.candidateId, 30);
   if (p.status === 'REJECTED') {
     // ticket inconnu : consigné écarté, pour qu'une acceptation plus ancienne arrivée en retard ne crée pas de fiche
     if (!deja) await prisma.arriveeBot.create({ data: { ticketId, discordId, resultat: 'ecartee', motif: 'Candidature refusée dans Discord.', evenementLe: quand } }).catch(e => { if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e; });
@@ -288,12 +287,10 @@ export async function recevoirCandidature(e: EvenementBot): Promise<void> {
   // nom affiché à RH (rh-voir) : l'identité lue avec les réglages, sinon rien — jamais une autre réponse, qui pourrait
   // être le téléphone ou le RIB (réservés à rh-sensible)
   const c: Candidature = { ticketId, reponses, discordId, accepteLe: texte(e.sentAt, 40), nomRecu: `${id.prenom} ${id.nom}`.trim().slice(0, 130) };
-  const r = p.statusChangedVia === 'DISCORD' ? await creerDepuisCandidature(c)
-    : (await ficheDuCompte(c.discordId)) ?? { resultat: 'attente', motif: 'Embauche constatée en jeu, sans validation dans Discord : à approuver.' };
-  await consigner(c, r, quand, [...EN_SUSPENS, 'ecartee']);
+  await consigner(c, await creerDepuisCandidature(c), quand, [...EN_SUSPENS, 'ecartee']);
 }
 
-// approuver une embauche en attente, ou retraiter un ticket « à traiter », avec les réglages actuels
+// retraiter un ticket « à traiter », avec les réglages actuels
 export async function traiterEnSuspens(id: number): Promise<Resultat> {
   const a = await prisma.arriveeBot.findUnique({ where: { id } });
   if (!a) throw new Refus('Candidature introuvable.', 404);
