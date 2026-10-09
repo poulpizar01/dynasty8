@@ -22,7 +22,7 @@ Pour retirer une image : `retirerImage({ cle, url, cleMini, urlMini })`. Elle l�
 
 **En dev, jamais le CDN** : des images d'essai n'ont rien à faire sur le stockage de la prod, et un poste de dev ne doit pas pouvoir y supprimer quoi que ce soit. Une base de dev copiée de la prod affiche les images du CDN (adresses publiques), mais ne peut ni en ajouter ni en retirer.
 
-**Un préfixe par site** : plusieurs sites peuvent partager le même service de stockage, chacun dans son dossier (`STORAGE_PREFIX=monentreprise/`). Ne jamais réutiliser le préfixe d'un autre site.
+**Un préfixe par site** : plusieurs sites peuvent partager le même service de stockage, chacun dans son dossier (`STORAGE_PREFIX=monentreprise/`). Ne jamais réutiliser le préfixe d'un autre site. Ne plus le changer une fois des images envoyées : la base garde les clés sans le préfixe, et une suppression viserait le nouveau dossier (le stockage répond 404, compté comme « déjà absent », et le fichier de l'ancien dossier reste en ligne).
 
 ## Contrat attendu du service de stockage
 Le site parle au service par deux requêtes HTTP, authentifiées par `Authorization: Bearer <STORAGE_TOKEN>` :

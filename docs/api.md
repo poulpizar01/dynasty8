@@ -30,15 +30,15 @@ Pages de `gestion/` : mêmes niveaux, contrôlés par le serveur avant tout envo
 | `POST /auth/logout` | public | Ferme la session |
 | `GET /api/moi` | connecté | Mon compte : `id, discordId, pseudo, nom, avatar, statut, proprietaire, grade { cle, libelle, couleur }, permissions[]` (vide tant que le compte n'est pas validé) |
 | `PATCH /api/moi` | validé | Changer son nom RP (`{ nom }`) |
-| `DELETE /api/moi` | connecté | Supprimer son propre compte (validé ou non), après `avantSuppressionCompte`, puis fin de session |
+| `DELETE /api/moi` | connecté | Supprimer son propre compte (validé ou en attente ; `403` pour un compte refusé), après `avantSuppressionCompte`, puis fin de session |
 | `GET /api/permissions` | validé | Toutes les permissions : `[{ cle, libelle, description }]` |
 | `GET /api/annuaire` | validé | Comptes validés, du sommet à la base : `[{ id, nom, avatar, grade }]` |
 | `GET /api/comptes` | `comptes` | Tous les comptes (en attente, validés, refusés), les plus récents d'abord |
 | `PATCH /api/comptes/:id` | `comptes` | `{ statut?: "valide"\|"refuse"\|"attente", nom?, grade?: cle\|null }` — compte sous son grade, vers un grade sous le sien ; ni son propre compte, ni celui du propriétaire (sauf par lui) |
 | `DELETE /api/comptes/:id` | `comptes` | Supprimer un compte sous son grade (pas le sien) |
 | `GET /api/grades` | validé | Grades du sommet à la base : `[{ cle, libelle, position, couleur, permissions[], roleDiscordId }]` |
-| `POST /api/grades` | `grades` | `{ libelle, cle?, couleur?, permissions[], roleDiscordId? }` — créé en bas de la hiérarchie ; `409` si la clé ou le rôle est déjà pris |
-| `PATCH /api/grades/:cle` | `grades` | Mêmes champs (sauf `cle`) ; grade sous le sien |
+| `POST /api/grades` | `grades` | `{ libelle, cle?, couleur?, permissions[], roleDiscordId? }` — créé en bas de la hiérarchie ; `409` si la clé ou le rôle est déjà pris ; un `roleDiscordId` exige aussi `comptes` (`403` sinon) |
+| `PATCH /api/grades/:cle` | `grades` | Mêmes champs (sauf `cle`) ; grade sous le sien ; changer `roleDiscordId` exige aussi `comptes` |
 | `PUT /api/grades/ordre` | `grades` | `{ ordre: [cle…] }` (tous les grades) ; hors propriétaire, les grades jusqu'au sien restent en place |
 | `DELETE /api/grades/:cle` | `grades` | Grade sous le sien et porté par aucun compte (`409` sinon) |
 | `POST /webhooks/bot` | signature du bot | Réception des événements du bot entreprise : voir [webhooks.md](webhooks.md) |

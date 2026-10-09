@@ -13,7 +13,7 @@ Les journaux du site disent au démarrage combien d'abonnements sont configurés
 1. **Signature** : en-tête `X-Signature-256` = HMAC-SHA256 du **corps brut** (hexadécimal), comparé en temps constant à chacun des secrets. Absent ou faux : `401`.
 2. **Forme** : JSON `{ guildId, eventType, payload, sentAt }` ; sinon `400`.
 3. **Serveur Discord** : `guildId` doit être `DISCORD_GUILD_ID` (`403` sinon).
-4. **Une seule fois** : l'empreinte SHA-256 du corps est enregistrée (table `webhooks_recus`, 30 jours). Une nouvelle livraison du même corps — le bot réessaie après un échec réseau, un `5xx` ou un `429` — répond `200` sans retraiter.
+4. **Une seule fois** : l'empreinte SHA-256 du corps est enregistrée (table `webhooks_recus`, 30 jours ; le corps de l'événement n'y reste que tant que son traitement échoue). Une nouvelle livraison du même corps — le bot réessaie après un échec réseau, un `5xx` ou un `429` — répond `200` sans retraiter.
 5. **Traitement** : `entreprise.webhooks[eventType](événement)`. Réussi : `200`, l'événement est marqué traité. Erreur levée : `500`, l'événement reste non traité et le bot réessaie (1, 2, 4… jusqu'à 30 min, 10 essais). Type sans traitement : `200`, rien d'autre.
 
 Le site ne renvoie jamais de donnée sur cette route : elle sert à recevoir, pas à lire.

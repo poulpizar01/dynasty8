@@ -4,3 +4,10 @@ server/node_modules/
 .DS_Store
 uploads/
 backups/
+
+# Sauvegardes et dumps de la base (données réelles des employés), où qu'ils soient posés
+*.dump
+*.sql.gz
+*.backup
+# Réglages de dev propres à un poste (port, secrets de test) : COMPOSE_FILE=compose.yaml;compose.override.yaml;compose.local.yaml dans .env
+compose.local.yaml

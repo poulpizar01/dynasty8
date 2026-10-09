@@ -19,8 +19,10 @@ export const limits = {
   api: limiter(1, 240, 'Trop de requêtes, réessaie dans une minute.', parCompte),
   // connexion Discord : par adresse
   auth: limiter(15, 30, 'Trop de tentatives de connexion, réessaie dans quelques minutes.'),
-  // webhooks du bot : par adresse (le bot envoie par rafales ; ses nouvelles tentatives s'espacent d'elles-mêmes)
-  webhooks: limiter(1, 120, 'Trop de webhooks reçus.'),
+  // webhooks du bot : par adresse, et seules les requêtes refusées comptent (signature fausse, corps illisible…). Le bot
+  // envoie par rafales (une synchronisation = un événement par ligne) : compter aussi les envois acceptés lui ferait
+  // perdre des événements au-delà de quelques passes de nouvelles tentatives.
+  webhooks: rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false, skipSuccessfulRequests: true, message: { error: 'Trop de webhooks refusés.' } }),
   // envoi de fichiers (images traitées en mémoire) : à poser sur chaque route d'envoi, avant multer
   upload: limiter(10, 20, 'Trop de fichiers envoyés d’un coup, réessaie dans quelques minutes.', parCompte),
 };

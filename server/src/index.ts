@@ -36,7 +36,7 @@ const hotes = new Map(Object.entries(entreprise.hotes ?? {}).map(([h, f]) => [h.
 for (const h of hotes.keys()) {
   if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(h) || h === new URL(config.baseUrl).hostname) throw new Error(`entreprise.hotes : nom d'hôte invalide « ${h} »`);
 }
-if (hotes.size) app.use((req, res, next) => { const f = hotes.get(req.hostname); if (f) f(req, res, next); else next(); });
+if (hotes.size) app.use((req, res, next) => { const f = hotes.get(req.hostname); if (f) return f(req, res, next); next(); });
 
 app.use(cspNonce, securityHeaders);
 
@@ -134,16 +134,19 @@ if (storage.kind === 'local') app.use('/uploads', express.static(storage.dir, { 
 const rootPages = pages(config.root), rootFiles = express.static(config.root, statics);
 app.use((req, res, next) => {
   if (!/^\/([\w-]+(\.(html|css|js|txt|xml))?)?$/.test(req.path)) return next();
-  rootPages(req, res, () => rootFiles(req, res, next));
+  // un nom sans extension n'est qu'une page (/faq → faq.html) : jamais un fichier tel quel (LICENSE, Dockerfile…)
+  rootPages(req, res, () => (/\.\w+$/.test(req.path) ? rootFiles(req, res, next) : next()));
 });
 app.use((_req, res) => {
   try { res.status(404).type('html').send(withNonce(renderFile(join(config.root, '404.html')), res)); } catch { res.status(404).send('404'); }
 });
 
 // erreur imprévue dans une route : journalisée, réponse générique
-// Corps JSON illisible : 400, sans le journaliser (il peut contenir un jeton). Image refusée : 400 avec son message.
+// Corps JSON illisible : 400, sans le journaliser (il peut contenir un jeton). Corps trop lourd : 413 (un 500 ferait
+// réessayer le bot pour rien). Image refusée : 400 avec son message.
 const onError: ErrorRequestHandler = (err, _req, res, _next) => {
   if ((err as { type?: string }).type === 'entity.parse.failed') { if (!res.headersSent) res.status(400).json({ error: 'requête illisible' }); return; }
+  if ((err as { type?: string }).type === 'entity.too.large') { if (!res.headersSent) res.status(413).json({ error: 'Données trop volumineuses.' }); return; }
   if (err instanceof ImageRefusee) { if (!res.headersSent) res.status(400).json({ error: err.message }); return; }
   console.error((err as Error).stack || (err as Error).message || 'erreur inconnue');
   if (!res.headersSent) res.status(500).json({ error: 'erreur serveur' });

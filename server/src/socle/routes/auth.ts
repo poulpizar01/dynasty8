@@ -4,6 +4,7 @@ import { Router, type Request } from 'express';
 import { config } from '../config.js';
 import { prisma } from '../db.js';
 import { tousLesGrades } from '../droits.js';
+import { gradeALaConnexion } from '../grade-connexion.js';
 
 const DISCORD_API = 'https://discord.com/api/v10';
 const REDIRECT_URI = `${config.baseUrl}/auth/discord/callback`;
@@ -95,19 +96,11 @@ auth.get('/auth/discord/callback', async (req, res) => {
     if (user.avatar && !/^(a_)?[0-9a-f]{32}$/.test(user.avatar)) user.avatar = null;
     const proprietaire = guilds.some(g => g.id === config.discord.guildId && g.owner === true);
 
-    // 3. grade : le plus élevé dont le rôle Discord est porté. Un grade lié à un rôle que le compte ne porte plus est
-    // retiré (rétrogradé ou parti sur Discord) ; un grade sans rôle Discord (attribué à la main) est conservé, sauf
-    // pour un ancien propriétaire (serveur transféré) : il a pu se l'attribuer lui-même.
-    const grades = tousLesGrades();
-    const gradeParRole = grades.find(g => g.roleDiscordId && guildMember.roles.includes(g.roleDiscordId))?.cle;
+    // 3. grade : règles dans grade-connexion.ts (rôle Discord porté, grade attribué à la main, ancien propriétaire)
     const existant = await prisma.compte.findUnique({ where: { discordId: user.id } });
-    const actuel = grades.find(g => g.cle === existant?.gradeCle);
-    const roleRetire = !!actuel?.roleDiscordId && !guildMember.roles.includes(actuel.roleDiscordId);
-    const exProprio = !!existant?.proprietaire && !proprietaire && !actuel?.roleDiscordId;
-    const gradeConserve = roleRetire || exProprio ? null : existant?.gradeCle ?? null;
+    const { grade, parRole: gradeParRole } = gradeALaConnexion(tousLesGrades(), guildMember.roles, existant?.gradeCle, !!existant?.proprietaire && !proprietaire);
     // nouveau propriétaire : l'ancien perd aussitôt ce que la propriété lui donnait, sans attendre sa reconnexion
     if (proprietaire) await retirerProprietaires(user.id);
-    const grade = gradeParRole ?? gradeConserve;
 
     // 4. statut : nouveau compte en attente de validation ; validé d'office pour le propriétaire, et pour qui reçoit un
     // grade par son rôle Discord (l'entreprise l'a déjà reconnu sur Discord). Un compte refusé le reste.

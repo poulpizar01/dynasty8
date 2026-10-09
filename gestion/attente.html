@@ -29,6 +29,7 @@
     socle.moi().then(moi => {
       if (moi.statut === 'valide') location.href = 'accueil.html';
       if (moi.statut === 'refuse') {
+        document.getElementById('retirer').style.display = 'none';   // un refus ne s'efface pas en supprimant son compte
         document.getElementById('titre').textContent = 'Demande refusée';
         document.getElementById('texte').textContent = 'Ta demande d’accès a été refusée. Pour en parler, contacte un responsable sur Discord.';
       }

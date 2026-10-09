@@ -59,6 +59,8 @@ webhooks.post('/webhooks/bot', limits.webhooks, express.raw({ type: () => true, 
     res.status(500).json({ error: 'traitement en échec' });
     return;
   }
-  await prisma.webhookRecu.update({ where: { id: recu.id }, data: { traite: true } });
+  // traité : seule l'empreinte reste utile (dédoublonnage). Le corps, qui peut porter des données personnelles
+  // (réponses d'un candidat), n'est gardé que tant que le traitement échoue, pour le diagnostiquer.
+  await prisma.webhookRecu.update({ where: { id: recu.id }, data: { traite: true, contenu: {} } });
   res.json({ ok: true });
 });
