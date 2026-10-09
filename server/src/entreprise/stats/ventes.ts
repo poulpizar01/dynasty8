@@ -46,8 +46,8 @@ export async function trouverEmploye(discordId: unknown, pseudo: unknown): Promi
 // une vente déjà rattachée ne change jamais d'employé
 export async function rattacherVentes(e: Pick<Employe, 'id' | 'discordPseudoNormalise'>): Promise<void> {
   if (!e.discordPseudoNormalise) return;
-  await prisma.$executeRaw`UPDATE ventes SET employe_id = ${e.id} WHERE employe_id IS NULL AND lower(btrim(identite)) = ${e.discordPseudoNormalise}`;
-  await prisma.$executeRaw`UPDATE ventes SET formateur_employe_id = ${e.id} WHERE formateur_employe_id IS NULL AND lower(btrim(formateur)) = ${e.discordPseudoNormalise}`;
+  await prisma.vente.updateMany({ where: { employeId: null, identiteNormalisee: e.discordPseudoNormalise }, data: { employeId: e.id } });
+  await prisma.vente.updateMany({ where: { formateurEmployeId: null, formateurNormalise: e.discordPseudoNormalise }, data: { formateurEmployeId: e.id } });
 }
 
 const texte = (v: unknown) => String(v ?? '').trim();
@@ -93,7 +93,7 @@ export async function enregistrerVente(b: Record<string, unknown>, compteId: num
   const [employe, formateur] = await Promise.all([trouverEmploye(b.discordId, v.identite), v.formateur ? trouverEmploye(b.formateurDiscordId, v.formateur) : null]);
   if (compteId !== null && employe && employe.statut !== 'actif') throw new Refus(`${employe.prenom} ${employe.nom} est inactif dans RH : impossible de lui attribuer une nouvelle vente.`, 409);
   try {
-    await prisma.vente.create({ data: { ...v, compteId, eventId, employeId: employe?.id ?? null, formateurEmployeId: formateur?.id ?? null } });
+    await prisma.vente.create({ data: { ...v, identiteNormalisee: normaliserPseudo(v.identite), formateurNormalise: normaliserPseudo(v.formateur), compteId, eventId, employeId: employe?.id ?? null, formateurEmployeId: formateur?.id ?? null } });
     return { deja: false };
   } catch (e) {
     // deux envois du même eventId au même instant : celui qui perd la course revérifie ce qui a été enregistré

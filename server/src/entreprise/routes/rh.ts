@@ -119,8 +119,8 @@ rh.get('/api/rh/a-rattacher', ...voir, async (_req, res) => {
   const [vendeurs, tableur] = await Promise.all([
     prisma.$queryRaw<{ pseudo: string; ventes: bigint; derniere_semaine: string }[]>`
       SELECT min(btrim(identite)) AS pseudo, count(*) AS ventes, max(semaine) AS derniere_semaine
-        FROM ventes WHERE employe_id IS NULL AND btrim(identite) <> ''
-       GROUP BY lower(btrim(identite)) ORDER BY count(*) DESC`,
+        FROM ventes WHERE employe_id IS NULL AND identite_normalisee <> ''
+       GROUP BY identite_normalisee ORDER BY count(*) DESC`,
     prisma.ligneTableur.findMany({ where: { employeId: null }, orderBy: { ligneSheet: 'asc' } }),
   ]);
   res.json({

@@ -174,6 +174,8 @@ model Vente {
   dateVente          String   @default("") @map("date_vente") @db.VarChar(10) // JJ/MM/AAAA, tel que reçu
   identite           String   @default("") @db.VarChar(200) // pseudo du vendeur reçu du bot
   formateur          String   @default("") @db.VarChar(200)
+  identiteNormalisee String   @default("") @map("identite_normalisee") @db.VarChar(200) // identite sans casse ni espaces autour : rattachement aux fiches RH (index)
+  formateurNormalise String   @default("") @map("formateur_normalise") @db.VarChar(200)
   identiteClient     String   @default("") @map("identite_client") @db.VarChar(200)
   numeroTel          String   @default("") @map("numero_tel") @db.VarChar(200)
   interieur          String   @default("") @db.VarChar(200)
@@ -193,6 +195,8 @@ model Vente {
   creeLe             DateTime @default(now()) @map("cree_le") @db.Timestamptz(6)
 
   @@index([semaine])
+  @@index([identiteNormalisee])
+  @@index([formateurNormalise])
   @@index([employeId])
   @@map("ventes")
 }
