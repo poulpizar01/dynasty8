@@ -32,7 +32,7 @@ Porté sur le modèle depuis une première version jamais mise en production (Ja
 ## Vitrine
 
 - Pages à la racine ; scripts communs `layout.js` (en-tête, pied, cadre, appels à l'API), `biens.js` (catalogue), `aurora.js` (fond WebGL) ; feuille `style.css` (jetons `--d8-*`) ; `theme.css` porte les polices (servies depuis `assets/fonts/`) et les variables lues par la gestion et la signature.
-- Les API de la vitrine renvoient les champs en **snake_case** (`bienPublic`, `src/entreprise/biens.ts`) : la forme de l'ancien site, lue par `biens.js`. Erreurs : `{ error }` (socle) ; `appelAPI` lit aussi l'ancien `{ erreur }`.
+- Les API de la vitrine renvoient les champs en **snake_case** (`bienPublic`, `src/entreprise/biens.ts`) : la forme historique des pages, lue par `biens.js`. Erreurs : `{ error }` (socle).
 - En jeu (`<html class="en-jeu">`, ou `window.D8_EN_JEU`) : aucun effet WebGL (GPU partagé avec le jeu).
 
 ## Gestion
@@ -46,6 +46,8 @@ Porté sur le modèle depuis une première version jamais mise en production (Ja
 Tests du site (convention dans CLAUDE.md, `npm test`) : moteur de calcul des primes (`stats-calc.test.ts`) et lecture du tableur (`tableur.test.ts`). À relancer après toute modification de `stats/calcul.ts` ou `stats/tableur.ts` : une erreur s'y paie en argent RP, sans rien d'anormal à l'écran.
 
 ## Pièges propres à ce site
+
+- Candidatures du bot (`recruitment.updated`, `rh.ts`) : le site lit en plus de la forme documentée (docs/webhooks.md) `submittedById` (qui a soumis le formulaire : son ID Discord va sur la fiche) et `statusChangedVia` (`DISCORD` : validée par le staff → fiche créée ; sinon embauche constatée en jeu → « en attente d'approbation »). Ces champs viennent d'une version du bot propre à Dynasty 8 : avec un bot qui ne les envoie pas, toute candidature acceptée arrive en attente et l'ID Discord est celui de l'ouvreur du ticket. Le dernier événement appliqué à un ticket est daté (`evenement_le`) : un renvoi plus ancien du bot est ignoré.
 
 - Déploiement : guide d'installation propre à Dynasty 8 dans `deploy/INSTALLATION.md` (VPS FlashbackFA, port 3010, sous-domaine de la carte) ; le guide générique du modèle reste `server/README.md`.
 - WebMap : servie sur son sous-domaine, jamais sous le domaine du site (son code tournerait avec les droits du site). En dev : `WEBMAP_HOTE=carte.localhost` (http://carte.localhost:3010) ; l'iframe de la vitrine n'est autorisée qu'en https, la carte s'ouvre alors en pleine page.
