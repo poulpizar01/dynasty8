@@ -1,4 +1,4 @@
-// ENTREPRISE — moteur de calcul des ventes et des primes, repris tel quel de l'ancien site (src/stats-calc.js).
+// ENTREPRISE — moteur de calcul des ventes et des primes.
 // Fonctions PURES uniquement (ni réseau ni base) : elles reproduisent exactement les chiffres du Google Sheet de la
 // Direction — c'est de l'argent RP versé en main propre, toute erreur se voit aussitôt. Testées par
 // server/test/stats-calc.test.ts (voir ENTREPRISE.md pour les lancer).
@@ -7,7 +7,7 @@ import { normaliserPseudo, normaliserTexte } from '../texte.js';
 export { normaliserPseudo, normaliserTexte };
 
 export type Palier = { seuil: number; montant: number };
-// ---- parsing tolérant (§7 : espaces insécables, $, virgule décimale) -------
+// ---- parsing tolérant (espaces insécables, $, virgule décimale) -------------
 
 export function parseMontant(brut: unknown): { valeur: number; estValide: boolean; estVide: boolean } {
   if (brut == null || brut === "") return { valeur: 0, estValide: true, estVide: true };
@@ -24,7 +24,7 @@ export function parseMontant(brut: unknown): { valeur: number; estValide: boolea
 }
 
 // Colonne N : le Sheet fait SIERREUR(CNUM(...);0) — vide ou non numérique -> 0,
-// mais on remonte quand même l'info pour la détection d'anomalie (§7).
+// mais on remonte quand même l'info pour la détection d'anomalie.
 export function parseQuantite(brut: unknown) {
   if (brut == null || brut === "") return { valeur: 0, estValide: true, estVide: true };
   const { valeur, estValide } = parseMontant(brut);
@@ -32,7 +32,7 @@ export function parseQuantite(brut: unknown) {
 }
 
 // ---- semaine ISO 8601 (uniquement pour le contrôle de cohérence non bloquant,
-// JAMAIS pour filtrer les données — la colonne P fait autorité, §3) ----------
+// JAMAIS pour filtrer les données — la colonne P fait autorité) ----------
 
 function dateDepuisJJMMAAAA(brut: unknown): Date | null {
   const m = String(brut || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -75,7 +75,7 @@ export function analyserCodeSemaine(brut: unknown): { numero: number; anneeIso: 
 
 // Écart (en jours, entre les lundis des deux semaines) entre la semaine SAISIE
 // (colonne P, qui fait autorité) et la semaine ISO déduite de la date (colonne
-// B). Simple avertissement non bloquant (§3) : la coupure RP du lundi 11h30 et
+// B). Simple avertissement non bloquant : la coupure RP du lundi 11h30 et
 // les corrections manuelles produisent légitimement des écarts d'une semaine
 // pile — on les remonte quand même en anomalie informative, à charge pour la
 // Direction de les confirmer d'un coup d'œil ; ce n'est jamais utilisé pour
@@ -90,7 +90,7 @@ export function ecartSemaineEnJours(codeSemaineSaisie: unknown, dateJJMMAAAA: un
   return Math.round((lundiSaisie.getTime() - lundiDeduit.getTime()) / 86400000);
 }
 
-// ---- paliers de primes (§5.4) ----------------------------------------------
+// ---- paliers de primes -----------------------------------------------------
 // « on retient le plus haut seuil inférieur ou égal à la valeur ; en dessous de
 // 20, prime = 0 ». bareme : [{ seuil, montant }, ...] pas nécessairement trié.
 
@@ -104,7 +104,7 @@ export function montantPalier(bareme: Palier[] | null | undefined, valeur: numbe
   return retenu ? retenu.montant : 0;
 }
 
-// Pour la barre de progression de l'écran agent (§6.1, forme donnée en §8).
+// Pour la barre de progression de l'écran agent.
 export function infoPalier(bareme: Palier[] | null | undefined, valeur: number) {
   const tries = [...(bareme || [])].sort((a, b) => a.seuil - b.seuil);
   let retenu: Palier | null = null;
@@ -126,7 +126,7 @@ export function infoPalier(bareme: Palier[] | null | undefined, valeur: number) 
   };
 }
 
-// ---- classement des lignes brutes du Sheet + détection d'anomalies (§7) ---
+// ---- classement des lignes brutes du Sheet + détection d'anomalies --------
 // Chaque ligne brute est un tableau de 16 valeurs (colonnes A à P, index 0 à 15).
 
 const COL = {
@@ -220,8 +220,8 @@ export function classifierLignes(lignesBrutes: unknown[][]) {
   return { lignes, anomalies };
 }
 
-// ---- agrégation §5.1, 5.2, 5.7 (comptages à partir des lignes classées) ---
-// colonneCle : "identiteNormalisee" (agent, §5.1/5.2) ou "formateurNormalise" (§5.7).
+// ---- agrégation (comptages à partir des lignes classées) ------------------
+// colonneCle : "identiteNormalisee" (agent) ou "formateurNormalise" (formateur).
 
 export function compterAchats(lignes: any[], colonneCle: string, pseudoNormalise: string, semaine: string): number {
   return lignes.filter(
@@ -236,23 +236,20 @@ export function compterLocations(lignes: any[], colonneCle: string, pseudoNormal
 }
 
 // colonneCle : « identiteNormalisee » par défaut ; le serveur regroupe par
-// fiche RH (« cleAgent », voir lireLignesLocales dans src/index.js).
+// fiche RH (« cleAgent », voir lireLignes dans stats/ventes.ts).
 export function sommeFacture(lignes: any[], pseudoNormalise: string, semaine: string, colonneCle = "identiteNormalisee"): number {
   return lignes
     .filter((l) => l[colonneCle] === pseudoNormalise && l.semaine === semaine)
     .reduce((s, l) => s + l.montant, 0);
 }
 
-// ---- finances (§5.3 à 5.9) — fonction PURE prenant des compteurs déjà agrégés,
-// testable directement avec le tableau d'acceptation §9 sans avoir besoin des
-// lignes brutes du Sheet. ----------------------------------------------------
+// ---- finances — fonction PURE prenant des compteurs déjà agrégés, testable
+// sans les lignes brutes du Sheet (server/test/stats-calc.test.ts). ----------
 
 // Éligibilité (salaireActif, primeVenteActive, primeLocationActive) réglée
-// PAR GRADE depuis l'écran Comptabilité -> Paramètres (voir stats_taux_commission
-// côté serveur) — remplace l'ancienne règle "Stagiaire = 0 prime, codée en
-// dur" et l'ancienne règle "salaire fixe REMPLACE les primes" : les trois
-// interrupteurs sont désormais indépendants et se cumulent librement (rien
-// n'empêche la Direction de donner à un grade le salaire ET les primes).
+// PAR GRADE depuis l'écran Comptabilité -> Paramètres (table remunerations_grades) :
+// les trois interrupteurs sont indépendants et se cumulent librement (la
+// Direction peut donner à un grade le salaire ET les primes).
 export function calculerFinances({
   nbAchats,
   nbLocations,
@@ -299,7 +296,7 @@ export function calculerFinances({
   };
 }
 
-// ---- formatage (§10 : séparateur milliers espace insécable + suffixe $) ---
+// ---- formatage (séparateur de milliers : espace insécable, suffixe $) ------
 
 export function formaterMontantStats(valeur: unknown): string {
   const n = Math.round(Number(valeur) || 0);

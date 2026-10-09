@@ -1,4 +1,4 @@
-/* GESTION — comptabilité (permission « compta »), reprise de l'ancien onglet (admin.js) : relevé Tablettes collé,
+/* GESTION — comptabilité (permission « compta ») : relevé Tablettes collé,
    rémunération (salaires par grade, paliers de primes) et préparation de la déclaration DOT hebdomadaire.
    Serveur : server/src/entreprise/routes/compta.ts et routes/stats.ts (rémunération). */
 
@@ -25,11 +25,9 @@ document.querySelectorAll(".compta-sous-onglet").forEach((btn) => {
 
 // ---------------------------------------------------------------------------
 // Comptabilité -> Paramètres : rémunération (salaire fixe, primes par palier,
-// droits par grade). Modifie directement stats_taux_commission et
-// stats_baremes_primes — les mêmes tables déjà utilisées par le récap de
-// l'onglet Statistiques et par la déclaration DOT (voir calculerRecapSemaine
-// côté serveur) : rien à synchroniser, un changement ici s'applique
-// automatiquement au prochain calcul, sans redéploiement.
+// interrupteurs par grade), enregistrée dans remunerations_grades et
+// baremes_primes (routes/stats.ts) — les tables que lisent la DOT et les primes
+// partout : un changement ici s'applique au prochain calcul.
 // ---------------------------------------------------------------------------
 
 function switchRemunerationHtml(attribut, cle, actif) {
@@ -164,7 +162,7 @@ document.querySelectorAll(".palier-ajout").forEach((bloc) => {
 });
 
 // ---------------------------------------------------------------------------
-// Comptabilité -> DOT (§6.3) — la déclaration hebdomadaire versée à la DOT.
+// Comptabilité -> DOT — la déclaration hebdomadaire versée à la DOT.
 // Trois blocs qui se rechargent ensemble à chaque changement de semaine ou
 // d'écriture : le résumé chiffré, le journal dépense/retraits (modifiable
 // à la main), et le tableau par salarié (calculé, prêt à copier).
@@ -422,13 +420,10 @@ function analyserTexteTablette(texte) {
   const colonnes = decouper(lignesBrutes[0]).filter((c) => c !== "");
   if (!colonnes.length) return null;
   let lignes = lignesBrutes.slice(1).map((ligne) => decouper(ligne));
-  // Même correctif que côté serveur (voir corrigerLigneTotaleDecalee dans
-  // src/index.js) : la ligne récap "TOTAL" collée depuis le bot/tableur ne
-  // contient jamais de case pour "Rang", ce qui décale tout le reste vers la
-  // gauche. On la corrige ICI, avant de compléter les cases manquantes et
-  // d'afficher l'aperçu, pour que ce qu'on prévisualise soit déjà ce qui sera
-  // enregistré (le serveur applique le même correctif de son côté, mais
-  // l'aperçu affiché avant clic sur "Enregistrer" ne passe pas par le serveur).
+  // La ligne récap "TOTAL" collée depuis la tablette n'a pas de case "Rang",
+  // ce qui décale le reste vers la gauche. Corrigée ici, avant l'aperçu, pour
+  // que l'aperçu montre ce qui sera enregistré : même règle que
+  // corrigerLigneTotale côté serveur (routes/compta.ts), à garder identique.
   lignes = corrigerLigneTotaleDecaleeTablette(colonnes, lignes);
   lignes = lignes.map((cellules) => {
     const rangee = [];
@@ -439,8 +434,8 @@ function analyserTexteTablette(texte) {
 }
 
 // Cherche, parmi les titres de colonnes (déjà mis en minuscules/sans
-// espaces), le premier qui correspond à l'un des noms possibles — copie
-// exacte de indexColonneTablette côté serveur (src/index.js).
+// espaces), le premier qui correspond à l'un des noms possibles — même règle
+// que indexColonne côté serveur (routes/compta.ts).
 function indexColonneTabletteClient(colonnesNormalisees, aliases) {
   for (const nom of aliases) {
     const i = colonnesNormalisees.indexOf(nom);
@@ -449,10 +444,9 @@ function indexColonneTabletteClient(colonnesNormalisees, aliases) {
   return -1;
 }
 
-// Copie exacte de corrigerLigneTotaleDecalee côté serveur (src/index.js) :
-// voir les commentaires là-bas pour le détail du problème corrigé. Gardée
-// synchronisée avec le serveur pour que l'aperçu affiché avant d'enregistrer
-// corresponde exactement à ce qui sera effectivement sauvegardé.
+// Même règle que corrigerLigneTotale côté serveur (routes/compta.ts), à garder
+// identique : l'aperçu affiché avant d'enregistrer correspond ainsi à ce qui
+// sera sauvegardé.
 function corrigerLigneTotaleDecaleeTablette(colonnes, lignes) {
   const colonnesNormalisees = colonnes.map((c) => String(c).trim().toLowerCase());
   const indexRang = indexColonneTabletteClient(colonnesNormalisees, ["rang", "grade"]);

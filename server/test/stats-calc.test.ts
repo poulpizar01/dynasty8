@@ -1,4 +1,4 @@
-// Calculs de rémunération (src/entreprise/stats/calcul.ts, repris de l’ancien src/stats-calc.js) : paliers de primes, lecture des
+// Calculs de rémunération (src/entreprise/stats/calcul.ts) : paliers de primes, lecture des
 // montants collés depuis un tableur, semaines ISO, calcul final par agent.
 // C'est le module qui décide combien chaque agent touche : une régression ici
 // est invisible à l'écran et se paie en argent RP.

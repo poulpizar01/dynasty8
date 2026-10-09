@@ -1,5 +1,5 @@
-// ENTREPRISE — Google Sheets de la Direction (« Chiffres du tableur », primes de « Mon profil » et de la DOT), repris de
-// l'ancien src/google-sheets.js. Lecture de l'export CSV public de l'onglet (classeur partagé « toute personne disposant
+// ENTREPRISE — Google Sheets de la Direction (« Chiffres du tableur », primes de « Mon profil » et de la DOT).
+// Lecture de l'export CSV public de l'onglet (classeur partagé « toute personne disposant
 // du lien — lecteur ») : ni compte de service ni clé côté serveur. Colonne D = nom, E = grade, L = ventes, M = locations.
 // Les MONTANTS de primes ne sont jamais lus dans le Sheet (colonnes N/O) : recalculés avec les barèmes du site
 // (baremes_primes, réglables dans Comptabilité), le seul endroit où changer un montant.

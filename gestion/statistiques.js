@@ -1,4 +1,4 @@
-/* GESTION — ventes & statistiques, reprises de l'ancien espace agents (admin.js) : totaux des ventes reçues du bot,
+/* GESTION — ventes & statistiques : totaux des ventes reçues du bot,
    « Chiffres du tableur » (semaine en cours ou archive du dimanche) et synchronisation du tableur de la Direction.
    Serveur : server/src/entreprise/routes/stats.ts. */
 

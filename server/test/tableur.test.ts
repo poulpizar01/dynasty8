@@ -1,4 +1,4 @@
-// Lecture du Google Sheets de la Direction (src/entreprise/stats/tableur.ts, repris de l'ancien src/google-sheets.js) :
+// Lecture du Google Sheets de la Direction (src/entreprise/stats/tableur.ts) :
 // analyse CSV, extraction des lignes utiles, semaines à l'heure de Paris. Un champ mal découpé décale une colonne
 // entière, sans que rien ne le signale à l'écran.
 import test from 'node:test';

@@ -56,11 +56,9 @@
         </div>
       </div>
 
-      <!-- Sous-onglet : Paramètres — configuration de la rémunération (salaire
-           fixe, primes vente/location par palier, droits par grade). Modifie
-           directement stats_taux_commission et stats_baremes_primes, déjà
-           utilisées par Statistiques et DOT (voir calculerRecapSemaine côté
-           serveur) : aucune donnée séparée, juste l'écran pour les régler. -->
+      <!-- Sous-onglet : Paramètres — rémunération (salaire fixe, primes vente/location par palier, interrupteurs par
+           grade), enregistrée dans remunerations_grades et baremes_primes (routes/stats.ts) : les tables que lisent la
+           DOT et les primes partout, donc rien à synchroniser. -->
       <div id="compta-panneau-parametres" class="cache">
         <div class="entete-admin" style="margin-top:20px;">
           <div>
@@ -121,14 +119,10 @@
         </div>
       </div>
 
-      <!-- Sous-onglet : DOT (§6.3) — la déclaration hebdomadaire versée à la
-           DOT (organisme fiscal du serveur RP). Calculée automatiquement à
-           partir du CA Brut (colonne « Total » de l'onglet Tablettes), des
-           dépenses/retraits saisis ci-dessous, et des primes -- qui reprennent
-           désormais exactement les mêmes montants que « Mon profil »
-           (synchronisation Google Sheets + barèmes), quelle que soit la
-           semaine choisie ci-dessus (voir remplacerPrimesParSheet côté
-           serveur). -->
+      <!-- Sous-onglet : DOT — la déclaration hebdomadaire versée à la DOT (organisme fiscal du serveur RP), calculée à
+           partir du CA Brut (colonne « Total entreprise » du relevé Tablettes), des dépenses et retraits saisis
+           ci-dessous, et des primes : les mêmes montants que « Mon profil » (tableur de la Direction + barèmes du
+           site, recapAvecPrimesTableur dans stats/recap.ts). -->
       <div id="compta-panneau-dot" class="cache">
         <div class="entete-admin" style="margin-top:20px;">
           <div>

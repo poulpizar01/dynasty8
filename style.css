@@ -619,7 +619,7 @@ label, .eyebrow-label {
 .hero-stats div { text-align: center; position: relative; padding: 0 32px; }
 .hero-stats div:first-child { padding-left: 0; }
 .hero-stats div:last-child { padding-right: 0; }
-/* Filet vertical entre chaque statistique, plutôt qu'un simple espace (§6.5). */
+/* Filet vertical entre chaque statistique, plutôt qu'un simple espace . */
 .hero-stats div + div::before {
   content: "";
   position: absolute; left: 0; top: 50%; transform: translateY(-50%);
@@ -905,7 +905,7 @@ section.section.serre { padding: clamp(48px, 7vw, 84px) 24px; }
   font-family: var(--d8-font-ui); font-weight: 500; font-size: 11px;
   color: var(--d8-gold-500); text-transform: uppercase; letter-spacing: 0.28em;
 }
-/* Le marbre de fond (voir §4) reste visible sur le hero et les sections "aérées".
+/* Le marbre de fond  reste visible sur le hero et les sections "aérées".
    Les sections denses en contenu (listings, tableaux, formulaires) posent un panneau
    opaque par-dessus, sinon les veines dorées du marbre mangent le texte. */
 .alterne,
@@ -1821,7 +1821,7 @@ section.section.serre {
 
 /* ---------- pied de page ---------- */
 
-/* Le marbre reste visible sous le pied de page (§4.4) : on renforce seulement le
+/* Le marbre reste visible sous le pied de page  : on renforce seulement le
    voile de lisibilité plutôt que de poser un fond opaque plat. */
 .pied-page { padding: 0 24px 28px; background: rgba(6, 12, 26, 0.9); }
 
@@ -1949,7 +1949,7 @@ section.section.serre {
 
 /* ---------- admin : « Mon agenda » (planning personnel plein écran) ---------- */
 
-/* Appliqué uniquement pendant que l'onglet Agenda est actif (voir admin.js) :
+/* Page « Mon agenda » (gestion/agenda.html) :
    le reste des onglets garde la largeur confortable habituelle (max 1100px),
    celui-ci prend toute la largeur ET toute la hauteur visible du tableau de
    bord, avec son propre défilement interne (voir .agenda-grille-conteneur). */

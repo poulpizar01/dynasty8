@@ -1,5 +1,5 @@
 // ENTREPRISE — ventes reçues du bot : lecture pour le moteur de calcul, rattachement aux fiches RH, enregistrement
-// idempotent, totaux par semaine. Repris de l'ancien serveur (src/index.js, statsEnregistrerVente…).
+// idempotent, totaux par semaine.
 import type { Employe, Vente } from '../../generated/prisma/client.js';
 import { prisma } from '../../socle/db.js';
 import { Refus } from '../refus.js';

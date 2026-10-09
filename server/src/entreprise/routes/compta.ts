@@ -1,5 +1,5 @@
 // ENTREPRISE — comptabilité (permission « compta ») : relevé Tablettes collé, écritures et déclaration DOT
-// hebdomadaire. Repris de l'ancien serveur (comptabilite, comptaDot…). La rémunération (salaires, paliers de primes)
+// hebdomadaire. La rémunération (salaires, paliers de primes)
 // est dans routes/stats.ts.
 import { Router } from 'express';
 import { prisma } from '../../socle/db.js';

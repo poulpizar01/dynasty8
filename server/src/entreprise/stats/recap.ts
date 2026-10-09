@@ -1,5 +1,4 @@
-// ENTREPRISE — récapitulatif d'une semaine par employé (quota, salaire fixe, primes), utilisé par la DOT. Repris de
-// l'ancien serveur (calculerRecapSemaine, primesSheetParPseudo, remplacerPrimesParSheet).
+// ENTREPRISE — récapitulatif d'une semaine par employé (quota, salaire fixe, primes), utilisé par la DOT.
 // Les primes affichées partout (« Mon profil », chiffres du tableur, DOT) sont celles du TABLEUR de la Direction
 // (ventes/locations de sa ligne, barèmes du site) : le calcul par semaine depuis les ventes du bot n'est gardé ici que
 // pour le salaire fixe et le classement — jamais deux sources mélangées dans un même montant.

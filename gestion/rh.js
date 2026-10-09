@@ -1,5 +1,5 @@
 /* GESTION — ressources humaines : fiches employés, source de vérité de l'identité, du grade et du statut de chacun.
-   Repris de l'ancien onglet RH (admin.js). Les droits viennent du serveur et y sont revérifiés à chaque appel
+   Les droits viennent du serveur et y sont revérifiés à chaque appel
    (server/src/entreprise/routes/rh.ts) : l'interface ne fait que masquer ce qui serait de toute façon refusé.
    Les droits RH se règlent par grade dans la page Grades (permissions « RH : … »). */
 

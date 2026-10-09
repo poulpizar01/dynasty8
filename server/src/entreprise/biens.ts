@@ -1,6 +1,6 @@
 // ENTREPRISE — biens immobiliers : valeurs contrôlées et forme envoyée au navigateur.
-// Le catalogue de la vitrine (biens.js) et la gestion lisent les champs en snake_case : la forme de l'ancien site,
-// gardée telle quelle pour ne pas réécrire les pages.
+// Le catalogue de la vitrine (biens.js) et la gestion lisent les champs en snake_case (forme historique des pages,
+// gardée pour ne pas les réécrire).
 import type { Bien } from '../generated/prisma/client.js';
 
 export const CATEGORIES = ['habitation', 'garage'] as const;

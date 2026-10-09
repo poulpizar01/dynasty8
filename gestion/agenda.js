@@ -1,4 +1,4 @@
-/* GESTION — « Mon agenda » : planning personnel privé, repris de l'ancien espace agents (admin.js). Chaque agent ne
+/* GESTION — « Mon agenda » : planning personnel privé. Chaque agent ne
    voit et ne modifie que ses propres événements : le serveur s'en charge (server/src/entreprise/routes/agenda.ts). */
 
 let AGENDA_VUE = "semaine"; // "mois" | "semaine" | "jour"
