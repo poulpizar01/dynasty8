@@ -100,7 +100,7 @@ Une par site.
 3. OAuth2 → Redirects → ajouter `https://<domaine>/auth/discord/callback`
 4. `DISCORD_GUILD_ID` = ID du serveur Discord de l'entreprise (mode développeur → clic droit sur le serveur → Copier l'identifiant). Seuls ses membres peuvent se connecter.
 5. Le **propriétaire du serveur Discord** est propriétaire du site : validé d'office, toutes les permissions quel que soit son grade (vérifié à chaque connexion).
-6. Grades : Gestion → Grades. L'identifiant d'un rôle Discord se copie en mode développeur (Paramètres du serveur → Rôles → clic droit → Copier l'identifiant). Rôles et grades sont relus à chaque connexion (au plus tard 7 jours, durée d'une session).
+6. Grades : Gestion → Grades. Pour y choisir les rôles Discord par leur nom (liste lue sur Discord, toujours à jour) : dans la même application, onglet Bot → Reset Token → `DISCORD_BOT_TOKEN` dans `.env`, puis inviter ce bot sur le serveur (OAuth2 → URL Generator, scope `bot`, aucune permission). Sans lui, l'identifiant d'un rôle se copie en mode développeur (Paramètres du serveur → Rôles → clic droit → Copier l'identifiant). Rôles et grades sont relus à chaque connexion (au plus tard 7 jours, durée d'une session).
 
 ## Images
 - **Dev** : les images envoyées sont écrites dans `uploads/` à la racine du dépôt, sur le poste.

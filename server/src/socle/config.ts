@@ -80,6 +80,8 @@ export const config = {
     clientId: required('DISCORD_CLIENT_ID'),
     clientSecret: required('DISCORD_CLIENT_SECRET'),
     guildId: required('DISCORD_GUILD_ID'),
+    // facultatif : jeton du bot qui lit la liste des rôles du serveur (page Grades, roles-discord.ts)
+    botToken: (env.DISCORD_BOT_TOKEN || '').trim(),
   },
   root,
   storage: {

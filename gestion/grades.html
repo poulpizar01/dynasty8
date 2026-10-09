@@ -43,9 +43,11 @@
           <div class="champ"><label for="couleur">Couleur</label><input type="color" id="couleur" value="#c9a55c" style="height:44px;padding:4px;"></div>
         </div>
         <div class="champ">
-          <label for="role">Rôle Discord lié (identifiant, facultatif)</label>
-          <input type="text" id="role" inputmode="numeric" pattern="\d{5,32}" placeholder="123456789012345678">
-          <p class="champ-aide">Discord → Paramètres du serveur → Rôles → clic droit sur le rôle → « Copier l'identifiant » (mode développeur activé).</p>
+          <label for="role">Rôle Discord lié (facultatif)</label>
+          <select id="role-liste" class="cache"></select>
+          <input type="text" id="role" inputmode="numeric" pattern="\d{5,32}" placeholder="identifiant du rôle">
+          <p class="champ-aide" id="role-aide">Discord → Paramètres du serveur → Rôles → clic droit sur le rôle → « Copier l'identifiant » (mode développeur activé).</p>
+          <p class="champ-aide">Lier un rôle demande aussi la permission « Gérer les comptes » : qui porte ce rôle est validé d'office à sa connexion.</p>
         </div>
         <div class="champ">
           <label>Permissions</label>
@@ -62,6 +64,9 @@
 
   <script>
     let moi, grades = [], permissions = [], edition = null;
+    // rôles du serveur Discord, lus sur Discord (vide sans DISCORD_BOT_TOKEN : l'identifiant se saisit à la main)
+    let roles = [];
+    const nomRole = id => roles.find(r => r.id === id)?.nom;
     const $ = id => document.getElementById(id);
     // rang d'un grade (0 = sommet) ; même règle que le serveur (socle/droits.ts)
     const rang = cle => { const i = grades.findIndex(g => g.cle === cle); return i < 0 ? grades.length : i; };
@@ -74,7 +79,10 @@
           <td>${i + 1}</td>
           <td><span class="pastille-grade" style="background:${echapper(g.couleur || '#8a93b8')}"></span><strong>${echapper(g.libelle)}</strong></td>
           <td style="max-width:420px;">${g.permissions.length ? g.permissions.map(p => `<span class="puce puce-masquee" style="margin:2px;">${echapper(libellePerm(p))}</span>`).join('') : '<span class="table-biens-sous">Aucune</span>'}</td>
-          <td>${g.roleDiscordId ? `<code>${echapper(g.roleDiscordId)}</code>` : '<span class="table-biens-sous">—</span>'}</td>
+          <td>${!g.roleDiscordId ? '<span class="table-biens-sous">—</span>'
+            : nomRole(g.roleDiscordId) ? `<strong>@${echapper(nomRole(g.roleDiscordId))}</strong>`
+            : roles.length ? `<span class="puce puce-or" title="Ce rôle n'existe plus sur Discord">Rôle supprimé</span> <code>${echapper(g.roleDiscordId)}</code>`
+            : `<code>${echapper(g.roleDiscordId)}</code>`}</td>
           <td>${gerable(g) ? `<div class="actions-ligne">
             <button type="button" class="actions-icone" data-action="monter" ${i === 0 || !gerable(grades[i - 1]) ? 'disabled' : ''} title="Monter" aria-label="Monter">↑</button>
             <button type="button" class="actions-icone" data-action="descendre" ${i === grades.length - 1 ? 'disabled' : ''} title="Descendre" aria-label="Descendre">↓</button>
@@ -91,6 +99,13 @@
       $('libelle').value = g?.libelle ?? '';
       $('couleur').value = g?.couleur ?? '#c9a55c';
       $('role').value = g?.roleDiscordId ?? '';
+      if (roles.length) {
+        const id = g?.roleDiscordId ?? '';
+        // rôle supprimé sur Discord depuis : gardé dans la liste, signalé
+        const absent = id && !nomRole(id) ? `<option value="${echapper(id)}">Rôle supprimé sur Discord (${echapper(id)})</option>` : '';
+        $('role-liste').innerHTML = '<option value="">Aucun rôle</option>' + absent + roles.map(r => `<option value="${echapper(r.id)}">@${echapper(r.nom)}</option>`).join('');
+        $('role-liste').value = id;
+      }
       // seulement les permissions que l'on détient (le serveur refuserait les autres)
       $('cases').innerHTML = permissions.map(p => `
         <label class="case-permission" title="${echapper(p.description || '')}"><input type="checkbox" value="${echapper(p.cle)}" ${socle.peut(moi, p.cle) ? '' : 'disabled'} ${g?.permissions.includes(p.cle) ? 'checked' : ''}>
@@ -102,7 +117,14 @@
     const fermer = () => $('modale-grade').classList.add('cache');
 
     async function charger() {
-      [grades, permissions] = await Promise.all([socle.api('/api/grades'), socle.api('/api/permissions')]);
+      let r;
+      [grades, permissions, r] = await Promise.all([socle.api('/api/grades'), socle.api('/api/permissions'), socle.api('/api/grades/roles-discord').catch(() => ({ roles: [] }))]);
+      roles = r.roles || [];
+      if (r.erreur) gestion.message('zone-message', r.erreur);
+      // liste lue sur Discord : choix par le nom ; sinon, saisie de l'identifiant
+      $('role-liste').classList.toggle('cache', !roles.length);
+      $('role').classList.toggle('cache', !!roles.length);
+      $('role-aide').classList.toggle('cache', !!roles.length);
       afficher();
     }
 
@@ -134,7 +156,7 @@
     $('form').addEventListener('submit', async e => {
       e.preventDefault();
       const corps = {
-        libelle: $('libelle').value, couleur: $('couleur').value, roleDiscordId: $('role').value.trim(),
+        libelle: $('libelle').value, couleur: $('couleur').value, roleDiscordId: roles.length ? $('role-liste').value : $('role').value.trim(),
         permissions: [...document.querySelectorAll('#cases input:checked')].map(c => c.value),
       };
       try {
