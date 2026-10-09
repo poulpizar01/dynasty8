@@ -16,7 +16,9 @@ export const envoiPhoto = (usage: 'bien' | 'profil') => async (req: Request, res
 };
 async function enregistrerPhoto(usage: 'bien' | 'profil', compteId: number, fichier: Express.Multer.File | undefined): Promise<ImageEnregistree> {
   const image = await enregistrerImage(usage === 'bien' ? 'biens' : 'profils', fichier);
-  await prisma.photo.create({ data: { usage, cle: image.cle, url: image.url, cleMini: image.cleMini, urlMini: image.urlMini, compteId } });
+  // base indisponible après le dépôt : le fichier est retiré du stockage, sinon il y resterait sans trace en base
+  try { await prisma.photo.create({ data: { usage, cle: image.cle, url: image.url, cleMini: image.cleMini, urlMini: image.urlMini, compteId } }); }
+  catch (e) { await retirerImage(image).catch(() => {}); throw e; }
   return image;
 }
 
@@ -57,11 +59,20 @@ export async function rattacherPhotoProfil(tx: Prisma.TransactionClient, compteI
 // enregistrer son annonce), puis effacée. Une photo « a_supprimer » est effacée au passage suivant. Un échec du
 // stockage garde la ligne (réessai au passage suivant) : jamais un fichier en ligne sans trace en base.
 const GARDE_TEMPORAIRE_MS = 24 * 3600e3;
+// un passage peut durer (stockage lent : jusqu'à 30 s par fichier) : le suivant ne le chevauche pas
+let nettoyageEnCours = false;
 async function nettoyer(): Promise<void> {
+  if (nettoyageEnCours) return;
+  nettoyageEnCours = true;
+  try { await nettoyerUneFois(); } finally { nettoyageEnCours = false; }
+}
+async function nettoyerUneFois(): Promise<void> {
   // d'abord rendue impossible à rattacher (rattacherPhotosBien n'accepte que « temporaire »), ensuite seulement retirée
   // du stockage : une annonce enregistrée au même instant ne peut pas garder une photo dont le fichier disparaît
   await prisma.photo.updateMany({ where: { statut: 'temporaire', creeLe: { lt: new Date(Date.now() - GARDE_TEMPORAIRE_MS) } }, data: { statut: 'a_supprimer' } });
-  const aEffacer = await prisma.photo.findMany({ where: { statut: 'a_supprimer' }, orderBy: { id: 'asc' }, take: 50 });
+  // les plus anciennes d'abord ; un échec enregistre l'erreur, ce qui renvoie la ligne en fin de file (majLe) : 50
+  // suppressions qui échouent durablement ne bloquent pas les autres
+  const aEffacer = await prisma.photo.findMany({ where: { statut: 'a_supprimer' }, orderBy: { majLe: 'asc' }, take: 50 });
   let effacees = 0;
   for (const p of aEffacer) {
     try {
