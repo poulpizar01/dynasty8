@@ -43,9 +43,10 @@ comptes.patch('/api/moi', ...valide, async (req, res) => {
 // prochaine connexion). Pas un compte refusé : recréé à la connexion suivante, il effacerait son refus (de nouveau en
 // attente, voire validé d'office par un rôle Discord). Seul un gestionnaire des comptes peut le supprimer.
 comptes.delete('/api/moi', ...connecte, async (req, res) => {
-  if (req.compte.statut === 'refuse') { res.status(403).json({ error: 'Ton accès a été refusé : seule la Direction peut supprimer ce compte.' }); return; }
   const id = req.session.compteId!;
-  if (await prisma.compte.findUnique({ where: { id }, select: { id: true } })) await supprimerCompte(id);
+  const c = await prisma.compte.findUnique({ where: { id }, select: { statut: true } });
+  if (c?.statut === 'refuse') { res.status(403).json({ error: 'Ton accès a été refusé : seul un responsable peut supprimer ce compte.' }); return; }
+  if (c) await supprimerCompte(id);
   req.session.destroy(() => res.clearCookie('site.sid').json({ ok: true }));
 });
 
