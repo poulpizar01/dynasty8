@@ -83,7 +83,7 @@ async function synchroniserUneFois() {
 
   const [employes, comptes] = await Promise.all([
     prisma.employe.findMany({ select: { id: true, prenom: true, nom: true, discordId: true, discordPseudoNormalise: true } }),
-    prisma.compte.findMany({ where: { statut: 'valide' }, select: { id: true, discordId: true, pseudo: true, nom: true } }),
+    prisma.compte.findMany({ where: { statut: 'valide' }, select: { id: true, discordId: true, pseudo: true } }),
   ]);
   const employeParNom = new Map<string, typeof employes[number] | null>();
   for (const e of employes) {
@@ -92,7 +92,8 @@ async function synchroniserUneFois() {
   }
   const compteParDiscord = new Map(comptes.map(c => [c.discordId, c.id]));
   const compteParPseudo = new Map(comptes.map(c => [normaliserTexte(c.pseudo), c.id]));
-  const compteParNom = new Map(comptes.filter(c => c.nom).map(c => [normaliserTexte(c.nom), c.id]));
+  // compte du site relié : par la fiche RH (ID Discord, sinon pseudo Discord), jamais par le nom RP du compte, que
+  // chacun change librement (un agent prendrait le nom d'un collègue pour voir ses chiffres et ses primes)
   const compteDe = (e: typeof employes[number] | null | undefined) =>
     !e ? null : e.discordId ? compteParDiscord.get(e.discordId) ?? null : e.discordPseudoNormalise ? compteParPseudo.get(normaliserTexte(e.discordPseudoNormalise)) ?? null : null;
 
@@ -100,7 +101,7 @@ async function synchroniserUneFois() {
     const e = employeParNom.get(l.nomNormalise) ?? null;
     return {
       ligneSheet: l.ligneSheet, nomSheet: l.nom, nomNormalise: l.nomNormalise, gradeSheet: l.grade, nbVentes: l.nbVentes, nbLocations: l.nbLocations,
-      employeId: e?.id ?? null, compteId: compteDe(e) ?? compteParNom.get(l.nomNormalise) ?? null,
+      employeId: e?.id ?? null, compteId: compteDe(e),
     };
   });
   await prisma.$transaction([prisma.ligneTableur.deleteMany(), prisma.ligneTableur.createMany({ data: donnees })]);

@@ -593,10 +593,17 @@ document.getElementById("bouton-enregistrer-import-tablette").addEventListener("
     gestion.message("zone-message-modale-import", "Collez d'abord vos données.");
     return;
   }
+  const corps = { colonnes: analyse.colonnes, lignes: analyse.lignes };
+  // le serveur n'accepte pas de requête de plus de 64 Ko : prévenu ici, avec la taille, plutôt qu'une erreur vague
+  const taille = new Blob([JSON.stringify(corps)]).size;
+  if (taille > 60000) {
+    gestion.message("zone-message-modale-import", `Relevé trop long (${Math.ceil(taille / 1024)} Ko pour 60 Ko au plus) : collez-le en retirant les colonnes inutiles.`);
+    return;
+  }
   try {
     await socle.api("/api/compta/tablettes", {
       method: "POST",
-      body: { colonnes: analyse.colonnes, lignes: analyse.lignes },
+      body: corps,
     });
     fermerModaleImportTablette();
     chargerTablette();

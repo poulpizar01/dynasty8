@@ -16,6 +16,8 @@ const gerer = permission('compta');
 // ---------- relevé Tablettes ----------
 // Le navigateur découpe le tableau collé en colonnes et en lignes ; le serveur revalide ce résultat (jamais de
 // confiance aveugle), garde chaque import, et ne renvoie que le plus récent.
+// bornes de chaque élément ; le relevé entier est de toute façon limité à 64 Ko (corps JSON, socle) : la page le vérifie
+// avant l'envoi
 const MAX_COLONNES = 20, MAX_LIGNES = 500, MAX_CELLULE = 300;
 const nombre = (v: unknown) => { const n = parseFloat(String(v ?? '').replace(/[^\d,.-]/g, '').replace(',', '.')); return Number.isFinite(n) ? n : 0; };
 const minuscules = (c: unknown[]) => c.map(x => String(x).trim().toLowerCase());
@@ -38,7 +40,8 @@ async function dernierReleve() {
   // une réinitialisation enregistre un import sans colonnes : comme « aucun relevé »
   if (!r || !colonnes.length) return null;
   const auteur = r.compteId ? await prisma.compte.findUnique({ where: { id: r.compteId }, select: { nom: true, pseudo: true } }) : null;
-  return { colonnes, lignes: corrigerLigneTotale(colonnes, r.lignes as string[][]), importeLe: r.importeLe, importePar: auteur ? auteur.nom ?? auteur.pseudo : null };
+  // nom RP (modifiable par chacun) suivi du pseudo Discord (non modifiable sur le site) : on sait qui a importé
+  return { colonnes, lignes: corrigerLigneTotale(colonnes, r.lignes as string[][]), importeLe: r.importeLe, importePar: auteur ? (auteur.nom ? `${auteur.nom} (@${auteur.pseudo})` : `@${auteur.pseudo}`) : null };
 }
 const enregistrerReleve = (colonnes: string[], lignes: string[][], compteId: number) =>
   prisma.importCompta.create({ data: { type: 'tablettes', colonnes, lignes, compteId } });
