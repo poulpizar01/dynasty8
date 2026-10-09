@@ -7,6 +7,13 @@ import { config } from './config.js';
 
 export type RoleDiscord = { id: string; nom: string; couleur: string | null; position: number };
 
+// échec de lecture, avec un message à montrer à qui gère les grades : la cause dit quoi faire
+export class RolesIndisponibles extends Error {}
+const cause = (statut: number) =>
+  statut === 401 ? 'Discord refuse le jeton du bot (DISCORD_BOT_TOKEN) : à corriger dans la configuration du site.'
+  : statut === 403 || statut === 404 ? 'Le bot n’est pas sur le serveur Discord de l’entreprise : invite-le, sans aucune permission.'
+  : 'Discord ne répond pas pour le moment : recharge la page dans quelques minutes.';
+
 const DUREE_MS = 5 * 60_000;   // les rôles changent rarement ; Discord limite les appels
 let cache: { roles: RoleDiscord[]; le: number } | null = null;
 
@@ -16,12 +23,15 @@ export const rolesDiscordConfigures = (): boolean => !!config.discord.botToken;
 export async function rolesDiscord(): Promise<RoleDiscord[]> {
   if (!config.discord.botToken) return [];
   if (cache && Date.now() - cache.le < DUREE_MS) return cache.roles;
-  const r = await fetch(`https://discord.com/api/v10/guilds/${config.discord.guildId}/roles`, {
-    headers: { Authorization: `Bot ${config.discord.botToken}` }, signal: AbortSignal.timeout(10_000),
-  });
-  if (!r.ok) throw new Error(`Discord a répondu ${r.status} à la lecture des rôles du serveur`);
-  const brut: unknown = await r.json();
-  if (!Array.isArray(brut)) throw new Error('liste des rôles illisible');
+  let r: Response;
+  try {
+    r = await fetch(`https://discord.com/api/v10/guilds/${config.discord.guildId}/roles`, {
+      headers: { Authorization: `Bot ${config.discord.botToken}` }, signal: AbortSignal.timeout(10_000),
+    });
+  } catch { throw new RolesIndisponibles(cause(0)); }
+  if (!r.ok) { console.error(`[grades] rôles Discord : réponse ${r.status}`); throw new RolesIndisponibles(cause(r.status)); }
+  const brut: unknown = await r.json().catch(() => null);
+  if (!Array.isArray(brut)) throw new RolesIndisponibles(cause(0));
   const roles = brut
     .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && /^\d{5,32}$/.test(String(x.id)) && x.id !== config.discord.guildId && !x.managed)
     .map(x => ({

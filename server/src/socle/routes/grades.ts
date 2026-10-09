@@ -5,7 +5,7 @@ import { Router, type Request, type Response } from 'express';
 import { prisma } from '../db.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { body, couleur, permission, text, valide } from '../http.js';
-import { rolesDiscord, rolesDiscordConfigures } from '../roles-discord.js';
+import { rolesDiscord, rolesDiscordConfigures, RolesIndisponibles } from '../roles-discord.js';
 import { auDessusDe, chargerGrades, CLES_PERMISSIONS, gradeDe, gradePublic, peut, peutAccorder, rang, tousLesGrades } from '../droits.js';
 
 export const grades = Router();
@@ -43,8 +43,8 @@ grades.get('/api/grades/roles-discord', ...permission('grades'), async (_req, re
   if (!rolesDiscordConfigures()) { res.json({ configure: false, roles: [] }); return; }
   try { res.json({ configure: true, roles: await rolesDiscord() }); }
   catch (e) {
-    console.error('[grades] rôles Discord :', (e as Error).message);
-    res.json({ configure: true, roles: [], erreur: 'Liste des rôles indisponible : Discord ne répond pas. Saisis l’identifiant du rôle, ou recharge la page dans quelques minutes.' });
+    if (!(e instanceof RolesIndisponibles)) throw e;
+    res.json({ configure: true, roles: [], erreur: `Liste des rôles indisponible. ${e.message} En attendant, saisis l’identifiant du rôle.` });
   }
 });
 
