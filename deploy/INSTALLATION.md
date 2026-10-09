@@ -40,6 +40,7 @@ Modèle commenté : [`.env.example`](../.env.example), à copier en `.env`. Vale
 | `BASE_URL` | `https://dynasty8.fbfa.fr` | — |
 | `SESSION_SECRET`, `POSTGRES_PASSWORD` | `openssl rand -hex 32` chacun ; `POSTGRES_PASSWORD` ne se change plus une fois la base créée | vous |
 | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | application Discord RoxwoodLegal (`1546523997980852294`) | Direction de Dynasty 8 |
+| `DISCORD_BOT_TOKEN` | jeton du bot de l'application RoxwoodLegal (onglet Bot → Reset Token), invité sur le serveur de Dynasty 8 sans aucune permission : la page Grades propose alors les rôles Discord par leur nom. Facultatif | vous |
 | `DISCORD_GUILD_ID` | ID du serveur Discord de Dynasty 8 : seuls ses membres peuvent se connecter, son propriétaire a tous les droits sur le site | Direction de Dynasty 8 |
 | `STORAGE_URL`, `STORAGE_TOKEN`, `STORAGE_PREFIX` | `https://storage.fbfa.fr`, jeton du stockage, `dynasty8/` | vous (jeton) |
 | `BOT_WEBHOOK_SECRETS` | secret de l'abonnement « Candidatures » du bot Discord (étape 5) | Dynasty 8, depuis le bot |

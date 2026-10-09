@@ -8,7 +8,7 @@ Seulement ce qui est propre au site : ses modules, tables, routes, conventions e
 
 - Activité : agence immobilière RP du serveur GTA RP **FlashbackFA** (univers fictif). Vitrine : catalogue des biens (habitations, intérieurs, garages, exclusifs), cohérences RP par zone, VIP PLUS, équipe, FAQ. Espace agents : gestion des biens, messagerie, agenda, statistiques et primes, comptabilité / DOT, ressources humaines.
 - Site : https://dynasty8.fbfa.fr/, aussi affiché dans l'ordinateur en jeu (FolkOS, `docs/folkos.md`).
-- Serveur Discord : *à compléter* (rôles liés aux grades, webhooks abonnés).
+- Serveur Discord : ses rôles sont lus sur Discord et liés aux grades dans la page Grades (`DISCORD_BOT_TOKEN`, docs/api.md) ; rien n'est écrit en dur. Webhook abonné : Candidatures (`recruitment.updated`).
 
 ## Origine du site
 
