@@ -18,7 +18,7 @@
   <main class="contenu">
     <p class="surtitre">Gestion</p>
     <h1 class="page-titre">Grades</h1>
-    <p class="intro">Du sommet à la base de l'entreprise. Un grade lié à un rôle Discord est donné à la connexion à qui porte ce rôle, et retiré à qui ne le porte plus.</p>
+    <p class="intro">Du sommet à la base de l'entreprise. Un grade lié à un rôle Discord est donné à la connexion à qui porte ce rôle, et retiré à qui ne le porte plus. Lier un rôle demande aussi la permission « Gérer les comptes ».</p>
     <p class="message" id="msg" hidden></p>
     <div id="liste"></div>
     <section class="carte">
@@ -27,7 +27,7 @@
         <div class="grille">
           <div class="champ"><label for="libelle">Libellé</label><input type="text" id="libelle" maxlength="40" required></div>
           <div class="champ"><label for="couleur">Couleur</label><input type="color" id="couleur" value="#888888"></div>
-          <div class="champ"><label for="role">Rôle Discord lié (identifiant, facultatif)</label><input type="text" id="role" inputmode="numeric" pattern="\d{5,32}" placeholder="123456789012345678"></div>
+          <div class="champ"><label for="role">Rôle Discord lié (facultatif)</label><select id="role-liste" hidden></select><input type="text" id="role" inputmode="numeric" pattern="\d{5,32}" placeholder="identifiant du rôle"></div>
         </div>
         <label>Permissions</label>
         <div class="cases" id="cases"></div>
@@ -40,6 +40,9 @@
   </main>
   <script>
     let moi, grades = [], permissions = [], edition = null;
+    // rôles du serveur Discord, lus sur Discord (vide sans jeton de bot : l'identifiant se saisit à la main)
+    let roles = [];
+    const nomRole = id => roles.find(r => r.id === id)?.nom;
     const msg = document.getElementById('msg'), liste = document.getElementById('liste'), $ = id => document.getElementById(id);
     const rang = cle => { const i = grades.findIndex(g => g.cle === cle); return i < 0 ? grades.length : i; };
     const gerable = g => moi.proprietaire || (!!moi.grade && rang(g.cle) > rang(moi.grade.cle));
@@ -57,7 +60,7 @@
               <button class="btn btn--petit" data-action="modifier">Modifier</button>
               <button class="btn btn--petit btn--danger" data-action="supprimer">Supprimer</button>` : ''}
           </div>
-          <p class="muet" style="margin:8px 0 0">${g.permissions.length ? g.permissions.map(p => socle.esc(libellePerm(p))).join(' · ') : 'Aucune permission'}${g.roleDiscordId ? ` · rôle Discord ${socle.esc(g.roleDiscordId)}` : ''}</p>
+          <p class="muet" style="margin:8px 0 0">${g.permissions.length ? g.permissions.map(p => socle.esc(libellePerm(p))).join(' · ') : 'Aucune permission'}${g.roleDiscordId ? ` · rôle Discord ${socle.esc(nomRole(g.roleDiscordId) ? '@' + nomRole(g.roleDiscordId) : g.roleDiscordId)}` : ''}</p>
         </article>`).join('') : '<p class="vide">Aucun grade : crée le premier ci-dessous.</p>';
       // cases : seulement les permissions que l'on détient (le serveur refuserait les autres)
       $('cases').innerHTML = permissions.map(p => `
@@ -73,13 +76,26 @@
       $('libelle').value = g?.libelle ?? '';
       $('couleur').value = g?.couleur ?? '#888888';
       $('role').value = g?.roleDiscordId ?? '';
+      if (roles.length) {
+        const id = g?.roleDiscordId ?? '';
+        // rôle supprimé sur Discord depuis : gardé dans la liste, signalé
+        const absent = id && !nomRole(id) ? `<option value="${socle.esc(id)}">Rôle supprimé sur Discord (${socle.esc(id)})</option>` : '';
+        $('role-liste').innerHTML = '<option value="">Aucun rôle</option>' + absent + roles.map(r => `<option value="${socle.esc(r.id)}">@${socle.esc(r.nom)}</option>`).join('');
+        $('role-liste').value = id;
+      }
       document.querySelectorAll('#cases input').forEach(c => { c.checked = !!g?.permissions.includes(c.value); });
       if (g) $('form').scrollIntoView({ behavior: 'smooth' });
     }
 
     async function charger() {
-      [grades, permissions] = await Promise.all([socle.api('/api/grades'), socle.api('/api/permissions')]);
+      let r;
+      [grades, permissions, r] = await Promise.all([socle.api('/api/grades'), socle.api('/api/permissions'), socle.api('/api/grades/roles-discord').catch(() => ({ roles: [] }))]);
+      roles = r.roles || [];
+      if (r.erreur) gestion.message(msg, r.erreur);
+      $('role-liste').hidden = !roles.length;
+      $('role').hidden = !!roles.length;
       afficher();
+      formulaire(null);
     }
 
     liste.addEventListener('click', async e => {
@@ -104,7 +120,7 @@
     $('form').addEventListener('submit', async e => {
       e.preventDefault();
       const corps = {
-        libelle: $('libelle').value, couleur: $('couleur').value, roleDiscordId: $('role').value.trim(),
+        libelle: $('libelle').value, couleur: $('couleur').value, roleDiscordId: roles.length ? $('role-liste').value : $('role').value.trim(),
         permissions: [...document.querySelectorAll('#cases input:checked')].map(c => c.value),
       };
       try {

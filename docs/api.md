@@ -37,6 +37,7 @@ Pages de `gestion/` : mêmes niveaux, contrôlés par le serveur avant tout envo
 | `PATCH /api/comptes/:id` | `comptes` | `{ statut?: "valide"\|"refuse"\|"attente", nom?, grade?: cle\|null }` — compte sous son grade, vers un grade sous le sien ; ni son propre compte, ni celui du propriétaire (sauf par lui) |
 | `DELETE /api/comptes/:id` | `comptes` | Supprimer un compte sous son grade (pas le sien) |
 | `GET /api/grades` | validé | Grades du sommet à la base : `[{ cle, libelle, position, couleur, permissions[], roleDiscordId }]` |
+| `GET /api/grades/roles-discord` | `grades` | Rôles du serveur Discord, lus sur Discord (du plus haut au plus bas, sans @everyone ni rôles de bots) : `{ configure, roles: [{ id, nom, couleur, position }], erreur? }`. `configure: false` sans `DISCORD_BOT_TOKEN` ; liste gardée 5 min |
 | `POST /api/grades` | `grades` | `{ libelle, cle?, couleur?, permissions[], roleDiscordId? }` — créé en bas de la hiérarchie ; `409` si la clé ou le rôle est déjà pris ; un `roleDiscordId` exige aussi `comptes` (`403` sinon) |
 | `PATCH /api/grades/:cle` | `grades` | Mêmes champs (sauf `cle`) ; grade sous le sien ; changer `roleDiscordId` exige aussi `comptes` |
 | `PUT /api/grades/ordre` | `grades` | `{ ordre: [cle…] }` (tous les grades) ; hors propriétaire, les grades jusqu'au sien restent en place |

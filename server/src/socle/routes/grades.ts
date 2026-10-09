@@ -5,6 +5,7 @@ import { Router, type Request, type Response } from 'express';
 import { prisma } from '../db.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { body, couleur, permission, text, valide } from '../http.js';
+import { rolesDiscord, rolesDiscordConfigures } from '../roles-discord.js';
 import { auDessusDe, chargerGrades, CLES_PERMISSIONS, gradeDe, gradePublic, peut, peutAccorder, rang, tousLesGrades } from '../droits.js';
 
 export const grades = Router();
@@ -19,7 +20,7 @@ const lireRole = (v: unknown): string | null | undefined =>
 // gérer les comptes. Hors propriétaire, il faut donc les deux permissions (« grades » seule ne suffit pas).
 const roleRefuse = (moi: Request['compte'], res: Response): boolean => {
   if (peut(moi, 'comptes')) return false;
-  res.status(403).json({ error: 'Lier un grade à un rôle Discord valide des comptes : il faut aussi la permission de gérer les comptes.' });
+  res.status(403).json({ error: 'Tu ne peux pas lier ce grade à un rôle Discord : ce lien valide des comptes, il faut donc aussi la permission « Gérer les comptes ».' });
   return true;
 };
 
@@ -36,6 +37,16 @@ async function enregistrer(res: Response, action: () => Promise<unknown>): Promi
 const repondreListe = (res: Response) => res.json(tousLesGrades().map(gradePublic));
 
 grades.get('/api/grades', ...valide, (_req, res) => { repondreListe(res); });
+
+// rôles du serveur Discord, pour les choisir par leur nom (roles-discord.ts) ; sans jeton de bot : configure false
+grades.get('/api/grades/roles-discord', ...permission('grades'), async (_req, res) => {
+  if (!rolesDiscordConfigures()) { res.json({ configure: false, roles: [] }); return; }
+  try { res.json({ configure: true, roles: await rolesDiscord() }); }
+  catch (e) {
+    console.error('[grades] rôles Discord :', (e as Error).message);
+    res.json({ configure: true, roles: [], erreur: 'Liste des rôles indisponible : Discord ne répond pas. Saisis l’identifiant du rôle, ou recharge la page dans quelques minutes.' });
+  }
+});
 
 grades.post('/api/grades', ...permission('grades'), async (req: Request, res) => {
   const b = body(req), moi = req.compte;
