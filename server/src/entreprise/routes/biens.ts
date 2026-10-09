@@ -3,7 +3,7 @@
 import { Router } from 'express';
 import { prisma } from '../../socle/db.js';
 import { body, intParam, permission, text } from '../../socle/http.js';
-import { recevoirImage, recevoirImageParLien } from '../../socle/images.js';
+import { recevoirImage } from '../../socle/images.js';
 import { CATEGORIES, COHERENCES, SOUS_CATEGORIES_HABITATION } from '../biens.js';
 import { envoiPhoto, MAX_PHOTOS_BIEN, rattacherPhotosBien } from '../photos.js';
 
@@ -102,6 +102,4 @@ biens.delete('/api/biens/:id', ...gerer, async (req, res) => {
 // photo envoyée depuis l'ordinateur (champ « image » du formulaire) : renvoie son adresse, à mettre dans l'annonce
 biens.post('/api/biens/photo', ...gerer, ...recevoirImage, envoiPhoto('bien'));
 
-// photo donnée par lien (ordinateur en jeu) : téléchargée par le serveur, puis traitée comme un fichier
-biens.post('/api/biens/photo-lien', ...gerer, ...recevoirImageParLien, envoiPhoto('bien'));
 

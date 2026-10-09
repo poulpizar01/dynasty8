@@ -289,7 +289,7 @@ function redessinerImagesBien() {
   const n = TRANSFERTS_BIEN.length;
   $('bien-images-compteur').textContent = `${IMAGES_BIEN.length} / ${MAX_PHOTOS_BIEN}${n ? ` · ${n} en cours d'envoi` : ''}`;
   const bloque = IMAGES_BIEN.length + n >= MAX_PHOTOS_BIEN || SAUVEGARDE_BIEN_EN_COURS;
-  for (const id of ['bouton-parcourir', 'bouton-ajouter-url', 'bien-image-url']) $(id).disabled = bloque;
+  $('bouton-parcourir').disabled = bloque;
   if (!SAUVEGARDE_BIEN_EN_COURS) {
     const enregistrer = document.querySelector('#formulaire-bien button[type="submit"]');
     enregistrer.disabled = n > 0;
@@ -311,13 +311,12 @@ function reinitialiserTransfertsBien() {
   ERREURS_IMAGES_BIEN = [];
 }
 
-// envoi d'une photo (fichier ou lien) ; fetch direct plutôt que socle.api pour pouvoir l'annuler
+// envoi d'une photo ; fetch direct plutôt que socle.api pour pouvoir l'annuler
 async function envoyerPhoto(t) {
-  const init = { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' }, signal: t.controleur.signal };
-  if (t.lien) { init.body = JSON.stringify({ url: t.lien }); init.headers['Content-Type'] = 'application/json'; }
-  else { init.body = new FormData(); init.body.append('image', t.fichier); }
+  const init = { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' }, signal: t.controleur.signal, body: new FormData() };
+  init.body.append('image', t.fichier);
   let r;
-  try { r = await fetch(t.lien ? '/api/biens/photo-lien' : '/api/biens/photo', init); }
+  try { r = await fetch('/api/biens/photo', init); }
   catch (e) { if (e.name === 'AbortError') throw e; throw new Error('Connexion au serveur perdue pendant l’envoi de la photo. Réessayez.'); }
   const data = await r.json().catch(() => null);
   if (!r.ok) throw new Error(data?.error && !/^[a-z-]+$/.test(data.error) ? data.error : r.status === 413 ? 'Photo trop volumineuse.' : 'L’envoi de la photo a échoué.');
@@ -351,20 +350,6 @@ async function traiterFileBien() {
 
 function placesPhotos() { return MAX_PHOTOS_BIEN - IMAGES_BIEN.length - TRANSFERTS_BIEN.length; }
 
-// lien collé (indispensable dans l'ordinateur en jeu, sans sélecteur de fichiers) : le serveur télécharge l'image
-function ajouterImageParLien() {
-  const champ = $('bien-image-url');
-  const lien = champ.value.trim();
-  if (!lien || SAUVEGARDE_BIEN_EN_COURS) return;
-  if (!/^https:\/\/\S+$/i.test(lien) || lien.length > 2048) { ajouterErreurImagesBien('Le lien doit commencer par https:// et ne contenir aucun espace.'); return; }
-  if (placesPhotos() <= 0) { afficherErreursImagesBien(); return; }
-  TRANSFERTS_BIEN.push({ nom: lien, lien, controleur: new AbortController(), enCours: false });
-  champ.value = '';
-  redessinerImagesBien();
-  traiterFileBien();
-}
-$('bouton-ajouter-url').addEventListener('click', ajouterImageParLien);
-$('bien-image-url').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ajouterImageParLien(); } });
 $('bouton-parcourir').addEventListener('click', () => $('bien-image-fichier').click());
 $('bien-image-fichier').addEventListener('change', e => {
   const fichiers = Array.from(e.target.files || []);
@@ -465,7 +450,6 @@ function ouvrirModaleBien(id) {
   document.querySelectorAll('#formulaire-bien .champ-erreur').forEach(p => p.classList.add('cache'));
   gestion.message('zone-message-modale-bien', '');
   reinitialiserTransfertsBien();
-  $('bien-image-url').value = '';
   IMAGES_BIEN = bien?.images ? bien.images.slice(0, MAX_PHOTOS_BIEN) : [];
   redessinerImagesBien();
   $('modale-bien').classList.remove('cache');
@@ -543,7 +527,7 @@ $('formulaire-bien').addEventListener('submit', async e => {
   const texteInitial = bouton.textContent;
   bouton.disabled = true;
   bouton.textContent = 'Enregistrement…';
-  SAUVEGARDE_BIEN_EN_COURS = true;   // bloque envois, ajouts par lien et retraits pendant l'enregistrement
+  SAUVEGARDE_BIEN_EN_COURS = true;   // bloque envois et retraits pendant l'enregistrement
   redessinerImagesBien();
   const edition = EDITION_BIEN;
   try {

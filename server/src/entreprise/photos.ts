@@ -8,7 +8,7 @@ import { enregistrerImage, ImageRefusee, retirerImage, type ImageEnregistree } f
 export const MAX_PHOTOS_BIEN = 10;
 
 // ---------- enregistrement ----------
-// Après ...recevoirImage (fichier) ou ...recevoirImageParLien (lien) : enregistre la photo, encore « temporaire » tant
+// Après ...recevoirImage : enregistre la photo, encore « temporaire » tant
 // que l'annonce ou le profil ne l'a pas prise, et renvoie son adresse.
 export const envoiPhoto = (usage: 'bien' | 'profil') => async (req: Request, res: Response): Promise<void> => {
   const image = await enregistrerPhoto(usage, req.compte.id, req.file);
@@ -32,9 +32,9 @@ export async function rattacherPhotosBien(tx: Prisma.TransactionClient, bienId: 
     const p = parUrl.get(url);
     const libre = p && (p.statut === 'temporaire' || (p.statut === 'attachee' && p.bienId === bienId));
     if (libre) continue;
-    throw new ImageRefusee(p?.statut === 'attachee' ? 'Une photo est déjà utilisée par une autre annonce : ajoute-la à nouveau (« Parcourir » ou par lien).'
+    throw new ImageRefusee(p?.statut === 'attachee' ? 'Une photo est déjà utilisée par une autre annonce : ajoute-la à nouveau (« Parcourir »).'
       : p ? 'Une photo a expiré avant l’enregistrement de l’annonce : ajoute-la à nouveau.'
-      : 'Une photo de l’annonce n’a pas été envoyée par ce site : ajoute-la avec « Parcourir » ou par lien.');
+      : 'Une photo de l’annonce n’a pas été envoyée par ce site : ajoute-la avec « Parcourir ».');
   }
   await tx.photo.updateMany({ where: { url: { in: urls }, usage: 'bien' }, data: { statut: 'attachee', bienId } });
   await tx.photo.updateMany({ where: { bienId, usage: 'bien', url: { notIn: urls } }, data: { statut: 'a_supprimer', bienId: null } });

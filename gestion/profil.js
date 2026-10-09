@@ -13,13 +13,9 @@ function profilEditeur(conteneur, { adresse, nom, apresEnregistrement }) {
         <div class="profil-photo-apercu" data-apercu></div>
         <button type="button" class="btn btn-fantome btn-petit" data-changer>📁 Changer la photo</button>
         <input type="file" accept="image/jpeg,image/png,image/webp" class="cache" data-fichier>
-        <div class="bien-image-url-groupe" style="width:100%;">
-          <input type="url" placeholder="…ou le lien d'une image (https://…)" autocomplete="off" data-lien>
-          <button type="button" class="btn btn-fantome btn-petit" data-ajouter-lien>OK</button>
-        </div>
         <button type="button" class="btn btn-fantome btn-petit cache" data-retirer>✕ Retirer la photo</button>
         <p class="champ-erreur cache" data-erreur-photo></p>
-        <p class="champ-aide" style="text-align:center;">Format carré recommandé — JPG, PNG ou WEBP. Depuis l'ordinateur en jeu, collez le lien d'une image.</p>
+        <p class="champ-aide" style="text-align:center;">Format carré recommandé — JPG, PNG ou WEBP.</p>
       </div>
       <form data-formulaire>
         <div class="champ">
@@ -63,7 +59,6 @@ function profilEditeur(conteneur, { adresse, nom, apresEnregistrement }) {
     apercu.setAttribute('aria-busy', String(!!etat.transfert));
     q('data-changer').textContent = etat.transfert ? '⏳ Envoi de la photo…' : '📁 Changer la photo';
     q('data-changer').disabled = etat.enregistrement;
-    q('data-ajouter-lien').disabled = q('data-lien').disabled = etat.enregistrement || !!etat.transfert;
     q('data-retirer').textContent = etat.transfert ? '✕ Annuler l’envoi' : '✕ Retirer la photo';
     q('data-retirer').classList.toggle('cache', !etat.photo && !etat.transfert);
     q('data-retirer').disabled = etat.enregistrement;
@@ -76,7 +71,7 @@ function profilEditeur(conteneur, { adresse, nom, apresEnregistrement }) {
     etat.transfert = null;
   }
 
-  // envoi d'un fichier ou d'un lien ; une nouvelle sélection remplace l'envoi en cours
+  // envoi d'un fichier ; une nouvelle sélection remplace l'envoi en cours
   async function envoyer(source) {
     if (etat.enregistrement) return;
     annulerTransfert();
@@ -85,10 +80,9 @@ function profilEditeur(conteneur, { adresse, nom, apresEnregistrement }) {
     erreurPhoto('');
     dessiner();
     try {
-      const init = { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' }, signal: controleur.signal };
-      if (typeof source === 'string') { init.body = JSON.stringify({ url: source }); init.headers['Content-Type'] = 'application/json'; }
-      else { init.body = new FormData(); init.body.append('image', source); }
-      const r = await fetch(typeof source === 'string' ? '/api/profil/photo-lien' : '/api/profil/photo', init);
+      const init = { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' }, signal: controleur.signal, body: new FormData() };
+      init.body.append('image', source);
+      const r = await fetch('/api/profil/photo', init);
       const data = await r.json().catch(() => null);
       if (!r.ok) throw new Error(data?.error && !/^[a-z-]+$/.test(data.error) ? data.error : 'L’envoi de la photo a échoué.');
       if (edition === etat.edition) etat.photo = data.url;
@@ -107,15 +101,6 @@ function profilEditeur(conteneur, { adresse, nom, apresEnregistrement }) {
     if (fichier.size > 15 * 1024 * 1024) { erreurPhoto('Image trop lourde (15 Mo max).'); return; }
     envoyer(fichier);
   });
-  const ajouterLien = () => {
-    const lien = q('data-lien').value.trim();
-    if (!lien) return;
-    if (!/^https:\/\/\S+$/i.test(lien)) { erreurPhoto('Le lien doit commencer par https:// et ne contenir aucun espace.'); return; }
-    q('data-lien').value = '';
-    envoyer(lien);
-  };
-  q('data-ajouter-lien').addEventListener('click', ajouterLien);
-  q('data-lien').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ajouterLien(); } });
   q('data-retirer').addEventListener('click', () => { if (etat.transfert) annulerTransfert(); else etat.photo = ''; dessiner(); });
   champ('bio').addEventListener('input', compteur);
 
