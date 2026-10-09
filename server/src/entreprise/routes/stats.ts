@@ -6,11 +6,10 @@ import { prisma } from '../../socle/db.js';
 import { gradeDe, peut, tousLesGrades } from '../../socle/droits.js';
 import { body, entier, intParam, permission, valide } from '../../socle/http.js';
 import { configEntreprise } from '../config.js';
-import { nomComplet } from '../rh.js';
 import { Refus, traiter } from '../refus.js';
 import { montantPalier } from '../stats/calcul.js';
 import { lireActuel, lireArchive, lireBaremes, semaineParis, synchroniserSansErreur } from '../stats/tableur.js';
-import { enregistrerVente, lireLignes, semaines } from '../stats/ventes.js';
+import { enregistrerVente, semaines } from '../stats/ventes.js';
 
 export const stats = Router();
 const voir = permission('ventes'), gerer = permission('ventes-gerer'), compta = permission('compta');
@@ -33,32 +32,6 @@ stats.post('/api/stats/ventes', traiter(async (req, res) => {
 }));
 
 stats.get('/api/stats/semaines', ...voir, async (_req, res) => { res.json(await semaines()); });
-
-stats.get('/api/stats/anomalies', ...voir, async (req, res) => {
-  const { anomalies } = await lireLignes(true);
-  const semaine = typeof req.query.semaine === 'string' ? req.query.semaine : '';
-  res.json({ anomalies: semaine ? anomalies.filter(a => a.semaine === semaine) : anomalies });
-});
-
-// historique brut (doublons marqués compris), plus récent en premier ; l'identité du vendeur est lue dans RH
-stats.get('/api/stats/ventes', ...voir, async (req, res) => {
-  const { lignes } = await lireLignes(false);
-  const semaine = typeof req.query.semaine === 'string' ? req.query.semaine : '';
-  const filtrees = semaine ? lignes.filter(l => l.semaine === semaine) : lignes;
-  const employes = new Map((await prisma.employe.findMany()).map(e => [e.id, e]));
-  res.json({
-    lignes: filtrees.slice().reverse().map(l => {
-      const e = l.employeId ? employes.get(l.employeId) : undefined;
-      return { ...l, employe: e ? { id: e.id, idEmploye: e.idEmploye, nomComplet: nomComplet(e), statut: e.statut } : null };
-    }),
-  });
-});
-
-stats.delete('/api/stats/ventes/:id', ...gerer, async (req, res) => {
-  const { count } = await prisma.vente.deleteMany({ where: { id: intParam(req, 'id') } });
-  if (!count) { res.status(404).json({ error: 'Vente introuvable.' }); return; }
-  res.json({ ok: true });
-});
 
 // ---------- tableur de la Direction ----------
 

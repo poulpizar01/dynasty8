@@ -22,7 +22,7 @@ export async function remunerations() {
 }
 
 export async function recapSemaine(semaine: string) {
-  const [{ lignes }, employes, baremes, remu] = await Promise.all([lireLignes(true), prisma.employe.findMany(), lireBaremes(), remunerations()]);
+  const [{ lignes }, employes, baremes, remu] = await Promise.all([lireLignes(true, semaine), prisma.employe.findMany(), lireBaremes(), remunerations()]);
   const formateurDansQuota = reglage('stats.formateur_dans_quota') === '1';
   const parCle = new Map(employes.map(e => [`e:${e.id}`, e]));
   // toute l'équipe ACTIVE, même sans vente (0 partout), plus quiconque a vendu cette semaine (un inactif qui a encore

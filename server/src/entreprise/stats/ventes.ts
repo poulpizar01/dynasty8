@@ -13,9 +13,10 @@ export type LigneVente = LigneClassee & { id: number; employeId: number | null; 
 
 // Toutes les ventes classées par le moteur, avec leur id et leurs clés de regroupement : la fiche RH quand la vente y
 // est rattachée (« e:12 »), sinon le texte reçu (« t:pseudo »). pourCalculs : sans les doublons marqués (paie, totaux) —
-// l'historique brut, lui, montre tout.
-export async function lireLignes(pourCalculs: boolean) {
-  const ventes = await prisma.vente.findMany({ orderBy: { id: 'asc' } });
+// l'historique brut, lui, montre tout. semaine : seulement ses ventes (le récapitulatif d'une semaine ne relit pas toute la
+// table pour chaque employé).
+export async function lireLignes(pourCalculs: boolean, semaine?: string) {
+  const ventes = await prisma.vente.findMany({ where: semaine ? { semaine } : {}, orderBy: { id: 'asc' } });
   const { lignes, anomalies } = classifierLignes(ventes.map(v => COLONNES.map(c => v[c])));
   const exclues = pourCalculs ? new Set((await prisma.venteDoublon.findMany({ select: { ligneDoublonId: true } })).map(d => d.ligneDoublonId)) : new Set<number>();
   const completes: LigneVente[] = lignes.map((l, i) => {
