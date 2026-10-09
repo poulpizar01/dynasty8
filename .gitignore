@@ -5,12 +5,9 @@ server/node_modules/
 uploads/
 backups/
 
-# Propre à Dynasty 8 — sauvegardes et dumps de la base (données réelles des
-# membres et des ventes), comptes rendus de scripts, envois en préparation
+# Sauvegardes et dumps de la base (données réelles des employés), où qu'ils soient posés
 *.dump
 *.sql.gz
 *.backup
-rapports/
-Claude outputs/
-_a-envoyer/
+# Réglages de dev propres à un poste (port, secrets de test) : COMPOSE_FILE=compose.yaml;compose.override.yaml;compose.local.yaml dans .env
 compose.local.yaml

@@ -36,6 +36,11 @@ Cherche :
 - DEV_LOGIN activable en production, ou tout autre raccourci de dev qui survit en prod ;
 - les requêtes qui modifient des données déclenchables depuis un autre site (SameSite, vérification d'origine) ;
 - les limites de requêtes contournables (clé de limitation, confiance au proxy).
+- la priorité entre grade attribué à la main et grade donné par un rôle Discord : un grade inférieur lié à un rôle porté par tous ne doit faire tomber personne ;
+- les droits obtenus de biais : une permission qui en donne une autre en pratique (lier un rôle Discord à un grade valide des comptes), un compte refusé qui efface son refus (suppression puis reconnexion) ;
+- les champs de l'entreprise qui portent un grade ou un niveau (fiche employé, salaire, rôle métier) : bornés sous celui de l'acteur comme les comptes, et jamais modifiables sur sa propre fiche ;
+- les données rattachées à un compte par un nom qu'il peut changer lui-même (nom RP) plutôt que par son identifiant Discord ;
+- les requêtes GET qui modifient des données (marquer comme lu…) : déclenchables depuis un autre site avec FolkOS (cookie SameSite=None, Origin non contrôlé sur GET).
 ```
 
 ## 2. Navigateur (XSS, CSP, fichiers servis)
@@ -50,6 +55,10 @@ Cherche :
 - les fichiers servis : vérifie que server/, site.json, ENTREPRISE.md, compose*.yaml, .env, docs/ restent inaccessibles, y compris via encodage (%2e%2e, double slash, majuscules) ;
 - les données renvoyées au navigateur sans besoin (champs de comptes d'autres employés, identifiants internes, contenu brut d'un webhook), y compris dans la réponse d'une modification (PATCH) et pas seulement des lectures ;
 - les réponses personnelles que le navigateur pourrait garder en cache (en-tête Cache-Control: no-store sur /api et /auth).
+- les routes publiques (vitrine) qui renvoient des champs qu'aucune page n'affiche (auteur, dates internes, identifiants de compte), et les routes de l'API qu'aucune page n'appelle ;
+- les valeurs dérivées d'une donnée utilisateur (initiales, extrait, titre raccourci) insérées sans échappement, et les replis (`x || valeur`) qui insèrent la valeur brute ;
+- la CSP : nonce réutilisé entre réponses ou prévisible ;
+- confidentialite.html face à ce que la vitrine publie réellement (qui apparaît sur une page publique, sous quel nom) et aux origines d'images chargées (stockage, Discord).
 ```
 
 ## 3. Webhooks et intégrations
@@ -61,6 +70,12 @@ Cherche :
 - les traitements de l'entreprise (entreprise.webhooks) : non idempotents (create aveugle sur un événement renvoyé à chaque changement de statut), confiance dans la forme du payload, texte non borné, erreur levée pour une donnée invalide (le bot réessaierait 10 fois pour rien), traitement long qui dépasse les 10 s du bot ;
 - le contrat avec le bot : compare les champs lus par les traitements au code du bot (dépôt https://github.com/poulpizar01/roxwood-network-entreprise, appels à dispatchWebhook dans src/services/) ; signale tout champ utilisé qui n'existe pas ou a changé de forme ;
 - les appels sortants du site (fetch dans server/src/entreprise/, stockage, Discord) : délai maximal, réponse d'erreur traitée, adresse construite depuis une donnée utilisateur (SSRF), secret écrit dans un journal.
+- l'ordre et les transitions d'état : événements reçus dans le désordre (une nouvelle tentative arrive après un événement plus récent), retour en arrière d'un statut (refusé puis accepté), événement sur un objet inconnu ignoré au lieu d'être consigné ;
+- les champs attendus du bot qui n'existent que sur une branche non publiée ou non déployée ;
+- les réponses d'erreur qui déclenchent des nouvelles tentatives inutiles (500 pour un corps trop lourd ou une donnée invalide, au lieu d'un 4xx) ;
+- les relais vers un service tiers (hôte annexe) : adresse cible construite par concaténation (une cible de requête en forme absolue change l'hôte), méthodes et taille des corps acceptées, absence de limite de requêtes ;
+- les données personnelles reçues (réponses d'un formulaire) gardées ailleurs que là où elles sont purgées (webhooks_recus, sauvegardes), et un résumé affiché (nom reçu) qui pourrait reprendre une donnée sensible ;
+- le comportement quand un service appelé est lent, coupé ou répond une erreur : page bloquée, erreur affichée, nouvelle tentative en boucle.
 ```
 
 ## 4. Fiabilité, ressources et déploiement
@@ -75,6 +90,13 @@ Cherche :
 - le démarrage : variables d'environnement de l'entreprise manquantes ou invalides détectées tôt avec un message clair, ou erreur obscure plus tard ;
 - le déploiement : compose.yaml (limites mémoire, ports en loopback, sauvegardes restaurables), nginx (docs/nginx.md, routes longues de l'entreprise sans leur bloc location), cookies Secure derrière le proxy ;
 - les règles de l'hébergement (CLAUDE.md, « Déploiement ») : aucun volume Docker de médias, fichier nginx <domaine>.conf avec bloc HTTP réservé au défi ACME, include snippets/deny-hidden.conf, X-Forwarded-Proto et X-Forwarded-Host transmis.
+- les middlewares et gestionnaires async dont la promesse n'est pas renvoyée (hôte annexe, minuteur) et les lectures de corps de réponse (`text()`, `arrayBuffer()`) hors du try : un rejet non attrapé arrête Node ;
+- les relais qui gardent une réponse entière en mémoire sans plafond au lieu de la transmettre en flux ;
+- le coût algorithmique : calcul par employé qui reparcourt toute une table (employés × lignes), tables entières relues à chaque requête d'une page ;
+- les sondages côté navigateur (setInterval) qui continuent dans un onglet caché et partagent la limite de requêtes du compte avec le reste de l'API ;
+- les tâches périodiques qui peuvent se chevaucher (pas de verrou « en cours ») ou rester bloquées sur les mêmes lignes en échec en tête de file ;
+- les fichiers déposés sur le stockage avant une écriture en base qui échoue (retirer le fichier dans le catch) ;
+- les réglages qui ne doivent plus changer en exploitation (STORAGE_PREFIX…) et qui le disent.
 ```
 
 ## 5. Socle et règles du modèle
@@ -90,4 +112,7 @@ Cherche :
 - les débordements horizontaux et le menu aux largeurs 375, 768, 1 024 et 1 280 px (lecture du CSS, sans navigateur : signale seulement les cas certains) ;
 - une fonctionnalité, une route, une variable d'environnement ou une table ajoutée sans mise à jour de ENTREPRISE.md, .env.example, confidentialite.html ou docs/ ;
 - les commentaires qui racontent une modification passée au lieu de décrire l'invariant actuel.
+- les commentaires qui renvoient à du code, des tables ou des fichiers qui n'existent plus (ancienne version, renommage), et le code mort (constantes, fonctions jamais appelées) ;
+- les fichiers mutualisés hors des deux listes de CLAUDE.md (.gitignore, .gitattributes) qui diffèrent du modèle ;
+- les routes de l'entreprise absentes du tableau de ENTREPRISE.md.
 ```

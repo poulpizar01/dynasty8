@@ -5,7 +5,7 @@ import { Router, type Request, type Response } from 'express';
 import { prisma } from '../db.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { body, couleur, permission, text, valide } from '../http.js';
-import { auDessusDe, chargerGrades, CLES_PERMISSIONS, gradeDe, gradePublic, peutAccorder, rang, tousLesGrades } from '../droits.js';
+import { auDessusDe, chargerGrades, CLES_PERMISSIONS, gradeDe, gradePublic, peut, peutAccorder, rang, tousLesGrades } from '../droits.js';
 
 export const grades = Router();
 
@@ -15,6 +15,13 @@ const lirePermissions = (v: unknown): string[] | null =>
 // rôle Discord : identifiant numérique, ou vide
 const lireRole = (v: unknown): string | null | undefined =>
   v === null || v === '' ? null : typeof v === 'string' && /^\d{5,32}$/.test(v) ? v : undefined;
+// Lier un grade à un rôle Discord valide d'office, à leur connexion, les comptes qui portent ce rôle : c'est aussi
+// gérer les comptes. Hors propriétaire, il faut donc les deux permissions (« grades » seule ne suffit pas).
+const roleRefuse = (moi: Request['compte'], res: Response): boolean => {
+  if (peut(moi, 'comptes')) return false;
+  res.status(403).json({ error: 'Lier un grade à un rôle Discord valide des comptes : il faut aussi la permission de gérer les comptes.' });
+  return true;
+};
 
 // conflit d'unicité (clé ou rôle Discord déjà pris) : 409 lisible plutôt qu'une erreur serveur
 async function enregistrer(res: Response, action: () => Promise<unknown>): Promise<boolean> {
@@ -38,6 +45,7 @@ grades.post('/api/grades', ...permission('grades'), async (req: Request, res) =>
   if (!libelle || !/^[a-z0-9-]{1,20}$/.test(cle)) { res.status(400).json({ error: 'Libellé requis (la clé : minuscules, chiffres, tirets).' }); return; }
   if (!perms || role === undefined) { res.status(400).json({ error: 'Permissions ou rôle Discord invalides.' }); return; }
   if (!peutAccorder(moi, perms)) { res.status(403).json({ error: 'Tu ne peux accorder que des permissions que tu détiens.' }); return; }
+  if (role && roleRefuse(moi, res)) return;
   // nouveau grade : en bas de la hiérarchie (donc sous celui de son créateur)
   const position = Math.max(-1, ...tousLesGrades().map(g => g.position)) + 1;
   if (await enregistrer(res, () => prisma.grade.create({ data: { cle, libelle, position, couleur: couleur(b.couleur), permissions: perms, roleDiscordId: role } }))) repondreListe(res.status(201));
@@ -61,6 +69,7 @@ grades.patch('/api/grades/:cle', ...permission('grades'), async (req, res) => {
   if (b.roleDiscordId !== undefined) {
     const role = lireRole(b.roleDiscordId);
     if (role === undefined) { res.status(400).json({ error: 'Rôle Discord invalide (identifiant numérique).' }); return; }
+    if (role !== g.roleDiscordId && roleRefuse(moi, res)) return;
     data.roleDiscordId = role;
   }
   if (await enregistrer(res, () => prisma.grade.update({ where: { cle: g.cle }, data }))) repondreListe(res);

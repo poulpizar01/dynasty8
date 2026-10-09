@@ -27,7 +27,7 @@ function load(): Record<string, string> {
 }
 export const site = load();
 
-const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 const upper = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 // remplace les {{cle}} ; une clé inconnue est laissée telle quelle (et signalée une fois)
