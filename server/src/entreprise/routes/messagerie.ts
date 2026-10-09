@@ -73,12 +73,12 @@ messagerie.post('/api/messagerie/frappe', ...valide, (req, res) => {
   res.json({ ok: true });
 });
 
-// messages d'une conversation après un identifiant donné ; les lire vaut lecture de ce qu'on a reçu
+// messages d'une conversation après un identifiant donné (lecture seule : le marquage « lu » passe par POST, qu'un
+// autre site ne peut pas déclencher — une simple image vers un GET le pourrait, avec le cookie de l'ordinateur en jeu)
 messagerie.get('/api/messagerie/messages', ...valide, async (req, res) => {
   const moi = req.compte.id, avec = entier(req.query.avec), apres = entier(req.query.apres_id) ?? 0;
   if (!avec) { res.status(400).json({ error: 'Destinataire manquant.' }); return; }
   signeDeVie(moi);
-  await prisma.message.updateMany({ where: { expediteurId: avec, destinataireId: moi, lu: false }, data: { lu: true } });
   const [messages, statut] = await Promise.all([
     prisma.message.findMany({
       where: { id: { gt: apres }, OR: [{ expediteurId: moi, destinataireId: avec }, { expediteurId: avec, destinataireId: moi }] },
@@ -91,6 +91,14 @@ messagerie.get('/api/messagerie/messages', ...valide, async (req, res) => {
     statut: statutVisible(avec, statut?.statut),
     frappe: (frappe.get(`${avec}:${moi}`) ?? 0) > Date.now(),
   });
+});
+
+// conversation lue : ce qu'on a reçu de « avec » passe à lu
+messagerie.post('/api/messagerie/lus', ...valide, async (req, res) => {
+  const avec = entier(body(req).avec);
+  if (!avec) { res.status(400).json({ error: 'Destinataire manquant.' }); return; }
+  await prisma.message.updateMany({ where: { expediteurId: avec, destinataireId: req.compte.id, lu: false }, data: { lu: true } });
+  res.json({ ok: true });
 });
 
 messagerie.post('/api/messagerie/messages', ...valide, async (req, res) => {

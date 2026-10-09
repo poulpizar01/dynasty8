@@ -1,6 +1,6 @@
 /* GESTION — messagerie interne (widget « façon MSN »), présente sur toutes les pages de l'espace agents : démarrée par
    gestion.coque(). Serveur : server/src/entreprise/routes/messagerie.ts. Pas de temps réel : le widget interroge le
-   serveur toutes les 4 secondes, largement assez réactif pour une messagerie d'équipe.
+   serveur toutes les 4 secondes (seulement dans un onglet visible), largement assez réactif pour une messagerie d'équipe.
    Les conversations ouvertes sont retenues pour la session de l'onglet (sessionStorage) : changer de page de la
    gestion les rouvre telles quelles. */
 const MESSAGERIE = {
@@ -141,7 +141,8 @@ function ouvrirFenetre(contact, { focus = true, minimisee = false } = {}) {
     if (focus) mid(`messagerie-champ-${contact.id}`)?.focus();
     return;
   }
-  const max = window.innerWidth < 640 ? 1 : MESSAGERIE_MAX_FENETRES;
+  // fenêtres de 300 px côte à côte : 2 seulement sur un écran moyen (3 dépasseraient à gauche, hors d'atteinte)
+  const max = window.innerWidth < 640 ? 1 : window.innerWidth < 1000 ? 2 : MESSAGERIE_MAX_FENETRES;
   if (MESSAGERIE.fenetres.length >= max) fermerFenetre(MESSAGERIE.fenetres[0].membreId);
   etat = { membreId: contact.id, pseudo: contact.pseudo, avatar: contact.avatar, statut: contact.statut || 'hors_ligne', dernierId: 0, minimisee };
   MESSAGERIE.fenetres.push(etat);
@@ -217,6 +218,8 @@ async function chargerMessages(etat, initial) {
     const data = await socle.api(`/api/messagerie/messages?avec=${etat.membreId}&apres_id=${etat.dernierId}`);
     if (!MESSAGERIE.fenetres.includes(etat)) return;   // fenêtre fermée pendant la requête
     const nouveaux = data.messages || [];
+    // reçus dans une conversation ouverte : lus (le badge des contacts suit au sondage suivant)
+    if (nouveaux.some(m => Number(m.expediteur_id) !== Number(MESSAGERIE.moi.id))) socle.api('/api/messagerie/lus', { method: 'POST', body: { avec: etat.membreId } }).catch(() => {});
     if (nouveaux.length) {
       ajouterMessages(etat, nouveaux, initial);
       const recus = initial ? [] : nouveaux.filter(m => Number(m.expediteur_id) !== Number(MESSAGERIE.moi.id));
@@ -305,8 +308,13 @@ function demarrerMessagerie(moi) {
   // conversations ouvertes avant le changement de page
   for (const f of fenetresMemorisees()) if (Number.isInteger(f.membreId)) ouvrirFenetre({ id: f.membreId, pseudo: String(f.pseudo || ''), avatar: String(f.avatar || '') }, { focus: false, minimisee: !!f.minimisee });
   chargerContacts();
-  setInterval(() => {
+  // onglet caché : aucun sondage (chaque requête compte dans la limite de l'API du compte, tous onglets confondus) ;
+  // rafraîchi dès son retour
+  const sonder = () => {
+    if (document.hidden) return;
     chargerContacts();
     for (const etat of MESSAGERIE.fenetres) chargerMessages(etat, false);
-  }, MESSAGERIE_INTERVALLE_MS);
+  };
+  setInterval(sonder, MESSAGERIE_INTERVALLE_MS);
+  document.addEventListener('visibilitychange', sonder);
 }
