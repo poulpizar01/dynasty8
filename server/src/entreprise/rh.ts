@@ -103,6 +103,16 @@ export function lireChamps(b: Record<string, unknown>, existante: Employe | null
   return c;
 }
 
+// Hiérarchie, comme pour les comptes (hors propriétaire) : on n'attribue qu'un grade sous le sien, on ne touche qu'aux
+// fiches d'un grade sous le sien, et jamais à la sienne. Le grade d'une fiche fixe le salaire et la commission versés
+// par la DOT : sans cette règle, un agent qui a rh-modifier se donnerait la rémunération de la Direction.
+export function verifierHierarchie(acteur: Compte, existante: Employe | null, gradeCle?: string | null): void {
+  if (acteur.proprietaire) return;
+  if (existante?.discordId && existante.discordId === acteur.discordId) throw new Refus('Votre propre fiche ne peut être modifiée que par un supérieur.', 403);
+  if (existante && !auDessusDe(acteur, existante.gradeCle)) throw new Refus('Cette fiche est d’un grade égal ou supérieur au vôtre.', 403);
+  if (gradeCle && !auDessusDe(acteur, gradeCle)) throw new Refus('Vous ne pouvez attribuer qu’un grade inférieur au vôtre.', 403);
+}
+
 // unicité (ID employé sans casse, ID Discord, pseudo) : message clair avant l'écriture ; la base garantit le reste
 export async function verifierUnicite(c: Champs, idExclu = 0, tx: Prisma.TransactionClient = prisma): Promise<void> {
   const verifs: [unknown, Prisma.EmployeWhereInput, string][] = [

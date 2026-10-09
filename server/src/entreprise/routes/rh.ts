@@ -3,9 +3,10 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import type { Employe } from '../../generated/prisma/client.js';
 import { prisma } from '../../socle/db.js';
-import { gradeDe } from '../../socle/droits.js';
+import { auDessusDe, gradeDe } from '../../socle/droits.js';
 import { body, intParam, permission } from '../../socle/http.js';
-import { arriveesBot, droitsRh, ecarter, fichePublique, gradesEmployes, lireChamps, nomComplet, Refus, refusUnicite, reglerBot, traiterEnSuspens, trierEmployes, verifierUnicite, type DroitRh } from '../rh.js';
+import { arriveesBot, droitsRh, ecarter, fichePublique, gradesEmployes, lireChamps, nomComplet, Refus, refusUnicite, reglerBot, traiterEnSuspens, trierEmployes, verifierHierarchie, verifierUnicite, type DroitRh } from '../rh.js';
+import { reglage } from '../../socle/reglages.js';
 import { traiter } from '../refus.js';
 import { rattacherVentes } from '../stats/ventes.js';
 import { jourValide, versDate } from '../texte.js';
@@ -31,6 +32,8 @@ rh.get('/api/rh/employes', ...voir, async (req, res) => {
       parGrade: gradesEmployes().filter(g => parGrade.has(g.cle)).map(g => ({ grade: g.libelle, nombre: parGrade.get(g.cle) })),
     },
     grades: gradesEmployes(),
+    // grades qu'on peut donner à une fiche : sous le sien (tous pour le propriétaire)
+    attribuables: gradesEmployes().map(g => g.cle).filter(cle => req.compte.proprietaire || auDessusDe(req.compte, cle)),
     droits: [...droits],
   });
 });
@@ -47,6 +50,7 @@ rh.get('/api/rh/employes/:id', ...voir, async (req, res) => {
   ]);
   res.json({
     ...fichePublique(e, droitsRh(req.compte)),
+    modifiable: (() => { try { verifierHierarchie(req.compte, e); return true; } catch { return false; } })(),
     // ce que les autres modules ont rattaché à l'employé (lecture seule)
     historique: {
       ventesEnregistrees: ventes._count, derniereVente: ventes._max.creeLe,
@@ -62,6 +66,7 @@ rh.post('/api/rh/employes', ...voir, exiger('creer', 'Vous n’avez pas le droit
   // téléphone et RIB à la création : ignorés sans rh-sensible
   if (!droitsRh(req.compte).has('sensible')) { delete b.telephone; delete b.rib; }
   const champs = lireChamps(b, null);
+  verifierHierarchie(req.compte, null, champs.gradeCle);
   await verifierUnicite(champs);
   const e = await prisma.employe.create({ data: { statut: 'actif', ...champs } as Parameters<typeof prisma.employe.create>[0]['data'] }).catch(refusUnicite);
   await rattacherVentes(e);
@@ -79,6 +84,7 @@ rh.patch('/api/rh/employes/:id', ...voir, exiger('modifier', 'Vous n’avez pas 
     throw new Refus('Vous n’avez pas le droit de changer le statut de cet employé.', 403);
   }
   const champs = lireChamps(b, existante);
+  verifierHierarchie(req.compte, existante, champs.gradeCle);
   if (champs.idEmploye && champs.idEmploye !== existante.idEmploye) champs.idProvisoire = false;
   if (!Object.keys(champs).length) throw new Refus('Rien à modifier.');
   await verifierUnicite(champs, id);
@@ -91,6 +97,7 @@ rh.patch('/api/rh/employes/:id', ...voir, exiger('modifier', 'Vous n’avez pas 
 async function changerStatut(req: Request, res: Response, statut: 'actif' | 'inactif') {
   const e: Employe | null = await prisma.employe.findUnique({ where: { id: intParam(req, 'id') } });
   if (!e) throw new Refus('Employé introuvable.', 404);
+  verifierHierarchie(req.compte, e);
   if (e.statut === statut) { res.json({ ok: true, inchange: true }); return; }
   let dateDepart: Date | null = null;
   if (statut === 'inactif') {
@@ -129,6 +136,8 @@ rh.put('/api/rh/bot/reglages', ...voir, exiger('parametrer', 'Vous n’avez pas 
   res.json({ ok: true });
 }));
 rh.post('/api/rh/bot/arrivees/:id/traiter', ...voir, exiger('creer', 'Vous n’avez pas le droit d’ajouter un employé.'), traiter(async (req, res) => {
+  // la fiche sera créée au grade d'arrivée : comme une création à la main, il doit être sous celui de l'approbateur
+  verifierHierarchie(req.compte, null, await reglage('rh.grade_arrivee'));
   const r = await traiterEnSuspens(intParam(req, 'id'));
   res.json({ ok: !['refusee', 'attente'].includes(r.resultat), ...r });
 }));

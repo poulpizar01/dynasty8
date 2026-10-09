@@ -5,6 +5,7 @@
 
 let CACHE_EMPLOYES = [];
 let GRADES_EMPLOYES = [];   // [{ cle, libelle }], dans l'ordre de la page Grades
+let GRADES_ATTRIBUABLES = [];   // clés des grades qu'on peut donner (sous le sien) : les autres restent grisés
 let DROITS_RH = new Set();
 let FICHE_OUVERTE = null;   // id de la fiche en cours d'édition ; null = création
 
@@ -20,6 +21,7 @@ async function chargerRh() {
     const r = await socle.api('/api/rh/employes');
     CACHE_EMPLOYES = r.employes || [];
     GRADES_EMPLOYES = r.grades || [];
+    GRADES_ATTRIBUABLES = r.attribuables || [];
     DROITS_RH = new Set(r.droits || []);
     const options = GRADES_EMPLOYES.map(g => `<option value="${echapper(g.cle)}">${echapper(g.libelle)}</option>`).join('');
     $rh('employe-grade').innerHTML = options;
@@ -83,7 +85,8 @@ async function ouvrirFicheEmploye(id, preremplissage) {
     catch (e) { gestion.message('zone-message-rh', e.message); return; }
   }
   FICHE_OUVERTE = id || null;
-  const peutEcrire = id ? aDroitRh('modifier') : aDroitRh('creer');
+  // fiche d'un grade égal ou supérieur, ou sa propre fiche : en lecture seule (le serveur le refuserait)
+  const peutEcrire = id ? aDroitRh('modifier') && f.modifiable !== false : aDroitRh('creer');
   $rh('modale-employe-titre').textContent = id ? `Fiche employé — ${f.nomComplet}` : 'Ajouter un membre';
   const champs = {
     'employe-prenom': f.prenom, 'employe-nom': f.nom, 'employe-id': f.idEmploye,
@@ -93,6 +96,7 @@ async function ouvrirFicheEmploye(id, preremplissage) {
   };
   for (const [idChamp, valeur] of Object.entries(champs)) { const c = $rh(idChamp); c.value = valeur || ''; c.disabled = !peutEcrire; }
   const grade = $rh('employe-grade');
+  for (const o of grade.options) o.disabled = !GRADES_ATTRIBUABLES.includes(o.value) && o.value !== f.grade;
   grade.value = GRADES_EMPLOYES.some(g => g.cle === f.grade) ? f.grade : (GRADES_EMPLOYES.at(-1)?.cle || '');
   grade.disabled = !peutEcrire;
   // date d'arrivée exigée à la création ; une fiche reprise de l'existant peut ne pas en avoir encore
