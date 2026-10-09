@@ -110,7 +110,7 @@ function carteCoeurHTML(bien) {
         ${visuel}
       </div>
       <div class="corps">
-        <span class="zone-tag">${ETIQUETTES_CATEGORIE[bien.categorie] || bien.categorie}</span>
+        <span class="zone-tag">${echapper(ETIQUETTES_CATEGORIE[bien.categorie] || bien.categorie)}</span>
         <h3>${echapper(bien.titre)}</h3>
         <span class="carte-coeur-lieu">📍 ${etiquetteZoneHTML(bien)}</span>
         <div class="pied">${prixCarteHTML(bien)}</div>

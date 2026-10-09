@@ -29,13 +29,9 @@ export const bienPublic = (b: Bien) => ({
   coup_de_coeur: b.coupDeCoeur,
   disponible: b.disponible,
   vendu: b.vendu,
-  vendu_le: b.venduLe,
   meuble: b.meuble,
   coherence: b.coherence,
   coffre_kg: b.coffreKg,
   vip: b.vip,
   standing: b.standing,
-  auteur: b.auteur,
-  cree_le: b.creeLe,
-  maj: b.majLe,
 });

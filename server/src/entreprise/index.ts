@@ -3,7 +3,8 @@
 import type { Entreprise } from '../socle/contrat.js';
 import { carte, relaisCarte } from './carte.js';
 import { planifierNettoyagePhotos } from './photos.js';
-import { purgerReponses, recevoirCandidature } from './rh.js';
+import { planifierPurge } from './purge.js';
+import { recevoirCandidature } from './rh.js';
 import { agenda } from './routes/agenda.js';
 import { biens } from './routes/biens.js';
 import { compta } from './routes/compta.js';
@@ -41,12 +42,17 @@ export const entreprise: Entreprise = {
     'recruitment.updated': recevoirCandidature,
   },
 
-  // les biens d'un agent supprimé restent (son nom affiché aussi : c'est l'historique de l'agence) ; son profil public
-  // disparaît, et sa photo de profil comme ses photos envoyées mais jamais utilisées partent au nettoyage
+  // les biens d'un agent supprimé restent (son nom gardé aussi : c'est l'historique de l'agence) ; son profil public
+  // disparaît, et sa photo de profil comme ses photos envoyées mais jamais utilisées partent au nettoyage. Ventes,
+  // lignes du tableur et comptabilité restent (historique de la paie), détachées du compte.
   avantSuppressionCompte: async (compteId, tx) => {
     await tx.bien.updateMany({ where: { compteId }, data: { compteId: null } });
     await tx.profil.deleteMany({ where: { compteId } });
-    // ses conversations disparaissent avec lui (des deux côtés, comme sur l'ancien site)
+    await tx.vente.updateMany({ where: { compteId }, data: { compteId: null } });
+    await tx.ligneTableur.updateMany({ where: { compteId }, data: { compteId: null } });
+    await tx.importCompta.updateMany({ where: { compteId }, data: { compteId: null } });
+    await tx.ecritureDot.updateMany({ where: { compteId }, data: { compteId: null } });
+    // ses conversations disparaissent avec lui, des deux côtés
     await tx.message.deleteMany({ where: { OR: [{ expediteurId: compteId }, { destinataireId: compteId }] } });
     await tx.statutMessagerie.deleteMany({ where: { compteId } });
     await tx.evenementAgenda.deleteMany({ where: { compteId } });
@@ -58,8 +64,6 @@ export const entreprise: Entreprise = {
   demarrage: async () => {
     planifierNettoyagePhotos();
     planifierTableur();
-    const purge = () => purgerReponses().catch(e => console.error('[rh]', e));
-    purge();
-    setInterval(purge, 24 * 3600e3).unref();
+    planifierPurge();
   },
 };

@@ -48,7 +48,7 @@
       <h3>Visiteurs du site</h3>
       <ul class="guide-liste">
         <li>Aucun cookie, aucun traceur ni pixel tiers, aucun outil de mesure d'audience.</li>
-        <li>Aucune ressource externe : les polices, images et scripts du site sont servis par le site lui-même. Seules les photos des biens viennent du service de stockage d'images de FlashbackFA (<code>storage.fbfa.fr</code>).</li>
+        <li>Aucune ressource externe : les polices, images et scripts du site sont servis par le site lui-même. Seules les photos des biens et de l'équipe viennent du service de stockage d'images de FlashbackFA (<code>storage.fbfa.fr</code>).</li>
         <li>Depuis l'ordinateur en jeu (FolkOS), la page charge en plus les petits scripts de l'ordinateur fournis par FlashbackFA (gestion du clavier et de la barre d'adresse).</li>
         <li>Votre adresse IP n'est retenue que quelques minutes, en mémoire, pour limiter le nombre de requêtes (protection contre les robots).</li>
         <li>La WebMap est affichée depuis un sous-domaine du site : c'est le serveur de Dynasty 8 qui va chercher la carte, si bien que votre adresse IP n'est pas transmise au service qui l'héberge.</li>
@@ -61,10 +61,12 @@
       <ul class="guide-liste">
         <li><strong>Compte</strong> : identifiant, pseudo et avatar Discord, surnom sur le serveur Discord de Dynasty 8, grade, dates de création, de validation et de dernière connexion. Aucun email, aucun mot de passe.</li>
         <li><strong>Cookie de session</strong> (<code>site.sid</code>) : posé à la connexion, valable 7 jours, illisible par un script. La session elle-même est conservée sur le serveur et effacée à la déconnexion.</li>
-        <li><strong>Profil public</strong> (page Équipe) : poste, spécialité, présentation et photo, si l'agent les renseigne.</li>
+        <li><strong>Profil public</strong> (page Équipe) : un agent n'y apparaît qu'une fois « Mon profil » enregistré, avec son nom RP, son grade et ce qu'il a renseigné (poste, spécialité, présentation, photo). Jamais son pseudo ni son identifiant Discord.</li>
         <li><strong>Dossier du personnel</strong> (Ressources humaines) : prénom et nom RP, identifiant employé, téléphone et RIB en jeu, grade, statut, dates d'arrivée et de départ. Téléphone et RIB ne sont visibles que des grades autorisés par la Direction.</li>
-        <li><strong>Activité de l'agence</strong> : annonces des biens, messages de la messagerie interne, agenda personnel (visible du seul agent concerné), ventes, locations et primes, comptabilité.</li>
-        <li><strong>Événements du bot Discord</strong> de l'agence (candidatures, ventes) : conservés 30 jours au plus.</li>
+        <li><strong>Activité de l'agence</strong> : annonces des biens, messagerie interne (messages gardés 6 mois), agenda personnel (visible du seul agent concerné, gardé un an), comptabilité (les 20 derniers relevés Tablettes).</li>
+        <li><strong>Ventes et locations</strong> reçues du bot de ventes (vendeur, client RP, bien, montant) : conservées sans limite, elles font l'historique des primes et de la paie.</li>
+        <li><strong>Candidatures</strong> reçues du bot Discord : les réponses au formulaire sont effacées dès que la candidature aboutit ou est écartée, et au plus tard après 30 jours ; la trace de la candidature (ticket, nom, identifiant Discord, résultat) est gardée un an.</li>
+        <li>Dans l'espace agents, les <strong>avatars Discord</strong> sont affichés depuis Discord (<code>cdn.discordapp.com</code>).</li>
       </ul>
     </div>
 

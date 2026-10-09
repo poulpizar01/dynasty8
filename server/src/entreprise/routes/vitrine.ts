@@ -48,16 +48,19 @@ vitrine.get('/api/biens', async (req, res) => {
   res.json({ biens: biens.map(bienPublic) });
 });
 
-// GET /api/equipe : agents validés, du grade le plus haut au plus bas
+// GET /api/equipe : agents validés qui ont rempli « Mon profil » (ils choisissent d'apparaître sur la vitrine), du grade
+// le plus haut au plus bas, sous leur nom RP — jamais leur pseudo Discord. Ni identifiant de compte : la page n'en a pas
+// besoin pour ouvrir une fiche.
 vitrine.get('/api/equipe', async (_req, res) => {
-  const comptes = await prisma.compte.findMany({ where: { statut: 'valide' }, select: { id: true, nom: true, pseudo: true, gradeCle: true } });
-  const profils = new Map((await prisma.profil.findMany({ where: { compteId: { in: comptes.map(c => c.id) } } })).map(p => [p.compteId, p]));
+  const profils = new Map((await prisma.profil.findMany()).map(p => [p.compteId, p]));
+  const comptes = (await prisma.compte.findMany({ where: { statut: 'valide', id: { in: [...profils.keys()] }, nom: { not: null } }, select: { id: true, nom: true, gradeCle: true } }))
+    .filter((c): c is typeof c & { nom: string } => !!c.nom?.trim());
   const position = (cle: string | null) => gradeDe(cle)?.position ?? Number.MAX_SAFE_INTEGER;
   const membres = comptes
-    .sort((a, b) => position(a.gradeCle) - position(b.gradeCle) || (a.nom ?? a.pseudo).localeCompare(b.nom ?? b.pseudo, 'fr', { sensitivity: 'base' }))
+    .sort((a, b) => position(a.gradeCle) - position(b.gradeCle) || a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }))
     .map(c => {
       const p = profils.get(c.id);
-      return { id: c.id, pseudo: c.nom ?? c.pseudo, poste: p?.poste || gradeDe(c.gradeCle)?.libelle || 'Agent immobilier', specialite: p?.specialite ?? '', bio: p?.bio ?? '', photo: p?.photo ?? '' };
+      return { pseudo: c.nom, poste: p?.poste || gradeDe(c.gradeCle)?.libelle || 'Agent immobilier', specialite: p?.specialite ?? '', bio: p?.bio ?? '', photo: p?.photo ?? '' };
     });
   res.json({ membres });
 });
