@@ -161,7 +161,7 @@ function actualiserVueAnnonces() {
 }
 
 async function supprimerBien(id, depuisModale = false) {
-  if (!await gestion.confirmer('Cette action est définitive et ne peut pas être annulée.', 'Supprimer cette annonce ?', 'Supprimer')) return;
+  if (!await gestion.confirmer('Cette action est définitive et ne peut pas être annulée.', 'Supprimer cette annonce ?', 'Supprimer l’annonce')) return;
   try {
     await socle.api(`/api/biens/${id}`, { method: 'DELETE' });
     if (depuisModale) fermerModaleBien();

@@ -2578,7 +2578,7 @@ section.section.serre {
 .entete-admin::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--d8-rule);
 }
-.entete-admin h2 { font-size: clamp(1.9rem, 3vw, 2.75rem); }
+.entete-admin h1, .entete-admin h2 { font-size: clamp(1.9rem, 3vw, 2.75rem); }
 .entete-admin p { color: var(--text-faint); }
 
 /* ---- indicateurs ---- */

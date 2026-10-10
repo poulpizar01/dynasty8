@@ -123,3 +123,42 @@ main.admin-contenu:focus { outline: none; }
 .agenda-legende-patrons { border-left-color: #e8534a; }
 .agenda-legende-direction { border-left-color: #8a7cf0; }
 .agenda-legende-tous { border-left-color: #3ccf7a; }
+
+/* titre de la page : un <h1> par page (lecteurs d'écran), à la taille des anciens titres de section */
+.admin-contenu h1 { font-size: clamp(1.9rem, 3vw, 2.75rem); line-height: 1.15; }
+
+/* Tableau en cartes sur téléphone (<table class="table-admin table-cartes">) : chaque ligne devient une carte, une
+   cellule porte son intitulé dans data-libelle ; les actions restent visibles sans défilement horizontal. */
+.table-admin td select { min-width: 150px; }
+@media (max-width: 640px) {
+  .table-cartes thead { display: none; }
+  .table-cartes, .table-cartes tbody, .table-cartes tr, .table-cartes td { display: block; width: 100%; }
+  .table-cartes tr { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; padding: 16px; border-bottom: 1px solid var(--border); }
+  .table-cartes td { padding: 0; border: none; min-width: 0; }
+  .table-cartes td:first-child, .table-cartes td[colspan], .table-cartes .table-cartes-actions { grid-column: 1 / -1; }
+  .table-cartes td[data-libelle]::before {
+    content: attr(data-libelle); display: block; margin-bottom: 4px; font-size: 0.75rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-faint);
+  }
+  .table-cartes td select { width: 100%; min-width: 0; }
+  .table-cartes .table-cartes-large { grid-column: 1 / -1; }   /* ex. un menu déroulant, lisible sur toute la largeur */
+  .table-cartes .table-cartes-actions:empty { display: none; }
+  .table-cartes .table-cartes-actions > * { display: flex; flex-wrap: wrap; gap: 8px; }
+}
+.rh-id-discord { font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+
+/* Lisibilité dans l'espace agents (aussi affiché dans l'ordinateur en jeu) : rien sous 12 px ; les majuscules espacées
+   restent au bouton doré principal, les autres boutons sont en casse normale (« Ouvrir la fiche » se lit, « OUVRIR LA
+   FICHE » s'épelle). La vitrine garde ses tailles (style.css). */
+.page-agents .btn { font-size: 12.5px; }
+.page-agents .btn-petit { font-size: 12px; }
+.page-agents .btn-fantome, .page-agents .btn-danger { text-transform: none; letter-spacing: 0.02em; font-size: 13.5px; }
+.page-agents .btn-fantome.btn-petit, .page-agents .btn-danger.btn-petit { font-size: 13px; }
+.page-agents .stat-libelle { font-size: 12px; letter-spacing: 0.1em; }
+.page-agents .admin-nav-groupe { font-size: 12px; letter-spacing: 0.16em; }
+.page-agents .admin-compte-grade { font-size: 0.75rem; }
+.page-agents .table-admin th, .page-agents .carte-table .table-admin th { font-size: 0.75rem; }
+.page-agents .admin-aide a { display: inline-block; padding: 4px 0; }
+.page-agents .puce { font-size: 0.75rem; }
+.page-agents .champ label { font-size: 12px; }
+.page-agents .agenda-entete-jour-date { font-size: 0.75rem; }

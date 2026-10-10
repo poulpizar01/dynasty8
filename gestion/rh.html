@@ -21,7 +21,7 @@
     <section id="panneau-rh">
       <div class="entete-admin">
         <div>
-          <h2 style="margin-bottom:2px;">Ressources humaines</h2>
+          <h1 style="margin-bottom:2px;">Ressources humaines</h1>
           <p style="margin:0;font-size:0.88rem;">La fiche de chaque employé : identité, grade et statut, repris automatiquement par les ventes, la DOT et les statistiques.</p>
         </div>
         <button type="button" class="btn btn-or cache" id="bouton-nouvel-employe">+ Ajouter un membre</button>
@@ -43,7 +43,7 @@
       <div class="annonces-outils">
         <div class="annonces-recherche">
           <span class="annonces-recherche-icone" aria-hidden="true"><svg class="ico"><use href="#ico-search"></use></svg></span>
-          <input type="search" id="recherche-employes" placeholder="Rechercher un nom, un ID, un pseudo Discord…">
+          <input type="search" id="recherche-employes" aria-label="Rechercher un employé" placeholder="Rechercher un nom, un ID, un pseudo Discord…">
         </div>
         <select id="filtre-rh-grade" aria-label="Filtrer par grade"><option value="">Tous les grades</option></select>
         <select id="filtre-rh-statut" aria-label="Filtrer par statut">
@@ -59,7 +59,7 @@
 
       <div id="rh-vide" class="etat-vide cache"><p>Aucun employé ne correspond à ces critères.</p></div>
       <div id="rh-resultat" style="overflow-x:auto;">
-        <table class="table-admin">
+        <table class="table-admin table-cartes">
           <thead>
             <tr><th>ID employé</th><th>Nom</th><th>Grade</th><th>Statut</th><th>Discord</th><th>Arrivée</th><th></th></tr>
           </thead>

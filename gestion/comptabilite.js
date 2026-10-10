@@ -137,7 +137,7 @@ async function modifierPalierPrime(id, patch) {
 }
 
 async function supprimerPalierPrime(id) {
-  const ok = await gestion.confirmer("Ce palier de prime sera définitivement supprimé.", "Supprimer ce palier ?");
+  const ok = await gestion.confirmer("Ce palier de prime sera définitivement supprimé.", "Supprimer ce palier ?", "Supprimer le palier");
   if (!ok) return;
   try {
     await socle.api(`/api/stats/baremes/${id}`, { method: "DELETE" });
@@ -264,7 +264,7 @@ async function chargerDotEcritures() {
 }
 
 async function supprimerEcritureDot(id) {
-  const ok = await gestion.confirmer("Cette ligne sera retirée du calcul du bénéfice imposable.", "Supprimer cette écriture ?");
+  const ok = await gestion.confirmer("Cette ligne sera retirée du calcul du bénéfice imposable.", "Supprimer cette écriture ?", "Supprimer l’écriture");
   if (!ok) return;
   try {
     await socle.api(`/api/compta/dot/ecritures/${id}`, { method: "DELETE" });
@@ -279,7 +279,7 @@ async function supprimerEcritureDot(id) {
 // le bouton équivalent de l'onglet Tablettes.
 async function reinitialiserEcrituresDot(type) {
   const libelle = type === "depense" ? "des dépenses déductibles" : "des retraits";
-  const ok = await gestion.confirmer(`Toutes les lignes ${libelle} seront supprimées. Cette action est irréversible.`, "Réinitialiser ce tableau ?");
+  const ok = await gestion.confirmer(`Toutes les lignes ${libelle} seront supprimées. Cette action est irréversible.`, "Réinitialiser ce tableau ?", "Tout supprimer");
   if (!ok) return;
   try {
     await socle.api(`/api/compta/dot/ecritures?type=${type}`, { method: "DELETE" });
@@ -511,7 +511,7 @@ function rendreTableCompta(colonnes, lignes, avecSuppression) {
 }
 
 async function supprimerLigneTablette(index, nom) {
-  const ok = await gestion.confirmer(`« ${nom} » sera retiré du relevé Tablettes. Les totaux (CA brut, DOT) seront recalculés sans cette ligne.`, "Retirer ce membre du relevé ?");
+  const ok = await gestion.confirmer(`« ${nom} » sera retiré du relevé Tablettes. Les totaux (CA brut, DOT) seront recalculés sans cette ligne.`, "Retirer ce membre du relevé ?", "Retirer du relevé");
   if (!ok) return;
   try {
     await socle.api(`/api/compta/tablettes/lignes/${index}`, { method: "DELETE", body: { nom } });
@@ -643,7 +643,9 @@ document.getElementById("bouton-enregistrer-import-tablette").addEventListener("
 document.getElementById("bouton-reinitialiser-tablette").addEventListener("click", async () => {
   const ok = await gestion.confirmer(
     "Le tableau affiché dans « Tablettes » sera vidé. Rien n'est perdu : cet ancien relevé reste conservé côté serveur, seul l'affichage redevient vide. Vous pourrez importer un nouveau relevé dès que vous le souhaitez.",
-    "Réinitialiser la feuille « Tablettes » ?"
+    "Réinitialiser la feuille « Tablettes » ?",
+    "Vider l’affichage",
+    { danger: false }   // rien n’est effacé côté serveur
   );
   if (!ok) return;
   try {

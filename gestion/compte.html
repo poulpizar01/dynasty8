@@ -21,7 +21,7 @@
   <main class="admin-contenu">
     <div class="entete-admin">
       <div>
-        <h2 style="margin-bottom:2px;">Mon profil</h2>
+        <h1 style="margin-bottom:2px;">Mon profil</h1>
         <p style="margin:0;font-size:0.88rem;">Votre nom RP et votre fiche publique, affichée sur la page « Notre équipe » du site.</p>
       </div>
     </div>
@@ -90,7 +90,7 @@
       catch (err) { gestion.message('zone-message', err.message); }
     });
     document.getElementById('supprimer').addEventListener('click', async () => {
-      if (!await gestion.confirmer('Votre compte sera définitivement effacé du site.', 'Supprimer votre compte ?', 'Supprimer')) return;
+      if (!await gestion.confirmer('Votre compte sera définitivement effacé du site.', 'Supprimer votre compte ?', 'Supprimer mon compte')) return;
       try { await socle.api('/api/moi', { method: 'DELETE' }); location.href = '/'; } catch (e) { gestion.message('zone-message', e.message); }
     });
   </script>

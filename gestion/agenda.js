@@ -408,7 +408,7 @@ document.getElementById("formulaire-evenement").addEventListener("submit", async
 document.getElementById("bouton-supprimer-evenement").addEventListener("click", async () => {
   const id = document.getElementById("evenement-id").value;
   if (!id) return;
-  const ok = await gestion.confirmer("Cette action est définitive et ne peut pas être annulée.", "Supprimer cet événement ?", "Supprimer");
+  const ok = await gestion.confirmer("Cette action est définitive et ne peut pas être annulée.", "Supprimer cet événement ?", "Supprimer l’événement");
   if (!ok) return;
   try {
     await socle.api("/api/agenda/" + id, { method: "DELETE" });

@@ -20,7 +20,7 @@
     <section>
       <div class="entete-admin">
         <div>
-          <h2 style="margin-bottom:2px;">Annonces</h2>
+          <h1 style="margin-bottom:2px;">Annonces</h1>
           <p style="margin:0;font-size:0.88rem;">Ajoutez, modifiez ou retirez les biens du catalogue.</p>
         </div>
         <button class="btn btn-or" id="bouton-nouveau-bien" type="button"><svg class="ico"><use href="#ico-plus"></use></svg> Nouvelle annonce</button>
@@ -31,14 +31,14 @@
       <div class="annonces-outils">
         <div class="annonces-recherche">
           <span class="annonces-recherche-icone" aria-hidden="true"><svg class="ico"><use href="#ico-search"></use></svg></span>
-          <input type="search" id="recherche-biens" placeholder="Rechercher un bien, une catégorie…">
+          <input type="search" id="recherche-biens" aria-label="Rechercher une annonce" placeholder="Rechercher un bien, une catégorie…">
         </div>
-        <select id="filtre-categorie">
+        <select id="filtre-categorie" aria-label="Filtrer par catégorie">
           <option value="">Toutes catégories</option>
           <option value="habitation">Habitation</option>
           <option value="garage">Garage</option>
         </select>
-        <select id="filtre-statut">
+        <select id="filtre-statut" aria-label="Filtrer par statut">
           <option value="">Tous statuts</option>
           <option value="visible">Visible</option>
           <option value="masquee">Masquée</option>

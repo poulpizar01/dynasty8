@@ -20,16 +20,16 @@ function profilEditeur(conteneur, { adresse, nom, apresEnregistrement }) {
       <form data-formulaire>
         <div class="champ">
           <label>Intitulé du poste</label>
-          <input type="text" maxlength="80" placeholder="Ex : Agent — Habitation" data-champ="poste">
+          <input type="text" maxlength="80" aria-label="Intitulé du poste" placeholder="Ex : Agent — Habitation" data-champ="poste">
           <p class="champ-aide">Affiché sous le nom, sur la page équipe du site. Vide : le grade.</p>
         </div>
         <div class="champ">
           <label>Spécialité</label>
-          <input type="text" maxlength="100" placeholder="Ex : Villas & Maisons" data-champ="specialite">
+          <input type="text" maxlength="100" aria-label="Spécialité" placeholder="Ex : Villas & Maisons" data-champ="specialite">
         </div>
         <div class="champ">
           <label>Biographie</label>
-          <textarea maxlength="1000" placeholder="Quelques lignes : parcours, ce que vous aimez chez Dynasty 8…" data-champ="bio"></textarea>
+          <textarea maxlength="1000" aria-label="Biographie" placeholder="Quelques lignes : parcours, ce que vous aimez chez Dynasty 8…" data-champ="bio"></textarea>
           <p class="champ-aide" data-compteur>0 / 1000</p>
         </div>
         <button type="submit" class="btn btn-or" data-enregistrer>Enregistrer le profil</button>

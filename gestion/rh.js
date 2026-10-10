@@ -57,18 +57,19 @@ function afficherEmployes() {
     const aCompleter = e.aCompleter ? ' <span class="puce puce-or" title="ID employé provisoire, ou prénom / nom manquant : à compléter dans la fiche.">à compléter</span>' : '';
     const statut = e.statut === 'actif' ? '<span class="puce puce-ok">Actif</span>'
       : `<span class="puce puce-masquee">Inactif</span>${e.dateDepart ? `<br><span class="champ-aide">parti le ${dateCourte(e.dateDepart)}</span>` : ''}`;
-    const discord = [e.discordPseudo, e.discordId].filter(Boolean).map(echapper).join('<br>') || '<span class="champ-aide">—</span>';
+    // pseudo d’abord ; l’ID (18 chiffres) en petit dessous : il sert à vérifier, pas à lire
+    const discord = [e.discordPseudo && echapper(e.discordPseudo), e.discordId && `<span class="champ-aide rh-id-discord">${echapper(e.discordId)}</span>`].filter(Boolean).join('<br>') || '<span class="champ-aide">—</span>';
     const bascule = e.statut === 'actif'
       ? (aDroitRh('desactiver') ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-desactiver="${e.id}">Désactiver</button>` : '')
       : (aDroitRh('reactiver') ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-reactiver="${e.id}">Réactiver</button>` : '');
     return `<tr>
-      <td>${echapper(e.idEmploye)}${e.idProvisoire ? '<br><span class="champ-aide">provisoire</span>' : ''}</td>
+      <td data-libelle="ID employé" style="white-space:nowrap;">${echapper(e.idEmploye)}${e.idProvisoire ? '<br><span class="champ-aide">provisoire</span>' : ''}</td>
       <td><strong>${echapper(e.nomComplet)}</strong>${aCompleter}</td>
-      <td>${echapper(e.gradeLibelle)}</td>
-      <td>${statut}</td>
-      <td>${discord}</td>
-      <td>${dateCourte(e.dateArrivee)}</td>
-      <td style="white-space:nowrap;"><button type="button" class="btn btn-fantome btn-petit" data-rh-fiche="${e.id}">${aDroitRh('modifier') ? 'Fiche / modifier' : 'Fiche'}</button> ${bascule}</td>
+      <td data-libelle="Grade">${echapper(e.gradeLibelle)}</td>
+      <td data-libelle="Statut">${statut}</td>
+      <td data-libelle="Discord">${discord}</td>
+      <td data-libelle="Arrivée">${dateCourte(e.dateArrivee)}</td>
+      <td class="table-cartes-actions"><div class="actions-ligne"><button type="button" class="btn btn-fantome btn-petit" data-rh-fiche="${e.id}">Ouvrir la fiche</button>${bascule}</div></td>
     </tr>`;
   }).join('');
   corps.querySelectorAll('[data-rh-fiche]').forEach(b => b.addEventListener('click', () => ouvrirFicheEmploye(Number(b.dataset.rhFiche))));
@@ -153,7 +154,7 @@ async function changerStatutEmploye(id, action) {
   const e = CACHE_EMPLOYES.find(x => x.id === id), nom = e ? e.nomComplet : 'Cet employé';
   const ok = action === 'desactiver'
     ? await gestion.confirmer(`${nom} quittera l'effectif actif, avec la date d'aujourd'hui comme date de départ. Sa fiche et tout son historique sont conservés, et il pourra être réactivé.`, 'Désactiver cet employé ?', 'Désactiver')
-    : await gestion.confirmer(`${nom} réintègre l'effectif actif ; sa date de départ est effacée.`, 'Réactiver cet employé ?', 'Réactiver');
+    : await gestion.confirmer(`${nom} réintègre l'effectif actif ; sa date de départ est effacée.`, 'Réactiver cet employé ?', 'Réactiver', { danger: false });
   if (!ok) return;
   try {
     await socle.api(`/api/rh/employes/${id}/${action}`, { method: 'POST', body: {} });
