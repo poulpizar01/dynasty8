@@ -53,6 +53,18 @@
           <div style="overflow-x:auto;">
             <table class="table-admin" id="table-tablette"></table>
           </div>
+          <!-- Paie à l'heure (stagiaires) : heures de service du relevé × taux horaire du grade (Rémunération), avec le
+               détail du calcul. Rempli à partir de GET /api/compta/tablettes (paie_horaire). -->
+          <div id="compta-paie-horaire" class="cache">
+            <h4 class="comptes-sous-titre" style="margin:26px 0 4px;">Paie à l'heure</h4>
+            <p class="champ-aide" id="compta-paie-horaire-aide" style="margin:0 0 10px;"></p>
+            <div style="overflow-x:auto;">
+              <table class="table-admin">
+                <thead><tr><th>Nom</th><th>Grade</th><th style="text-align:right;">Heures de service</th><th style="text-align:right;">Taux horaire</th><th>Détail</th><th style="text-align:right;">Montant</th></tr></thead>
+                <tbody id="corps-table-paie-horaire"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -69,7 +81,7 @@
         <div id="zone-message-parametres"></div>
 
         <h4 class="comptes-sous-titre" style="margin:26px 0 4px;">Par grade</h4>
-        <p class="champ-aide" style="margin:0 0 12px;">Les 3 interrupteurs sont indépendants : un grade peut toucher le salaire fixe, le salaire aux paliers, les deux, ou aucun des deux.</p>
+        <p class="champ-aide" style="margin:0 0 12px;">Les 3 interrupteurs sont indépendants : un grade peut toucher le salaire fixe, le salaire aux paliers, les deux, ou aucun des deux. Le taux horaire (en $ par heure, 0 = aucun) paie les heures de service du relevé Tablettes, en plus des paliers.</p>
         <div style="overflow-x:auto;">
           <table class="table-admin" id="table-remuneration-grades">
             <thead>
@@ -79,9 +91,10 @@
                 <th style="text-align:right;">Montant / semaine</th>
                 <th style="text-align:center;">Paliers ventes</th>
                 <th style="text-align:center;">Paliers locations</th>
+                <th style="text-align:right;">Taux horaire</th>
               </tr>
             </thead>
-            <tbody id="corps-table-remuneration-grades"><tr><td colspan="5">Chargement…</td></tr></tbody>
+            <tbody id="corps-table-remuneration-grades"><tr><td colspan="6">Chargement…</td></tr></tbody>
           </table>
         </div>
 

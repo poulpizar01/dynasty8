@@ -7,6 +7,7 @@ import { tousLesGrades } from '../../socle/droits.js';
 import { body, intParam, permission } from '../../socle/http.js';
 import { Refus, traiter } from '../refus.js';
 import { normaliserTexte } from '../texte.js';
+import { calculerPaieHoraire, normaliserNom, type GradeHoraire } from '../stats/paie-horaire.js';
 import { primesTableur, recapAvecPrimesTableur, remunerations } from '../stats/recap.js';
 import { semaines } from '../stats/ventes.js';
 
@@ -46,9 +47,27 @@ async function dernierReleve() {
 const enregistrerReleve = (colonnes: string[], lignes: string[][], compteId: number) =>
   prisma.importCompta.create({ data: { type: 'tablettes', colonnes, lignes, compteId } });
 
+// Paie à l'heure du relevé (stats/paie-horaire.ts) : taux horaire de chaque grade du site (Rémunération), retrouvé par sa
+// clé (fiche RH) comme par son libellé (colonne Rang du relevé), et grade lu dans les fiches RH.
+async function paieHoraire(colonnes: string[], lignes: string[][]) {
+  const [remu, employes] = await Promise.all([prisma.remunerationGrade.findMany(), prisma.employe.findMany({ select: { prenom: true, nom: true, gradeCle: true } })]);
+  const parCle = new Map(remu.map(r => [r.gradeCle, r.tauxHoraire]));
+  const taux = new Map<string, GradeHoraire>();
+  for (const g of tousLesGrades()) {
+    const t: GradeHoraire = { libelle: g.libelle, taux: parCle.get(g.cle) ?? 0 };
+    taux.set(g.cle, t);
+    taux.set(g.libelle, t);
+  }
+  return calculerPaieHoraire({ colonnes, lignes, taux, employes: employes.map(e => ({ prenom: e.prenom, nom: e.nom, grade: e.gradeCle })) });
+}
+
 compta.get('/api/compta/tablettes', ...gerer, async (_req, res) => {
   const r = await dernierReleve();
-  res.json({ import: r && { colonnes: r.colonnes, lignes: r.lignes, importe_le: r.importeLe, importe_par: r.importePar } });
+  res.json({
+    import: r && { colonnes: r.colonnes, lignes: r.lignes, importe_le: r.importeLe, importe_par: r.importePar },
+    // grades payés à l'heure (stagiaires) : heures de service × taux, ligne par ligne
+    paie_horaire: r ? await paieHoraire(r.colonnes, r.lignes) : null,
+  });
 });
 
 compta.post('/api/compta/tablettes', ...gerer, traiter(async (req, res) => {
@@ -136,6 +155,8 @@ compta.get('/api/compta/dot/salaries', ...gerer, traiter(async (req, res) => {
   const semaine = semaineDemandee(req.query.semaine);
   if (!semaine) throw new Refus('Le paramètre « semaine » est obligatoire (ex : S36-26).');
   const [agents, releve, primePour, remu] = await Promise.all([recapAvecPrimesTableur(semaine), dernierReleve(), primesTableur(), remunerations()]);
+  // paie à l'heure (stagiaires), par nom du relevé : ajoutée au salaire déclaré
+  const paieParNom = new Map(releve ? (await paieHoraire(releve.colonnes, releve.lignes)).lignes.map(p => [normaliserNom(p.nom), p.montant]) : []);
   const colonnes = minuscules(releve?.colonnes ?? []);
   const lignes = (releve?.lignes ?? []).filter(l => !estTotal(l));
   const iNom = indexColonne(colonnes, ALIAS_NOM), iRun = indexColonne(colonnes, ALIAS.run), iFacture = indexColonne(colonnes, ALIAS.facture), iVente = indexColonne(colonnes, ALIAS.vente), iRang = indexColonne(colonnes, ALIAS.rang);
@@ -146,10 +167,11 @@ compta.get('/api/compta/dot/salaries', ...gerer, traiter(async (req, res) => {
     const ligne = iNom === -1 ? undefined : lignes.find(l => { const n = norme(l[iNom]); return n !== '' && (n === norme(a.identiteRp) || n === norme(a.identite)); });
     if (ligne) utilisees.add(ligne);
     const run = ligne ? valeur(ligne, iRun) : 0, facture = ligne ? valeur(ligne, iFacture) : 0, vente = ligne ? valeur(ligne, iVente) : 0;
+    const paie = ligne ? paieParNom.get(normaliserNom(ligne[iNom])) ?? 0 : 0;
     return {
       employeId: a.employeId, idEmploye: a.idEmploye, statut: a.statut, identite: a.identite, identiteRp: a.identiteRp, grade: a.grade,
       run, facture, vente, caTotalRealise: run + facture + vente, trouveDansTablette: !!ligne,
-      salaireFixe: a.salaireFixe, primeTotale: a.primeTotale, salaireTotal: (a.salaireFixe || 0) + (a.primeTotale || 0),
+      salaireFixe: a.salaireFixe, primeTotale: a.primeTotale, paieHoraire: paie, salaireTotal: (a.salaireFixe || 0) + (a.primeTotale || 0) + paie,
     };
   });
   // Toute personne du relevé sans fiche RH active est ajoutée : si elle a facturé, elle doit figurer dans la
@@ -164,7 +186,8 @@ compta.get('/api/compta/dot/salaries', ...gerer, traiter(async (req, res) => {
       const r = remu(gradeParLibelle.get(normaliserTexte(rang).replace(/-/g, ' ')) ?? gradeParLibelle.get(normaliserTexte(rang)));
       const salaireFixe = r.salaireActif ? r.salaireFixe ?? 0 : 0, primeTotale = primePour(null, nom).primeTotale;
       const run = valeur(ligne, iRun), facture = valeur(ligne, iFacture), vente = valeur(ligne, iVente);
-      resultat.push({ identite: nom, identiteRp: nom, grade: rang || '—', run, facture, vente, caTotalRealise: run + facture + vente, trouveDansTablette: true, horsReferentiel: true, salaireFixe, primeTotale, salaireTotal: salaireFixe + primeTotale });
+      const paie = paieParNom.get(normaliserNom(nom)) ?? 0;
+      resultat.push({ identite: nom, identiteRp: nom, grade: rang || '—', run, facture, vente, caTotalRealise: run + facture + vente, trouveDansTablette: true, horsReferentiel: true, salaireFixe, primeTotale, paieHoraire: paie, salaireTotal: salaireFixe + primeTotale + paie });
     }
   }
   res.json({ agents: resultat, tabletteTrouvee: !!releve });

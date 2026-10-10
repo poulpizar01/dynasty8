@@ -45,13 +45,14 @@ async function chargerRemuneration() {
         <td style="text-align:right;"><input type="number" class="table-input" min="0" step="1000" style="text-align:right;max-width:160px;" data-salaire-montant="${echapper(g.grade)}" value="${g.salaireFixe}"></td>
         <td style="text-align:center;">${switchRemunerationHtml("data-prime-vente-active", g.grade, g.primeVenteActive)}</td>
         <td style="text-align:center;">${switchRemunerationHtml("data-prime-location-active", g.grade, g.primeLocationActive)}</td>
+        <td style="text-align:right;"><input type="number" class="table-input" min="0" step="100" style="text-align:right;max-width:130px;" data-taux-horaire="${echapper(g.grade)}" value="${g.tauxHoraire || 0}" aria-label="Taux horaire de ${echapper(g.libelle)}"></td>
       </tr>`).join("");
     cablerRemunerationGrades();
 
     rendreBaremesPrimes("vente", r.baremesVentes);
     rendreBaremesPrimes("location", r.baremesLocations);
   } catch (e) {
-    document.getElementById("corps-table-remuneration-grades").innerHTML = `<tr><td colspan="5">Erreur de chargement.</td></tr>`;
+    document.getElementById("corps-table-remuneration-grades").innerHTML = `<tr><td colspan="6">Erreur de chargement.</td></tr>`;
     gestion.message("zone-message-parametres", "Impossible de charger les réglages de rémunération : " + e.message);
   }
 }
@@ -66,6 +67,17 @@ function cablerRemunerationGrades() {
   });
   corps.querySelectorAll("[data-prime-location-active]").forEach((el) => {
     el.addEventListener("change", () => modifierGradeRemuneration(el.dataset.primeLocationActive, { primeLocationActive: el.checked }));
+  });
+  corps.querySelectorAll("[data-taux-horaire]").forEach((el) => {
+    el.addEventListener("change", () => {
+      const val = el.value === "" ? 0 : Number(el.value);
+      if (!isFinite(val) || val < 0) {
+        gestion.message("zone-message-parametres", "Le taux horaire doit être un nombre positif.");
+        chargerRemuneration();
+        return;
+      }
+      modifierGradeRemuneration(el.dataset.tauxHoraire, { tauxHoraire: val });
+    });
   });
   corps.querySelectorAll("[data-salaire-montant]").forEach((el) => {
     el.addEventListener("change", () => {
@@ -521,6 +533,26 @@ function formaterDateHeureCompta(brut) {
   );
 }
 
+// Paie à l'heure (server/src/entreprise/stats/paie-horaire.ts) : une ligne par membre d'un grade payé à l'heure, avec
+// le calcul écrit en toutes lettres.
+function afficherPaieHoraire(p) {
+  const bloc = document.getElementById("compta-paie-horaire");
+  if (!p || !p.lignes || !p.lignes.length) { bloc.classList.add("cache"); return; }
+  bloc.classList.remove("cache");
+  document.getElementById("compta-paie-horaire-aide").textContent = p.colonneHeures
+    ? `Heures lues dans la colonne « ${p.colonneHeures} » du relevé, payées au taux horaire du grade (Rémunération), en plus des paliers. Incluses dans le salaire de la DOT.`
+    : "Le relevé n'a pas de colonne « Heures de service » : impossible de calculer la paie à l'heure.";
+  const heures = (min) => `${Math.floor(min / 60)}h${String(min % 60).padStart(2, "0")}`;
+  document.getElementById("corps-table-paie-horaire").innerHTML = p.lignes.map((l) => `<tr>
+      <td>${echapper(l.nom)}</td>
+      <td>${echapper(l.grade)}${l.gradeSource === "releve" ? ' <span class="champ-aide" title="Sans fiche RH à ce nom : grade lu dans la colonne Rang du relevé">*</span>' : ""}</td>
+      <td style="text-align:right;">${l.lisible ? heures(l.minutes) : `<span class="puce puce-or" title="Durée illisible : comptée 0 $">${echapper(l.heures || "vide")}</span>`}</td>
+      <td style="text-align:right;">${formaterArgentStats(l.taux)} / h</td>
+      <td class="champ-aide">${l.lisible ? `${l.minutes} min ÷ 60 × ${formaterArgentStats(l.taux)}` : "durée illisible"}</td>
+      <td style="text-align:right;"><strong>${formaterArgentStats(l.montant)}</strong></td>
+    </tr>`).join("") + `<tr class="ligne-total"><td colspan="5">Total paie à l'heure</td><td style="text-align:right;"><strong>${formaterArgentStats(p.total)}</strong></td></tr>`;
+}
+
 async function chargerTablette() {
   gestion.message("zone-message-tablette", "");
   try {
@@ -532,6 +564,7 @@ async function chargerTablette() {
       vide.classList.remove("cache");
       resultat.classList.add("cache");
       boutonReset.classList.add("cache");
+      afficherPaieHoraire(null);
       return;
     }
     vide.classList.add("cache");
@@ -544,6 +577,7 @@ async function chargerTablette() {
     table.querySelectorAll(".compta-supprimer-ligne").forEach((btn) => {
       btn.addEventListener("click", () => supprimerLigneTablette(Number(btn.dataset.index), btn.dataset.nom));
     });
+    afficherPaieHoraire(reponse.paie_horaire);
   } catch (e) {
     gestion.message("zone-message-tablette", "Impossible de charger les données : " + e.message);
   }

@@ -234,6 +234,7 @@ model RemunerationGrade {
   salaireActif        Boolean @default(false) @map("salaire_actif")
   primeVenteActive    Boolean @default(true) @map("prime_vente_active")
   primeLocationActive Boolean @default(true) @map("prime_location_active")
+  tauxHoraire         Int     @default(0) @map("taux_horaire") // $ par heure de service (relevé Tablettes) ; 0 = pas de paie à l'heure
 
   @@map("remunerations_grades")
 }

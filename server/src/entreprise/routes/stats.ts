@@ -92,7 +92,7 @@ stats.get('/api/stats/remuneration', ...compta, async (_req, res) => {
   res.json({
     grades: tousLesGrades().map(g => {
       const r = parGrade.get(g.cle);
-      return { grade: g.cle, libelle: g.libelle, couleur: g.couleur, salaireFixe: r?.salaireFixe ?? 0, salaireActif: r?.salaireActif ?? false, primeVenteActive: r?.primeVenteActive ?? true, primeLocationActive: r?.primeLocationActive ?? true };
+      return { grade: g.cle, libelle: g.libelle, couleur: g.couleur, salaireFixe: r?.salaireFixe ?? 0, salaireActif: r?.salaireActif ?? false, primeVenteActive: r?.primeVenteActive ?? true, primeLocationActive: r?.primeLocationActive ?? true, tauxHoraire: r?.tauxHoraire ?? 0 };
     }),
     baremesVentes: baremes.filter(b => b.type === 'vente').map(({ id, seuil, montant }) => ({ id, seuil, montant })),
     baremesLocations: baremes.filter(b => b.type === 'location').map(({ id, seuil, montant }) => ({ id, seuil, montant })),
@@ -107,6 +107,11 @@ stats.patch('/api/stats/remuneration/grades/:cle', ...compta, traiter(async (req
     const n = b.salaireFixe === null || b.salaireFixe === '' ? 0 : Number(b.salaireFixe);
     if (!Number.isFinite(n) || n < 0 || n > 2_147_483_647) throw new Refus('Le montant du salaire doit être un nombre positif.');
     data.salaireFixe = Math.round(n);
+  }
+  if (b.tauxHoraire !== undefined) {
+    const n = b.tauxHoraire === null || b.tauxHoraire === '' ? 0 : Number(b.tauxHoraire);
+    if (!Number.isFinite(n) || n < 0 || n > 10_000_000) throw new Refus('Le taux horaire doit être un nombre positif.');
+    data.tauxHoraire = Math.round(n);
   }
   for (const c of ['salaireActif', 'primeVenteActive', 'primeLocationActive'] as const) if (b[c] !== undefined) data[c] = b[c] === true;
   if (!Object.keys(data).length) throw new Refus('Rien à modifier.');
