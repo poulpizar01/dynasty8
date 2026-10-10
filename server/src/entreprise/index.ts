@@ -2,6 +2,7 @@
 // Tout src/entreprise/ est libre : ajouter des routes (routes/), des modules métier, des tâches planifiées.
 import type { Entreprise } from '../socle/contrat.js';
 import { carte, relaisCarte } from './carte.js';
+import { apparence } from './apparence.js';
 import { parametres } from './parametres.js';
 import { planifierNettoyagePhotos } from './photos.js';
 import { planifierPurge } from './purge.js';
@@ -33,7 +34,8 @@ export const entreprise: Entreprise = {
     webmap: 'parametres',   // réservée à la Direction, comme sur l'ancien espace agents
   },
 
-  routes: [vitrine, parametres, biens, profils, messagerie, agenda, rh, stats, compta],
+  // apparence en premier : elle répond sur les adresses des images de la marque, avant le fichier livré
+  routes: [apparence, vitrine, parametres, biens, profils, messagerie, agenda, rh, stats, compta],
 
   // WebMap : relayée sur son sous-domaine, servi à part du site (carte.ts) ; la vitrine l'affiche dans une iframe (https
   // seulement : en dev, l'iframe est refusée, la carte s'ouvre en pleine page)
@@ -55,6 +57,7 @@ export const entreprise: Entreprise = {
     await tx.ligneTableur.updateMany({ where: { compteId }, data: { compteId: null } });
     await tx.importCompta.updateMany({ where: { compteId }, data: { compteId: null } });
     await tx.ecritureDot.updateMany({ where: { compteId }, data: { compteId: null } });
+    await tx.apparenceImage.updateMany({ where: { compteId }, data: { compteId: null } });
     // ses conversations disparaissent avec lui, des deux côtés
     await tx.message.deleteMany({ where: { OR: [{ expediteurId: compteId }, { destinataireId: compteId }] } });
     await tx.statutMessagerie.deleteMany({ where: { compteId } });

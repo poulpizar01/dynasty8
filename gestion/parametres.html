@@ -29,6 +29,14 @@
       <div id="champs"></div>
       <button type="submit" class="btn btn-or" id="enregistrer">Enregistrer les réglages</button>
     </form>
+
+    <!-- Apparence : images de la marque (serveur : entreprise/apparence.ts). Remplacer envoie l'image sur le stockage ;
+         Rétablir remet l'image livrée avec le site. -->
+    <h3 class="comptes-sous-titre" style="margin-top:40px;">🎨 Apparence</h3>
+    <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">Les images de la marque, sur les pages publiques comme dans l'espace agents. Une image remplacée s'affiche partout dès l'enregistrement (quelques minutes pour les visiteurs déjà venus) ; « Rétablir » remet l'image d'origine. Gardez les proportions de l'image d'origine pour qu'elle ne soit pas déformée.</p>
+    <div id="zone-message-apparence"></div>
+    <div class="apparence-grille" id="apparence"></div>
+    <input type="file" id="apparence-fichier" accept="image/png,image/jpeg,image/webp" class="cache">
   </main>
 
   <script>
@@ -59,7 +67,54 @@
     async function charger() {
       reglages = (await socle.api('/api/parametres')).reglages;
       afficher();
+      chargerApparence();
     }
+
+    // ---- apparence ----
+    let imageVisee = null;
+    async function chargerApparence() {
+      try {
+        const r = await socle.api('/api/apparence');
+        if (!r.stockage) gestion.message('zone-message-apparence', 'Le stockage des images n’est pas configuré sur le serveur : les images d’origine restent en place.');
+        $('apparence').innerHTML = r.images.map(i => `
+          <div class="apparence-carte">
+            <div class="apparence-apercu"><img src="${echapper(i.apercu)}?v=${i.majLe ? new Date(i.majLe).getTime() : 0}" alt=""></div>
+            <div class="apparence-infos">
+            <strong>${echapper(i.libelle)}</strong>${i.personnalisee ? ' <span class="puce puce-or">Remplacée</span>' : ''}
+            <p class="champ-aide">${echapper(i.aide)} Proportions d’origine : ${i.largeur} × ${i.hauteur}.</p>
+            <div class="apparence-actions">
+              <button type="button" class="btn btn-fantome btn-petit" data-remplacer="${echapper(i.cle)}" ${r.stockage ? '' : 'disabled'}>Remplacer</button>
+              ${i.personnalisee ? `<button type="button" class="btn btn-fantome btn-petit" data-retablir="${echapper(i.cle)}">Rétablir</button>` : ''}
+            </div>
+            </div>
+          </div>`).join('');
+      } catch (e) { gestion.message('zone-message-apparence', e.message); }
+    }
+    $('apparence').addEventListener('click', async e => {
+      const remplacer = e.target.closest('[data-remplacer]'), retablir = e.target.closest('[data-retablir]');
+      if (remplacer) { imageVisee = remplacer.dataset.remplacer; $('apparence-fichier').click(); }
+      if (retablir) {
+        if (!await gestion.confirmer('L’image d’origine du site reviendra partout.', 'Rétablir cette image ?', 'Rétablir')) return;
+        try { await socle.api(`/api/apparence/${encodeURIComponent(retablir.dataset.retablir)}`, { method: 'DELETE' }); gestion.message('zone-message-apparence', 'Image d’origine rétablie.', true); chargerApparence(); }
+        catch (err) { gestion.message('zone-message-apparence', err.message); }
+      }
+    });
+    $('apparence-fichier').addEventListener('change', async e => {
+      const fichier = e.target.files?.[0];
+      e.target.value = '';
+      if (!fichier || !imageVisee) return;
+      if (fichier.size > 15 * 1024 * 1024) { gestion.message('zone-message-apparence', 'Image trop lourde (15 Mo max).'); return; }
+      const corps = new FormData();
+      corps.append('image', fichier);
+      gestion.message('zone-message-apparence', 'Envoi en cours…', true);
+      try {
+        const r = await fetch(`/api/apparence/${encodeURIComponent(imageVisee)}`, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' }, body: corps });
+        const data = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(data?.error || 'L’envoi de l’image a échoué.');
+        gestion.message('zone-message-apparence', data.avertissement ? `Image remplacée. ${data.avertissement}` : 'Image remplacée : elle s’affiche partout.', !data.avertissement);
+        chargerApparence();
+      } catch (err) { gestion.message('zone-message-apparence', err.message); }
+    });
 
     $('form').addEventListener('submit', async e => {
       e.preventDefault();

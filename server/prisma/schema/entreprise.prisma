@@ -348,3 +348,17 @@ model BaremeImposition {
 
   @@map("dot_bareme_imposition")
 }
+
+// Images de la marque remplacées dans Paramètres → Apparence (apparence.ts) : une ligne par image réglée ; sans ligne,
+// l'image livrée avec le site est servie. Les deux fichiers (grande version, miniature) sont sur le stockage.
+model ApparenceImage {
+  cle      String   @id @db.VarChar(20) // logo, embleme, lettrage, icone, icone_mobile, partage
+  cleImage String   @map("cle_image") @db.VarChar(200)
+  url      String   @db.VarChar(512)
+  cleMini  String   @map("cle_mini") @db.VarChar(200)
+  urlMini  String   @map("url_mini") @db.VarChar(512)
+  compteId Int?     @map("compte_id") // qui l'a remplacée ; null si son compte a été supprimé
+  majLe    DateTime @default(now()) @updatedAt @map("maj_le") @db.Timestamptz(6)
+
+  @@map("apparence_images")
+}
