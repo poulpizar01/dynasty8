@@ -16,13 +16,10 @@
 //   - message relu : ignoré (ID service déjà connu).
 // Rien n'est deviné : un message sans « ID service » ni titre reconnu est ignoré. Seuls les messages de bots et de
 // webhooks sont lus : un membre ne peut pas imiter une prise de service en écrivant dans le salon.
-import { Router } from 'express';
 import { config } from '../socle/config.js';
 import { appelBot, ErreurDiscord } from '../socle/discord.js';
 import { prisma } from '../socle/db.js';
-import { permission, valide } from '../socle/http.js';
 import { entierRegle, parametre } from './parametres.js';
-import { nomComplet } from './rh.js';
 import { lireEmbedService, normaliser, type Embed, type EvenementService } from './services-messages.js';
 
 const PAGES_MAX_PAR_PASSE = 10;   // 1 000 messages par minute au plus
@@ -112,11 +109,11 @@ const ecrireEtat = (data: { statut: string; erreur?: string; dernierMessageId?: 
   return prisma.serviceEtat.upsert({ where: { id: 1 }, create: { id: 1, ...champs }, update: champs });
 };
 
-const reglee = () => !!config.discord.botToken && /^\d{15,21}$/.test(parametre('services_salon_id'));
+export const lectureReglee = () => !!config.discord.botToken && /^\d{15,21}$/.test(parametre('services_salon_id'));
 
 // une passe : lit les nouveaux messages, les enregistre, ferme les oubliés
 async function lireServices(): Promise<void> {
-  if (!reglee()) return;
+  if (!lectureReglee()) return;
   const salonId = parametre('services_salon_id');
   const etat = await prisma.serviceEtat.findUnique({ where: { id: 1 } });
   // salon changé dans Paramètres : on repart de ses derniers messages
@@ -161,30 +158,3 @@ export function planifierServices(): void {
   setTimeout(run, 30_000).unref();
   setInterval(run, 60_000).unref();
 }
-
-// ---- routes ----
-export const services = Router();
-
-// qui est en service, depuis quand (encadré de la barre latérale) : tout compte validé
-services.get('/api/services/en-cours', ...valide, async (_req, res) => {
-  const ouverts = await prisma.service.findMany({ where: { fin: null }, orderBy: { debut: 'asc' }, take: 100 });
-  const fiches = new Map((await prisma.employe.findMany({ where: { id: { in: ouverts.map(o => o.employeId).filter((x): x is number => x !== null) } } })).map(e => [e.id, e]));
-  res.json({
-    regle: reglee(),
-    enService: ouverts.map(o => { const f = o.employeId ? fiches.get(o.employeId) : undefined; return { nom: f ? nomComplet(f) : o.employeNom, depuis: o.debut, mode: o.mode }; }),
-  });
-});
-
-// état de la lecture (Paramètres) : dernière passe, erreur, anomalies récentes
-services.get('/api/services/etat', ...permission('parametres'), async (_req, res) => {
-  const [etat, anomalies, enService] = await Promise.all([
-    prisma.serviceEtat.findUnique({ where: { id: 1 } }),
-    prisma.service.findMany({ where: { anomalie: { not: '' } }, orderBy: [{ majLe: 'desc' }, { id: 'desc' }], take: 10, select: { employeNom: true, debut: true, fin: true, causeFin: true, anomalie: true } }),
-    prisma.service.count({ where: { fin: null } }),
-  ]);
-  res.json({
-    jetonPresent: !!config.discord.botToken, salonRegle: !!parametre('services_salon_id'), clotureHeures: entierRegle('services_cloture_heures'),
-    etat: etat && { derniereLecture: etat.derniereLecture, statut: etat.statut, erreur: etat.erreur, nbLus: etat.nbLus, nbReconnus: etat.nbReconnus },
-    enService, anomalies,
-  });
-});

@@ -2,18 +2,19 @@
 // Tout src/entreprise/ est libre : ajouter des routes (routes/), des modules métier, des tâches planifiées.
 import type { Entreprise } from '../socle/contrat.js';
 import { carte, relaisCarte } from './carte.js';
-import { apparence } from './apparence.js';
 import { PARAMETRES } from './parametres.js';
 import { planifierNettoyagePhotos } from './photos.js';
 import { planifierPurge } from './purge.js';
 import { recevoirCandidature } from './rh.js';
-import { planifierServices, services } from './services.js';
+import { planifierServices } from './services.js';
 import { agenda } from './routes/agenda.js';
+import { apparence } from './routes/apparence.js';
 import { biens } from './routes/biens.js';
 import { compta } from './routes/compta.js';
 import { messagerie } from './routes/messagerie.js';
 import { profils } from './routes/profils.js';
 import { rh } from './routes/rh.js';
+import { services } from './routes/services.js';
 import { stats } from './routes/stats.js';
 import { planifierTableur } from './stats/tableur.js';
 import { vitrine } from './routes/vitrine.js';

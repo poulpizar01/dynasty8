@@ -10,12 +10,12 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Router, type Request } from 'express';
-import { config } from '../socle/config.js';
-import { prisma } from '../socle/db.js';
-import { permission } from '../socle/http.js';
-import { enregistrerImage, recevoirImage, retirerImage } from '../socle/images.js';
-import { storage } from '../socle/storage.js';
-import { Refus, traiter } from './refus.js';
+import { config } from '../../socle/config.js';
+import { prisma } from '../../socle/db.js';
+import { permission } from '../../socle/http.js';
+import { enregistrerImage, recevoirImage, retirerImage } from '../../socle/images.js';
+import { storage } from '../../socle/storage.js';
+import { Refus, traiter } from '../refus.js';
 
 // largeur / hauteur : proportions de l'image livrée ; une image très différente serait déformée (animations de l'accueil)
 export const IMAGES_MARQUE = [
