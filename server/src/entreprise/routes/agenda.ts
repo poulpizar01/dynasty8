@@ -9,6 +9,7 @@ import { Router, type Request } from 'express';
 import type { EvenementAgenda } from '../../generated/prisma/client.js';
 import { config } from '../../socle/config.js';
 import { prisma } from '../../socle/db.js';
+import { appelBot, ErreurDiscord, posterMessage } from '../../socle/discord.js';
 import { peut } from '../../socle/droits.js';
 import { body, entier, intParam, text, valide } from '../../socle/http.js';
 import { choisirTicket, droitsAgenda, estVisibilite, LIBELLES, PARTAGEES, parisVersDate, VISIBILITES, type DroitsAgenda, type Visibilite } from '../agenda-regles.js';
@@ -53,28 +54,25 @@ function lire(b: Record<string, unknown>) {
 }
 
 // ---- ticket Discord de la personne ----
-const API_DISCORD = 'https://discord.com/api/v10';
-async function discord(methode: 'GET' | 'POST', chemin: string, corps?: unknown): Promise<unknown> {
-  let r: Response;
-  try {
-    r = await fetch(API_DISCORD + chemin, {
-      method: methode, signal: AbortSignal.timeout(10_000),
-      headers: { Authorization: `Bot ${config.discord.botToken}`, 'Content-Type': 'application/json' },
-      body: corps === undefined ? undefined : JSON.stringify(corps),
-    });
-  } catch { throw new Refus('Discord ne répond pas : l’événement n’a pas été créé. Réessayez dans un instant.', 502); }
-  if (r.status === 401) throw new Refus('Le jeton du bot Discord (DISCORD_BOT_TOKEN) est refusé : l’événement n’a pas été créé. Prévenez la personne qui gère le serveur du site.', 503);
-  if (r.status === 403) throw new Refus('Le bot n’a pas le droit de voir les salons ou d’écrire dans ce ticket (« Voir le salon », « Envoyer des messages ») : l’événement n’a pas été créé.', 502);
-  if (r.status === 429) throw new Refus('Discord demande de ralentir : réessayez dans un instant.', 503);
-  if (!r.ok) throw new Refus(`Discord a refusé la demande (HTTP ${r.status}) : l’événement n’a pas été créé.`, 502);
-  return r.json();
+// erreur de Discord (socle/discord.ts) → refus lisible par le créateur : rien n'est créé
+async function discord<T>(appel: () => Promise<T>): Promise<T> {
+  try { return await appel(); }
+  catch (e) {
+    if (!(e instanceof ErreurDiscord)) throw e;
+    const cause = e.statut === 0 ? 'Discord ne répond pas'
+      : e.statut === 401 ? 'Le jeton du bot Discord (DISCORD_BOT_TOKEN) est refusé — prévenez la personne qui gère le serveur du site'
+      : e.statut === 403 ? 'Le bot n’a pas le droit de voir les salons ou d’écrire dans ce ticket (« Voir le salon », « Envoyer des messages », « Intégrer des liens »)'
+      : e.statut === 429 ? 'Discord demande de ralentir' : `Discord a refusé la demande (HTTP ${e.statut})`;
+    const reessayer = e.statut === 0 || e.statut === 429 ? ' Réessayez dans un instant.' : '';
+    throw new Refus(`${cause} : l’événement n’a pas été créé.${reessayer}`, e.statut === 401 || e.statut === 429 ? 503 : 502);
+  }
 }
 
 async function posterDansTicket(salonId: string, discordId: string, ev: { titre: string; jour: string; heureDebut: string; heureFin: string; notes: string }, auteur: string): Promise<string | null> {
   const debut = Math.floor(parisVersDate(ev.jour, ev.heureDebut).getTime() / 1000), fin = Math.floor(parisVersDate(ev.jour, ev.heureFin).getTime() / 1000);
-  const message = await discord('POST', `/channels/${salonId}/messages`, {
+  // posterMessage : seule la personne est notifiée, quoi que contienne le texte
+  return discord(() => posterMessage(salonId, {
     content: `<@${discordId}>`,
-    allowed_mentions: { users: [discordId] },   // seule la personne est mentionnée, quoi que contienne le texte
     embeds: [{
       title: `📅 ${ev.titre}`.slice(0, 256),
       description: ev.notes ? ev.notes.slice(0, 2000) : undefined,
@@ -82,8 +80,7 @@ async function posterDansTicket(salonId: string, discordId: string, ev: { titre:
       fields: [{ name: 'Début', value: `<t:${debut}:F>`, inline: true }, { name: 'Fin', value: `<t:${fin}:t>`, inline: true }],
       footer: { text: `Agenda — ajouté par ${auteur}`.slice(0, 2048) },
     }],
-  }) as { id?: unknown } | null;
-  return message && /^\d{15,22}$/.test(String(message.id)) ? String(message.id) : null;
+  }, [discordId]));
 }
 
 // ---- routes ----
@@ -135,7 +132,7 @@ agenda.post('/api/agenda', ...valide, traiter(async (req, res) => {
       const categories = idsRegles('agenda_categories_tickets');
       if (!config.discord.botToken) throw new Refus('Envoi dans les tickets non configuré sur le serveur (DISCORD_BOT_TOKEN du .env) : l’événement n’a pas été créé.', 503);
       if (!categories.length) throw new Refus('Aucune catégorie de tickets n’est réglée dans Paramètres → Agenda partagé : l’événement n’a pas été créé.', 503);
-      const ticket = choisirTicket(await discord('GET', `/guilds/${config.discord.guildId}/channels`), fiche.discordId, categories);
+      const ticket = choisirTicket(await discord(() => appelBot('GET', `/guilds/${config.discord.guildId}/channels`)),fiche.discordId, categories);
       if (!ticket) throw new Refus(`Aucun ticket ouvert par ${nom} n’a été trouvé dans les catégories réglées : l’événement n’a pas été créé. Vérifiez que ${nom} a bien un ticket ouvert.`, 409);
       cible.discordSalonId = ticket;
       cible.discordMessageId = await posterDansTicket(ticket, fiche.discordId, { ...d, jour: String(b.jour) }, auteur);

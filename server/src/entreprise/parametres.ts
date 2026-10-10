@@ -6,10 +6,9 @@
 // Les liens du crédit Roxwood Network (pied de page, « Découvrir nos offres ») ne sont PAS réglables : ils restent
 // écrits dans les pages.
 import { Router } from 'express';
-import { isIP } from 'node:net';
+import { hoteInterdit } from '../socle/adresses.js';
 import { body, permission } from '../socle/http.js';
 import { definirReglage, reglage } from '../socle/reglages.js';
-import { adresseInterdite } from '../socle/telechargement.js';
 
 type Type = 'origine' | 'url' | 'sheet' | 'snowflake' | 'snowflakes' | 'entier';
 type Definition = { cle: string; groupe: 'prive' | 'services' | 'agenda' | 'public'; type: Type; libelle: string; aide: string; min?: number; max?: number; defaut?: number };
@@ -60,8 +59,8 @@ export const entierRegle = (cle: string): number => {
 // Le serveur va chercher la WebMap pour le compte du visiteur : jamais lui-même ni un réseau privé.
 function hoteInterne(hote: string): boolean {
   const h = hote.toLowerCase().replace(/^\[|\]$/g, '');
-  if (h === 'localhost' || /\.(localhost|local|internal)$/.test(h) || !h.includes('.')) return true;
-  return isIP(h) ? adresseInterdite(h) : false;
+  // adresse IP interne, localhost (socle) ; en plus, noms qui ne sortent pas du réseau local
+  return hoteInterdit(h) || /\.(local|internal)$/.test(h) || (!h.includes('.') && !h.includes(':'));
 }
 // lien de partage Google Sheets (ou identifiant seul) → { id, gid }
 export function lireLienSheet(valeur: string): { id: string; gid: string } | null {

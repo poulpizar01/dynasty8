@@ -18,29 +18,25 @@
 // webhooks sont lus : un membre ne peut pas imiter une prise de service en écrivant dans le salon.
 import { Router } from 'express';
 import { config } from '../socle/config.js';
+import { appelBot, ErreurDiscord } from '../socle/discord.js';
 import { prisma } from '../socle/db.js';
 import { permission, valide } from '../socle/http.js';
 import { entierRegle, parametre } from './parametres.js';
 import { nomComplet } from './rh.js';
 import { lireEmbedService, normaliser, type Embed, type EvenementService } from './services-messages.js';
 
-const API_DISCORD = 'https://discord.com/api/v10';
 const PAGES_MAX_PAR_PASSE = 10;   // 1 000 messages par minute au plus
 
 // ---- lecture du salon ----
-class ErreurDiscord extends Error {}
-
+// messages propres à la lecture du salon ; les autres cas gardent celui du socle
+const MESSAGES_SALON: Record<number, string> = {
+  403: 'Le bot n’a pas accès à ce salon (droits « Voir le salon » et « Voir les anciens messages »).',
+  404: 'Salon introuvable : vérifiez l’ID du salon des services.',
+  429: 'Discord demande de ralentir : nouvelle tentative à la prochaine minute.',
+};
 async function appelDiscord(chemin: string): Promise<unknown> {
-  let r: Response;
-  try {
-    r = await fetch(API_DISCORD + chemin, { headers: { Authorization: `Bot ${config.discord.botToken}` }, signal: AbortSignal.timeout(10_000) });
-  } catch { throw new ErreurDiscord('Discord injoignable.'); }
-  if (r.status === 401) throw new ErreurDiscord('Jeton du bot refusé par Discord (DISCORD_BOT_TOKEN).');
-  if (r.status === 403) throw new ErreurDiscord('Le bot n’a pas accès à ce salon (droits « Voir le salon » et « Voir les anciens messages »).');
-  if (r.status === 404) throw new ErreurDiscord('Salon introuvable : vérifiez l’ID du salon des services.');
-  if (r.status === 429) throw new ErreurDiscord('Discord demande de ralentir : nouvelle tentative à la prochaine minute.');
-  if (!r.ok) throw new ErreurDiscord(`Erreur Discord (HTTP ${r.status}).`);
-  return r.json();
+  try { return await appelBot('GET', chemin); }
+  catch (e) { throw e instanceof ErreurDiscord && MESSAGES_SALON[e.statut] ? new ErreurDiscord(e.statut, MESSAGES_SALON[e.statut]) : e; }
 }
 
 export type MessageDiscord = { id: string; timestamp?: string; webhook_id?: string; author?: { bot?: boolean }; embeds?: Embed[] };
