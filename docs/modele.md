@@ -9,7 +9,7 @@ Contrairement au [modèle des sites famille](https://github.com/poulpizar01/roxw
 | | **Socle — mutualisé, identique sur tous les sites** | **Entreprise — personnalisable, site par site** |
 |---|---|---|
 | Quoi | Serveur et sécurité, connexion Discord, comptes, grades et permissions, stockage d'images, webhooks du bot, base, déploiement, documentation, règles | La vitrine, la direction artistique, **toutes les pages de gestion**, les routes et les tables métier |
-| Fichiers | `server/src/index.ts`, `server/src/socle/`, `server/prisma/schema/socle.prisma` (+ migrations `*_socle_*`), `server/Dockerfile`, `server/package.json`, `server/deploy/`, `socle/`, `compose*.yaml`, `.env.example`, `docs/`, `.claude/skills/`, `CLAUDE.md` | `site.json`, `theme.css`, `index.html`, `styles.css`, `main.js`, `404.html`, `confidentialite.html`, `assets/`, `gestion/`, `server/src/entreprise/`, `server/prisma/schema/entreprise.prisma`, `ENTREPRISE.md`, `README.md` |
+| Fichiers | `server/src/index.ts`, `server/src/socle/`, `server/prisma/schema/socle.prisma` (+ migrations `*_socle_*`), `server/Dockerfile`, `server/package.json`, `server/deploy/`, `socle/`, `compose*.yaml`, `.env.example`, `docs/`, `.claude/skills/`, `CLAUDE.md` | `site.json`, `theme.css`, `index.html`, `404.html`, `confidentialite.html`, `assets/`, `gestion/`, `server/src/entreprise/`, `server/prisma/schema/entreprise.prisma`, `ENTREPRISE.md`, `README.md` |
 | Liberté | Aucune modification dans un site : les améliorations se font **dans le modèle**, puis chaque site les récupère | Totale, dans le respect des règles du socle (voir [CLAUDE.md](../CLAUDE.md)) |
 
 Ce que le socle apporte, prêt à l'emploi :
@@ -28,7 +28,7 @@ En bas de chaque vitrine : la signature **« Développé par Roxwood Network »*
 ## Créer un nouveau site
 1. **Nouveau dépôt** : sur GitHub, bouton **Use this template** → nom du dépôt du site. Le cloner sur le poste.
 2. **Identité** : remplir [`site.json`](../site.json). `nom` et `description` sont obligatoires, `couleur` (accent, `#rrggbb`) et `discord` (invitation) facultatives ; toute autre clé texte est libre (`slogan`, `secteur`, `adresse`, `horaires`…). Dans une page, `{{cle}}` insère la valeur, `{{Cle}}` la même avec une majuscule, `{{url}}` l'adresse du site (`BASE_URL`).
-3. **Direction artistique** : [`theme.css`](../theme.css) (couleurs, polices dans `assets/fonts/`, formes), chargé par toutes les pages. Puis la vitrine ([`index.html`](../index.html), [`styles.css`](../styles.css)) et la gestion ([`gestion/`](../gestion/)) : libres.
+3. **Direction artistique** : [`theme.css`](../theme.css) (couleurs, polices dans `assets/fonts/`, formes), chargé par toutes les pages. Puis la vitrine ([`index.html`](../index.html), [`assets/css/styles.css`](../assets/css/styles.css)) et la gestion ([`gestion/`](../gestion/)) : libres.
 4. **Visuels** (dans `assets/`) : `logo.png` (carré, fond transparent), `favicon.png`, `og-image.jpg` (1200 × 630). Ne pas toucher à `roxwood.png`.
 5. **Métier** : déclarer les permissions dans [`server/src/entreprise/permissions.ts`](../server/src/entreprise/permissions.ts), les tables dans [`entreprise.prisma`](../server/prisma/schema/entreprise.prisma), les routes dans `server/src/entreprise/routes/`, et brancher le tout dans [`server/src/entreprise/index.ts`](../server/src/entreprise/index.ts) (niveau d'accès des pages, routes, webhooks, liens et réglages de la page Paramètres). L'exemple « annonces » montre chaque étape ; le garder, le transformer ou le retirer (supprimer le modèle `Annonce`, la route, la page, puis créer une migration).
 6. **Notes** : réécrire [`README.md`](../README.md) (présentation du site, pour qui ouvre le dépôt) et [`ENTREPRISE.md`](../ENTREPRISE.md) (ce que fait le site, ses tables, ses pièges) et compléter [`confidentialite.html`](../confidentialite.html) avec ce que le site enregistre.
@@ -83,10 +83,10 @@ docker compose up          # http://localhost:3000  ·  gestion : http://localho
 
 ## Organisation
 - `README.md` — présentation du site ; `site.json` — identité ; `theme.css` — couleurs et polices ; `ENTREPRISE.md` — notes du site
-- `index.html`, `styles.css`, `main.js`, `404.html`, `confidentialite.html`, `robots.txt`, `sitemap.xml` — vitrine
+- `index.html`, `404.html`, `confidentialite.html`, `robots.txt`, `sitemap.xml` — pages de la vitrine (toujours à la racine : seul niveau servi)
 - `gestion/` — espace employés (pages libres ; `index`, `attente`, `refuse`, `accueil` : noms imposés)
 - `socle/` — scripts et styles communs servis au navigateur (`socle.js`, `signature.css`)
-- `assets/` — logo, favicon, image de partage, polices, logo Roxwood
+- `assets/` — logo, favicon, image de partage, logo Roxwood ; `assets/js/` et `assets/css/` — scripts et feuilles de la vitrine ; `assets/img/` — illustrations ; `assets/fonts/`, `assets/vendor/` — polices, bibliothèques
 - `server/src/socle/` — socle du serveur ; `server/src/entreprise/` — code métier du site ; `server/src/index.ts` — assemblage
 - `server/prisma/schema/` — `socle.prisma` + `entreprise.prisma` ; `server/prisma/migrations/` — migrations des deux
 - `server/test/` — tests (`socle-*.test.ts` : socle ; les autres : site)
