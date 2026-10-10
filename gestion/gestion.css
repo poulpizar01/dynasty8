@@ -9,11 +9,52 @@
 }
 .admin-barre-laterale a.lien-onglet.actif .ico { color: var(--gold-light); }
 img.admin-avatar { object-fit: cover; padding: 0; }
-@media (max-width: 800px) {
-  .admin-nav { flex-direction: row; align-items: center; gap: 4px; }
-  .admin-nav .admin-nav-groupe { display: none; }
-  .admin-bas { display: none; }
+
+/* Écran large : seul le menu défile, le logo et le bas de la barre (compte, déconnexion) restent à l'écran quelle que
+   soit la hauteur de la fenêtre. */
+.admin-barre-laterale > * { flex-shrink: 0; }
+.admin-barre-laterale > .admin-nav { flex: 0 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.admin-barre-laterale .admin-bas { padding-top: 14px; gap: 10px; }
+.admin-barre-haut, .admin-voile { display: none; }
+
+/* Téléphone et tablette : barre du haut ; le bouton menu ouvre la barre latérale entière en tiroir. */
+@media (max-width: 900px) {
+  .admin-connecte .admin-shell { flex-direction: column; }
+  .admin-barre-haut {
+    display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 40; height: 60px; padding: 0 16px;
+    background: var(--bg-elevated); border-bottom: 1px solid var(--border);
+  }
+  .admin-burger {
+    display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-left: -6px;
+    background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); cursor: pointer;
+  }
+  .admin-burger .ico { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+  .admin-barre-haut-logo { display: flex; margin-right: auto; }
+  .admin-barre-haut-logo img { height: 36px; width: auto; }
+  .admin-barre-haut .admin-avatar { width: 34px; height: 34px; }
+  .admin-barre-laterale {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 70; width: min(300px, 86vw); height: 100dvh;
+    transform: translateX(-100%); visibility: hidden; transition: transform .22s ease, visibility 0s linear .22s;
+    box-shadow: 0 0 40px rgba(0, 0, 0, .5); overflow-y: auto;
+  }
+  .admin-menu-ouvert .admin-barre-laterale { transform: none; visibility: visible; transition: transform .22s ease; }
+  .admin-barre-laterale > .admin-nav { flex-shrink: 0; overflow: visible; }   /* c'est le tiroir entier qui défile */
+  .admin-voile { position: fixed; inset: 0; z-index: 65; background: rgba(2, 6, 16, .6); }
+  .admin-menu-ouvert .admin-voile { display: block; }
+  .admin-menu-ouvert { overflow: hidden; }
 }
+@media (prefers-reduced-motion: reduce) { .admin-barre-laterale { transition: none !important; } }
+
+/* lien d'évitement (gestion.js) : visible seulement quand il reçoit le focus */
+.evitement {
+  position: absolute; left: 12px; top: -60px; z-index: 100; padding: 10px 16px; border-radius: var(--radius-sm);
+  background: var(--d8-grad-gold); color: var(--or-contrast); font-weight: 600;
+}
+.evitement:focus { top: 12px; }
+main.admin-contenu:focus { outline: none; }
+/* la bulle de messagerie (fixe, en bas à droite) ne recouvre jamais la dernière ligne ni ses actions */
+.admin-contenu:not(.admin-contenu--pleine) { padding-bottom: 104px; }
+.modale-titre { margin: 0; font-size: 1.3rem; }
 
 /* pages seules (connexion, attente, accès refusé) : carte centrée sur le fond de l'espace agents */
 .page-seule { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
@@ -73,12 +114,6 @@ img.admin-avatar { object-fit: cover; padding: 0; }
 .admin-en-service-liste li { display: flex; flex-direction: column; min-width: 0; }
 .admin-en-service-nom { font-size: 0.8rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .admin-en-service-depuis, .admin-en-service-vide { font-size: 0.72rem; color: var(--text-faint); }
-@media (max-width: 800px) {
-  /* barre du haut sur mobile : seul le nombre reste visible */
-  .admin-en-service { padding: 4px 10px; margin: 0; }
-  .admin-en-service-titre { margin: 0; }
-  .admin-en-service-liste { display: none; }
-}
 
 /* ---- agenda : couleur selon « Visible par » (agenda.js) ---- */
 .agenda-evenement.agenda-vis-patrons, .agenda-mois-evenement.agenda-vis-patrons { border-left: 3px solid #e8534a; }

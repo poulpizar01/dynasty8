@@ -116,7 +116,29 @@ window.gestion = {
           <button class="btn btn-fantome btn-petit" style="width:100%;" type="button" data-deconnexion>${ico('logout')} Se déconnecter</button>
         </div>
       </div>`;
+    barre.id = 'admin-menu';
     barre.querySelector('[data-deconnexion]').addEventListener('click', () => socle.deconnexion());
+    // téléphone et tablette : barre du haut, la barre latérale entière s'ouvre en tiroir (compte et déconnexion compris)
+    const haut = document.createElement('header');
+    haut.className = 'admin-barre-haut';
+    haut.innerHTML = `<button type="button" class="admin-burger" aria-controls="admin-menu" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg class="ico" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <a href="/accueil.html" class="admin-barre-haut-logo" title="Voir le site public"><img src="/assets/logo-full.png" alt="Dynasty 8"></a>
+      ${moi.avatar ? `<img class="admin-avatar" src="${socle.esc(moi.avatar)}" alt="">` : `<span class="admin-avatar" aria-hidden="true">${socle.esc(initiales(nom))}</span>`}`;
+    const voile = document.createElement('div');
+    voile.className = 'admin-voile';
+    const burger = haut.querySelector('.admin-burger');
+    const ouvrir = ouvert => {
+      document.body.classList.toggle('admin-menu-ouvert', ouvert);
+      burger.setAttribute('aria-expanded', String(ouvert));
+      burger.setAttribute('aria-label', ouvert ? 'Fermer le menu' : 'Ouvrir le menu');
+      if (ouvert) (barre.querySelector('a.lien-onglet.actif') || barre.querySelector('a.lien-onglet'))?.focus();
+    };
+    burger.addEventListener('click', () => ouvrir(!document.body.classList.contains('admin-menu-ouvert')));
+    voile.addEventListener('click', () => ouvrir(false));
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && document.body.classList.contains('admin-menu-ouvert')) { ouvrir(false); burger.focus(); }
+    });
     // liens réglés dans Paramètres (registre) : ni dans la page ni dans le dépôt, servis aux seuls comptes validés
     socle.api('/api/outils').then(o => {
       for (const l of GESTION_NAV.filter(x => x.regle && o[x.regle])) {
@@ -132,8 +154,16 @@ window.gestion = {
     const main = document.querySelector('main.admin-contenu');
     const coque = document.createElement('div');
     coque.className = 'admin-shell';
+    main.id ||= 'contenu';
+    main.tabIndex = -1;
     main.replaceWith(coque);
-    coque.append(barre, main);
+    coque.append(haut, voile, barre, main);
+    // lien d'évitement : au clavier, le premier Tab propose de sauter le menu
+    const evitement = document.createElement('a');
+    evitement.className = 'evitement';
+    evitement.href = `#${main.id}`;
+    evitement.textContent = 'Aller au contenu';
+    document.body.prepend(evitement);
     document.body.classList.add('page-agents', 'admin-connecte');
     fondAnime();
     enService(barre);
@@ -157,29 +187,40 @@ window.gestion = {
     el.append(div);
   },
 
-  // confirmation dans la page (aucune boîte de dialogue du navigateur : l'ordinateur en jeu ne les affiche pas)
-  confirmer(texte, titre = 'Confirmer', libelle = 'Confirmer') {
+  // Confirmation dans la page (aucune boîte de dialogue du navigateur : l'ordinateur en jeu ne les affiche pas).
+  // libelle : le bouton dit l'action (« Supprimer l'annonce »), jamais « Confirmer » ; danger = false pour une action
+  // qui ne détruit rien (bouton doré). Le focus reste dans la fenêtre, Échap annule, puis le focus revient où il était.
+  confirmer(texte, titre = 'Confirmer', libelle = 'Confirmer', { danger = true } = {}) {
     return new Promise(resolve => {
+      const avant = document.activeElement;
       const fond = document.createElement('div');
       fond.className = 'modale-fond';
-      fond.innerHTML = `<div class="modale" style="max-width:420px;" role="alertdialog" aria-modal="true">
-        <div class="modale-entete"><h3></h3></div>
-        <p style="margin-bottom:26px;"></p>
-        <div style="display:flex;gap:12px;">
+      fond.innerHTML = `<div class="modale" style="max-width:420px;" role="alertdialog" aria-modal="true" aria-labelledby="confirmer-titre" aria-describedby="confirmer-texte">
+        <div class="modale-entete"><h2 class="modale-titre" id="confirmer-titre"></h2></div>
+        <p style="margin-bottom:26px;" id="confirmer-texte"></p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
           <button type="button" class="btn btn-fantome" style="flex:1;" data-non>Annuler</button>
-          <button type="button" class="btn btn-danger" style="flex:1;" data-oui></button>
+          <button type="button" class="btn ${danger ? 'btn-danger' : 'btn-or'}" style="flex:1;" data-oui></button>
         </div></div>`;
-      fond.querySelector('h3').textContent = titre;
+      fond.querySelector('h2').textContent = titre;
       fond.querySelector('p').textContent = texte;
       fond.querySelector('[data-oui]').textContent = libelle;
-      const fin = ok => { document.removeEventListener('keydown', echap, true); fond.remove(); resolve(ok); };
-      const echap = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fin(false); } };
+      const boutons = [...fond.querySelectorAll('button')];
+      const fin = ok => { document.removeEventListener('keydown', clavier, true); fond.remove(); avant?.focus?.(); resolve(ok); };
+      const clavier = e => {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fin(false); }
+        else if (e.key === 'Tab') {   // le focus boucle entre les deux boutons : la page derrière reste hors d'atteinte
+          e.preventDefault();
+          const i = boutons.indexOf(document.activeElement);
+          boutons[(i + (e.shiftKey ? -1 : 1) + boutons.length) % boutons.length].focus();
+        }
+      };
       fond.querySelector('[data-oui]').addEventListener('click', () => fin(true));
       fond.querySelector('[data-non]').addEventListener('click', () => fin(false));
       fond.addEventListener('click', e => { if (e.target === fond) fin(false); });
-      document.addEventListener('keydown', echap, true);
+      document.addEventListener('keydown', clavier, true);
       document.body.append(fond);
-      fond.querySelector('[data-non]').focus();
+      boutons[0].focus();
     });
   },
 };

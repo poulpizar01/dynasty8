@@ -1941,9 +1941,6 @@ section.section.serre {
 .admin-barre-laterale a.lien-onglet:hover { background: var(--bg-card); color: var(--text); }
 .admin-contenu { flex: 1; padding: 36px 40px; max-width: 1100px; }
 @media (max-width: 800px) {
-  .admin-shell { flex-direction: column; }
-  .admin-barre-laterale { position: static; height: auto; width: 100%; flex-direction: row; align-items: center; overflow-x: auto; }
-  .admin-barre-laterale a.logo, .admin-barre-laterale button.lien-onglet, .admin-barre-laterale a.lien-onglet { width: auto; flex-shrink: 0; white-space: nowrap; }
   .admin-contenu { padding: 24px 18px; }
 }
 
@@ -2050,8 +2047,10 @@ section.section.serre {
 .agenda-maintenant { position: absolute; left: 0; right: 0; height: 0; border-top: 2px solid #e8534a; z-index: 2; pointer-events: none; }
 .agenda-maintenant::before { content: ""; position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; border-radius: 50%; background: #e8534a; }
 
+@media (max-width: 900px) {
+  .admin-contenu.admin-contenu--pleine { height: calc(100dvh - 60px); }
+}
 @media (max-width: 800px) {
-  .admin-contenu.admin-contenu--pleine { height: calc(100vh - 60px); }
   .agenda-entete-jour, .agenda-jour { min-width: 92px; }
 }
 
@@ -2082,7 +2081,7 @@ section.section.serre {
 .messagerie-lanceur-icone { width: 26px; height: 26px; stroke: var(--or-contrast); fill: none; }
 .messagerie-badge {
   position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px; padding: 0 5px;
-  border-radius: 999px; background: var(--danger-strong); color: #fff; font-size: 0.68rem; font-weight: 700;
+  border-radius: 999px; background: #b8403f; color: #fff; font-size: 0.75rem; font-weight: 700;
   display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg);
 }
 .messagerie-secousse { animation: messagerie-shake 0.5s; }
@@ -2193,6 +2192,8 @@ section.section.serre {
   .messagerie-widget { right: 14px; bottom: 14px; }
   .messagerie-liste { position: fixed; inset: 0; width: auto; max-height: none; border-radius: 0; }
   .messagerie-fenetres { position: fixed; inset: 0; flex-direction: column; align-items: stretch; gap: 0; }
+  /* plein écran seulement quand une conversation est ouverte : vide, il recouvrirait la page et bloquerait les clics */
+  .messagerie-fenetres:empty { display: none; }
   .messagerie-fenetre { width: 100%; height: 100%; border-radius: 0; }
 }
 
@@ -2316,16 +2317,6 @@ section.section.serre {
 .admin-compte-profil strong { display: block; font-size: 0.88rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .admin-compte-grade { font-size: 0.74rem; color: var(--text-faint); }
 
-@media (max-width: 800px) {
-  .admin-aide { display: none; }
-  .admin-bas {
-    flex-direction: row; align-items: center; gap: 12px; margin-top: 0; margin-left: 12px; padding-top: 0;
-    padding-left: 16px; border-top: none; border-left: 1px solid var(--border); flex-shrink: 0; white-space: nowrap;
-  }
-  .admin-compte-profil { margin-bottom: 0; }
-  .admin-compte-profil > div strong { max-width: 90px; }
-  .admin-bas .btn { width: auto !important; white-space: nowrap; }
-}
 
 .modale-fond {
   position: fixed; inset: 0; background: rgba(5,6,7,0.7); backdrop-filter: blur(3px);
@@ -2664,13 +2655,8 @@ section.section.serre {
 .carte-admin-bien-prix { font-size: 0.95rem; color: var(--gold-light); font-weight: 500; }
 .carte-admin-bien-loc { font-size: 0.76rem; color: var(--text-faint); font-weight: 300; margin-left: 4px; }
 
-/* ---- mobile / tablette : la barre devient une rangée défilante ---- */
+/* ---- mobile / tablette (la barre latérale y devient un tiroir : gestion/gestion.css) ---- */
 @media (max-width: 800px) {
-  .admin-nav-groupe { display: none; }
-  .admin-barre-laterale a.logo { margin-bottom: 0 !important; }
-  .admin-barre-laterale a.logo img { width: 110px; }
-  .admin-barre-laterale button.lien-onglet, .admin-barre-laterale a.lien-onglet { padding: 8px 12px; gap: 8px; }
-  .admin-bas { padding-top: 0; }
   .grille-admin-biens { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 }
 @media (max-width: 520px) {
