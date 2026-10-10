@@ -131,8 +131,13 @@ async function accesPage(req: express.Request, res: express.Response, next: expr
 }
 app.use('/gestion', pages(join(config.root, 'gestion')), express.static(join(config.root, 'gestion'), statics));
 app.use('/socle', express.static(join(config.root, 'socle'), statics));
-// images gardées 7 jours par les navigateurs en production ; en dev, toujours revalidées (un visuel changé s'affiche aussitôt)
-app.use('/assets', express.static(join(config.root, 'assets'), { dotfiles: 'ignore', maxAge: config.production ? '7d' : 0 }));
+// images et polices gardées 7 jours par les navigateurs en production ; en dev, toujours revalidées (un visuel changé
+// s'affiche aussitôt). Scripts et feuilles (assets/js, assets/css) toujours revalidés : un ancien script resté en cache
+// une semaine ne correspondrait plus aux pages ni à l'API mises à jour.
+app.use('/assets', express.static(join(config.root, 'assets'), {
+  dotfiles: 'ignore', maxAge: config.production ? '7d' : 0,
+  setHeaders: (res, chemin) => { if (/\.(js|mjs|css)$/.test(chemin)) res.setHeader('Cache-Control', 'no-cache'); },
+}));
 // fichiers envoyés sur le disque (dev uniquement : en production, ils sont sur le stockage distant)
 if (storage.kind === 'local') app.use('/uploads', express.static(storage.dir, { dotfiles: 'ignore', index: false, redirect: false }));
 const rootPages = pages(config.root), rootFiles = express.static(config.root, statics);
