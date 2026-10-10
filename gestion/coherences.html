@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="application-name" content="{{nom}}">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/gestion/gestion.css">
+  <script src="/socle/socle.js"></script>
+  <script src="/layout.js"></script>
+  <script src="/coherences-guides.js"></script>
+  <script src="/gestion/gestion.js"></script>
+  <title>Cohérences — {{nom}}</title>
+</head>
+<body class="page-agents">
+  <!-- GESTION — les guides de cohérence du site public (contenu unique dans /coherences-guides.js, partagé avec
+       /coherence.html), consultés sans quitter l'espace agents. Tout compte validé. -->
+  <main class="admin-contenu">
+    <div class="entete-admin">
+      <div>
+        <h2 style="margin-bottom:2px;">Cohérences</h2>
+        <p style="margin:0;font-size:0.88rem;">Le règlement de cohérence de chaque zone, identique à celui du site public.</p>
+      </div>
+    </div>
+    <div class="compta-sous-onglets" role="tablist" id="zones"></div>
+    <p id="intro" style="max-width:860px;margin:18px 0 22px;"></p>
+    <h3 class="comptes-sous-titre" id="guide-titre">Guide complet</h3>
+    <div style="max-width:900px;">
+      <div class="guide-astuce">💡&nbsp;<span>Conseil : utilisez les flèches de votre clavier (← →) ou les boutons ci-dessous pour parcourir les diapositives.</span></div>
+      <div id="diaporama"></div>
+    </div>
+    <h3 class="comptes-sous-titre" style="margin-top:36px;">En résumé — ce que cette cohérence justifie</h3>
+    <div id="sections" style="max-width:980px;"></div>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id);
+    let zone = null;
+    function afficher(z) {
+      zone = z || zone || ZONES_COHERENCE[0];
+      const guide = GUIDES_COHERENCE[zone];
+      $('zones').innerHTML = ZONES_COHERENCE.map(x =>
+        `<button type="button" class="compta-sous-onglet ${x === zone ? 'actif' : ''}" data-zone="${echapper(x)}">${GUIDES_COHERENCE[x].icone} ${echapper(x)}</button>`).join('');
+      $('intro').textContent = guide.intro;
+      $('guide-titre').textContent = `Guide complet — ${zone}`;
+      monterDiaporamaCoherence($('diaporama'), zone);
+      $('sections').innerHTML = rendreResumeCoherence(zone);
+    }
+    $('zones').addEventListener('click', e => { const b = e.target.closest('[data-zone]'); if (b) afficher(b.dataset.zone); });
+    gestion.coque('coherences').then(() => afficher()).catch(e => { const p = document.createElement('p'); p.textContent = e.message; document.querySelector('main').prepend(p); });
+  </script>
+</body>
+</html>

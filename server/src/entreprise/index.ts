@@ -30,6 +30,7 @@ export const entreprise: Entreprise = {
     statistiques: 'ventes',
     comptabilite: 'compta',
     parametres: 'parametres',
+    webmap: 'parametres',   // réservée à la Direction, comme sur l'ancien espace agents
   },
 
   routes: [vitrine, parametres, biens, profils, messagerie, agenda, rh, stats, compta],

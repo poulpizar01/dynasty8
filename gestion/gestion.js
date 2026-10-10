@@ -17,7 +17,7 @@ const GESTION_NAV = [
   { cle: 'parametres', href: 'parametres.html', label: 'Paramètres', icone: 'sync', permission: 'parametres' },
   { groupe: 'Outils' },
   { cle: 'coherences', href: 'coherences.html', label: 'Cohérences', icone: 'sheet' },
-  { cle: 'webmap', href: 'webmap.html', label: 'WebMap', icone: 'map' },
+  { cle: 'webmap', href: 'webmap.html', label: 'WebMap', icone: 'map', permission: 'parametres' },
   // lien réglé dans Paramètres, servi aux seuls comptes validés (/api/outils) : ajouté au menu s'il est réglé
   { cle: 'registre', label: 'Registre', icone: 'book', externe: true, regle: 'registre' },
 ];

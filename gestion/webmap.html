@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="application-name" content="{{nom}}">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/gestion/gestion.css">
+  <script src="/socle/socle.js"></script>
+  <script src="/layout.js"></script>
+  <script src="/gestion/gestion.js"></script>
+  <title>WebMap — {{nom}}</title>
+</head>
+<body class="page-agents">
+  <!-- GESTION — la carte interactive du serveur dans la page (cadre vers /api/carte/, qui renvoie à son sous-domaine :
+       entreprise/carte.ts), sans ouvrir d'autre onglet. Réservée à la permission « parametres », comme sur l'ancien
+       espace agents. Le cadre n'est permis qu'en https (csp.frame) : en http (dev), la carte s'ouvre en pleine page. -->
+  <main class="admin-contenu">
+    <div class="entete-admin">
+      <div>
+        <h2 style="margin-bottom:2px;">WebMap</h2>
+        <p style="margin:0;font-size:0.88rem;">La carte interactive du serveur.</p>
+      </div>
+      <a class="btn btn-fantome btn-petit" href="/api/carte/" target="_blank" rel="noopener">Ouvrir en plein écran</a>
+    </div>
+    <p class="champ-aide cache" id="non-reglee">La carte n'est pas encore réglée : son adresse se renseigne dans Paramètres.</p>
+    <div class="webmap-boite" id="boite"></div>
+  </main>
+  <script>
+    gestion.coque('webmap').then(async () => {
+      const o = await socle.api('/api/outils');
+      document.getElementById('non-reglee').classList.toggle('cache', o.webmap);
+      if (!o.webmap) return;
+      const cadre = document.createElement('iframe');
+      cadre.src = '/api/carte/';
+      cadre.title = 'Carte interactive du serveur';
+      cadre.referrerPolicy = 'no-referrer';
+      document.getElementById('boite').append(cadre);
+    }).catch(e => { const p = document.createElement('p'); p.textContent = e.message; document.querySelector('main').prepend(p); });
+  </script>
+</body>
+</html>
