@@ -1,7 +1,7 @@
 ---
 name: audit
-description: Lance un audit du site par angle (acces, navigateur, webhooks, fiabilite, socle) a partir des prompts de docs/audits.md. Sans argument, lance les 5 angles en parallele et fusionne les rapports.
-argument-hint: "[acces|navigateur|webhooks|fiabilite|socle]"
+description: Lance un audit du site par angle (acces, navigateur, webhooks, fiabilite, socle, ergonomie) a partir des prompts de docs/audits.md. Sans argument, lance les 6 angles en parallele et fusionne les rapports.
+argument-hint: "[acces|navigateur|webhooks|fiabilite|socle|ergonomie]"
 ---
 
 # Audit par angle
@@ -17,8 +17,9 @@ Les prompts d'audit vivent dans `docs/audits.md` — c'est la seule source. Lis 
 | `webhooks` | 3. Webhooks et intégrations |
 | `fiabilite` | 4. Fiabilité, ressources et déploiement |
 | `socle` | 5. Socle et règles du modèle |
+| `ergonomie` | 6. Ergonomie et accessibilité (gestion et vitrine) |
 
-Accepte les variantes évidentes (accents, majuscules, `securite` → `acces` + `navigateur`, `xss` → `navigateur`, `bot` → `webhooks`, `deploiement` → `fiabilite`, `modele` → `socle`…). Si l'argument ne correspond à aucun angle, liste les angles disponibles et arrête-toi. Si une section a été ajoutée à `docs/audits.md` sans figurer ici, elle compte aussi comme un angle (nom = son titre).
+Accepte les variantes évidentes (accents, majuscules, `securite` → `acces` + `navigateur`, `xss` → `navigateur`, `bot` → `webhooks`, `deploiement` → `fiabilite`, `modele` → `socle`, `ux`, `a11y`, `accessibilite`, `responsive` → `ergonomie`…). Si l'argument ne correspond à aucun angle, liste les angles disponibles et arrête-toi. Si une section a été ajoutée à `docs/audits.md` sans figurer ici, elle compte aussi comme un angle (nom = son titre).
 
 ## Déroulé
 

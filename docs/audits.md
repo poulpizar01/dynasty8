@@ -2,7 +2,7 @@
 
 Une revue généraliste (« est-ce prêt pour la prod ? ») trouve surtout un type de problème et passe à côté des autres. Ces prompts découpent l'audit en **angles indépendants**, à lancer séparément avant une mise en prod, après une grosse fonctionnalité, ou périodiquement.
 
-Dans Claude Code : `/audit` lance les cinq angles en parallèle et fusionne les rapports, `/audit <angle>` un seul (voir `.claude/skills/audit/`). Ce fichier est la seule source des prompts : les modifier ici suffit.
+Dans Claude Code : `/audit` lance les six angles en parallèle et fusionne les rapports, `/audit <angle>` un seul (voir `.claude/skills/audit/`). Ce fichier est la seule source des prompts : les modifier ici suffit.
 
 Fichier du socle : on l'améliore dans le modèle, chaque site le récupère avec le reste du socle. Les angles couvrent le socle **et** le code de l'entreprise : dans un site, c'est surtout ce dernier qui change d'un audit à l'autre.
 
@@ -116,4 +116,19 @@ Cherche :
 - les commentaires qui renvoient à du code, des tables ou des fichiers qui n'existent plus (ancienne version, renommage), et le code mort (constantes, fonctions jamais appelées) ;
 - les fichiers mutualisés hors des deux listes de CLAUDE.md (.gitignore, .gitattributes) qui diffèrent du modèle ;
 - les routes de l'entreprise absentes du tableau de ENTREPRISE.md.
+```
+
+## 6. Ergonomie et accessibilité (gestion et vitrine)
+
+```
+Audite l'ergonomie, l'accessibilité et le responsive des pages : gestion/*.html et leurs scripts, la vitrine (pages de la racine, assets/js, assets/css, theme.css). Lis le code ; si le site tourne en dev (docker compose up, connexion de dev par /auth/discord), vérifie aussi dans un navigateur à 375, 768, 1 024 et 1 280 px de large, et à 800 px de haut.
+Cherche :
+- une rubrique du menu, le compte connecté ou la déconnexion inatteignables à une largeur ou une hauteur d'écran (zone en display:none, barre de 100vh sans défilement, menu horizontal qui défile sans indice) ;
+- un débordement horizontal de la page, un tableau dont les actions sont coupées ou hors de vue sur téléphone, un élément flottant (bulle, bouton fixe) qui masque du contenu ou une action ;
+- une fenêtre (confirmation, modale, tiroir) sans focus initial, dont Tab sort, que Échap ne ferme pas, qui ne rend pas le focus, ou dont le titre n'est pas relié (aria-labelledby) ; un confirm(), alert() ou prompt() (invisibles en jeu, docs/folkos.md) ;
+- un champ sans nom accessible (placeholder seul), un bouton à icône seule sans aria-label, une page sans <h1>, une image porteuse de sens sans alt, un focus clavier invisible, une information donnée par la seule couleur ;
+- un texte sous 12 px, un contraste sous 4,5:1 (3:1 pour un gros titre, un contour de champ, une icône utile), une cible cliquable sous 24 px ;
+- les textes : bouton de confirmation qui ne nomme pas l'action (« Confirmer », « OK ») ou rouge pour une action non destructive, erreur qui affiche le message technique sans dire quoi faire, état vide sans piste pour commencer, même chose nommée différemment d'une page à l'autre ;
+- les incohérences entre pages : place du bouton principal, familles d'icônes (trait ou emoji), formats des dates, durées et montants.
+Ici, le scénario de défaillance est : quelle largeur ou quel moyen (souris, clavier, lecteur d'écran, ordinateur en jeu) → ce que la personne ne peut pas faire ou pas voir.
 ```
