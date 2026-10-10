@@ -4,6 +4,7 @@
 // présent sur le serveur (DISCORD_BOT_TOKEN, aucune permission requise). Sans jeton : liste vide, l'identifiant d'un
 // rôle se saisit à la main.
 import { config } from './config.js';
+import { appelBot, botDiscordConfigure, ErreurDiscord } from './discord.js';
 
 export type RoleDiscord = { id: string; nom: string; couleur: string | null; position: number };
 
@@ -17,20 +18,15 @@ const cause = (statut: number) =>
 const DUREE_MS = 5 * 60_000;   // les rôles changent rarement ; Discord limite les appels
 let cache: { roles: RoleDiscord[]; le: number } | null = null;
 
-export const rolesDiscordConfigures = (): boolean => !!config.discord.botToken;
+export const rolesDiscordConfigures = botDiscordConfigure;
 
 // du plus haut au plus bas sur Discord ; ni @everyone (porté par tous) ni les rôles gérés par une intégration (bots)
 export async function rolesDiscord(): Promise<RoleDiscord[]> {
   if (!config.discord.botToken) return [];
   if (cache && Date.now() - cache.le < DUREE_MS) return cache.roles;
-  let r: Response;
-  try {
-    r = await fetch(`https://discord.com/api/v10/guilds/${config.discord.guildId}/roles`, {
-      headers: { Authorization: `Bot ${config.discord.botToken}` }, signal: AbortSignal.timeout(10_000),
-    });
-  } catch { throw new RolesIndisponibles(cause(0)); }
-  if (!r.ok) { console.error(`[grades] rôles Discord : réponse ${r.status}`); throw new RolesIndisponibles(cause(r.status)); }
-  const brut: unknown = await r.json().catch(() => null);
+  let brut: unknown;
+  try { brut = await appelBot('GET', `/guilds/${config.discord.guildId}/roles`); }
+  catch (e) { throw new RolesIndisponibles(cause(e instanceof ErreurDiscord ? e.statut : 0)); }
   if (!Array.isArray(brut)) throw new RolesIndisponibles(cause(0));
   const roles = brut
     .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && /^\d{5,32}$/.test(String(x.id)) && x.id !== config.discord.guildId && !x.managed)
