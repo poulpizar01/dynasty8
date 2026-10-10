@@ -44,7 +44,7 @@ async function chargerTableur(semaine) {
       etatLigne.textContent = `Semaine ${r.archive.semaine} — archivée le ${dateHeureStats(r.archive.archiveLe)} (chiffres lus le ${dateHeureStats(r.archive.donneesDu)})`
         + (r.archive.enRetard ? ', après coup : le serveur était arrêté dimanche à 23:59.' : '.');
     } else {
-      etatLigne.textContent = !r.configure ? 'Synchronisation non configurée sur ce serveur (GOOGLE_SHEET_ID absent du .env).'
+      etatLigne.textContent = !r.configure ? 'Synchronisation en attente : réglez le lien du Google Sheets dans Paramètres.'
         : r.derniereSync ? `Dernière lecture du tableur : ${dateHeureStats(r.derniereSync)}${r.statut === 'erreur' ? ' (échec — voir la synchronisation plus bas)' : ''}.`
           : 'Tableur pas encore lu.';
     }
@@ -80,11 +80,13 @@ async function chargerSynchro() {
     const r = await socle.api('/api/tableur/etat');
     const bouton = $st('bouton-synchroniser-sheet');
     bouton.disabled = !r.configure;
-    bouton.title = r.configure ? '' : 'Synchronisation non configurée sur ce serveur';
+    bouton.title = r.configure ? '' : 'Réglez d’abord le lien du Google Sheets dans Paramètres';
     const e = r.etat;
-    etatLigne.textContent = !r.configure ? 'Synchronisation non configurée sur ce serveur (GOOGLE_SHEET_ID absent du .env).'
+    etatLigne.textContent = !r.configure ? 'Synchronisation en attente : réglez le lien du Google Sheets dans Paramètres.'
       : !e || e.statut === 'desactive' ? 'Pas encore synchronisé.'
         : e.statut === 'erreur' ? `Dernière tentative en échec (${dateHeureStats(e.derniereSync)}) : ${e.erreur}`
+          // lecture réussie sans aucun agent : presque toujours le mauvais onglet du classeur
+          : !e.nbLignes ? `Dernière synchro : ${dateHeureStats(e.derniereSync)} — le classeur a été lu, mais aucune ligne d’agent n’y a été trouvée. Le lien réglé pointe sans doute sur le mauvais onglet : ouvrez l’onglet du récapitulatif des ventes dans Google Sheets, copiez l’adresse de la barre du navigateur (elle se termine par « gid=… ») et collez-la dans Paramètres.`
           : `Dernière synchro : ${dateHeureStats(e.derniereSync)} — ${e.nbLignes} ligne(s) lue(s), ${e.nbApparies} reliée(s) à un compte du site.`;
     corps.innerHTML = r.lignes.length ? r.lignes.map(l => `<tr>
         <td>${echapper(l.nom)}</td><td>${echapper(l.grade || '—')}</td>
@@ -92,7 +94,7 @@ async function chargerSynchro() {
         <td>${l.fiche ? '<span class="puce puce-ok">Oui</span>' : '<span class="puce puce-or">À rattacher</span>'}</td>
         <td>${l.compte ? echapper(l.compte) : '<span class="champ-aide">— aucun compte relié —</span>'}</td>
       </tr>`).join('')
-      : `<tr><td colspan="6">${r.configure ? 'Aucune ligne lue pour le moment.' : 'Aucune ligne : la synchronisation n’est pas configurée sur ce serveur.'}</td></tr>`;
+      : `<tr><td colspan="6">${r.configure ? 'Aucune ligne lue pour le moment.' : 'Aucune ligne : le lien du Google Sheets n’est pas encore réglé dans Paramètres.'}</td></tr>`;
   } catch (err) {
     corps.innerHTML = `<tr><td colspan="6">Erreur de chargement : ${echapper(err.message)}</td></tr>`;
   }
