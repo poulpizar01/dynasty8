@@ -40,7 +40,7 @@ Modèle commenté : [`.env.example`](../.env.example), à copier en `.env`. Vale
 | `BASE_URL` | `https://dynasty8.fbfa.fr` | — |
 | `SESSION_SECRET`, `POSTGRES_PASSWORD` | `openssl rand -hex 32` chacun ; `POSTGRES_PASSWORD` ne se change plus une fois la base créée | vous |
 | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | application Discord RoxwoodLegal (`1546523997980852294`) | Direction de Dynasty 8 |
-| `DISCORD_BOT_TOKEN` | jeton du bot de l'application RoxwoodLegal (onglet Bot → Reset Token), invité sur le serveur de Dynasty 8 avec les droits du point 5. Sert à trois choses : rôles Discord proposés par leur nom dans Grades, encadré « En service », événements d'agenda postés dans les tickets. Facultatif : sans lui, ces trois fonctions restent inactives | vous |
+| `DISCORD_BOT_TOKEN` | jeton du bot de l'application RoxwoodLegal (onglet Bot → Reset Token), invité sur le serveur de Dynasty 8 avec les droits du point 5. Sert à quatre choses : rôles Discord proposés par leur nom dans Grades, rôles de chaque agent relus toutes les 10 minutes (un rôle retiré ou un départ du serveur compte aussitôt, sinon seulement à la connexion suivante), encadré « En service », événements d'agenda postés dans les tickets. Facultatif : sans lui, ces trois fonctions restent inactives | vous |
 | `DISCORD_GUILD_ID` | ID du serveur Discord de Dynasty 8 : seuls ses membres peuvent se connecter, son propriétaire a tous les droits sur le site | Direction de Dynasty 8 |
 | `STORAGE_URL`, `STORAGE_TOKEN`, `STORAGE_PREFIX` | `https://storage.fbfa.fr`, jeton du stockage, `dynasty8/` | vous (jeton) |
 | `BOT_WEBHOOK_SECRETS` | secret de l'abonnement « Candidatures » du bot Discord (étape 5) | Dynasty 8, depuis le bot |
@@ -107,7 +107,7 @@ Dans l'application RoxwoodLegal (portail développeur → OAuth2 → Redirects),
    - **Membres en service** : ID du salon où le bot des services publie « Service démarré » / « Service terminé », et la clôture automatique (12 h si vide). L'état de la lecture s'affiche sous ces champs dans la minute.
    - **Agenda partagé** : rôles qui voient et qui créent les événements « Patrons », « Direction », « Tous », rôles qui créent un « Perso » pour quelqu'un d'autre, catégories où Ticket Tool crée les tickets. Qui a la permission « Paramètres du site » crée toujours.
 
-   Les ID se copient dans Discord par clic droit → *Copier l'identifiant* (mode développeur activé : Paramètres Discord → Avancés). Les rôles de chacun sont ceux de sa **dernière connexion** au site : après un changement de rôle sur Discord, la personne se reconnecte.
+   Les ID se copient dans Discord par clic droit → *Copier l'identifiant* (mode développeur activé : Paramètres Discord → Avancés). Les rôles de chacun sont relus toutes les 10 minutes par le bot : un changement de rôle sur Discord compte sans que la personne ait à se reconnecter.
 6. Dans **Comptabilité → Paramètres**, le **taux horaire** des grades payés à l'heure (stagiaires). Le relevé Tablettes collé doit contenir la colonne « Heures de service » (format `2h30min`).
 
 ## 5. Bots et ordinateur en jeu

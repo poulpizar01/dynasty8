@@ -15,7 +15,7 @@ const CLES_VOIT: Record<Exclude<Visibilite, 'perso'>, string> = { patrons: 'agen
 
 export type DroitsAgenda = { voit: Set<Visibilite>; cree: Set<Visibilite>; persoAutrui: boolean };
 
-// roles : rôles Discord du compte (relus à sa dernière connexion Discord) ; admin : permission « parametres » ;
+// roles : rôles Discord du compte (relus à chaque connexion et toutes les 10 minutes par le bot) ; admin : permission « parametres » ;
 // ids(cle) : IDs réglés pour cette clé de Paramètres
 export function droitsAgenda(roles: readonly string[], admin: boolean, ids: (cle: string) => readonly string[]): DroitsAgenda {
   const porte = new Set(roles);

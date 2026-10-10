@@ -61,7 +61,7 @@
     function celluleCompte(c) {
       const nom = c.nom || c.pseudo;
       const avatar = c.avatar ? `<img class="admin-avatar" src="${echapper(c.avatar)}" alt="">` : `<span class="admin-avatar">${echapper(nom.slice(0, 2).toUpperCase())}</span>`;
-      return `<div class="cellule-compte">${avatar}<div><strong>${echapper(nom)}</strong>${c.proprietaire ? ' <span class="puce puce-or">Propriétaire</span>' : ''}<div class="table-biens-sous">@${echapper(c.pseudo)}</div></div></div>`;
+      return `<div class="cellule-compte">${avatar}<div><strong>${echapper(nom)}</strong>${c.proprietaire ? ' <span class="puce puce-or">Propriétaire</span>' : ''}<div class="table-biens-sous">@${echapper(c.pseudo)}${c.quitteLe ? ` · a quitté le serveur Discord le ${new Date(c.quitteLe).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })}` : ''}</div></div></div>`;
     }
     function celluleGrade(c) {
       if (!gerable(c)) return c.grade ? `<span class="pastille-grade" style="background:${echapper(c.grade.couleur || '#8a93b8')}"></span>${echapper(c.grade.libelle)}` : '<span class="table-biens-sous">Sans grade</span>';
