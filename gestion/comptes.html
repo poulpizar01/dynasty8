@@ -52,7 +52,7 @@
           : socle.esc(c.grade?.libelle || (c.proprietaire ? 'Propriétaire' : 'Sans grade'));
         return `<tr data-id="${c.id}">
           <td><div class="ligne">${c.avatar ? `<img class="avatar" src="${socle.esc(c.avatar)}" alt="">` : '<span class="avatar"></span>'}
-            <div><strong>${socle.esc(c.nom || c.pseudo)}</strong><br><span class="muet">@${socle.esc(c.pseudo)}</span></div></div></td>
+            <div><strong>${socle.esc(c.nom || c.pseudo)}</strong><br><span class="muet">@${socle.esc(c.pseudo)}${c.quitteLe ? ` · a quitté le serveur Discord le ${socle.date(c.quitteLe)}` : ''}</span></div></div></td>
           <td>${grade}</td>
           <td class="muet">${socle.date(c.creeLe)}</td>
           <td><div class="ligne">${actions}</div></td>

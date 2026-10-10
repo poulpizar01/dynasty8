@@ -19,7 +19,7 @@ Pages de `gestion/` : mêmes niveaux, contrôlés par le serveur avant tout envo
 ## Permissions et grades
 - Permissions du socle : `comptes` (valider, refuser, renommer, changer de grade, supprimer un compte), `grades` (créer, ordonner, modifier, supprimer un grade) et `parametres` (page Paramètres : liens et réglages déclarés par l'entreprise). Celles de l'entreprise : `server/src/entreprise/permissions.ts`.
 - **Hiérarchie** : les grades sont ordonnés du sommet (position 0) à la base. Hors propriétaire, on ne gère que les comptes et les grades **strictement sous** son propre grade (un compte sans grade ne gère rien), et on n'accorde ou ne retire que des permissions qu'on détient.
-- **Rôles Discord** : un grade peut être lié à un rôle Discord. À chaque connexion, le compte reçoit le plus haut grade dont il porte le rôle (et est validé d'office s'il n'avait pas été refusé) ; un grade lié à un rôle qu'il ne porte plus lui est retiré. Un grade sans rôle se donne à la main.
+- **Rôles Discord** : un grade peut être lié à un rôle Discord. À chaque connexion (et toutes les 10 minutes si le site a un jeton de bot, `socle/synchro-discord.ts` : un membre parti du serveur y est déconnecté et marqué `quitteLe`), le compte reçoit le plus haut grade dont il porte le rôle (et est validé d'office s'il n'avait pas été refusé) ; un grade lié à un rôle qu'il ne porte plus lui est retiré. Un grade sans rôle se donne à la main.
 
 ## Routes du socle
 | Méthode et adresse | Accès | Rôle |

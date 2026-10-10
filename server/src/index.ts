@@ -10,6 +10,7 @@ import { pool, prisma } from './socle/db.js';
 import { chargerGrades, CLES_PERMISSIONS, peut } from './socle/droits.js';
 import { ImageRefusee } from './socle/images.js';
 import { planifierPurge } from './socle/purge.js';
+import { planifierSynchroDiscord } from './socle/synchro-discord.js';
 import { chargerReglages } from './socle/reglages.js';
 import { storage } from './socle/storage.js';
 import { limits } from './socle/limites.js';
@@ -26,6 +27,7 @@ import { entreprise } from './entreprise/index.js';
 await Promise.all([chargerGrades(), chargerReglages()]);
 declarerParametres(entreprise.parametres);   // avant demarrage(), qui peut lire un paramètre
 planifierPurge();
+planifierSynchroDiscord();
 await entreprise.demarrage?.();
 
 const app = express();
