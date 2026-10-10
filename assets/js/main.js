@@ -1,4 +1,4 @@
-/* VITRINE (personnalisable) — menu burger. Scripts de la vitrine : ici ou dans d'autres fichiers de la racine. */
+/* VITRINE (personnalisable) — menu burger. Scripts de la vitrine : ici ou dans d'autres fichiers de assets/js/. */
 const burger = document.querySelector('.burger'), menu = document.getElementById('menu');
 if (burger && menu) {
   const basculer = ouvert => { burger.setAttribute('aria-expanded', String(ouvert)); menu.classList.toggle('is-open', ouvert); };
