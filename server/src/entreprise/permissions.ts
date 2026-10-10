@@ -16,5 +16,5 @@ export const permissions: Permission[] = [
   { cle: 'ventes', libelle: 'Ventes & statistiques', description: 'Voir les ventes reçues du bot, les totaux, les anomalies et les chiffres du tableur de la Direction' },
   { cle: 'ventes-gerer', libelle: 'Ventes : gérer', description: 'Lancer la synchronisation du tableur de la Direction' },
   { cle: 'compta', libelle: 'Comptabilité', description: 'Relevé Tablettes, rémunération (salaires, paliers de primes) et déclaration DOT' },
-  { cle: 'parametres', libelle: 'Paramètres du site', description: 'Liens du site (WebMap, Google Sheets, registre, liens publics), salon des services, agenda partagé, apparence' },
+  // « parametres » (liens, services, agenda, apparence) est une permission du socle
 ];

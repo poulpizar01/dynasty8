@@ -3,7 +3,7 @@
 import type { Entreprise } from '../socle/contrat.js';
 import { carte, relaisCarte } from './carte.js';
 import { apparence } from './apparence.js';
-import { parametres } from './parametres.js';
+import { PARAMETRES } from './parametres.js';
 import { planifierNettoyagePhotos } from './photos.js';
 import { planifierPurge } from './purge.js';
 import { recevoirCandidature } from './rh.js';
@@ -36,7 +36,10 @@ export const entreprise: Entreprise = {
   },
 
   // apparence en premier : elle répond sur les adresses des images de la marque, avant le fichier livré
-  routes: [apparence, vitrine, parametres, biens, profils, messagerie, agenda, rh, stats, compta, services],
+  routes: [apparence, vitrine, biens, profils, messagerie, agenda, rh, stats, compta, services],
+
+  // page Paramètres (socle) : liens et réglages de Dynasty 8, déclarés dans parametres.ts
+  parametres: PARAMETRES,
 
   // WebMap : relayée sur son sous-domaine, servi à part du site (carte.ts) ; la vitrine l'affiche dans une iframe (https
   // seulement : en dev, l'iframe est refusée, la carte s'ouvre en pleine page)

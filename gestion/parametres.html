@@ -41,33 +41,25 @@
 
   <script>
     const $ = id => document.getElementById(id);
-    const GROUPES = [
-      ['prive', '🔗 Liens de l’espace agents', 'Lus par le serveur ou montrés aux seuls agents connectés.'],
-      ['public', '🌐 Liens des pages publiques', 'Boutons des pages du site public.'],
-      ['services', '🟢 Membres en service', 'Lecture du salon Discord où le bot des services publie les prises et fins de service.'],
-      ['agenda', '📅 Agenda partagé', 'Qui voit et qui crée les événements partagés, selon ses rôles Discord.'],
-    ];
-    let reglages = [];
+    // groupes et réglages déclarés côté serveur (entreprise/parametres.ts), validés par le socle (socle/parametres.ts)
+    const ATTRIBUTS = { lien: 'type="url" placeholder="https://…"', origine: 'type="url" placeholder="https://…"', 'id-discord': 'type="text" inputmode="numeric"', 'ids-discord': 'type="text"' };
+    let groupes = [];
 
     function afficher() {
-      $('champs').innerHTML = GROUPES.map(([groupe, titre, intro]) => {
-        const liste = reglages.filter(r => r.groupe === groupe);
-        if (!liste.length) return '';
-        return `<h3 class="comptes-sous-titre" style="margin-top:28px;">${titre}</h3>
-          <p class="champ-aide" style="margin:0 0 14px;">${intro}</p>` + liste.map(r => `
+      $('champs').innerHTML = groupes.map(g => `<h3 class="comptes-sous-titre" style="margin-top:28px;">${echapper(g.titre)}</h3>
+          ${g.intro ? `<p class="champ-aide" style="margin:0 0 14px;">${echapper(g.intro)}</p>` : ''}` + g.reglages.map(r => `
           <div class="champ">
             <label for="r-${echapper(r.cle)}">${echapper(r.libelle)}</label>
             <input id="r-${echapper(r.cle)}" data-cle="${echapper(r.cle)}" value="${echapper(r.valeur)}" autocomplete="off"
-              ${r.type === 'entier' ? `type="number" min="${r.min}" max="${r.max}" placeholder="${r.defaut}"` : r.type === 'url' || r.type === 'origine' || r.type === 'sheet' ? 'type="url" placeholder="https://…"' : 'type="text" inputmode="numeric"'}>
+              ${r.type === 'entier' ? `type="number" min="${Number(r.min)}" max="${Number(r.max)}" placeholder="${Number(r.defaut)}"` : r.cle === 'sheet' ? 'type="url" placeholder="https://docs.google.com/spreadsheets/d/…"' : ATTRIBUTS[r.type] || 'type="text"'}>
             <p class="champ-aide">${echapper(r.aide)}</p>
           </div>`).join('')
           // état de la lecture du salon (GET /api/services/etat), sous ses propres réglages
-          + (groupe === 'services' ? '<div id="etat-services" class="champ-aide" style="margin:-4px 0 8px;"></div>' : '');
-      }).join('');
+          + (g.reglages.some(r => r.cle === 'services_salon_id') ? '<div id="etat-services" class="champ-aide" style="margin:-4px 0 8px;"></div>' : '')).join('');
     }
 
     async function charger() {
-      reglages = (await socle.api('/api/parametres')).reglages;
+      groupes = (await socle.api('/api/parametres')).groupes;
       afficher();
       chargerApparence();
       chargerEtatServices();

@@ -7,7 +7,8 @@
 // l'espace agents (Paramètres) et sont lus une fois par page sur /api/liens. Un lien <a data-lien="cle"> reçoit son
 // adresse ; non réglé, il est masqué plutôt que de pointer nulle part. Les liens de la signature Roxwood Network, eux,
 // restent écrits dans la page.
-const D8_LIENS_PRETS = fetch("/api/liens").then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+// pages de la gestion : socle.js a déjà la même lecture, une seule requête
+const D8_LIENS_PRETS = window.socle?.liens ? window.socle.liens() : fetch("/api/liens").then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
 function appliquerLiens(racine) {
   return D8_LIENS_PRETS.then((liens) => {
     (racine || document).querySelectorAll("a[data-lien]").forEach((a) => {
