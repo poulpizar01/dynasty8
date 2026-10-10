@@ -6,6 +6,7 @@ const GESTION_NAV = [
   { href: 'annonces.html', label: 'Annonces' },
   { href: 'comptes.html', label: 'Comptes', permission: 'comptes' },
   { href: 'grades.html', label: 'Grades', permission: 'grades' },
+  { href: 'parametres.html', label: 'Paramètres', permission: 'parametres' },
   { href: 'compte.html', label: 'Mon compte' },
 ];
 

@@ -1,6 +1,6 @@
 // ENTREPRISE — permissions propres à ce site, cochées par grade dans la gestion (page Grades).
-// Clé : minuscules, chiffres, tirets, stable dans le temps (elle est enregistrée dans les grades) ; « comptes » et
-// « grades » appartiennent au socle. Fichier sans import (le socle le lit avant de charger les routes).
+// Clé : minuscules, chiffres, tirets, stable dans le temps (elle est enregistrée dans les grades) ; « comptes »,
+// « grades » et « parametres » appartiennent au socle. Fichier sans import (le socle le lit avant de charger les routes).
 import type { Permission } from '../socle/contrat.js';
 
 export const permissions: Permission[] = [

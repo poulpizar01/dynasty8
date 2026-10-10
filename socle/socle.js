@@ -47,5 +47,23 @@
     timeZone: 'Europe/Paris', day: 'numeric', month: 'short', year: 'numeric', ...(avecHeure && { hour: '2-digit', minute: '2-digit' }),
   });
 
-  window.socle = Object.freeze({ nomSite, esc, api, moi, peut, deconnexion, date });
+  // Liens réglés dans la gestion (Paramètres, déclarés « public » : GET /api/liens). Tout élément <a data-lien="cle">
+  // de la page reçoit son adresse au chargement ; un lien non réglé masque l'élément (l'écrire avec l'attribut hidden
+  // pour qu'il n'apparaisse pas avant). Contenu ajouté plus tard : socle.appliquerLiens(conteneur).
+  let liensP = null;
+  const liens = () => (liensP ??= fetch('/api/liens', { headers: { Accept: 'application/json' } }).then(r => (r.ok ? r.json() : {})).catch(() => ({})));
+  async function appliquerLiens(racine = document) {
+    const elements = racine.querySelectorAll('[data-lien]');
+    if (!elements.length) return;
+    const l = await liens();
+    for (const el of elements) {
+      const url = l[el.dataset.lien];
+      if (typeof url === 'string' && url.startsWith('https://')) { el.href = url; el.hidden = false; }
+      else el.hidden = true;
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => appliquerLiens());
+  else appliquerLiens();
+
+  window.socle = Object.freeze({ nomSite, esc, api, moi, peut, deconnexion, date, liens, appliquerLiens });
 })();

@@ -18,11 +18,13 @@ import { site, pages, renderFile, withNonce } from './socle/site.js';
 import { auth, PAGE_ACCUEIL, PAGE_ATTENTE, PAGE_CONNEXION } from './socle/routes/auth.js';
 import { comptes } from './socle/routes/comptes.js';
 import { grades } from './socle/routes/grades.js';
+import { declarerParametres, parametres } from './socle/parametres.js';
 import { webhooks } from './socle/routes/webhooks.js';
 import type { NiveauPage } from './socle/contrat.js';
 import { entreprise } from './entreprise/index.js';
 
 await Promise.all([chargerGrades(), chargerReglages()]);
+declarerParametres(entreprise.parametres);   // avant demarrage(), qui peut lire un paramètre
 planifierPurge();
 await entreprise.demarrage?.();
 
@@ -79,7 +81,7 @@ app.use(['/api', '/auth'], (req, res, next) => {
 
 app.use('/auth', limits.auth);
 app.use('/api', limits.api);
-app.use(auth, comptes, grades, ...entreprise.routes);
+app.use(auth, comptes, grades, parametres, ...entreprise.routes);
 // adresse d'API inconnue : 404 en JSON (pas la page 404 du site)
 app.use('/api', (_req, res) => { res.status(404).json({ error: 'introuvable' }); });
 
@@ -93,7 +95,7 @@ const statics: Parameters<typeof express.static>[1] = { index: false, dotfiles: 
 // Pages de gestion/ : envoyées seulement à qui y a droit, selon les mêmes règles que l'API. Sinon la page n'est jamais
 // envoyée : pas connecté → connexion ; compte pas encore validé → attente ; droits insuffisants → refuse.html (403).
 // Niveaux : ceux du socle ci-dessous, puis ceux que déclare l'entreprise ; une page non déclarée exige un compte validé.
-const NIVEAU_PAGE: Record<string, NiveauPage> = { ...entreprise.pages, index: 'public', refuse: 'public', attente: 'connecte' };
+const NIVEAU_PAGE: Record<string, NiveauPage> = { parametres: 'parametres', ...entreprise.pages, index: 'public', refuse: 'public', attente: 'connecte' };
 for (const [page, niveau] of Object.entries(NIVEAU_PAGE)) {
   if (!['public', 'connecte', 'valide'].includes(niveau) && !CLES_PERMISSIONS.has(niveau)) throw new Error(`entreprise.pages : niveau inconnu « ${niveau} » pour la page ${page}`);
 }

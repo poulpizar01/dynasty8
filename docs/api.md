@@ -17,7 +17,7 @@ Les messages d'erreur destinés à l'utilisateur sont des phrases (`{ error: "Gr
 Pages de `gestion/` : mêmes niveaux, contrôlés par le serveur avant tout envoi (`server/src/index.ts`, d'après `entreprise.pages`) : pas connecté → `gestion/` (connexion) ; compte pas validé → `attente.html` ; permission manquante → `403` avec `refuse.html`. Page non déclarée : compte validé.
 
 ## Permissions et grades
-- Permissions du socle : `comptes` (valider, refuser, renommer, changer de grade, supprimer un compte) et `grades` (créer, ordonner, modifier, supprimer un grade). Celles de l'entreprise : `server/src/entreprise/permissions.ts`.
+- Permissions du socle : `comptes` (valider, refuser, renommer, changer de grade, supprimer un compte), `grades` (créer, ordonner, modifier, supprimer un grade) et `parametres` (page Paramètres : liens et réglages déclarés par l'entreprise). Celles de l'entreprise : `server/src/entreprise/permissions.ts`.
 - **Hiérarchie** : les grades sont ordonnés du sommet (position 0) à la base. Hors propriétaire, on ne gère que les comptes et les grades **strictement sous** son propre grade (un compte sans grade ne gère rien), et on n'accorde ou ne retire que des permissions qu'on détient.
 - **Rôles Discord** : un grade peut être lié à un rôle Discord. À chaque connexion, le compte reçoit le plus haut grade dont il porte le rôle (et est validé d'office s'il n'avait pas été refusé) ; un grade lié à un rôle qu'il ne porte plus lui est retiré. Un grade sans rôle se donne à la main.
 
@@ -42,6 +42,9 @@ Pages de `gestion/` : mêmes niveaux, contrôlés par le serveur avant tout envo
 | `PATCH /api/grades/:cle` | `grades` | Mêmes champs (sauf `cle`) ; grade sous le sien ; changer `roleDiscordId` exige aussi `comptes` |
 | `PUT /api/grades/ordre` | `grades` | `{ ordre: [cle…] }` (tous les grades) ; hors propriétaire, les grades jusqu'au sien restent en place |
 | `DELETE /api/grades/:cle` | `grades` | Grade sous le sien et porté par aucun compte (`409` sinon) |
+| `GET /api/liens` | public | Liens publics réglés dans Paramètres : `{ cle: url }` (`''` si vide) ; lus par `socle.js` pour les `data-lien` |
+| `GET /api/parametres` | `parametres` | Réglages déclarés par l'entreprise : `{ groupes: [{ titre, intro, reglages: [{ cle, type, libelle, aide, public, valeur, min?, max?, defaut? }] }] }` |
+| `PUT /api/parametres` | `parametres` | `{ <cle>: valeur }` (seulement les clés envoyées ; `''` vide le réglage) ; tout ou rien : `400` avec le premier refus |
 | `POST /webhooks/bot` | signature du bot | Réception des événements du bot entreprise : voir [webhooks.md](webhooks.md) |
 | `GET /healthz` | public (bloqué par nginx) | Santé du site pour Docker : `{ ok: true }` ou `503` |
 

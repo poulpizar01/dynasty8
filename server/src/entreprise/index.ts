@@ -13,9 +13,21 @@ export const entreprise: Entreprise = {
     annonces: 'valide',
     comptes: 'comptes',
     grades: 'grades',
+    parametres: 'parametres',
   },
 
   routes: [annonces],
+
+  // page Paramètres (socle/parametres.ts) : liens et réglages modifiables sans toucher au code. Exemple à adapter :
+  // le bouton « Postuler » de la vitrine (data-lien="recrutement") et l'épinglage des annonces.
+  parametres: [
+    { titre: 'Liens de la vitrine', intro: 'Boutons des pages publiques ; un lien vide masque son bouton.', reglages: [
+      { cle: 'recrutement', type: 'lien', public: true, libelle: 'Formulaire de candidature', aide: 'Bouton « Postuler » de la page d’accueil.' },
+    ] },
+    { titre: 'Annonces', reglages: [
+      { cle: 'annonces_epinglees_max', type: 'entier', min: 1, max: 10, defaut: 3, libelle: 'Annonces épinglées au plus', aide: 'Nombre d’annonces gardées en tête de liste.' },
+    ] },
+  ],
 
   // événements du bot Discord entreprise (voir docs/webhooks.md) : un traitement par type d'événement reçu.
   // Exemple : une absence acceptée devient une annonce. À remplacer par ce dont l'entreprise a besoin.

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="application-name" content="{{nom}}">
+  <meta name="robots" content="noindex">
+  <title>Paramètres — {{nom}}</title>
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/gestion/gestion.css">
+  <script src="/socle/socle.js"></script>
+  <script src="/gestion/gestion.js"></script>
+</head>
+<body>
+  <!-- Paramètres du site (API du socle : /api/parametres, docs/api.md ; permission « parametres »). Les champs sont
+       construits d'après les réglages déclarés dans entreprise.parametres : rien à écrire ici pour en ajouter un.
+       Apparence libre. -->
+  <main class="contenu">
+    <p class="surtitre">Gestion</p>
+    <h1 class="page-titre">Paramètres</h1>
+    <p class="intro">Liens et réglages du site. Chacun s'applique dès l'enregistrement, sans redémarrer le site.</p>
+    <p class="message" id="msg" hidden></p>
+    <form id="form">
+      <div id="groupes"></div>
+      <button class="btn btn--accent" id="enregistrer">Enregistrer</button>
+    </form>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id), msg = $('msg');
+    const ATTRIBUTS = {
+      lien: 'type="url" placeholder="https://…"', origine: 'type="url" placeholder="https://…"', texte: 'type="text"',
+      'id-discord': 'type="text" inputmode="numeric" placeholder="identifiant Discord"', 'ids-discord': 'type="text" placeholder="identifiants séparés par des espaces"',
+    };
+
+    function afficher(groupes) {
+      $('groupes').innerHTML = groupes.length ? groupes.map(g => `
+        <section class="carte">
+          <h2>${socle.esc(g.titre)}</h2>
+          ${g.intro ? `<p class="intro">${socle.esc(g.intro)}</p>` : ''}
+          ${g.reglages.map(r => `
+            <div class="champ">
+              <label for="p-${socle.esc(r.cle)}">${socle.esc(r.libelle)}${r.public ? ' <span style="font-weight:400;color:var(--ink2)">· affiché sur le site public</span>' : ''}</label>
+              <input id="p-${socle.esc(r.cle)}" data-cle="${socle.esc(r.cle)}" value="${socle.esc(r.valeur)}" autocomplete="off"
+                ${r.type === 'entier' ? `type="number" step="1" min="${Number(r.min)}" max="${Number(r.max)}" placeholder="${Number(r.defaut)}"` : ATTRIBUTS[r.type] || 'type="text"'}>
+              <small>${socle.esc(r.aide)}</small>
+            </div>`).join('')}
+        </section>`).join('')
+        : '<p class="intro">Aucun réglage déclaré pour ce site (entreprise.parametres).</p>';
+      $('enregistrer').hidden = !groupes.length;
+    }
+
+    const charger = async () => afficher((await socle.api('/api/parametres')).groupes);
+
+    $('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const corps = Object.fromEntries([...document.querySelectorAll('[data-cle]')].map(c => [c.dataset.cle, c.value.trim()]));
+      $('enregistrer').disabled = true;
+      try {
+        await socle.api('/api/parametres', { method: 'PUT', body: corps });
+        await charger();
+        gestion.message(msg, 'Réglages enregistrés : ils s’appliquent dès maintenant.', true);
+      } catch (err) { gestion.message(msg, err.message); }
+      finally { $('enregistrer').disabled = false; }
+    });
+
+    gestion.coque().then(charger).catch(e => gestion.message(msg, e.message));
+  </script>
+</body>
+</html>

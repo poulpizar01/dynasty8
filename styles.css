@@ -62,6 +62,8 @@ h1,h2,h3{font-family:var(--display);line-height:1.1;margin:0 0 .5em}
 .texte p{margin:0 0 16px;color:var(--ink2)}
 .contact{display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap}
 .contact p{color:var(--ink2);max-width:52ch}
+.contact__actions{display:flex;gap:12px;flex-wrap:wrap}
+[hidden]{display:none!important}
 @media (max-width:800px){.section{padding:56px 0}.colonnes{grid-template-columns:1fr;gap:12px}}
 
 /* ---------- pied de page ---------- */

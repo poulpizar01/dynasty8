@@ -3,8 +3,16 @@
 import { Router } from 'express';
 import { prisma } from '../../socle/db.js';
 import { body, intParam, permission, text, valide } from '../../socle/http.js';
+import { entierParametre } from '../../socle/parametres.js';
 
 export const annonces = Router();
+
+// épingler : refusé au-delà du nombre réglé dans Paramètres (exemple de lecture d'un paramètre, entreprise/index.ts)
+const epinglageRefuse = async (sauf?: number) => {
+  const max = entierParametre('annonces_epinglees_max');
+  return (await prisma.annonce.count({ where: { epingle: true, ...(sauf && { id: { not: sauf } }) } })) >= max
+    ? `Déjà ${max} annonce(s) épinglée(s) : désépingle-en une d'abord (nombre réglable dans Paramètres).` : null;
+};
 
 annonces.get('/api/annonces', ...valide, async (_req, res) => {
   const liste = await prisma.annonce.findMany({ orderBy: [{ epingle: 'desc' }, { creeLe: 'desc' }], take: 100 });
@@ -17,12 +25,16 @@ annonces.get('/api/annonces', ...valide, async (_req, res) => {
 annonces.post('/api/annonces', ...permission('annonces'), async (req, res) => {
   const b = body(req), titre = text(b.titre, 120), texte = text(b.texte, 4000);
   if (!titre || !texte) { res.status(400).json({ error: 'Titre et texte requis.' }); return; }
+  const refus = b.epingle === true ? await epinglageRefuse() : null;
+  if (refus) { res.status(409).json({ error: refus }); return; }
   const a = await prisma.annonce.create({ data: { titre, texte, epingle: b.epingle === true, compteId: req.compte.id } });
   res.status(201).json({ id: a.id });
 });
 
 annonces.patch('/api/annonces/:id', ...permission('annonces'), async (req, res) => {
-  const { count } = await prisma.annonce.updateMany({ where: { id: intParam(req, 'id') }, data: { epingle: body(req).epingle === true } });
+  const epingle = body(req).epingle === true, refus = epingle ? await epinglageRefuse(intParam(req, 'id')) : null;
+  if (refus) { res.status(409).json({ error: refus }); return; }
+  const { count } = await prisma.annonce.updateMany({ where: { id: intParam(req, 'id') }, data: { epingle } });
   if (!count) { res.status(404).json({ error: 'Annonce introuvable.' }); return; }
   res.json({ ok: true });
 });
