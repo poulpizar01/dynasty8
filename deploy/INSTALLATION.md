@@ -40,7 +40,7 @@ Modèle commenté : [`.env.example`](../.env.example), à copier en `.env`. Vale
 | `BASE_URL` | `https://dynasty8.fbfa.fr` | — |
 | `SESSION_SECRET`, `POSTGRES_PASSWORD` | `openssl rand -hex 32` chacun ; `POSTGRES_PASSWORD` ne se change plus une fois la base créée | vous |
 | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | application Discord RoxwoodLegal (`1546523997980852294`) | Direction de Dynasty 8 |
-| `DISCORD_BOT_TOKEN` | jeton du bot de l'application RoxwoodLegal (onglet Bot → Reset Token), invité sur le serveur de Dynasty 8 sans aucune permission : la page Grades propose alors les rôles Discord par leur nom. Facultatif | vous |
+| `DISCORD_BOT_TOKEN` | jeton du bot de l'application RoxwoodLegal (onglet Bot → Reset Token), invité sur le serveur de Dynasty 8 avec les droits du point 5. Sert à trois choses : rôles Discord proposés par leur nom dans Grades, encadré « En service », événements d'agenda postés dans les tickets. Facultatif : sans lui, ces trois fonctions restent inactives | vous |
 | `DISCORD_GUILD_ID` | ID du serveur Discord de Dynasty 8 : seuls ses membres peuvent se connecter, son propriétaire a tous les droits sur le site | Direction de Dynasty 8 |
 | `STORAGE_URL`, `STORAGE_TOKEN`, `STORAGE_PREFIX` | `https://storage.fbfa.fr`, jeton du stockage, `dynasty8/` | vous (jeton) |
 | `BOT_WEBHOOK_SECRETS` | secret de l'abonnement « Candidatures » du bot Discord (étape 5) | Dynasty 8, depuis le bot |
@@ -103,16 +103,25 @@ Dans l'application RoxwoodLegal (portail développeur → OAuth2 → Redirects),
 2. Dans **Gestion → Grades**, il crée les grades de l'agence et lie chacun à son **rôle Discord**.
 3. Les agents se connectent par Discord : ceux qui portent un rôle lié à un grade entrent directement, les autres attendent d'être validés (Gestion → Comptes).
 4. La connexion « IG » dans l'ordinateur en jeu fonctionne pour tout agent qui s'est connecté par Discord depuis moins de 30 jours (règle voulue : un agent parti du serveur Discord perd aussi l'accès en jeu).
+5. Dans **Paramètres**, la Direction renseigne les liens, puis, si `DISCORD_BOT_TOKEN` est en place :
+   - **Membres en service** : ID du salon où le bot des services publie « Service démarré » / « Service terminé », et la clôture automatique (12 h si vide). L'état de la lecture s'affiche sous ces champs dans la minute.
+   - **Agenda partagé** : rôles qui voient et qui créent les événements « Patrons », « Direction », « Tous », rôles qui créent un « Perso » pour quelqu'un d'autre, catégories où Ticket Tool crée les tickets. Qui a la permission « Paramètres du site » crée toujours.
+
+   Les ID se copient dans Discord par clic droit → *Copier l'identifiant* (mode développeur activé : Paramètres Discord → Avancés). Les rôles de chacun sont ceux de sa **dernière connexion** au site : après un changement de rôle sur Discord, la personne se reconnecte.
+6. Dans **Comptabilité → Paramètres**, le **taux horaire** des grades payés à l'heure (stagiaires). Le relevé Tablettes collé doit contenir la colonne « Heures de service » (format `2h30min`).
 
 ## 5. Bots et ordinateur en jeu
 
 - **Bot Discord, candidatures** : dans le salon panneau du bot, Monitoring → Ajouter un webhook, type **Candidatures** (`recruitment.updated`), URL `https://dynasty8.fbfa.fr/webhooks/bot`. Le secret, affiché une seule fois, va dans `BOT_WEBHOOK_SECRETS`, puis `docker compose up -d`.
 - **Bot de ventes** : `POST https://dynasty8.fbfa.fr/api/stats/ventes`, avec l'en-tête `Authorization: Bearer <STATS_BOT_SECRET>`.
+- **Bot de l'application RoxwoodLegal** (`DISCORD_BOT_TOKEN`), droits sur le serveur de Dynasty 8, rien de plus :
+  - salon des prises et fins de service : *Voir le salon* et *Voir les anciens messages* ;
+  - catégories des tickets Ticket Tool : *Voir le salon*, *Envoyer des messages* et *Intégrer des liens* (l'événement est un message enrichi).
 - **Broker `access` (FolkOS)** : adresse du SSO à déclarer, `https://dynasty8.fbfa.fr/auth/folkos` (slug suggéré : `dynasty8`).
 
 ## 6. Vérifications
 
-- https://dynasty8.fbfa.fr : la vitrine s'affiche ; le lien WebMap ouvre https://carte.dynasty8.fbfa.fr. Une erreur `502` sur la carte vient en général de `WEBMAP_ORIGIN` injoignable depuis le conteneur (point 5).
+- https://dynasty8.fbfa.fr : la vitrine s'affiche ; le lien WebMap ouvre https://carte.dynasty8.fbfa.fr. Une erreur `502` sur la carte vient en général de l'adresse de la WebMap (Paramètres) injoignable depuis le conteneur ; une `503`, d'une adresse pas encore réglée.
 - Connexion Discord, puis une page de l'espace agents.
 - Envoi d'une photo sur une annonce. Un refus « L'envoi d'images n'est pas encore configuré » vient de `STORAGE_URL` ou `STORAGE_TOKEN`.
 - Dans l'ordinateur en jeu : le site s'affiche et « Se connecter IG » fonctionne. Une page blanche vient presque toujours de `FOLKOS_HOTE` ou `FOLKOS_CADRES`.
