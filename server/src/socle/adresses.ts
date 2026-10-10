@@ -1,8 +1,11 @@
 // SOCLE — adresses que le serveur ne doit jamais joindre : lui-même et le réseau interne (service de la machine, autre
 // conteneur, métadonnées de l'hébergeur). Pour tout appel ou relais vers une adresse réglée depuis la gestion (le site
-// n'appelle jamais une adresse donnée par un simple utilisateur). Le contrôle se fait au moment de la connexion
-// (lookupSur, à passer à http(s).request ou à un agent) et pas seulement à la saisie : un nom qui changerait d'adresse
-// entre les deux ne passe pas.
+// n'appelle jamais une adresse donnée par un simple utilisateur). Deux contrôles, tous deux nécessaires :
+//   - à la saisie (hoteInterdit) : refus immédiat et lisible d'une adresse manifestement interne ;
+//   - à chaque connexion (requeteHttps, lookupSur) : un nom public qui se mettrait à pointer vers une adresse interne
+//     (changement de DNS après la saisie) ne passe pas non plus.
+import https from 'node:https';
+import type { IncomingMessage, OutgoingHttpHeaders } from 'node:http';
 import { BlockList, isIP } from 'node:net';
 import { lookup } from 'node:dns';
 
@@ -23,11 +26,13 @@ export const adresseInterdite = (ip: string): boolean => {
   return famille === 0 || interdites.check(ip, famille === 6 ? 'ipv6' : 'ipv4');
 };
 
-// nom d'hôte d'une URL écrit comme une adresse IP interne (« localhost » compris) ; un nom ordinaire est contrôlé à la
-// connexion par lookupSur
+// nom d'hôte d'une URL qui désigne la machine ou le réseau local : adresse IP interne, localhost, nom sans point (un
+// service Docker : « db »), noms réservés au réseau local (.local, .internal, .lan, .home.arpa). Un nom public est
+// contrôlé à la connexion (requeteHttps).
 export const hoteInterdit = (hostname: string): boolean => {
-  const h = hostname.replace(/^\[|\]$/g, '').toLowerCase();
-  return h === 'localhost' || h.endsWith('.localhost') || (isIP(h) !== 0 && adresseInterdite(h));
+  const h = hostname.replace(/^\[|\]$/g, '').toLowerCase().replace(/\.$/, '');
+  if (isIP(h)) return adresseInterdite(h);
+  return !h.includes('.') || /(^|\.)(localhost|local|internal|lan|intranet|home\.arpa)$/.test(h);
 };
 
 // résolution DNS qui refuse un nom pointant vers une adresse interne (erreur code ADRESSE_INTERDITE)
@@ -40,3 +45,22 @@ export const lookupSur: typeof lookup = ((nom: string, options: object, rappel: 
     else rappel(null, liste[0].address, liste[0].family);
   });
 }) as typeof lookup;
+
+// Requête https vers une adresse réglée depuis la gestion, adresse contrôlée à la connexion (fetch ne le permet pas) :
+// https seulement, hôte refusé par hoteInterdit, résolution par lookupSur. Aucune redirection suivie : à l'appelant de
+// décider s'il en suit une (par un nouvel appel, donc recontrôlé). Délai global, connexion ET lecture de la réponse :
+// au-delà, la requête est détruite (erreur sur le flux de la réponse). La réponse est un flux, à lire ou à détruire.
+export function requeteHttps(adresse: URL, options: { methode?: string; entetes?: OutgoingHttpHeaders; corps?: Buffer; delaiMs?: number } = {}): Promise<IncomingMessage> {
+  return new Promise((ok, ko) => {
+    if (adresse.protocol !== 'https:' || adresse.username || adresse.password || hoteInterdit(adresse.hostname)) {
+      ko(Object.assign(new Error('adresse interdite'), { code: 'ADRESSE_INTERDITE' }));
+      return;
+    }
+    const delai = options.delaiMs ?? 20_000;
+    const req = https.request(adresse, { method: options.methode ?? 'GET', headers: options.entetes, lookup: lookupSur }, ok);
+    const minuteur = setTimeout(() => req.destroy(new Error(`pas de réponse complète en ${delai / 1000} s`)), delai);
+    req.on('close', () => clearTimeout(minuteur));
+    req.on('error', ko);
+    req.end(options.corps);
+  });
+}
