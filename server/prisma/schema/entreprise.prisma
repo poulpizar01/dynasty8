@@ -100,18 +100,29 @@ model StatutMessagerie {
 }
 
 // « Mon agenda » : événements personnels d'un agent, visibles de lui seul (routes/agenda.ts).
+// Agenda : visibilité et règles dans entreprise/agenda-regles.ts et routes/agenda.ts
 model EvenementAgenda {
-  id         Int      @id @default(autoincrement())
-  compteId   Int      @map("compte_id")
-  titre      String   @db.VarChar(80)
-  jour       DateTime @db.Date
-  heureDebut String   @map("heure_debut") @db.VarChar(5) // HH:MM
-  heureFin   String   @map("heure_fin") @db.VarChar(5)
-  notes      String   @default("") @db.VarChar(500)
-  creeLe     DateTime @default(now()) @map("cree_le") @db.Timestamptz(6)
-  majLe      DateTime @default(now()) @updatedAt @map("maj_le") @db.Timestamptz(6)
+  id               Int      @id @default(autoincrement())
+  compteId         Int?     @map("compte_id") // auteur ; null : compte supprimé (événement partagé gardé)
+  auteurNom        String   @default("") @map("auteur_nom") @db.VarChar(64)
+  titre            String   @db.VarChar(80)
+  jour             DateTime @db.Date
+  heureDebut       String   @map("heure_debut") @db.VarChar(5) // HH:MM, heure de Paris
+  heureFin         String   @map("heure_fin") @db.VarChar(5)
+  notes            String   @default("") @db.VarChar(500)
+  visibilite       String   @default("perso") @db.VarChar(10) // perso | patrons | direction | tous
+  // « Perso » pour quelqu'un d'autre : sa fiche RH, son ID Discord (qui lui ouvre l'événement), le message de son ticket
+  cibleEmployeId   Int?     @map("cible_employe_id")
+  cibleDiscordId   String?  @map("cible_discord_id") @db.VarChar(22)
+  cibleNom         String   @default("") @map("cible_nom") @db.VarChar(130)
+  discordSalonId   String?  @map("discord_salon_id") @db.VarChar(22)
+  discordMessageId String?  @map("discord_message_id") @db.VarChar(22)
+  creeLe           DateTime @default(now()) @map("cree_le") @db.Timestamptz(6)
+  majLe            DateTime @default(now()) @updatedAt @map("maj_le") @db.Timestamptz(6)
 
   @@index([compteId, jour])
+  @@index([visibilite, jour])
+  @@index([cibleDiscordId, jour])
   @@map("evenements_agenda")
 }
 

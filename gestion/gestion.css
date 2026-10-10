@@ -79,3 +79,12 @@ img.admin-avatar { object-fit: cover; padding: 0; }
   .admin-en-service-titre { margin: 0; }
   .admin-en-service-liste { display: none; }
 }
+
+/* ---- agenda : couleur selon « Visible par » (agenda.js) ---- */
+.agenda-evenement.agenda-vis-patrons, .agenda-mois-evenement.agenda-vis-patrons { border-left: 3px solid #e8534a; }
+.agenda-evenement.agenda-vis-direction, .agenda-mois-evenement.agenda-vis-direction { border-left: 3px solid #8a7cf0; }
+.agenda-evenement.agenda-vis-tous, .agenda-mois-evenement.agenda-vis-tous { border-left: 3px solid #3ccf7a; }
+.agenda-legende { display: inline-block; padding: 0 6px; margin: 0 2px; border-left: 3px solid var(--d8-gold-400); border-radius: 3px; background: rgba(201, 165, 92, 0.14); }
+.agenda-legende-patrons { border-left-color: #e8534a; }
+.agenda-legende-direction { border-left-color: #8a7cf0; }
+.agenda-legende-tous { border-left-color: #3ccf7a; }
