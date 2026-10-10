@@ -105,7 +105,7 @@
       try {
         if (b.dataset.action === 'modifier') return formulaire(g);
         if (b.dataset.action === 'supprimer') {
-          if (!confirm(`Supprimer le grade « ${g.libelle} » ?`)) return;
+          if (!await gestion.confirmer('Les comptes qui le portent n’auront plus de grade.', { titre: `Supprimer le grade « ${g.libelle} » ?`, libelle: 'Supprimer le grade' })) return;
           grades = await socle.api(`/api/grades/${encodeURIComponent(cle)}`, { method: 'DELETE' });
         } else {
           const ordre = grades.map(x => x.cle), j = b.dataset.action === 'monter' ? i - 1 : i + 1;

@@ -48,8 +48,8 @@
       catch (err) { gestion.message(msg, err.message); }
     });
     document.getElementById('supprimer').addEventListener('click', async () => {
-      if (!confirm('Supprimer définitivement ton compte ?')) return;
-      try { await socle.api('/api/moi', { method: 'DELETE' }); location.href = '/'; } catch (e) { alert(e.message); }
+      if (!await gestion.confirmer('Ton compte est effacé du site. Tu pourras refaire une demande en te reconnectant.', { titre: 'Supprimer ton compte ?', libelle: 'Supprimer mon compte' })) return;
+      try { await socle.api('/api/moi', { method: 'DELETE' }); location.href = '/'; } catch (e) { gestion.message(document.getElementById('msgNom'), e.message); }
     });
   </script>
 </body>

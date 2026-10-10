@@ -78,7 +78,7 @@
       if (!b || !id) return;
       try {
         if (b.dataset.action === 'supprimer') {
-          if (!confirm('Supprimer ce compte ? Il pourra refaire une demande en se reconnectant.')) return;
+          if (!await gestion.confirmer('Il pourra refaire une demande en se reconnectant.', { titre: 'Supprimer ce compte ?', libelle: 'Supprimer le compte' })) return;
           await socle.api(`/api/comptes/${id}`, { method: 'DELETE' });
         } else await socle.api(`/api/comptes/${id}`, { method: 'PATCH', body: { statut: b.dataset.action } });
         gestion.message(msg, '');

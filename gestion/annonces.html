@@ -51,11 +51,11 @@
       if (!carte || !bouton) return;
       try {
         if (bouton.hasAttribute('data-retirer')) {
-          if (!confirm('Retirer cette annonce ?')) return;
+          if (!await gestion.confirmer('L’annonce disparaît de la page d’accueil des employés.', { titre: 'Retirer cette annonce ?', libelle: 'Retirer l’annonce' })) return;
           await socle.api(`/api/annonces/${carte.dataset.id}`, { method: 'DELETE' });
         } else await socle.api(`/api/annonces/${carte.dataset.id}`, { method: 'PATCH', body: { epingle: bouton.dataset.epingle === '1' } });
         afficher();
-      } catch (err) { alert(err.message); }
+      } catch (err) { gestion.message(document.getElementById('msg'), err.message); }
     });
 
     document.getElementById('form').addEventListener('submit', async e => {

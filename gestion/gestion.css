@@ -14,7 +14,8 @@ h1,h2,h3{font-family:var(--display);line-height:1.15;margin:0 0 .5em}
 .rail__marque{display:flex;align-items:center;gap:10px;padding:0 8px 18px;font-family:var(--display);font-weight:700;text-decoration:none;color:var(--ink)}
 .rail__marque img{width:32px;height:32px}
 .rail__marque span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rail__nav{display:flex;flex-direction:column;gap:2px}
+/* le menu défile s'il est long : le compte et la déconnexion restent visibles en bas, quelle que soit la hauteur */
+.rail__nav{display:flex;flex-direction:column;gap:2px;overflow-y:auto;min-height:0}
 .rail__nav a{padding:9px 12px;border-radius:8px;color:var(--ink2);text-decoration:none;font-weight:500}
 .rail__nav a:hover{background:var(--bg3);color:var(--ink)}
 .rail__nav a[aria-current="page"]{background:var(--accent-soft);color:var(--accent-dark)}
@@ -58,6 +59,8 @@ h1,h2,h3{font-family:var(--display);line-height:1.15;margin:0 0 .5em}
 .btn--accent:hover{background:var(--accent-dark);color:var(--on-accent)}
 .btn--danger{color:var(--erreur)}
 .btn--danger:hover{border-color:var(--erreur);color:var(--erreur)}
+.btn--danger-plein{background:var(--erreur);border-color:var(--erreur);color:#fff}
+.btn--danger-plein:hover{filter:brightness(.92);color:#fff;border-color:var(--erreur)}
 .btn--petit{padding:5px 10px;font-size:13px}
 label{display:block;font-weight:600;font-size:14px;margin:0 0 6px}
 input[type=text],input[type=url],input[type=number],input[type=color],textarea,select{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font:inherit}
@@ -78,6 +81,16 @@ table{width:100%;border-collapse:collapse;font-size:15px}
 th{text-align:left;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);font-weight:600}
 th,td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 td select{min-width:140px}
+
+/* ---------- lien d'évitement, fenêtre de confirmation (gestion.js) ---------- */
+.evitement{position:absolute;left:12px;top:-60px;z-index:100;padding:10px 16px;border-radius:8px;background:var(--accent);color:var(--on-accent);font-weight:600}
+.evitement:focus{top:12px}
+.contenu:focus{outline:none}
+.modale-fond{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45)}
+.modale{width:100%;max-width:420px;background:var(--bg2);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow)}
+.modale h2{font-size:20px}
+.modale p{margin:0 0 20px;color:var(--ink2)}
+.modale__actions{justify-content:flex-end}
 
 /* ---------- pages hors coque (connexion, attente, refus) ---------- */
 .seul{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
