@@ -6,8 +6,8 @@ import type { RequestHandler, Router } from 'express';
 import type { Prisma } from '../generated/prisma/client.js';
 
 // Permission déclarée par l'entreprise (src/entreprise/permissions.ts), cochée par grade dans la gestion
-// (ex. { cle: 'stocks', libelle: 'Gérer les stocks' }). Clé : minuscules, chiffres, tirets ; « comptes » et « grades »
-// sont réservées au socle. Fichier à part et sans import : le socle le lit avant de charger les routes.
+// (ex. { cle: 'stocks', libelle: 'Gérer les stocks' }). Clé : minuscules, chiffres, tirets ; « comptes », « grades » et
+// « parametres » sont réservées au socle. Fichier à part et sans import : le socle le lit avant de charger les routes.
 export type Permission = { cle: string; libelle: string; description?: string };
 
 // Niveau d'accès d'une page de gestion/ : 'public' (sans connexion), 'connecte' (compte même en attente),
@@ -16,6 +16,22 @@ export type NiveauPage = 'public' | 'connecte' | 'valide' | string;
 
 // Événement reçu du bot Discord entreprise (corps du webhook, signature déjà vérifiée, serveur Discord contrôlé)
 export type EvenementBot = { guildId: string; eventType: string; payload: unknown; sentAt: string };
+
+// Réglage de la page Paramètres (socle/parametres.ts), rangé dans un groupe affiché sous son titre.
+//   lien : https, montré tel quel (public : servi à tous par GET /api/liens, pour data-lien des pages publiques) ;
+//   origine : https, appelée PAR LE SERVEUR (service relayé…) : réduite à son origine, jamais le serveur lui-même ni
+//     le réseau interne ; texte ; entier (min, max, defaut obligatoires) ; id-discord ; ids-discord (séparés par des
+//     espaces).
+// lire / afficher : saisie propre au site (ex. lien Google Sheets → identifiant) : lire renvoie la valeur à enregistrer
+// ou { erreur }, afficher la valeur montrée dans le formulaire.
+export type TypeParametre = 'lien' | 'origine' | 'texte' | 'entier' | 'id-discord' | 'ids-discord';
+export type DefinitionParametre = {
+  cle: string; type: TypeParametre; libelle: string; aide: string; public?: boolean;
+  min?: number; max?: number; defaut?: number;
+  lire?: (saisie: string) => string | { erreur: string };
+  afficher?: (valeur: string) => string;
+};
+export type GroupeParametres = { titre: string; intro?: string; reglages: DefinitionParametre[] };
 
 export type Entreprise = {
   // nom de la page de gestion/ (sans .html) → niveau
@@ -39,4 +55,6 @@ export type Entreprise = {
   // lié au seul domaine de BASE_URL, n'y est jamais envoyé). Nom en minuscules, jamais celui de BASE_URL ; nginx doit y
   // renvoyer (docs/nginx.md).
   hotes?: Record<string, RequestHandler>;
+  // réglages de la page Paramètres (socle/parametres.ts), par groupes ; clés lues avec parametre(), lienParametre()…
+  parametres?: GroupeParametres[];
 };
