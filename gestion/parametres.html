@@ -60,7 +60,9 @@
             <input id="r-${echapper(r.cle)}" data-cle="${echapper(r.cle)}" value="${echapper(r.valeur)}" autocomplete="off"
               ${r.type === 'entier' ? `type="number" min="${r.min}" max="${r.max}" placeholder="${r.defaut}"` : r.type === 'url' || r.type === 'origine' || r.type === 'sheet' ? 'type="url" placeholder="https://…"' : 'type="text" inputmode="numeric"'}>
             <p class="champ-aide">${echapper(r.aide)}</p>
-          </div>`).join('');
+          </div>`).join('')
+          // état de la lecture du salon (GET /api/services/etat), sous ses propres réglages
+          + (groupe === 'services' ? '<div id="etat-services" class="champ-aide" style="margin:-4px 0 8px;"></div>' : '');
       }).join('');
     }
 
@@ -68,6 +70,23 @@
       reglages = (await socle.api('/api/parametres')).reglages;
       afficher();
       chargerApparence();
+      chargerEtatServices();
+    }
+
+    // ---- lecture du salon des services ----
+    const ANOMALIES = { fin_sans_debut: 'fin sans début lu', debut_en_double: 'nouvelle prise de service sans fin de la précédente', cloture_auto: 'fermé automatiquement' };
+    const quand = d => new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' });
+    async function chargerEtatServices() {
+      try {
+        const r = await socle.api('/api/services/etat'), lignes = [];
+        if (!r.jetonPresent) lignes.push('⚠️ Membres en service : DISCORD_BOT_TOKEN absent du .env du serveur — le salon ne peut pas être lu.');
+        else if (!r.salonRegle) lignes.push('Membres en service : réglez l’ID du salon ci-dessus pour activer l’encadré « En service ».');
+        else if (!r.etat?.derniereLecture) lignes.push('Membres en service : première lecture du salon dans moins d’une minute.');
+        else if (r.etat.statut === 'erreur') lignes.push(`⚠️ Lecture du salon des services : ${echapper(r.etat.erreur)} (${echapper(quand(r.etat.derniereLecture))}).`);
+        else lignes.push(`✓ Salon des services lu le ${echapper(quand(r.etat.derniereLecture))} : ${r.etat.nbLus} nouveau(x) message(s), ${r.etat.nbReconnus} prise(s) ou fin(s) de service reconnue(s). ${r.enService} personne(s) en service. Clôture automatique après ${r.clotureHeures} h.`);
+        if (r.anomalies?.length) lignes.push('Derniers cas particuliers : ' + r.anomalies.map(a => `${echapper(a.employeNom || '?')} (${echapper(ANOMALIES[a.anomalie] || a.anomalie)}, début ${echapper(quand(a.debut))})`).join(' ; ') + '.');
+        $('etat-services').innerHTML = lignes.map(l => `<p style="margin:0 0 6px;">${l}</p>`).join('');
+      } catch { $('etat-services').textContent = ''; }
     }
 
     // ---- apparence ----

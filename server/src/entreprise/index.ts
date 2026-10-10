@@ -7,6 +7,7 @@ import { parametres } from './parametres.js';
 import { planifierNettoyagePhotos } from './photos.js';
 import { planifierPurge } from './purge.js';
 import { recevoirCandidature } from './rh.js';
+import { planifierServices, services } from './services.js';
 import { agenda } from './routes/agenda.js';
 import { biens } from './routes/biens.js';
 import { compta } from './routes/compta.js';
@@ -35,7 +36,7 @@ export const entreprise: Entreprise = {
   },
 
   // apparence en premier : elle répond sur les adresses des images de la marque, avant le fichier livré
-  routes: [apparence, vitrine, parametres, biens, profils, messagerie, agenda, rh, stats, compta],
+  routes: [apparence, vitrine, parametres, biens, profils, messagerie, agenda, rh, stats, compta, services],
 
   // WebMap : relayée sur son sous-domaine, servi à part du site (carte.ts) ; la vitrine l'affiche dans une iframe (https
   // seulement : en dev, l'iframe est refusée, la carte s'ouvre en pleine page)
@@ -71,5 +72,6 @@ export const entreprise: Entreprise = {
     planifierNettoyagePhotos();
     planifierTableur();
     planifierPurge();
+    planifierServices();
   },
 };

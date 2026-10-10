@@ -51,6 +51,31 @@ const GESTION_ICONES = {
 };
 const ico = nom => `<svg class="ico" aria-hidden="true"><use href="#ico-${nom}"></use></svg>`;
 
+// Encadré « En service » : relu chaque minute, seulement dans un onglet visible (chaque requête compte dans la limite
+// de l'API du compte) ; une erreur passagère garde le dernier affichage.
+function enService(barre) {
+  const encadre = barre.querySelector('[data-en-service]');
+  const heure = d => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+  const duree = d => { const m = Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`; };
+  const charger = async () => {
+    if (document.hidden) return;
+    try {
+      const r = await socle.api('/api/services/en-cours');
+      encadre.classList.toggle('cache', !r.regle);
+      if (!r.regle) return;
+      encadre.querySelector('[data-en-service-nombre]').textContent = r.enService.length;
+      encadre.querySelector('[data-en-service-liste]').innerHTML = r.enService.length
+        ? r.enService.map(p => `<li title="En service depuis ${socle.esc(heure(p.depuis))}${p.mode ? ' — ' + socle.esc(p.mode) : ''}">
+            <span class="admin-en-service-nom">${socle.esc(p.nom)}</span>
+            <span class="admin-en-service-depuis">depuis ${socle.esc(heure(p.depuis))} · ${duree(p.depuis)}</span></li>`).join('')
+        : '<li class="admin-en-service-vide">Personne pour le moment.</li>';
+    } catch { /* erreur passagère : dernier affichage gardé */ }
+  };
+  charger();
+  setInterval(charger, 60_000);
+  document.addEventListener('visibilitychange', charger);
+}
+
 window.gestion = {
   ico,
 
@@ -72,6 +97,12 @@ window.gestion = {
     barre.innerHTML = `
       <a href="/accueil.html" class="logo" title="Voir le site public"><img src="/assets/img/logo-full.png" alt="Dynasty 8" class="logo-entete"></a>
       <nav class="admin-nav">${nav}</nav>
+      <!-- qui est en service, et depuis quand (salon Discord des services, entreprise/services.ts) ; masqué tant que le
+           salon n'est pas réglé -->
+      <div class="admin-en-service cache" data-en-service aria-live="polite">
+        <p class="admin-en-service-titre"><span class="pastille-service" aria-hidden="true"></span> En service <span class="admin-en-service-nombre" data-en-service-nombre>0</span></p>
+        <ul class="admin-en-service-liste" data-en-service-liste></ul>
+      </div>
       <div class="admin-bas">
         <div class="admin-aide">
           <p class="admin-aide-titre">${ico('headset')} Besoin d'aide ?</p>
@@ -105,6 +136,7 @@ window.gestion = {
     coque.append(barre, main);
     document.body.classList.add('page-agents', 'admin-connecte');
     fondAnime();
+    enService(barre);
     // messagerie interne, sur toutes les pages (chargée ici plutôt qu'inscrite dans chaque page)
     const script = document.createElement('script');
     script.src = '/gestion/messagerie.js';

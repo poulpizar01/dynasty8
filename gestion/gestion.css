@@ -63,3 +63,19 @@ img.admin-avatar { object-fit: cover; padding: 0; }
   .apparence-grille { grid-template-columns: 1fr; }
   .apparence-apercu { flex-basis: 80px; height: 80px; }
 }
+
+/* ---- encadré « En service » de la barre latérale (gestion.js, enService) ---- */
+.admin-en-service { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin: 12px 0; }
+.admin-en-service-titre { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 0.82rem; color: var(--gold-light); }
+.admin-en-service-nombre { margin-left: auto; font-size: 0.74rem; padding: 1px 8px; border-radius: 999px; background: rgba(28, 156, 80, 0.18); color: #8fe0ad; }
+.pastille-service { width: 8px; height: 8px; border-radius: 50%; background: #3ccf7a; box-shadow: 0 0 0 3px rgba(60, 207, 122, 0.18); flex-shrink: 0; }
+.admin-en-service-liste { list-style: none; margin: 0; padding: 0; max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.admin-en-service-liste li { display: flex; flex-direction: column; min-width: 0; }
+.admin-en-service-nom { font-size: 0.8rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-en-service-depuis, .admin-en-service-vide { font-size: 0.72rem; color: var(--text-faint); }
+@media (max-width: 800px) {
+  /* barre du haut sur mobile : seul le nombre reste visible */
+  .admin-en-service { padding: 4px 10px; margin: 0; }
+  .admin-en-service-titre { margin: 0; }
+  .admin-en-service-liste { display: none; }
+}
