@@ -112,7 +112,7 @@ function rendreBaremesPrimes(type, paliers) {
     <tr>
       <td><input type="number" class="table-input" min="1" step="1" style="max-width:110px;" data-palier-seuil="${p.id}" value="${p.seuil}"></td>
       <td style="text-align:right;"><input type="number" class="table-input" min="0" step="1000" style="max-width:140px;text-align:right;" data-palier-montant="${p.id}" value="${p.montant}"></td>
-      <td><button type="button" class="actions-icone actions-icone--danger" data-palier-supprimer="${p.id}" title="Supprimer ce palier" aria-label="Supprimer ce palier">🗑️</button></td>
+      <td><button type="button" class="actions-icone actions-icone--danger" data-palier-supprimer="${p.id}" title="Supprimer ce palier" aria-label="Supprimer ce palier">${gestion.ico('trash')}</button></td>
     </tr>`).join("");
   corps.querySelectorAll("[data-palier-seuil]").forEach((el) => {
     el.addEventListener("change", () => modifierPalierPrime(el.dataset.palierSeuil, { seuil: Number(el.value) }));
@@ -249,7 +249,7 @@ async function chargerDotEcritures() {
             <td>${echapper(e.date_ecriture) || "—"}</td>
             <td>${echapper(e.justificatif)}</td>
             <td>${formaterArgentStats(e.montant)}</td>
-            <td><button type="button" class="actions-icone actions-icone--danger" data-ecriture-supprimer="${e.id}" title="Supprimer" aria-label="Supprimer">🗑️</button></td>
+            <td><button type="button" class="actions-icone actions-icone--danger" data-ecriture-supprimer="${e.id}" title="Supprimer" aria-label="Supprimer cette écriture">${gestion.ico('trash')}</button></td>
           </tr>`).join("")
         : `<tr><td colspan="4" class="champ-aide">Aucune ligne pour le moment.</td></tr>`;
     };

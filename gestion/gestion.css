@@ -162,3 +162,28 @@ main.admin-contenu:focus { outline: none; }
 .page-agents .puce { font-size: 0.75rem; }
 .page-agents .champ label { font-size: 12px; }
 .page-agents .agenda-entete-jour-date { font-size: 0.75rem; }
+
+/* Ventes & statistiques : « Toute l'agence » et « Semaine … » côte à côte quand la place le permet */
+.stats-groupes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 8px 24px; margin-bottom: 8px; }
+.stats-groupe-titre { margin: 0 0 8px; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+.admin-stats.stats-paire { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* agenda : un événement court (30 min) met l'heure et le titre sur une ligne, sinon le titre disparaissait */
+.agenda-evenement--court { flex-direction: row; align-items: center; gap: 6px; padding-top: 0; padding-bottom: 0; }
+.agenda-evenement--court .agenda-evenement-heure { flex-shrink: 0; }
+.agenda-evenement--court .agenda-evenement-titre { min-width: 0; }
+
+/* accueil : rendez-vous du jour et membres en service, côte à côte quand la place le permet */
+.accueil-panneaux { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; margin: 6px 0 22px; }
+.accueil-panneau { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; min-width: 0; }
+.accueil-panneau-entete { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.accueil-panneau-entete h2 { margin: 0; font-size: 1.25rem; }
+.accueil-panneau-entete a { font-size: 0.85rem; color: var(--gold-strong); }
+.accueil-liste { list-style: none; margin: 0; padding: 0; }
+.accueil-liste li { display: flex; gap: 12px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--border); min-width: 0; }
+.accueil-liste li:first-child { border-top: none; }
+.accueil-heure { flex-shrink: 0; font-size: 0.82rem; color: var(--gold-strong); font-variant-numeric: tabular-nums; }
+.accueil-texte { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.accueil-liste .accueil-vide { display: block; color: var(--text-faint); font-size: 0.9rem; }
+.accueil-vide a { color: var(--gold-strong); }
+.page-agents .agenda-heure-label { font-size: 0.75rem; }

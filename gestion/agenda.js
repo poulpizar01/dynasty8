@@ -125,7 +125,7 @@ function rendreGrilleAgenda(jours) {
       const top = (debutMin / 60) * AGENDA_HEURE_HAUTEUR;
       const hauteur = Math.max(((finMin - debutMin) / 60) * AGENDA_HEURE_HAUTEUR, 22);
       return `
-        <div class="agenda-evenement agenda-vis-${visibiliteDe(e)}" title="${LIBELLES_VISIBILITE[visibiliteDe(e)]}${e.auteur && !e.mien ? " — ajouté par " + echapper(e.auteur) : ""}" style="top:${top}px;height:${hauteur}px;" data-id="${e.id}" tabindex="0" role="button" aria-label="${echapper(e.titre)}, de ${e.heure_debut} à ${e.heure_fin}">
+        <div class="agenda-evenement agenda-vis-${visibiliteDe(e)}${hauteur < 40 ? " agenda-evenement--court" : ""}" title="${LIBELLES_VISIBILITE[visibiliteDe(e)]}${e.auteur && !e.mien ? " — ajouté par " + echapper(e.auteur) : ""}" style="top:${top}px;height:${hauteur}px;" data-id="${e.id}" tabindex="0" role="button" aria-label="${echapper(e.titre)}, de ${e.heure_debut} à ${e.heure_fin}">
           <span class="agenda-evenement-heure">${e.heure_debut}–${e.heure_fin}</span>
           <span class="agenda-evenement-titre">${echapper(e.titre)}</span>
         </div>`;

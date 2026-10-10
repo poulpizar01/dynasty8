@@ -47,6 +47,7 @@ async function chargerTableur(semaine) {
       etatLigne.textContent = !r.configure ? 'Synchronisation en attente : réglez le lien du Google Sheets dans Paramètres.'
         : r.derniereSync ? `Dernière lecture du tableur : ${dateHeureStats(r.derniereSync)}${r.statut === 'erreur' ? ' (échec — voir la synchronisation plus bas)' : ''}.`
           : 'Tableur pas encore lu.';
+      if (!r.configure) lienReglage(etatLigne);
     }
     $st('tableur-vide').classList.toggle('cache', r.lignes.length > 0);
     $st('tableur-resultat').classList.toggle('cache', !r.lignes.length);
@@ -88,6 +89,7 @@ async function chargerSynchro() {
           // lecture réussie sans aucun agent : presque toujours le mauvais onglet du classeur
           : !e.nbLignes ? `Dernière synchro : ${dateHeureStats(e.derniereSync)} — le classeur a été lu, mais aucune ligne d’agent n’y a été trouvée. Le lien réglé pointe sans doute sur le mauvais onglet : ouvrez l’onglet du récapitulatif des ventes dans Google Sheets, copiez l’adresse de la barre du navigateur (elle se termine par « gid=… ») et collez-la dans Paramètres.`
           : `Dernière synchro : ${dateHeureStats(e.derniereSync)} — ${e.nbLignes} ligne(s) lue(s), ${e.nbApparies} reliée(s) à un compte du site.`;
+    if (!r.configure) lienReglage(etatLigne);
     corps.innerHTML = r.lignes.length ? r.lignes.map(l => `<tr>
         <td>${echapper(l.nom)}</td><td>${echapper(l.grade || '—')}</td>
         <td style="text-align:right;">${l.ventes}</td><td style="text-align:right;">${l.locations}</td>
@@ -101,7 +103,7 @@ async function chargerSynchro() {
 }
 
 $st('bouton-synchroniser-sheet').addEventListener('click', async e => {
-  const bouton = e.currentTarget, texte = bouton.textContent;
+  const bouton = e.currentTarget, texte = bouton.innerHTML;   // icône comprise
   bouton.disabled = true;
   bouton.textContent = 'Synchronisation…';
   try {
@@ -114,11 +116,21 @@ $st('bouton-synchroniser-sheet').addEventListener('click', async e => {
     gestion.message('zone-message-sync-sheet', `Échec de la synchronisation : ${err.message}`);
   } finally {
     bouton.disabled = false;
-    bouton.textContent = texte;
+    bouton.innerHTML = texte;
   }
 });
 
+// le lien du tableur n’est pas réglé : lien direct vers Paramètres, pour qui peut le régler
+let PEUT_PARAMETRER = false;
+function lienReglage(el) {
+  if (!PEUT_PARAMETRER) return;
+  const lien = document.createElement('a');
+  lien.href = 'parametres.html';
+  lien.textContent = 'Régler le lien';
+  el.append(' ', lien);
+}
 gestion.coque('statistiques').then(moi => {
+  PEUT_PARAMETRER = socle.peut(moi, 'parametres');
   $st('bouton-synchroniser-sheet').classList.toggle('cache', !socle.peut(moi, 'ventes-gerer'));
   chargerStatistiques();
   chargerTableur('');

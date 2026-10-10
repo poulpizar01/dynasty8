@@ -20,36 +20,96 @@
     <div class="entete-admin">
       <div>
         <h1 style="margin-bottom:2px;" id="bonjour">Bonjour</h1>
-        <p style="margin:0;font-size:0.88rem;">Bienvenue dans l'espace agents de {{nom}}.</p>
+        <p style="margin:0;font-size:0.88rem;" id="date-du-jour">Bienvenue dans l'espace agents de {{nom}}.</p>
       </div>
     </div>
     <div id="zone-message"></div>
     <div class="admin-stats" id="indicateurs"></div>
+    <!-- la journée de l'agent : ses rendez-vous du jour et qui est en service (salon Discord, si réglé) -->
+    <div class="accueil-panneaux">
+      <section class="accueil-panneau" aria-labelledby="titre-aujourdhui">
+        <div class="accueil-panneau-entete">
+          <h2 id="titre-aujourdhui">Aujourd'hui</h2>
+          <a href="agenda.html">Ouvrir l'agenda</a>
+        </div>
+        <ul class="accueil-liste" id="aujourdhui"><li class="accueil-vide">Chargement…</li></ul>
+      </section>
+      <section class="accueil-panneau cache" aria-labelledby="titre-service" id="panneau-service">
+        <div class="accueil-panneau-entete">
+          <h2 id="titre-service">En service</h2>
+          <span class="admin-en-service-nombre" id="nombre-service"></span>
+        </div>
+        <ul class="accueil-liste" id="en-service"></ul>
+      </section>
+    </div>
     <div id="raccourcis" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;"></div>
   </main>
   <script>
+    const PARIS = { timeZone: 'Europe/Paris' };
+    const argent = v => `${Math.round(Number(v) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} $`;
+    // date du jour à Paris (AAAA-MM-JJ), comme les jours de l'agenda
+    const aujourdhui = new Intl.DateTimeFormat('en-CA', { ...PARIS, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const ligneVide = texte => `<li class="accueil-vide">${texte}</li>`;
+
     gestion.coque('accueil').then(async moi => {
       document.getElementById('bonjour').textContent = `Bonjour, ${moi.nom || moi.pseudo}`;
+      const jour = new Date().toLocaleDateString('fr-FR', { ...PARIS, weekday: 'long', day: 'numeric', month: 'long' });
+      document.getElementById('date-du-jour').textContent = jour.charAt(0).toUpperCase() + jour.slice(1);
       const cartes = [], liens = [];
       const carte = (icone, couleur, valeur, libelle, sous) => `
         <div class="stat-carte"><span class="stat-icone stat-icone--${couleur}">${gestion.ico(icone)}</span>
         <div><div class="stat-valeur">${valeur}</div><div class="stat-libelle">${libelle}</div><div class="stat-sous-libelle">${sous}</div></div></div>`;
-      try {
-        if (socle.peut(moi, 'biens')) {
-          const biens = (await socle.api('/api/biens')).biens || [];
-          const visibles = biens.filter(b => b.disponible).length;
-          cartes.push(carte('home', 'or', biens.length, 'Annonces', `${visibles} visible${visibles > 1 ? 's' : ''} sur le site`));
-          liens.push('<a class="btn btn-or" href="biens.html">Gérer les annonces</a>');
-        }
-        if (socle.peut(moi, 'comptes')) {
-          const attente = (await socle.api('/api/comptes')).filter(c => c.statut === 'attente').length;
-          cartes.push(carte('lock', attente ? 'or' : 'vert', attente, `Demande${attente > 1 ? 's' : ''} d'accès`, attente ? 'À valider' : 'Rien à traiter'));
-          liens.push('<a class="btn btn-fantome" href="comptes.html">Comptes &amp; accès</a>');
-        }
-      } catch (e) { gestion.message('zone-message', e.message); }
+
+      // chaque module se charge seul : une erreur dans l'un n'empêche pas d'afficher les autres
+      const [primes, biens, comptes, agenda, service] = await Promise.allSettled([
+        socle.api('/api/profil/primes'),
+        socle.peut(moi, 'biens') ? socle.api('/api/biens') : null,
+        socle.peut(moi, 'comptes') ? socle.api('/api/comptes') : null,
+        socle.api(`/api/agenda?debut=${aujourdhui}&fin=${aujourdhui}`),
+        socle.api('/api/services/en-cours'),
+      ]);
+
+      if (primes.value) {
+        const p = primes.value;
+        const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
+        cartes.push(carte('chart', 'vert', argent(p.primeTotale), 'Ma prime de la semaine', `${pluriel(p.ventes, 'vente')} · ${pluriel(p.locations, 'location')}`));
+      }
+      if (biens.value) {
+        const liste = biens.value.biens || [];
+        const visibles = liste.filter(b => b.disponible).length;
+        cartes.push(carte('home', 'or', liste.length, 'Annonces', `${visibles} visible${visibles > 1 ? 's' : ''} sur le site`));
+        liens.push('<a class="btn btn-or" href="biens.html">Gérer les annonces</a>');
+      }
+      if (comptes.value) {
+        const attente = comptes.value.filter(c => c.statut === 'attente').length;
+        cartes.push(carte('lock', attente ? 'or' : 'vert', attente, `Demande${attente > 1 ? 's' : ''} d'accès`, attente ? 'À valider' : 'Rien à traiter'));
+        liens.push('<a class="btn btn-fantome" href="comptes.html">Comptes &amp; accès</a>');
+      }
       liens.push('<a class="btn btn-fantome" href="compte.html">Mon profil</a>');
       document.getElementById('indicateurs').innerHTML = cartes.join('');
       document.getElementById('raccourcis').innerHTML = liens.join('');
+
+      const ul = document.getElementById('aujourdhui');
+      if (agenda.status === 'rejected') ul.innerHTML = ligneVide(`Agenda indisponible : ${socle.esc(agenda.reason.message)}`);
+      else {
+        const evts = (agenda.value.evenements || []).filter(e => e.jour === aujourdhui).sort((a, b) => a.heure_debut.localeCompare(b.heure_debut));
+        ul.innerHTML = evts.length
+          ? evts.map(e => `<li><span class="accueil-heure">${socle.esc(e.heure_debut)}–${socle.esc(e.heure_fin)}</span><span class="accueil-texte">${socle.esc(e.titre)}</span></li>`).join('')
+          : ligneVide('Rien de prévu aujourd’hui. <a href="agenda.html">Ajouter un rendez-vous</a>');
+      }
+
+      // « En service » : seulement si le salon est réglé (sinon le panneau reste caché)
+      if (service.value?.regle) {
+        const s = service.value.enService;
+        const heure = d => new Date(d).toLocaleTimeString('fr-FR', { ...PARIS, hour: '2-digit', minute: '2-digit' });
+        document.getElementById('panneau-service').classList.remove('cache');
+        document.getElementById('nombre-service').textContent = s.length;
+        document.getElementById('en-service').innerHTML = s.length
+          ? s.map(p => `<li><span class="accueil-texte">${socle.esc(p.nom)}</span><span class="accueil-heure">depuis ${socle.esc(heure(p.depuis))}</span></li>`).join('')
+          : ligneVide('Personne pour le moment.');
+      }
+      const erreur = [primes, biens, comptes].find(r => r.status === 'rejected');
+      if (erreur) gestion.message('zone-message', erreur.reason.message);
     });
   </script>
 </body>

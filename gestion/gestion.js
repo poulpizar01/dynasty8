@@ -48,6 +48,12 @@ const GESTION_ICONES = {
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   headset: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1"/><rect x="17" y="14" width="4" height="6" rx="1"/>',
   chevron: '<path d="M6 9l6 6 6-6"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M18 5l2 2"/>',
+  archive: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v11h14V9M10 13h4"/>',
+  copy: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
+  receipt: '<path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  coins: '<ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v4c0 1.7 2.7 3 6 3s6-1.3 6-3V7"/><path d="M9 14v3c0 1.7 2.7 3 6 3s6-1.3 6-3v-6c0-1.7-2.7-3-6-3"/>',
+  upload: '<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
 };
 const ico = nom => `<svg class="ico" aria-hidden="true"><use href="#ico-${nom}"></use></svg>`;
 
@@ -84,7 +90,9 @@ window.gestion = {
     const sprite = document.createElement('div');
     sprite.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" style="display:none">${Object.entries(GESTION_ICONES).map(([n, d]) => `<symbol id="ico-${n}" viewBox="0 0 24 24">${d}</symbol>`).join('')}</svg>`;
     document.body.prepend(sprite.firstChild);
-    const moi = await socle.moi();
+    let moi;
+    try { moi = await socle.moi(); }
+    catch (e) { erreurDeChargement(document.querySelector('main.admin-contenu'), e); throw e; }
     // un groupe sans aucune rubrique visible n'est pas affiché
     const visibles = GESTION_NAV.filter(l => (l.groupe || !l.permission || socle.peut(moi, l.permission)) && !l.regle);
     const nav = visibles.filter((l, i) => !l.groupe || (visibles[i + 1] && !visibles[i + 1].groupe)).map(l => l.groupe
@@ -224,6 +232,23 @@ window.gestion = {
     });
   },
 };
+
+// Compte illisible (serveur arrêté, trop de requêtes, coupure) : la page dit pourquoi et propose de réessayer, au lieu
+// de rester vide. Une session expirée est déjà renvoyée vers la connexion par socle.api().
+function erreurDeChargement(main, e) {
+  if (!main) return;
+  const boite = document.createElement('div');
+  boite.className = 'etat-vide';
+  const texte = document.createElement('p');
+  texte.textContent = `La page n’a pas pu se charger : ${e.message}`;
+  const bouton = document.createElement('button');
+  bouton.type = 'button';
+  bouton.className = 'btn btn-or';
+  bouton.textContent = 'Réessayer';
+  bouton.addEventListener('click', () => location.reload());
+  boite.append(texte, bouton);
+  main.replaceChildren(boite);
+}
 
 function initiales(nom) {
   const mots = String(nom || '').trim().split(/\s+/).filter(Boolean);

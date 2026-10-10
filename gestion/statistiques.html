@@ -33,26 +33,34 @@
         <p>Aucune vente reçue pour le moment. Les données arriveront automatiquement dès que le bot sera connecté.</p>
       </div>
       <div id="statistiques-resultat" class="cache">
-        <div class="admin-stats" style="grid-template-columns:repeat(2,minmax(0,220px));margin-bottom:14px;">
+        <!-- deux groupes de chiffres côte à côte sur écran large, chacun sous son intitulé -->
+        <div class="stats-groupes">
+        <div>
+        <p class="stats-groupe-titre">Toute l’agence</p>
+        <div class="admin-stats stats-paire">
           <div class="stat-carte">
-            <span class="stat-icone stat-icone--or">🏠</span>
-            <div><div class="stat-valeur" id="stats-total-ventes">—</div><div class="stat-libelle">Ventes (agence)</div></div>
+            <span class="stat-icone stat-icone--or"><svg class="ico" aria-hidden="true"><use href="#ico-home"></use></svg></span>
+            <div><div class="stat-valeur" id="stats-total-ventes">—</div><div class="stat-libelle">Ventes</div></div>
           </div>
           <div class="stat-carte">
-            <span class="stat-icone stat-icone--ambre">🔑</span>
-            <div><div class="stat-valeur" id="stats-total-locations">—</div><div class="stat-libelle">Locations (agence)</div></div>
+            <span class="stat-icone stat-icone--ambre"><svg class="ico" aria-hidden="true"><use href="#ico-key"></use></svg></span>
+            <div><div class="stat-valeur" id="stats-total-locations">—</div><div class="stat-libelle">Locations</div></div>
           </div>
         </div>
-        <p class="champ-aide" id="stats-semaine-libelle" style="margin:0 0 8px;"></p>
-        <div class="admin-stats" style="grid-template-columns:repeat(2,minmax(0,220px));">
+        </div>
+        <div>
+        <p class="stats-groupe-titre" id="stats-semaine-libelle"></p>
+        <div class="admin-stats stats-paire">
           <div class="stat-carte">
-            <span class="stat-icone stat-icone--or">🏠</span>
-            <div><div class="stat-valeur" id="stats-semaine-ventes">—</div><div class="stat-libelle">Ventes (semaine)</div></div>
+            <span class="stat-icone stat-icone--or"><svg class="ico" aria-hidden="true"><use href="#ico-home"></use></svg></span>
+            <div><div class="stat-valeur" id="stats-semaine-ventes">—</div><div class="stat-libelle">Ventes</div></div>
           </div>
           <div class="stat-carte">
-            <span class="stat-icone stat-icone--ambre">🔑</span>
-            <div><div class="stat-valeur" id="stats-semaine-locations">—</div><div class="stat-libelle">Locations (semaine)</div></div>
+            <span class="stat-icone stat-icone--ambre"><svg class="ico" aria-hidden="true"><use href="#ico-key"></use></svg></span>
+            <div><div class="stat-valeur" id="stats-semaine-locations">—</div><div class="stat-libelle">Locations</div></div>
           </div>
+        </div>
+        </div>
         </div>
       </div>
 
@@ -93,7 +101,7 @@
       <div id="zone-message-sync-sheet"></div>
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
         <p class="champ-aide" id="sync-sheet-etat" style="margin:0;">Chargement…</p>
-        <button type="button" class="btn btn-or btn-petit cache" id="bouton-synchroniser-sheet">🔄 Synchroniser maintenant</button>
+        <button type="button" class="btn btn-or btn-petit cache" id="bouton-synchroniser-sheet"><svg class="ico" aria-hidden="true"><use href="#ico-sync"></use></svg> Synchroniser maintenant</button>
       </div>
       <div style="overflow-x:auto;">
         <table class="table-admin">
