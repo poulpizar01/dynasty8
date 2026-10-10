@@ -3,8 +3,20 @@
 // (en-tête, pied de page, petites fonctions utilitaires)
 // ============================================================================
 
-// Adresse d'invitation Discord du serveur — à remplacer par la vraie une fois disponible.
-const LIEN_DISCORD = "https://discord.com/invite/zCsPrrR3uw";
+// Liens externes de l'agence (Discord, boutique VIP, partenaire) : aucun n'est écrit ici. Ils se règlent dans
+// l'espace agents (Paramètres) et sont lus une fois par page sur /api/liens. Un lien <a data-lien="cle"> reçoit son
+// adresse ; non réglé, il est masqué plutôt que de pointer nulle part. Les liens de la signature Roxwood Network, eux,
+// restent écrits dans la page.
+const D8_LIENS_PRETS = fetch("/api/liens").then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+function appliquerLiens(racine) {
+  return D8_LIENS_PRETS.then((liens) => {
+    (racine || document).querySelectorAll("a[data-lien]").forEach((a) => {
+      const adresse = liens[a.dataset.lien];
+      if (adresse) { a.href = adresse; a.target = "_blank"; a.rel = "noopener"; }
+      a.classList.toggle("cache", !adresse);
+    });
+  });
+}
 // Adresse de la WebMap : un chemin sur NOTRE domaine, qui redirige vers son
 // sous-domaine (server/src/entreprise/carte.ts relaie la carte là-bas). La
 // vraie adresse de la carte n'apparaît donc nulle part dans le code envoyé au
@@ -37,7 +49,7 @@ const LIENS_NAV = [
       { href: "/equipe.html", texte: "Notre équipe" },
       { href: "/faq.html", texte: "FAQ" },
     ] },
-  { href: LIEN_DISCORD, texte: "Nous contacter", cle: "contact", externe: true },
+  { lien: "discord_agence", texte: "Nous contacter", cle: "contact" },
 ];
 
 function logoImg(cssClass) {
@@ -70,6 +82,8 @@ function injecterEntete(cleActive) {
           <div class="nav-sous-menu">${sousLiens}</div>
         </div>`;
     }
+    // lien réglé dans Paramètres : adresse posée par appliquerLiens()
+    if (l.lien) return `<a data-lien="${l.lien}" class="cache">${l.texte}</a>`;
     const attrsExterne = l.externe ? 'target="_blank" rel="noopener"' : "";
     return `<a href="${l.href}" ${attrsExterne} ${actif ? 'aria-current="page"' : ""}>${l.texte}</a>`;
   }).join("");
@@ -148,7 +162,7 @@ function injecterPied() {
         <div>
           <h4>Nous contacter</h4>
           <ul>
-            <li><a href="${LIEN_DISCORD}" id="lien-discord" target="_blank" rel="noopener">Discord du serveur</a></li>
+            <li><a data-lien="discord_agence" id="lien-discord" class="cache">Discord du serveur</a></li>
             <li><a href="${LIEN_WEBMAP}">WebMap</a></li>
             <li><a href="/gestion/">Espace agents</a></li>
           </ul>
@@ -221,6 +235,7 @@ function initialiserLayout(cleActive) {
   injecterEntete(cleActive);
   injecterPied();
   injecterCadre();
+  appliquerLiens();
   demarrerDiaporamaHero();
   // Grilles déjà présentes dans le HTML statique au chargement (équipe, services,
   // pages "hub"). Les grilles de biens (cartes chargées depuis l'API) sont

@@ -87,7 +87,7 @@
   <div class="conteneur">
     <h2>Une question sur cette page ?</h2>
     <p style="max-width:520px;margin:0 auto 26px;">L'équipe Dynasty 8 / FlashbackFA reste disponible sur le Discord du serveur.</p>
-    <a href="#" id="lien-discord-cta" class="btn btn-or btn-large">Contacter l'équipe sur Discord</a>
+    <a data-lien="discord_agence" id="lien-discord-cta" class="btn btn-or btn-large cache">Contacter l'équipe sur Discord</a>
   </div>
 </section>
 
@@ -96,8 +96,6 @@
 <script src="/layout.js"></script>
 <script>
   initialiserLayout("confidentialite");
-  const cta = document.getElementById("lien-discord-cta");
-  cta.href = LIEN_DISCORD; cta.target = "_blank"; cta.rel = "noopener";
 </script>
 </body>
 </html>

@@ -14,9 +14,12 @@ const GESTION_NAV = [
   { cle: 'rh', href: 'rh.html', label: 'Ressources humaines', icone: 'users', permission: 'rh-voir' },
   { cle: 'comptabilite', href: 'comptabilite.html', label: 'Comptabilité', icone: 'calc', permission: 'compta' },
   { cle: 'grades', href: 'grades.html', label: 'Grades', icone: 'gear', permission: 'grades' },
+  { cle: 'parametres', href: 'parametres.html', label: 'Paramètres', icone: 'sync', permission: 'parametres' },
   { groupe: 'Outils' },
-  { href: 'https://intra.dynasty8.fbfa.fr/login', label: 'Registre', icone: 'book', externe: true },
-  { href: '/api/carte/', label: 'WebMap', icone: 'map', externe: true },
+  { cle: 'coherences', href: 'coherences.html', label: 'Cohérences', icone: 'sheet' },
+  { cle: 'webmap', href: 'webmap.html', label: 'WebMap', icone: 'map' },
+  // lien réglé dans Paramètres, servi aux seuls comptes validés (/api/outils) : ajouté au menu s'il est réglé
+  { cle: 'registre', label: 'Registre', icone: 'book', externe: true, regle: 'registre' },
 ];
 
 // icônes au trait fin (sprite injecté une fois par page) : <svg class="ico"><use href="#ico-…"></use></svg>
@@ -58,7 +61,7 @@ window.gestion = {
     document.body.prepend(sprite.firstChild);
     const moi = await socle.moi();
     // un groupe sans aucune rubrique visible n'est pas affiché
-    const visibles = GESTION_NAV.filter(l => l.groupe || !l.permission || socle.peut(moi, l.permission));
+    const visibles = GESTION_NAV.filter(l => (l.groupe || !l.permission || socle.peut(moi, l.permission)) && !l.regle);
     const nav = visibles.filter((l, i) => !l.groupe || (visibles[i + 1] && !visibles[i + 1].groupe)).map(l => l.groupe
       ? `<p class="admin-nav-groupe">${socle.esc(l.groupe)}</p>`
       : `<a class="lien-onglet${l.cle === rubrique ? ' actif' : ''}" href="${l.href}"${l.cle === rubrique ? ' aria-current="page"' : ''}${l.externe ? ' target="_blank" rel="noopener"' : ''}>${ico(l.icone)}<span>${socle.esc(l.label)}</span></a>`).join('');
@@ -83,16 +86,17 @@ window.gestion = {
         </div>
       </div>`;
     barre.querySelector('[data-deconnexion]').addEventListener('click', () => socle.deconnexion());
-    // tableau des cohérences : son lien n'est servi qu'aux comptes validés (il n'est écrit ni dans la page ni dans le dépôt)
+    // liens réglés dans Paramètres (registre) : ni dans la page ni dans le dépôt, servis aux seuls comptes validés
     socle.api('/api/outils').then(o => {
-      if (!o.coherences) return;
-      const lien = document.createElement('a');
-      lien.className = 'lien-onglet';
-      lien.href = o.coherences;
-      lien.target = '_blank';
-      lien.rel = 'noopener';
-      lien.innerHTML = `${ico('sheet')}<span>Cohérence</span>`;
-      barre.querySelector('.admin-nav').append(lien);
+      for (const l of GESTION_NAV.filter(x => x.regle && o[x.regle])) {
+        const lien = document.createElement('a');
+        lien.className = 'lien-onglet';
+        lien.href = o[l.regle];
+        lien.target = '_blank';
+        lien.rel = 'noopener';
+        lien.innerHTML = `${ico(l.icone)}<span>${socle.esc(l.label)}</span>`;
+        barre.querySelector('.admin-nav').append(lien);
+      }
     }).catch(() => {});
     const main = document.querySelector('main.admin-contenu');
     const coque = document.createElement('div');

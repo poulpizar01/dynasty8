@@ -5,13 +5,13 @@
 // (baremes_primes, réglables dans Comptabilité), le seul endroit où changer un montant.
 import { prisma } from '../../socle/db.js';
 import { gradeDe, tousLesGrades } from '../../socle/droits.js';
-import { configEntreprise } from '../config.js';
+import { sheetRegle } from '../parametres.js';
 import { nomComplet } from '../rh.js';
 import { normaliserTexte } from '../texte.js';
 import { montantPalier, semaineISO, type Palier } from './calcul.js';
 
 export class TableurNonConfigure extends Error {
-  constructor() { super('Synchronisation non configurée sur le serveur : renseignez GOOGLE_SHEET_ID dans le .env.'); }
+  constructor() { super('Synchronisation en attente : réglez le lien du Google Sheets dans Paramètres.'); }
 }
 
 // Analyseur CSV minimal mais correct (guillemets, virgules et retours à la ligne dans un champ, "" → ") : suffisant pour
@@ -74,7 +74,7 @@ export function synchroniser() {
 }
 
 async function synchroniserUneFois() {
-  const sheet = configEntreprise.sheet;
+  const sheet = sheetRegle();
   if (!sheet) throw new TableurNonConfigure();
   // une semaine terminée et pas encore archivée (serveur arrêté dimanche soir…) est figée AVANT que la nouvelle lecture
   // n'écrase ses chiffres ; pas pendant la minute de 23:59 elle-même : la tâche d'archivage s'en charge alors
@@ -233,7 +233,6 @@ export async function lireArchive(code: string) {
 // Synchronisation toutes les 20 minutes ; contrôle de l'archivage toutes les 30 s (dimanche 23:59 heure de Paris : une
 // dernière lecture puis l'archive ; si le serveur était arrêté à cette heure-là, archive au redémarrage).
 export function planifierTableur(): void {
-  if (!configEntreprise.sheet) { console.log('[tableur] GOOGLE_SHEET_ID absent : synchronisation du tableur désactivée'); return; }
   synchroniserSansErreur();
   setInterval(synchroniserSansErreur, 20 * 60_000).unref();
   let derniereArchivee: string | null = null;

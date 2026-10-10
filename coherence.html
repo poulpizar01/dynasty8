@@ -74,7 +74,7 @@
   <div class="conteneur">
     <h2>Une question sur cette cohérence ?</h2>
     <p style="max-width:520px;margin:0 auto 26px;">Nos agents sont disponibles sur le Discord officiel du serveur pour vous aider à y voir clair.</p>
-    <a href="#" id="lien-discord-cta" class="btn btn-or btn-large">Contacter Dynasty 8</a>
+    <a data-lien="discord_agence" id="lien-discord-cta" class="btn btn-or btn-large cache">Contacter Dynasty 8</a>
   </div>
 </section>
 
@@ -393,8 +393,6 @@
 
   chargerBiens({ coherence: zone, cible: "grille-biens", videMessage: `Aucun bien rattaché à la cohérence ${zone} pour le moment.` });
 
-  const cta = document.getElementById("lien-discord-cta");
-  cta.href = LIEN_DISCORD; cta.target = "_blank"; cta.rel = "noopener";
 
   // Diaporama : chaque diapositive du guide officiel a été convertie en image
   // (Google bloque l'affichage direct de ses présentations "Slides" dans une page

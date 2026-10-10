@@ -76,7 +76,7 @@
   <div class="conteneur">
     <h2>Vous ne trouvez pas votre bonheur ?</h2>
     <p style="max-width:520px;margin:0 auto 26px;">Un agent Dynasty 8 peut vous aider à trouver l'intérieur qui vous correspond, sur le Discord du serveur.</p>
-    <a href="#" id="lien-discord-cta" class="btn btn-or btn-large">Contacter Dynasty 8</a>
+    <a data-lien="discord_agence" id="lien-discord-cta" class="btn btn-or btn-large cache">Contacter Dynasty 8</a>
   </div>
 </section>
 
@@ -90,8 +90,6 @@
   chargerBiens({ categorie: "habitation", meuble: true, cible: "grille-meubles", videMessage: "Aucun intérieur meublé en catalogue pour le moment." });
   chargerBiens({ categorie: "habitation", meuble: false, cible: "grille-non-meubles", videMessage: "Aucun intérieur non meublé en catalogue pour le moment." });
 
-  const cta = document.getElementById("lien-discord-cta");
-  cta.href = LIEN_DISCORD; cta.target = "_blank"; cta.rel = "noopener";
 </script>
 </body>
 </html>

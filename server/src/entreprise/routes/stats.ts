@@ -5,7 +5,9 @@ import { Router, type Request } from 'express';
 import { prisma } from '../../socle/db.js';
 import { gradeDe, peut, tousLesGrades } from '../../socle/droits.js';
 import { body, entier, intParam, permission, valide } from '../../socle/http.js';
+import { carte } from '../carte.js';
 import { configEntreprise } from '../config.js';
+import { lienRegle, sheetRegle, webmapOrigine } from '../parametres.js';
 import { Refus, traiter } from '../refus.js';
 import { montantPalier } from '../stats/calcul.js';
 import { lireActuel, lireArchive, lireBaremes, semaineParis, synchroniserSansErreur } from '../stats/tableur.js';
@@ -46,7 +48,7 @@ stats.get('/api/stats/tableur', ...voir, traiter(async (req, res) => {
     return;
   }
   const [actuel, etat] = await Promise.all([lireActuel(), prisma.tableurEtat.findUnique({ where: { id: 1 } })]);
-  res.json({ configure: !!configEntreprise.sheet, semaineEnCours: semaineParis(new Date()).code, derniereSync: etat?.derniereSync ?? null, statut: etat?.statut ?? null, archives, lignes: actuel.lignes });
+  res.json({ configure: !!sheetRegle(), semaineEnCours: semaineParis(new Date()).code, derniereSync: etat?.derniereSync ?? null, statut: etat?.statut ?? null, archives, lignes: actuel.lignes });
 }));
 
 // état de la synchronisation et lignes lues (page Synchro du tableur)
@@ -54,13 +56,13 @@ stats.get('/api/tableur/etat', ...voir, async (_req, res) => {
   const [etat, lignes] = await Promise.all([prisma.tableurEtat.findUnique({ where: { id: 1 } }), prisma.ligneTableur.findMany({ orderBy: { ligneSheet: 'asc' } })]);
   const comptes = new Map((await prisma.compte.findMany({ where: { id: { in: lignes.map(l => l.compteId).filter((x): x is number => x !== null) } }, select: { id: true, nom: true, pseudo: true } })).map(c => [c.id, c.nom ?? c.pseudo]));
   res.json({
-    configure: !!configEntreprise.sheet, etat,
+    configure: !!sheetRegle(), etat,
     lignes: lignes.map(l => ({ nom: l.nomSheet, grade: l.gradeSheet, ventes: l.nbVentes, locations: l.nbLocations, fiche: l.employeId !== null, compte: l.compteId ? comptes.get(l.compteId) ?? null : null })),
   });
 });
 
 stats.post('/api/tableur/synchroniser', ...gerer, async (_req, res) => {
-  if (!configEntreprise.sheet) { res.status(503).json({ error: 'Synchronisation non configurée sur ce serveur (GOOGLE_SHEET_ID absent du .env).' }); return; }
+  if (!sheetRegle()) { res.status(503).json({ error: 'Synchronisation en attente : réglez le lien du Google Sheets dans Paramètres.' }); return; }
   // l'échec est enregistré comme pour la synchronisation automatique (visible dans l'état), puis rapporté
   const etat = await synchroniserSansErreur();
   if (etat.statut !== 'ok') { res.status(502).json({ error: etat.erreur || 'Échec de la synchronisation.' }); return; }
@@ -150,7 +152,7 @@ stats.delete('/api/stats/baremes/:id', ...compta, async (req, res) => {
   res.json({ ok: true });
 });
 
-// lien du tableau des cohérences (outil de la Direction, partagé en lecture) : servi aux seuls comptes validés
+// outils du menu : lien du registre (réglé dans Paramètres, servi aux seuls comptes validés), WebMap disponible
 stats.get('/api/outils', ...valide, (req, res) => {
-  res.json({ coherences: configEntreprise.coherencesUrl || null, ventes: peut(req.compte, 'ventes') });
+  res.json({ registre: lienRegle('registre_url') || null, webmap: !!(carte && webmapOrigine()), ventes: peut(req.compte, 'ventes') });
 });

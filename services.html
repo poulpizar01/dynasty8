@@ -73,7 +73,7 @@
   <div class="conteneur">
     <h2>Prêt à démarrer votre projet ?</h2>
     <p style="max-width:520px;margin:0 auto 26px;">Contactez un agent Dynasty 8 dès aujourd'hui sur le Discord du serveur.</p>
-    <a href="#" id="lien-discord-cta" class="btn btn-or btn-large">Contacter Dynasty 8</a>
+    <a data-lien="discord_agence" id="lien-discord-cta" class="btn btn-or btn-large cache">Contacter Dynasty 8</a>
   </div>
 </section>
 
@@ -82,8 +82,6 @@
 <script src="/layout.js"></script>
 <script>
   initialiserLayout("services");
-  const cta = document.getElementById("lien-discord-cta");
-  cta.href = LIEN_DISCORD; cta.target = "_blank"; cta.rel = "noopener";
 </script>
 </body>
 </html>

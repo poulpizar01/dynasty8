@@ -1,5 +1,5 @@
 // ENTREPRISE — WebMap du serveur, relayée sur son propre sous-domaine (WEBMAP_HOTE, ex. carte.dynasty8.fbfa.fr), servi
-// à part du site par le socle (entreprise.hotes). L'adresse réelle de la carte (WEBMAP_ORIGIN) n'apparaît jamais dans
+// à part du site par le socle (entreprise.hotes). L'adresse réelle de la carte (réglée dans Paramètres, parametres.ts) n'apparaît jamais dans
 // ce que reçoit le navigateur : ce serveur va la chercher et la réécrit au passage.
 // Isolée du site : le cookie de session, lié au seul domaine du site, n'est jamais envoyé au sous-domaine, et une
 // requête de la carte vers l'API du site est refusée (lecture bloquée par le navigateur, écriture par le contrôle
@@ -7,14 +7,14 @@
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { Request, RequestHandler, Response } from 'express';
-import { adresse, config, fail } from '../socle/config.js';
+import { config, fail } from '../socle/config.js';
 import { limiter } from '../socle/limites.js';
+import { webmapOrigine } from './parametres.js';
 
-const origine = adresse('WEBMAP_ORIGIN');   // vide : carte désactivée
+// sous-domaine de la carte (infrastructure : nginx, certificat) ; vide : carte désactivée. L'adresse de la carte
+// elle-même se règle dans Paramètres, et s'applique sans redémarrage.
 const hote = (process.env.WEBMAP_HOTE || '').trim().toLowerCase();
-if (!!origine !== !!hote) fail('WEBMAP_ORIGIN et WEBMAP_HOTE vont ensemble dans .env : remplir les deux, ou aucun');
 if (hote && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(hote)) fail(`WEBMAP_HOTE dans .env : un nom de domaine (ex. carte.monsite.fr) : ${hote}`);
-const origineCarte = origine ? new URL(origine).origin : '';
 
 // adresse publique de la carte : même protocole et même port que le site (en dev : http://carte.localhost:3010)
 const base = new URL(config.baseUrl);
@@ -33,7 +33,7 @@ const lireCorps = (req: Request) => new Promise<Buffer>((ok, ko) => {
 });
 
 // adresse de la carte (absolue ou relative à sa racine) → la même sur le sous-domaine
-const versSousDomaine = (lien: string) => {
+const versSousDomaine = (lien: string, origineCarte: string) => {
   try { const u = new URL(lien, origineCarte); if (u.origin === origineCarte) return `${carte!.url}${u.pathname}${u.search}${u.hash}`; } catch { /* laissé tel quel */ }
   return lien;
 };
@@ -63,6 +63,8 @@ async function relayer(req: Request, res: Response): Promise<void> {
   // Cible : un chemin de la carte, rien d'autre. Concaténée telle quelle, une cible de requête en forme absolue
   // (« GET pany://x/y ») rallongerait le nom d'hôte de la carte et ferait aller ce serveur vers un autre domaine.
   if (!req.originalUrl.startsWith('/') || req.originalUrl.startsWith('//')) { res.status(400).type('text').send('Adresse refusée.'); return; }
+  const origineCarte = webmapOrigine();
+  if (!origineCarte) { res.status(503).type('text').send('La WebMap n’est pas encore réglée : la Direction la renseigne dans Paramètres.'); return; }
   const cible = new URL(req.originalUrl, origineCarte);
   if (cible.origin !== origineCarte) { res.status(400).type('text').send('Adresse refusée.'); return; }
   const entetes = new Headers();
@@ -78,7 +80,7 @@ async function relayer(req: Request, res: Response): Promise<void> {
   const corps = req.method === 'POST' ? new Uint8Array(await lireCorps(req)) : undefined;
   const distante = await fetch(cible, { method: req.method, headers: entetes, body: corps, redirect: 'manual', signal: AbortSignal.timeout(DELAI_MS) });
   // redirection de la carte : suivie vers son équivalent sur le sous-domaine, jamais l'adresse réelle
-  if ([301, 302, 303, 307, 308].includes(distante.status)) { res.redirect(distante.status, versSousDomaine(distante.headers.get('location') || '/')); return; }
+  if ([301, 302, 303, 307, 308].includes(distante.status)) { res.redirect(distante.status, versSousDomaine(distante.headers.get('location') || '/', origineCarte)); return; }
   const type = distante.headers.get('content-type') || 'application/octet-stream';
   const texte = /text\/html|javascript|text\/css|json/i.test(type);
   // l'adresse réelle de la carte n'apparaît pas dans ce que reçoit le navigateur : un texte est lu en entier (borné)

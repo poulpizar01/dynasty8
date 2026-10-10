@@ -2,6 +2,7 @@
 // Tout src/entreprise/ est libre : ajouter des routes (routes/), des modules métier, des tâches planifiées.
 import type { Entreprise } from '../socle/contrat.js';
 import { carte, relaisCarte } from './carte.js';
+import { parametres } from './parametres.js';
 import { planifierNettoyagePhotos } from './photos.js';
 import { planifierPurge } from './purge.js';
 import { recevoirCandidature } from './rh.js';
@@ -28,9 +29,10 @@ export const entreprise: Entreprise = {
     rh: 'rh-voir',
     statistiques: 'ventes',
     comptabilite: 'compta',
+    parametres: 'parametres',
   },
 
-  routes: [vitrine, biens, profils, messagerie, agenda, rh, stats, compta],
+  routes: [vitrine, parametres, biens, profils, messagerie, agenda, rh, stats, compta],
 
   // WebMap : relayée sur son sous-domaine, servi à part du site (carte.ts) ; la vitrine l'affiche dans une iframe (https
   // seulement : en dev, l'iframe est refusée, la carte s'ouvre en pleine page)

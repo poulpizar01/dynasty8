@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="application-name" content="{{nom}}">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/gestion/gestion.css">
+  <script src="/socle/socle.js"></script>
+  <script src="/layout.js"></script>
+  <script src="/gestion/gestion.js"></script>
+  <title>Paramètres — {{nom}}</title>
+</head>
+<body class="page-agents">
+  <!-- GESTION — paramètres du site (permission « parametres », serveur : entreprise/parametres.ts). Les champs sont
+       construits à partir de GET /api/parametres : la liste des réglages n'est écrite qu'une fois, côté serveur. -->
+  <main class="admin-contenu">
+    <div class="entete-admin">
+      <div>
+        <h2 style="margin-bottom:2px;">Paramètres</h2>
+        <p style="margin:0;font-size:0.88rem;">Liens et réglages du site : chacun s'applique tout de suite, sans redémarrer le site. Un lien vidé masque le bouton correspondant.</p>
+      </div>
+    </div>
+    <div id="zone-message"></div>
+    <form id="form" style="max-width:860px;">
+      <div id="champs"></div>
+      <button type="submit" class="btn btn-or" id="enregistrer">Enregistrer les réglages</button>
+    </form>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const GROUPES = [
+      ['prive', '🔗 Liens de l’espace agents', 'Lus par le serveur ou montrés aux seuls agents connectés.'],
+      ['public', '🌐 Liens des pages publiques', 'Boutons des pages du site public.'],
+      ['services', '🟢 Membres en service', 'Lecture du salon Discord où le bot des services publie les prises et fins de service.'],
+      ['agenda', '📅 Agenda partagé', 'Qui voit et qui crée les événements partagés, selon ses rôles Discord.'],
+    ];
+    let reglages = [];
+
+    function afficher() {
+      $('champs').innerHTML = GROUPES.map(([groupe, titre, intro]) => {
+        const liste = reglages.filter(r => r.groupe === groupe);
+        if (!liste.length) return '';
+        return `<h3 class="comptes-sous-titre" style="margin-top:28px;">${titre}</h3>
+          <p class="champ-aide" style="margin:0 0 14px;">${intro}</p>` + liste.map(r => `
+          <div class="champ">
+            <label for="r-${echapper(r.cle)}">${echapper(r.libelle)}</label>
+            <input id="r-${echapper(r.cle)}" data-cle="${echapper(r.cle)}" value="${echapper(r.valeur)}" autocomplete="off"
+              ${r.type === 'entier' ? `type="number" min="${r.min}" max="${r.max}" placeholder="${r.defaut}"` : r.type === 'url' || r.type === 'origine' || r.type === 'sheet' ? 'type="url" placeholder="https://…"' : 'type="text" inputmode="numeric"'}>
+            <p class="champ-aide">${echapper(r.aide)}</p>
+          </div>`).join('');
+      }).join('');
+    }
+
+    async function charger() {
+      reglages = (await socle.api('/api/parametres')).reglages;
+      afficher();
+    }
+
+    $('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const corps = Object.fromEntries([...document.querySelectorAll('[data-cle]')].map(c => [c.dataset.cle, c.value.trim()]));
+      $('enregistrer').disabled = true;
+      try {
+        await socle.api('/api/parametres', { method: 'PUT', body: corps });
+        await charger();
+        gestion.message('zone-message', 'Réglages enregistrés : ils s’appliquent dès maintenant.', true);
+      } catch (err) { gestion.message('zone-message', err.message); }
+      finally { $('enregistrer').disabled = false; }
+    });
+
+    gestion.coque('parametres').then(charger).catch(e => gestion.message('zone-message', e.message));
+  </script>
+</body>
+</html>
