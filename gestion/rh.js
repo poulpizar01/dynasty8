@@ -34,6 +34,7 @@ async function chargerRh() {
     $rh('rh-repartition').textContent = r.effectif.parGrade.length ? `Effectif actif par grade : ${r.effectif.parGrade.map(g => `${g.grade} ${g.nombre}`).join(' · ')}` : '';
     ameliorerSelect(filtre);
     ameliorerSelect($rh('filtre-rh-statut'));
+    ameliorerSelect($rh('tri-rh'));
     afficherEmployes();
     chargerARattacher();
     chargerArriveesBot();
@@ -47,6 +48,8 @@ function afficherEmployes() {
   const grade = $rh('filtre-rh-grade').value, statut = $rh('filtre-rh-statut').value;
   const liste = CACHE_EMPLOYES.filter(e => (!grade || e.grade === grade) && (!statut || e.statut === statut)
     && (!recherche || [e.nomComplet, e.idEmploye, e.discordPseudo, e.discordId].some(v => String(v || '').toLowerCase().includes(recherche))));
+  // hiérarchie : l'ordre du serveur (actifs, puis grade selon la page Grades, puis nom) ; sinon par nom
+  if ($rh('tri-rh').value === 'alpha') liste.sort((a, b) => a.nomComplet.localeCompare(b.nomComplet, 'fr', { sensitivity: 'base' }));
   $rh('rh-vide').classList.toggle('cache', liste.length > 0);
   $rh('rh-resultat').classList.toggle('cache', liste.length === 0);
   const corps = $rh('corps-table-employes');
@@ -75,6 +78,7 @@ function afficherEmployes() {
 $rh('recherche-employes').addEventListener('input', afficherEmployes);
 $rh('filtre-rh-grade').addEventListener('change', afficherEmployes);
 $rh('filtre-rh-statut').addEventListener('change', afficherEmployes);
+$rh('tri-rh').addEventListener('change', afficherEmployes);
 
 // fiche : consultation, modification, ou création (id absent, avec un pré-remplissage éventuel)
 async function ouvrirFicheEmploye(id, preremplissage) {
