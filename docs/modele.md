@@ -34,6 +34,19 @@ En bas de chaque vitrine : la signature **« Développé par Roxwood Network »*
 6. **Notes** : réécrire [`README.md`](../README.md) (présentation du site, pour qui ouvre le dépôt) et [`ENTREPRISE.md`](../ENTREPRISE.md) (ce que fait le site, ses tables, ses pièges) et compléter [`confidentialite.html`](../confidentialite.html) avec ce que le site enregistre.
 7. **Déployer** : [server/README.md](../server/README.md).
 
+### Ajouter une table ou une colonne au socle (dans le modèle)
+
+Le modèle n'a pas toujours de base de dev sous la main : on fait générer le SQL exact par Prisma depuis le conteneur d'un site à jour, sans toucher à sa base.
+
+```bash
+# dans le modèle : modifier server/prisma/schema/socle.prisma, puis, depuis un site (conteneur <site>-app) :
+docker exec <site>-app sh -c 'rm -rf /tmp/sch && mkdir /tmp/sch && cp /app/server/prisma/schema/*.prisma /tmp/sch/'
+docker cp <modèle>/server/prisma/schema/socle.prisma <site>-app:/tmp/sch/socle.prisma
+docker exec -w /app/server <site>-app npx prisma migrate diff --from-schema prisma/schema --to-schema /tmp/sch --script
+```
+
+Copier la sortie dans `server/prisma/migrations/<AAAAMMJJHHMMSS>_socle_<description>/migration.sql` du modèle (`_socle_` dans le nom : c'est ce qui la distingue de celles des sites). Une fois fusionné dans le site, `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema --script` doit répondre « empty migration ». Pas d'opération qui exige un super-utilisateur (la prod migre avec `site_app`).
+
 ### Récupérer plus tard les améliorations du socle
 ```bash
 git remote add modele https://github.com/poulpizar01/roxwood-network-site-entreprise-template.git   # une seule fois
