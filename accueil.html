@@ -17,9 +17,9 @@
 <meta name="twitter:image" content="{{url}}/assets/og-image.jpg">
 <link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="/socle/signature.css">
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/assets/css/style.css">
 <link rel="icon" type="image/png" href="/assets/favicon.png">
-<link rel="apple-touch-icon" href="/assets/img/favicon-180.png">
+<link rel="apple-touch-icon" href="/assets/favicon-180.png">
 </head>
 <body class="page-accueil">
 
@@ -173,25 +173,25 @@
       <p>Avant de choisir un bien, repérez sa cohérence — la zone de jeu et les règles RP qui vont avec — puis localisez-la sur la WebMap du serveur.</p>
     </div>
     <div class="grille-hub grille-hub--4">
-      <a class="carte-hub" href="/coherence.html?zone=Habitation">
+      <a class="carte-hub" href="/coherence-zone.html?zone=Habitation">
         <div class="icone">🏠</div>
         <h3>Habitation</h3>
         <p>La justification de résidence de votre personnage à Los Santos.</p>
         <span class="carte-hub-fleche">Consulter →</span>
       </a>
-      <a class="carte-hub" href="/coherence.html?zone=Garage">
+      <a class="carte-hub" href="/coherence-zone.html?zone=Garage">
         <div class="icone">🚗</div>
         <h3>Garage</h3>
         <p>La justification de stationnement et de stockage de vos véhicules.</p>
         <span class="carte-hub-fleche">Consulter →</span>
       </a>
-      <a class="carte-hub" href="/coherence.html?zone=Cayo+Perico">
+      <a class="carte-hub" href="/coherence-zone.html?zone=Cayo+Perico">
         <div class="icone">🏝️</div>
         <h3>Cayo Perico</h3>
         <p>Les règles propres à l'île de Cayo Perico.</p>
         <span class="carte-hub-fleche">Consulter →</span>
       </a>
-      <a class="carte-hub" href="/coherence.html?zone=Roxwood">
+      <a class="carte-hub" href="/coherence-zone.html?zone=Roxwood">
         <div class="icone">🌲</div>
         <h3>Roxwood</h3>
         <p>Les règles propres au secteur résidentiel de Roxwood.</p>
@@ -260,8 +260,8 @@
 
 <footer class="pied-page" id="site-pied"></footer>
 
-<script src="/layout.js"></script>
-<script src="/biens.js"></script>
+<script src="/assets/js/layout.js"></script>
+<script src="/assets/js/catalogue.js"></script>
 <script>
   initialiserLayout("accueil");
   // Apparition douce au défilement des grands blocs de la page.
@@ -368,7 +368,7 @@
 // Le toit puis la porte se tracent d'un seul geste, le soleil se lève derrière
 // la pente, puis le nom s'inscrit ; ensuite lueur qui respire + étincelles +
 // léger tilt à la souris. Géométrie reprise du logo (image 1024², unité =
-// largeur du logo). Three.js en local (/vendor), nom en PNG (/assets/img/logo-wordmark.png).
+// largeur du logo). Three.js en local (/vendor), nom en PNG (/assets/logo-wordmark.png).
 //
 // Rendu (refonte sept. 2026) — les couleurs officielles (vert / jaune) sont
 // conservées, seul le rendu change :
@@ -496,7 +496,7 @@ const enJeu = (() => { try { return window.self !== window.top; } catch (e) { re
 
   // ---- nom (wordmark) ----
   const wu={uIn:{value:0}}; let wmMesh=null;
-  new THREE.TextureLoader().load('/assets/img/logo-wordmark.png',(t)=>{t.colorSpace=THREE.SRGBColorSpace;
+  new THREE.TextureLoader().load('/assets/logo-wordmark.png',(t)=>{t.colorSpace=THREE.SRGBColorSpace;
     wmMesh=new THREE.Mesh(new THREE.PlaneGeometry(WM.w,WM.h),new THREE.ShaderMaterial({uniforms:{uTex:{value:t},uIn:wu.uIn},transparent:true,depthWrite:false,
       vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
       fragmentShader:`precision highp float;varying vec2 vUv;uniform sampler2D uTex;uniform float uIn;void main(){vec4 c=texture2D(uTex,vUv);gl_FragColor=vec4(c.rgb,c.a*uIn);}`}));

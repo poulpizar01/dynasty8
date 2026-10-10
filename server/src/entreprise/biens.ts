@@ -1,5 +1,5 @@
 // ENTREPRISE — biens immobiliers : valeurs contrôlées et forme envoyée au navigateur.
-// Le catalogue de la vitrine (biens.js) et la gestion lisent les champs en snake_case (forme historique des pages,
+// Le catalogue de la vitrine (assets/js/catalogue.js) et la gestion lisent les champs en snake_case (forme historique des pages,
 // gardée pour ne pas les réécrire).
 import type { Bien } from '../generated/prisma/client.js';
 

@@ -1,7 +1,7 @@
 // ============================================================================
 // Dynasty 8 — guides de cohérence (contenu unique, écrit ici une fois)
 // ----------------------------------------------------------------------------
-// Chargé par la page publique /coherence.html ET par l'onglet « Cohérences »
+// Chargé par la page publique /coherence-zone.html ET par l'onglet « Cohérences »
 // de l'espace agents : les deux affichent donc exactement le même règlement.
 // Le contenu est volontairement écrit dans ce fichier, pas réglable depuis le
 // site : il se modifie ici. Dépend de echapper() (layout.js).

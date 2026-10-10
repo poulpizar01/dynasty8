@@ -398,7 +398,7 @@ async function chargerFicheBien() {
             ${bien.places ? `<div><dt>Places</dt><dd>${echapper(bien.places)}</dd></div>` : ""}
             ${bien.coffre_kg ? `<div><dt>Coffre</dt><dd>${echapper(bien.coffre_kg)} kg</dd></div>` : ""}
             ${bien.vip ? '<div><dt>Statut</dt><dd>VIP</dd></div>' : ""}
-            ${bien.coherence ? `<div><dt>Cohérence</dt><dd><a href="/coherence.html?zone=${encodeURIComponent(bien.coherence)}" class="fiche-carac-lien">${echapper(bien.coherence)} <span aria-hidden="true">→</span></a></dd></div>` : ""}
+            ${bien.coherence ? `<div><dt>Cohérence</dt><dd><a href="/coherence-zone.html?zone=${encodeURIComponent(bien.coherence)}" class="fiche-carac-lien">${echapper(bien.coherence)} <span aria-hidden="true">→</span></a></dd></div>` : ""}
           </dl>
           <div class="encart-contact">
             <div class="encart-contact-titre">Comment obtenir ce bien ?</div>

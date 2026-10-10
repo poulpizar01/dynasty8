@@ -95,7 +95,7 @@ window.gestion = {
     const barre = document.createElement('aside');
     barre.className = 'admin-barre-laterale';
     barre.innerHTML = `
-      <a href="/accueil.html" class="logo" title="Voir le site public"><img src="/assets/img/logo-full.png" alt="Dynasty 8" class="logo-entete"></a>
+      <a href="/accueil.html" class="logo" title="Voir le site public"><img src="/assets/logo-full.png" alt="Dynasty 8" class="logo-entete"></a>
       <nav class="admin-nav">${nav}</nav>
       <!-- qui est en service, et depuis quand (salon Discord des services, entreprise/services.ts) ; masqué tant que le
            salon n'est pas réglé -->
@@ -199,7 +199,7 @@ async function fondAnime() {
   document.body.prepend(toile);
   try {
     const THREE = await import('/assets/vendor/three.module.min.js');
-    const { mountAurora } = await import('/aurora.js');
+    const { mountAurora } = await import('/assets/js/aurora.js');
     window.__aurora = mountAurora(THREE, { canvas: toile, intensity: 0.5, stars: 0.7, ridge: false, parallax: true, pixelRatio: 0.6 });
   } catch { toile.remove(); }
 }

@@ -16,7 +16,7 @@
 <meta name="twitter:description" content="Dynasty 8, l'agence immobilière de référence à Los Santos : habitations, garages et biens exclusifs.">
 <meta name="twitter:image" content="{{url}}/assets/og-image.jpg">
 <link rel="icon" type="image/png" href="/assets/favicon.png">
-<link rel="apple-touch-icon" href="/assets/img/favicon-180.png">
+<link rel="apple-touch-icon" href="/assets/favicon-180.png">
 <link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="/socle/signature.css">
 <style>
@@ -65,7 +65,7 @@
 </head>
 <body>
 <!-- Page d'entrée du site (voir accueil.html pour l'accueil proprement dit).
-     Three.js en local : /assets/vendor/three.module.min.js — logo : /assets/img/logo-full.png. -->
+     Three.js en local : /assets/vendor/three.module.min.js — logo : /assets/logo-full.png. -->
 <div class="scene"><canvas id="fx"></canvas></div>
 <div class="cadre"></div>
 
@@ -88,7 +88,7 @@
 // charge donc même pas Three.js (670 Ko) et on garde un visuel statique.
 const enJeu = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
 (async function(){
-  const LOGO = "/assets/img/logo-full.png";
+  const LOGO = "/assets/logo-full.png";
   const LOGO_ASP = 917/507;
   const canvas = document.getElementById('fx');
   if (enJeu) {

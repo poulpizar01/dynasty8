@@ -1309,7 +1309,7 @@ section.section.serre {
 
 /* ---------- filtre à deux niveaux (familles → catégories) ----------
    Utilisé par /habitation.html (voir construireFiltre2Niveaux dans
-   biens.js). Contrairement à .filtres ci-dessus (un fond doré par
+   catalogue.js). Contrairement à .filtres ci-dessus (un fond doré par
    bouton), ici un seul indicateur doré glisse sous l'onglet actif. */
 
 .d8-filtre2 { margin-bottom: 30px; }

@@ -3,7 +3,7 @@
 // remplacer une : le fichier passe par le traitement d'images du socle (contrôle, réencodage WebP, transparence
 // gardée) puis part sur le stockage ; seule son adresse est enregistrée (table apparence_images). « Rétablir » efface
 // la ligne : l'image livrée revient aussitôt.
-// Les pages ne changent pas d'adresse (/assets/img/logo-full.png reste celle du logo partout) : une image réglée est
+// Les pages ne changent pas d'adresse (/assets/logo-full.png reste celle du logo partout) : une image réglée est
 // relayée depuis le stockage sur cette même adresse — même origine que le site, donc ni souci de CORS pour les textures
 // WebGL de l'accueil ni redirection pour les robots qui lisent og:image. Une image réglée mais illisible (stockage
 // injoignable) retombe sur le fichier livré : le site garde toujours un logo.
@@ -19,11 +19,11 @@ import { Refus, traiter } from './refus.js';
 
 // largeur / hauteur : proportions de l'image livrée ; une image très différente serait déformée (animations de l'accueil)
 export const IMAGES_MARQUE = [
-  { cle: 'logo', fichier: '/assets/img/logo-full.png', largeur: 917, hauteur: 507, libelle: 'Logo complet', aide: 'Écran de connexion de l’espace agents, barre latérale, animation de la page d’entrée.' },
-  { cle: 'embleme', fichier: '/assets/img/logo-mark.png', largeur: 828, hauteur: 326, libelle: 'Emblème', aide: 'En-tête des pages publiques, à côté du nom de l’agence.' },
-  { cle: 'lettrage', fichier: '/assets/img/logo-wordmark.png', largeur: 1150, hauteur: 252, libelle: 'Nom de l’agence (lettrage)', aide: 'Animation de la page d’accueil.' },
+  { cle: 'logo', fichier: '/assets/logo-full.png', largeur: 917, hauteur: 507, libelle: 'Logo complet', aide: 'Écran de connexion de l’espace agents, barre latérale, animation de la page d’entrée.' },
+  { cle: 'embleme', fichier: '/assets/logo-mark.png', largeur: 828, hauteur: 326, libelle: 'Emblème', aide: 'En-tête des pages publiques, à côté du nom de l’agence.' },
+  { cle: 'lettrage', fichier: '/assets/logo-wordmark.png', largeur: 1150, hauteur: 252, libelle: 'Nom de l’agence (lettrage)', aide: 'Animation de la page d’accueil.' },
   { cle: 'icone', fichier: '/assets/favicon.png', largeur: 32, hauteur: 32, libelle: 'Icône d’onglet', aide: 'Petite icône affichée dans l’onglet du navigateur.' },
-  { cle: 'icone_mobile', fichier: '/assets/img/favicon-180.png', largeur: 180, hauteur: 180, libelle: 'Icône d’écran d’accueil', aide: 'Icône utilisée quand le site est ajouté à l’écran d’accueil d’un téléphone.' },
+  { cle: 'icone_mobile', fichier: '/assets/favicon-180.png', largeur: 180, hauteur: 180, libelle: 'Icône d’écran d’accueil', aide: 'Icône utilisée quand le site est ajouté à l’écran d’accueil d’un téléphone.' },
   { cle: 'partage', fichier: '/assets/og-image.jpg', largeur: 1200, hauteur: 630, libelle: 'Image de partage', aide: 'Aperçu affiché quand un lien du site est partagé (Discord, réseaux…).' },
 ] as const;
 const PAR_CLE = new Map<string, (typeof IMAGES_MARQUE)[number]>(IMAGES_MARQUE.map(d => [d.cle, d]));

@@ -39,10 +39,10 @@ const LIENS_NAV = [
       { href: "/exclusifs.html", texte: "Exclusifs" },
     ] },
   { href: "/coherences.html", texte: "Cohérences", cle: "coherences", sousMenu: [
-      { href: "/coherence.html?zone=Habitation", texte: "Cohérence Habitation" },
-      { href: "/coherence.html?zone=Garage", texte: "Cohérence Garage" },
-      { href: "/coherence.html?zone=Cayo+Perico", texte: "Cohérence Cayo Perico" },
-      { href: "/coherence.html?zone=Roxwood", texte: "Cohérence Roxwood" },
+      { href: "/coherence-zone.html?zone=Habitation", texte: "Cohérence Habitation" },
+      { href: "/coherence-zone.html?zone=Garage", texte: "Cohérence Garage" },
+      { href: "/coherence-zone.html?zone=Cayo+Perico", texte: "Cohérence Cayo Perico" },
+      { href: "/coherence-zone.html?zone=Roxwood", texte: "Cohérence Roxwood" },
     ] },
   { href: "/vip.html", texte: "VIP PLUS", cle: "vip" },
   { href: "/services.html", texte: "Agence", cle: "agence", clesEnfants: ["services", "equipe", "faq"], sousMenu: [
@@ -54,7 +54,7 @@ const LIENS_NAV = [
 ];
 
 function logoImg(cssClass) {
-  return `<img src="/assets/img/logo-full.png" alt="Dynasty 8" class="${cssClass || ""}">`;
+  return `<img src="/assets/logo-full.png" alt="Dynasty 8" class="${cssClass || ""}">`;
 }
 
 // Petit emblème SVG (losange à pointe centrale) — le motif signature du thème
@@ -91,7 +91,7 @@ function injecterEntete(cleActive) {
   monte.innerHTML = `
     <div class="entete-barre">
       <a href="/accueil.html" class="logo">
-        <img src="/assets/img/logo-mark.png" alt="Dynasty 8" class="logo-marque">
+        <img src="/assets/logo-mark.png" alt="Dynasty 8" class="logo-marque">
         <span class="logo-filet" aria-hidden="true"></span>
         <span class="logo-texte">Dynasty 8</span>
       </a>
@@ -240,7 +240,7 @@ function initialiserLayout(cleActive) {
   demarrerDiaporamaHero();
   // Grilles déjà présentes dans le HTML statique au chargement (équipe, services,
   // pages "hub"). Les grilles de biens (cartes chargées depuis l'API) sont
-  // révélées séparément par biens.js, une fois injectées dans la page.
+  // révélées séparément par catalogue.js, une fois injectées dans la page.
   reveler(".carte-hub, .carte-service, .carte-membre");
 }
 
