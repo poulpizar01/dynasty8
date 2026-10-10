@@ -95,6 +95,9 @@ auth.get('/auth/discord/callback', async (req, res) => {
     if (!/^\d{5,32}$/.test(String(user.id)) || !Array.isArray(guildMember.roles) || !Array.isArray(guilds)) { res.redirect(`${PAGE_CONNEXION}?erreur=discord`); return; }
     if (user.avatar && !/^(a_)?[0-9a-f]{32}$/.test(user.avatar)) user.avatar = null;
     const proprietaire = guilds.some(g => g.id === config.discord.guildId && g.owner === true);
+    // rôles gardés sur le compte (req.compte.rolesDiscord) : l'entreprise peut s'en servir (visibilité selon le rôle…).
+    // Photo de la dernière connexion Discord, pas de l'instant : un rôle retiré sur Discord compte jusqu'à la suivante.
+    const rolesDiscord = [...new Set(guildMember.roles.map(String).filter(r => /^\d{15,21}$/.test(r)))].slice(0, 250);
 
     // 3. grade : règles dans grade-connexion.ts (rôle Discord porté, grade attribué à la main, ancien propriétaire)
     const existant = await prisma.compte.findUnique({ where: { discordId: user.id } });
@@ -110,11 +113,11 @@ auth.get('/auth/discord/callback', async (req, res) => {
       create: {
         discordId: user.id, pseudo: user.username, avatar: user.avatar,
         nom: guildMember.nick || user.global_name || user.username,
-        gradeCle: grade, proprietaire, connecteLe: new Date(),
+        gradeCle: grade, proprietaire, rolesDiscord, connecteLe: new Date(),
         statut: valideOffice ? 'valide' : 'attente', valideLe: valideOffice ? new Date() : null,
       },
       update: {
-        pseudo: user.username, avatar: user.avatar, proprietaire, gradeCle: grade, connecteLe: new Date(),
+        pseudo: user.username, avatar: user.avatar, proprietaire, rolesDiscord, gradeCle: grade, connecteLe: new Date(),
         ...(valideOffice && existant?.statut !== 'valide' && { statut: 'valide' as const, valideLe: new Date() }),
       },
     });
