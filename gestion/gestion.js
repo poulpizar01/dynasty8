@@ -13,7 +13,17 @@ const GESTION_NAV = [
 window.gestion = {
   // construit la coque autour de <main class="contenu"> et renvoie le compte connecté
   async coque() {
-    const moi = await socle.moi();
+    let moi;
+    // compte illisible (serveur arrêté, trop de requêtes, coupure) : la page le dit au lieu de rester vide ;
+    // une session expirée est déjà renvoyée vers la connexion par socle.api()
+    try { moi = await socle.moi(); }
+    catch (e) {
+      const p = Object.assign(document.createElement('p'), { className: 'message', textContent: `La page n’a pas pu se charger : ${e.message}` });
+      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: 'Réessayer' });
+      b.addEventListener('click', () => location.reload());
+      document.querySelector('main.contenu')?.replaceChildren(p, b);
+      throw e;
+    }
     const page = location.pathname.split('/').pop() || 'accueil.html';
     const rail = document.createElement('aside');
     rail.className = 'rail';
