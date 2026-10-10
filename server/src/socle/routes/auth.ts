@@ -113,11 +113,11 @@ auth.get('/auth/discord/callback', async (req, res) => {
       create: {
         discordId: user.id, pseudo: user.username, avatar: user.avatar,
         nom: guildMember.nick || user.global_name || user.username,
-        gradeCle: grade, proprietaire, rolesDiscord, connecteLe: new Date(),
+        gradeCle: grade, proprietaire, rolesDiscord, quitteLe: null, connecteLe: new Date(),
         statut: valideOffice ? 'valide' : 'attente', valideLe: valideOffice ? new Date() : null,
       },
       update: {
-        pseudo: user.username, avatar: user.avatar, proprietaire, rolesDiscord, gradeCle: grade, connecteLe: new Date(),
+        pseudo: user.username, avatar: user.avatar, proprietaire, rolesDiscord, quitteLe: null, gradeCle: grade, connecteLe: new Date(),
         ...(valideOffice && existant?.statut !== 'valide' && { statut: 'valide' as const, valideLe: new Date() }),
       },
     });
@@ -159,7 +159,8 @@ auth.get('/auth/folkos', async (req, res) => {
   try {
     const c = await prisma.compte.findUnique({ where: { discordId } });
     if (!c) { echec('inconnu'); return; }
-    if (!c.connecteLe || Date.now() - c.connecteLe.getTime() > DISCORD_RECENT_MS) { echec('discord'); return; }
+    // parti du serveur Discord depuis (vu par le bot, synchro-discord.ts) : refusé aussi, sans attendre les 30 jours
+    if (!c.connecteLe || c.quitteLe || Date.now() - c.connecteLe.getTime() > DISCORD_RECENT_MS) { echec('discord'); return; }
     await ouvrirSession(req, c.id);
     if (c.statut !== 'valide') { res.redirect(PAGE_ATTENTE); return; }
     // ?next= : un chemin du site seulement (ni //autre.site, ni /\autre.site)

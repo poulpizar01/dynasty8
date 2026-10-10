@@ -7,8 +7,12 @@ const API = 'https://discord.com/api/v10';
 export const ID_DISCORD = /^\d{15,22}$/;
 
 // échec d'un appel : statut HTTP (0 : Discord injoignable ou réponse illisible) et message lisible par qui règle le
-// site ; l'appelant peut le remplacer par un message propre à son cas (salon introuvable, droit manquant…)
-export class ErreurDiscord extends Error { constructor(public statut: number, message: string) { super(message); } }
+// site ; l'appelant peut le remplacer par un message propre à son cas (salon introuvable, droit manquant…). code : code
+// d'erreur de Discord quand il en donne un (10007 : membre inconnu, 10004 : serveur inconnu…), qui distingue deux 404 ;
+// reessayerApres : secondes à attendre après un 429.
+export class ErreurDiscord extends Error {
+  constructor(public statut: number, message: string, public code: number | null = null, public reessayerApres = 0) { super(message); }
+}
 const message = (statut: number) =>
   statut === 0 ? 'Discord ne répond pas pour le moment.'
   : statut === 401 ? 'Discord refuse le jeton du bot (DISCORD_BOT_TOKEN) : à corriger dans la configuration du site.'
@@ -32,8 +36,10 @@ export async function appelBot(methode: 'GET' | 'POST' | 'PATCH' | 'DELETE', che
     });
   } catch { throw new ErreurDiscord(0, message(0)); }
   if (!r.ok) {
-    console.error(`[discord] ${methode} ${chemin.replace(/\d{15,22}/g, ':id')} : HTTP ${r.status}`);
-    throw new ErreurDiscord(r.status, message(r.status));
+    const detail = await r.json().catch(() => null) as { code?: unknown; retry_after?: unknown } | null;
+    const code = Number.isInteger(detail?.code) ? Number(detail!.code) : null;
+    console.error(`[discord] ${methode} ${chemin.replace(/\d{15,22}/g, ':id')} : HTTP ${r.status}${code ? ` (code ${code})` : ''}`);
+    throw new ErreurDiscord(r.status, message(r.status), code, Math.min(Number(detail?.retry_after) || 0, 3600));
   }
   if (r.status === 204) return null;
   try { return await r.json(); } catch { throw new ErreurDiscord(0, message(0)); }

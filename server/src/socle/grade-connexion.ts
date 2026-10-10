@@ -17,3 +17,15 @@ export function gradeALaConnexion(grades: readonly GradeRole[], roles: readonly 
   const manuelPlusHaut = !!conserve && !actuel?.roleDiscordId && rang(conserve) < rang(parRole);
   return { grade: manuelPlusHaut ? conserve : parRole ?? conserve, parRole };
 }
+
+// Compte relu par le bot entre deux connexions (synchro-discord.ts) : mêmes règles qu'à la connexion. roles : rôles
+// portés sur le serveur, ou null si le membre n'y est plus (ses grades liés à un rôle tombent, il est marqué parti).
+// Un compte en attente qui reçoit un grade par son rôle est validé, comme à la connexion ; un refusé n'est jamais lu.
+type CompteLu = { gradeCle: string | null; statut: string; rolesDiscord: readonly string[] };
+export function synchroCompte(grades: readonly GradeRole[], compte: CompteLu, roles: readonly string[] | null) {
+  const portes = roles ?? [];
+  const { grade, parRole } = gradeALaConnexion(grades, portes, compte.gradeCle, false);
+  const valider = !!roles && compte.statut === 'attente' && !!parRole;
+  const memesRoles = portes.length === compte.rolesDiscord.length && portes.every(r => compte.rolesDiscord.includes(r));
+  return { parti: roles === null, gradeCle: grade, valider, change: roles === null || grade !== compte.gradeCle || valider || !memesRoles };
+}

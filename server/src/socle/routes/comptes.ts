@@ -17,6 +17,7 @@ const grade = (cle: string | null) => {
 const comptePublic = (c: Compte) => ({
   id: c.id, discordId: c.discordId, pseudo: c.pseudo, nom: c.nom, avatar: avatar(c), statut: c.statut,
   proprietaire: c.proprietaire, grade: grade(c.gradeCle), creeLe: c.creeLe, connecteLe: c.connecteLe, valideLe: c.valideLe,
+  quitteLe: c.quitteLe,   // parti du serveur Discord (vu par le bot, synchro-discord.ts)
 });
 
 // suppression d'un compte : d'abord ce que l'entreprise lui rattache, puis le compte, dans une seule transaction
