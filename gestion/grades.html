@@ -77,12 +77,14 @@
     // rang d'un grade (0 = sommet) ; même règle que le serveur (socle/droits.ts)
     const rang = cle => { const i = grades.findIndex(g => g.cle === cle); return i < 0 ? grades.length : i; };
     const gerable = g => moi.proprietaire || (!!moi.grade && rang(g.cle) > rang(moi.grade.cle));
-    // permissions rangées par domaine (celles du socle et celles de Dynasty 8) ; une clé inconnue va dans « Autres »
+    // permissions rangées par domaine (celles du socle et celles de Dynasty 8) ; une clé inconnue va dans « Autres ».
+    // Dans un domaine : consulter, puis créer et modifier, puis retirer, puis régler — l’ordre dans lequel les droits s’ajoutent
     const DOMAINES = [
       ['Équipe et site', ['comptes', 'grades', 'parametres']],
       ['Annonces', ['biens']],
-      ['Ressources humaines', ['rh-voir', 'rh-creer', 'rh-modifier', 'rh-desactiver', 'rh-reactiver', 'rh-sensible', 'rh-parametrer']],
-      ['Ventes et argent', ['ventes', 'ventes-gerer', 'compta']],
+      ['Ressources humaines', ['rh-voir', 'rh-sensible', 'rh-creer', 'rh-modifier', 'rh-reactiver', 'rh-desactiver', 'rh-parametrer']],
+      ['Ventes et statistiques', ['ventes', 'ventes-gerer']],
+      ['Comptabilité', ['compta']],
     ];
     function resumeDroits(g) {
       if (permissions.length && permissions.every(p => g.permissions.includes(p.cle))) return '<span class="grades-tag accent">Tous les droits</span>';

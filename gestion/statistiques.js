@@ -102,17 +102,17 @@ async function chargerSynchro() {
 
 $st('bouton-synchroniser-sheet').addEventListener('click', async e => {
   const bouton = e.currentTarget, texte = bouton.innerHTML;   // icône comprise
-  bouton.style.width = `${bouton.offsetWidth}px`;   // « Lecture… » est plus court : le bouton ne bouge pas
+  bouton.style.width = `${bouton.offsetWidth}px`;   // le texte d’attente est plus court : le bouton ne bouge pas
   bouton.disabled = true;
-  bouton.textContent = 'Lecture…';
+  bouton.textContent = 'Synchronisation…';
   try {
     const r = await socle.api('/api/tableur/synchroniser', { method: 'POST' });
     const sansFiche = r.etat?.sansFicheRh || 0;
-    gestion.notifier(`Google Sheets relu ✓${sansFiche ? ` ${pluriel(sansFiche, 'ligne', 'lignes')} sans fiche RH : voir Ressources humaines.` : ''}`);
+    gestion.notifier(`Google Sheets synchronisé ✓${sansFiche ? ` ${pluriel(sansFiche, 'ligne', 'lignes')} sans fiche RH : voir Ressources humaines.` : ''}`);
     chargerSynchro();
     chargerTableur('');
   } catch (err) {
-    gestion.notifier(`Lecture impossible : ${err.message}`, 'erreur');
+    gestion.notifier(`Synchronisation impossible : ${err.message}`, 'erreur');
   } finally {
     bouton.disabled = false;
     bouton.innerHTML = texte;
