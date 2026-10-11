@@ -85,7 +85,7 @@ auth.get('/auth/discord/callback', async (req, res) => {
     const discord = (path: string) => fetch(`${DISCORD_API}${path}`, { headers: { Authorization: `Bearer ${access_token}` }, signal: delai() });
 
     // 2. identité, appartenance au serveur (+ rôles), propriété du serveur. Une réponse en erreur de Discord (limite,
-    // panne) interrompt la connexion sans toucher au compte : la lire comme « pas propriétaire » ou « pas membre »
+    // panne) interrompt la connexion sans toucher au compte : la lire comme « pas propriétaire » ou « pas membre »
     // retirerait ses droits à quelqu'un qui les a.
     const [userRes, memberRes, guildsRes] = [await discord('/users/@me'), await discord(`/users/@me/guilds/${config.discord.guildId}/member`), await discord('/users/@me/guilds')];
     if (memberRes.status === 404) { res.redirect(`${PAGE_CONNEXION}?erreur=pas-membre`); return; }
@@ -130,7 +130,7 @@ auth.get('/auth/discord/callback', async (req, res) => {
   }
 });
 
-// « Se connecter IG » : SSO FolkOS (ordinateur en jeu), si configuré. Le broker de l'opérateur ouvre cette adresse avec
+// « Se connecter IG » : SSO FolkOS (ordinateur en jeu), si configuré. Le broker de l'opérateur ouvre cette adresse avec
 // ?folkos_ticket=… (usage unique) ; seule la réponse du validateur (/sso/verify) fait foi, jamais le ticket lui-même.
 // Le compte est retrouvé par son ID Discord : il doit exister et être validé. La connexion IG ne revérifie ni
 // l'appartenance au serveur Discord ni les rôles (FolkOS ne les connaît pas) : elle n'est acceptée qu'après une
