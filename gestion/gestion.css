@@ -180,7 +180,7 @@ main.admin-contenu:focus { outline: none; }
 .accueil-vide a { color: var(--gold-strong); }
 
 /* cartes de chiffres : autant par rangée que la place le permet (quatre fixes devenaient illisibles vers 1 024 px) */
-.page-agents .admin-stats:not([style*="grid-template-columns"]) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }
+.page-agents .admin-stats:not([style*="grid-template-columns"]) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); }
 @media (max-width: 520px) { .page-agents .admin-stats:not([style*="grid-template-columns"]) { grid-template-columns: 1fr 1fr; } }
 
 /* un montant ou une quantité (colonne alignée à droite) ne se coupe jamais : « 1 240 / 000 » se lit mal ; si la
@@ -319,3 +319,9 @@ main.admin-contenu:focus { outline: none; }
 .annonce-pied .annonce-supprimer:not(.cache) + .annonce-message { margin-left: 0; }
 .annonce-pied .annonce-supprimer { margin-right: 0 !important; }
 @media (max-width: 760px) { .annonce-message { flex-basis: 100%; order: -2; } .annonce-message:empty { display: none; } }
+
+/* Cartes de chiffres : quand la carte est trop étroite pour le texte à côté de l'icône (moins de 96 px), le texte
+   passe dessous au lieu de déborder du cadre (« LOCATIONS » sortait de la carte dans Mon profil). */
+.page-agents .stat-carte { flex-wrap: wrap; row-gap: 10px; min-width: 0; }
+.page-agents .stat-carte > div { flex: 1 1 96px; min-width: 0; }
+.page-agents .stat-valeur, .page-agents .stat-libelle { overflow-wrap: anywhere; }
