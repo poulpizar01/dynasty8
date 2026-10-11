@@ -22,7 +22,7 @@ export const cspNonce: RequestHandler = (_req, res, next) => { res.locals.cspNon
 const origines = (liste: string[] | undefined): string[] => (liste ?? []).map(o => {
   let u: URL | null = null;
   try { u = new URL(o); } catch { /* signalé ci-dessous */ }
-  if (!u || u.protocol !== 'https:' || u.origin !== o.replace(/\/$/, '')) fail(`entreprise.csp : une origine https:// sans chemin est attendue, pas « ${o} »`);
+  if (!u || u.protocol !== 'https:' || u.origin !== o.replace(/\/$/, '')) fail(`entreprise.csp : une origine https:// sans chemin est attendue, pas « ${o} »`);
   return u.origin;
 });
 

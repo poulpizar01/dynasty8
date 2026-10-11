@@ -1,6 +1,6 @@
 // SOCLE — réglages modifiables depuis la gestion (table reglages), clé → texte. Gardés en mémoire (lus à chaque
 // requête par certaines routes), rechargés après chaque modification. Le site y range ses propres clés : les préfixer
-// par le nom de leur domaine (« stocks.seuil ») pour ne jamais croiser une clé du socle.
+// par le nom de leur domaine (« stocks.seuil ») pour ne jamais croiser une clé du socle.
 import { prisma } from './db.js';
 
 let reglages = new Map<string, string>();

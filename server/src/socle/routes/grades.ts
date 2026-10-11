@@ -1,4 +1,4 @@
-// SOCLE — grades et leurs permissions (permission « grades »).
+// SOCLE — grades et leurs permissions (permission « grades »).
 // Hors propriétaire : on ne crée, modifie, ordonne ou supprime que des grades SOUS le sien, et on n'y coche que des
 // permissions qu'on détient (droits.ts). Le propriétaire du serveur Discord a toujours tout : personne ne peut s'enfermer dehors.
 import { Router, type Request, type Response } from 'express';
@@ -17,10 +17,10 @@ const lirePermissions = (v: unknown): string[] | null =>
 const lireRole = (v: unknown): string | null | undefined =>
   v === null || v === '' ? null : typeof v === 'string' && /^\d{5,32}$/.test(v) ? v : undefined;
 // Lier un grade à un rôle Discord valide d'office, à leur connexion, les comptes qui portent ce rôle : c'est aussi
-// gérer les comptes. Hors propriétaire, il faut donc les deux permissions (« grades » seule ne suffit pas).
+// gérer les comptes. Hors propriétaire, il faut donc les deux permissions (« grades » seule ne suffit pas).
 const roleRefuse = (moi: Request['compte'], res: Response): boolean => {
   if (peut(moi, 'comptes')) return false;
-  res.status(403).json({ error: 'Tu ne peux pas lier ce grade à un rôle Discord : ce lien valide des comptes, il faut donc aussi la permission « Gérer les comptes ».' });
+  res.status(403).json({ error: 'Tu ne peux pas lier ce grade à un rôle Discord : ce lien valide des comptes, il faut donc aussi la permission « Gérer les comptes ».' });
   return true;
 };
 

@@ -46,7 +46,7 @@ export async function appelBot(methode: 'GET' | 'POST' | 'PATCH' | 'DELETE', che
 }
 
 // message posté par le bot : le texte vient souvent d'un utilisateur (titre, descriptif) et Discord interpréterait
-// « @everyone » ou une mention de rôle qu'il contiendrait. Seules les personnes de `mentionner` sont notifiées.
+// « @everyone » ou une mention de rôle qu'il contiendrait. Seules les personnes de `mentionner` sont notifiées.
 export async function posterMessage(salonId: string, contenu: { content?: string; embeds?: unknown[] }, mentionner: string[] = []): Promise<string | null> {
   if (!ID_DISCORD.test(salonId) || mentionner.some(id => !ID_DISCORD.test(id))) throw new Error('identifiant Discord invalide');
   const m = await appelBot('POST', `/channels/${salonId}/messages`, { ...contenu, allowed_mentions: { parse: [], users: mentionner } }) as { id?: unknown } | null;

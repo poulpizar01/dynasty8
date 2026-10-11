@@ -1,5 +1,5 @@
 // SOCLE — URL de la base, partagée par le serveur et la CLI Prisma (prisma.config.ts).
-// En Docker, la base s'appelle « db » et seul POSTGRES_PASSWORD est fourni. Le site s'y connecte avec « site_app »,
+// En Docker, la base s'appelle « db » et seul POSTGRES_PASSWORD est fourni. Le site s'y connecte avec « site_app »,
 // propriétaire des tables sans être super-utilisateur (compte créé par le service db-roles de compose.yaml).
 export function databaseUrl(required = true): string {
   const url = process.env.DATABASE_URL

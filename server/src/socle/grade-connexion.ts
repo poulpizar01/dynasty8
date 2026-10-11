@@ -5,7 +5,7 @@
 //  - un grade sans rôle Discord (attribué à la main) est conservé, sauf pour un ancien propriétaire (serveur transféré) :
 //    il a pu se l'attribuer lui-même ;
 //  - un grade attribué à la main plus haut que celui du rôle l'emporte : sinon, quiconque gère un grade inférieur le
-//    lierait à un rôle porté par tous (« Membre ») et ferait tomber ses supérieurs à leur connexion suivante.
+//    lierait à un rôle porté par tous (« Membre ») et ferait tomber ses supérieurs à leur connexion suivante.
 type GradeRole = { cle: string; roleDiscordId: string | null };
 
 export function gradeALaConnexion(grades: readonly GradeRole[], roles: readonly string[], actuelCle: string | null | undefined, exProprietaire: boolean) {

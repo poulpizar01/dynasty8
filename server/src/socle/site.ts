@@ -17,12 +17,12 @@ function load(): Record<string, string> {
   if (missing.length) { console.error(`site.json : valeur manquante pour ${missing.join(', ')}`); process.exit(1); }
   const pasTexte = Object.keys(raw).filter(k => !/^\w+$/.test(k) || typeof raw[k] !== 'string');
   if (pasTexte.length) { console.error(`site.json : clés (lettres, chiffres, _) et valeurs doivent être du texte : ${pasTexte.join(', ')}`); process.exit(1); }
-  if ('url' in raw) { console.error('site.json : « url » est réservée (elle vient de BASE_URL)'); process.exit(1); }
+  if ('url' in raw) { console.error('site.json : « url » est réservée (elle vient de BASE_URL)'); process.exit(1); }
   // couleur d'accent : facultative, forcément une couleur hexadécimale (elle est insérée telle quelle dans les feuilles de style)
   const couleur = raw.couleur ?? '#3e7bfa';
-  if (typeof couleur !== 'string' || !/^#[0-9a-f]{6}$/i.test(couleur)) { console.error('site.json : « couleur » doit être une couleur du type #3e7bfa'); process.exit(1); }
+  if (typeof couleur !== 'string' || !/^#[0-9a-f]{6}$/i.test(couleur)) { console.error('site.json : « couleur » doit être une couleur du type #3e7bfa'); process.exit(1); }
   // lien d'invitation : inséré dans des href, donc une adresse https et rien d'autre
-  if (raw.discord !== undefined && !/^https:\/\/[^\s"'<>]+$/.test(raw.discord as string)) { console.error('site.json : « discord » doit être une adresse https:// (lien d’invitation)'); process.exit(1); }
+  if (raw.discord !== undefined && !/^https:\/\/[^\s"'<>]+$/.test(raw.discord as string)) { console.error('site.json : « discord » doit être une adresse https:// (lien d’invitation)'); process.exit(1); }
   return { ...(raw as Record<string, string>), couleur, url: config.baseUrl };
 }
 export const site = load();

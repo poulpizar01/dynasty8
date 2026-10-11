@@ -27,7 +27,7 @@ export const adresseInterdite = (ip: string): boolean => {
 };
 
 // nom d'hôte d'une URL qui désigne la machine ou le réseau local : adresse IP interne, localhost, nom sans point (un
-// service Docker : « db »), noms réservés au réseau local (.local, .internal, .lan, .home.arpa). Un nom public est
+// service Docker : « db »), noms réservés au réseau local (.local, .internal, .lan, .home.arpa). Un nom public est
 // contrôlé à la connexion (requeteHttps).
 export const hoteInterdit = (hostname: string): boolean => {
   const h = hostname.replace(/^\[|\]$/g, '').toLowerCase().replace(/\.$/, '');

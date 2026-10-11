@@ -29,7 +29,7 @@ const multerUn = multer({
   fileFilter: (_req, f, cb) => cb(null, /^image\/(jpeg|png|webp)$/.test(f.mimetype)),
 }).single('image');
 
-// stockage prêt (sinon 503 explicite), limite d'envois, puis lecture du champ « image » du formulaire
+// stockage prêt (sinon 503 explicite), limite d'envois, puis lecture du champ « image » du formulaire
 const stockagePret: RequestHandler = (_req, res, next) => {
   if (storage.accepte) next();
   else res.status(503).json({ error: 'L’envoi d’images n’est pas encore configuré sur ce site.' });
@@ -77,7 +77,7 @@ export type ImageEnregistree = { cle: string; url: string; cleMini: string; urlM
 
 // contrôle, réencode et enregistre ; lève ImageRefusee (message à montrer tel quel, 400) ou une erreur de stockage (502)
 export async function enregistrerImage(dossier: string, fichier: Express.Multer.File | undefined): Promise<ImageEnregistree> {
-  if (!/^[a-z0-9-]+$/.test(dossier)) throw new Error(`enregistrerImage : dossier invalide « ${dossier} »`);
+  if (!/^[a-z0-9-]+$/.test(dossier)) throw new Error(`enregistrerImage : dossier invalide « ${dossier} »`);
   if (!fichier) throw new ImageRefusee('Aucune image (jpg, png ou webp).');
   const creneau = (fichier as FichierRecu)[CRENEAU];
   if (creneau) creneau.traitement = true;
