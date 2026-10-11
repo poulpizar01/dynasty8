@@ -126,7 +126,7 @@
         const ligne = (e, avecJour) => `<li><span class="accueil-heure">${avecJour ? `${socle.esc(jourLisible(e.jour))}, ` : ''}${socle.esc(e.heure_debut)}–${socle.esc(e.heure_fin)}</span><span class="accueil-texte">${socle.esc(e.titre)}</span></li>`;
         const duJour = evts.filter(e => e.jour === aujourdhui), aVenir = evts.filter(e => e.jour > aujourdhui).slice(0, 5);
         ul.innerHTML = duJour.length ? duJour.map(e => ligne(e, false)).join('')
-          : ligneVide(`Rien de prévu aujourd’hui. <a href="agenda.html">Ajouter un rendez‑vous</a>`);
+          : ligneVide(`Rien de prévu aujourd’hui. <a href="agenda.html?nouveau=1">Ajouter un rendez‑vous</a>`);
         document.getElementById('a-venir-bloc').classList.toggle('cache', duJour.length > 0 || !aVenir.length);
         document.getElementById('a-venir').innerHTML = aVenir.map(e => ligne(e, true)).join('');
       }

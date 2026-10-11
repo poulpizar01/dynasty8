@@ -461,4 +461,11 @@ document.getElementById("bouton-supprimer-evenement").addEventListener("click", 
   }
 });
 
-gestion.coque("agenda").then(() => chargerAgenda(true));
+// agenda.html?nouveau=1 (« Ajouter un rendez-vous » de l'Accueil) : ouvre directement la fenêtre, sur aujourd'hui ;
+// le paramètre est retiré de l'adresse pour qu'un rechargement ne la rouvre pas
+gestion.coque("agenda").then(async () => {
+  await chargerAgenda(true);
+  if (new URLSearchParams(location.search).get("nouveau") !== "1") return;
+  history.replaceState(null, "", location.pathname);
+  ouvrirModaleEvenement({ jour: formaterDateISO(aujourdhuiParis()) });
+});
