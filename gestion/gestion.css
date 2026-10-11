@@ -118,4 +118,7 @@ table.en-cartes td select{width:100%;min-width:0}
 .choix-discord .badge{display:inline-flex;align-items:center;gap:4px;font-size:13px}
 .choix-retirer{border:0;background:none;color:inherit;font-size:15px;line-height:1;cursor:pointer;padding:0 2px}
 .choix-discord select{width:auto;min-width:200px;flex:1}
-.param-pied{position:sticky;bottom:0;justify-content:flex-end;padding:12px 0;background:var(--bg)}
+.param-pied{position:sticky;bottom:16px;justify-content:flex-end;margin-top:12px;pointer-events:none}
+.param-pied>*{pointer-events:auto}
+.param-pied .btn{box-shadow:var(--shadow)}
+.param-pied .muet{padding:4px 10px;border-radius:999px;background:var(--bg2);border:1px solid var(--line)}
