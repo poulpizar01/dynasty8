@@ -204,13 +204,13 @@ document.getElementById("select-semaine-dot").addEventListener("change", () => {
 });
 
 // Résultat d'une copie : notification en bas de l'écran (la zone de message en haut de l'onglet était hors de vue quand
-// on copiait en bas) et le bouton qui affiche « Copié ✓ » deux secondes.
+// on copiait en bas) et le bouton qui affiche « Copié ✓ » deux secondes.
 function signalerCopie(bouton, reussie, texte) {
   if (!reussie) { gestion.notifier("Copie impossible : sélectionnez le tableau à la main puis Ctrl+C.", "erreur"); return; }
   gestion.notifier(texte);
   if (!bouton || bouton.dataset.texteInitial) return;
   bouton.dataset.texteInitial = bouton.innerHTML;
-  // largeur figée : « Copié ✓ » est plus court, le bouton et ses voisins ne doivent pas bouger
+  // largeur figée : « Copié ✓ » est plus court, le bouton et ses voisins ne doivent pas bouger
   bouton.style.width = `${bouton.offsetWidth}px`;
   bouton.innerHTML = `${gestion.ico("copy")} Copié ✓`;
   bouton.classList.add("confirme");
@@ -313,7 +313,7 @@ async function reinitialiserEcrituresDot(type) {
 document.getElementById("bouton-reinitialiser-depenses").addEventListener("click", () => reinitialiserEcrituresDot("depense"));
 document.getElementById("bouton-reinitialiser-retraits").addEventListener("click", () => reinitialiserEcrituresDot("retrait"));
 
-// « Copier le tableau » (dépenses ou retraits) : même principe que pour le
+// « Copier le tableau » (dépenses ou retraits) : même principe que pour le
 // tableau des salariés — copie au format tableur (colonnes séparées par des
 // tabulations), prêt à coller dans Excel/Google Sheets.
 async function copierEcrituresDot(type, idCorps, bouton) {
@@ -394,7 +394,7 @@ async function chargerDotSalaries() {
   }
 }
 
-// « Copier le tableau » : copie au format tableur (colonnes séparées par des
+// « Copier le tableau » : copie au format tableur (colonnes séparées par des
 // tabulations) — se colle proprement dans Excel/Google Sheets :
 //   - les montants sont copiés comme de VRAIS nombres (pas « 74 970 $ » en
 //     texte), pour que le document puisse calculer dessus ;
@@ -557,7 +557,7 @@ function afficherPaieHoraire(p) {
   bloc.classList.remove("cache");
   document.getElementById("compta-paie-horaire-aide").textContent = p.colonneHeures
     ? `Heures lues dans la colonne « ${p.colonneHeures} » du relevé, payées au taux horaire du grade (Rémunération), en plus des paliers. Incluses dans le salaire de la DOT.`
-    : "Le relevé n'a pas de colonne « Heures de service » : impossible de calculer la paie à l'heure.";
+    : "Le relevé n'a pas de colonne « Heures de service » : impossible de calculer la paie à l'heure.";
   const heures = (min) => `${Math.floor(min / 60)}h${String(min % 60).padStart(2, "0")}`;
   document.getElementById("corps-table-paie-horaire").innerHTML = p.lignes.map((l) => `<tr>
       <td>${echapper(l.nom)}</td>

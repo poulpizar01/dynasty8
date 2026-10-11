@@ -303,7 +303,7 @@ document.getElementById("agenda-nouvel-evenement").addEventListener("click", () 
 let AGENDA_DROITS = { cree: ["perso"], perso_autrui: false };
 let AGENDA_PERSONNES = null;
 const LIBELLES_VISIBILITE = { perso: "Perso", patrons: "Patrons", direction: "Direction", tous: "Tous" };
-// mêmes couleurs que la grille (agenda.css), pour la pastille de chaque choix du menu « Visible par »
+// mêmes couleurs que la grille (agenda.css), pour la pastille de chaque choix du menu « Visible par »
 const COULEURS_VISIBILITE = { perso: "#d4b26a", patrons: "#ef7f73", direction: "#a99cf5", tous: "#5fd39a" };
 // valeur venue du serveur, réduite aux visibilités connues avant d'entrer dans une classe ou un texte
 const visibiliteDe = e => (Object.hasOwn(LIBELLES_VISIBILITE, e.visibilite) ? e.visibilite : "perso");

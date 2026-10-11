@@ -1,5 +1,5 @@
-/* GESTION — éditeur du profil public d'un agent (page « Notre équipe » de la vitrine) : photo, poste, spécialité,
-   biographie. Utilisé par « Mon profil » (compte.html) et par la Direction (comptes.html).
+/* GESTION — éditeur du profil public d'un agent (page « Notre équipe » de la vitrine) : photo, poste, spécialité,
+   biographie. Utilisé par « Mon profil » (compte.html) et par la Direction (comptes.html).
    Serveur : server/src/entreprise/routes/profils.ts.
      const editeur = profilEditeur(conteneur, { adresse: '/api/profil', nom: () => 'Prénom Nom', apresEnregistrement,
                                                 champNom: 'Marc Delmas', surChangement: etat => … });

@@ -72,7 +72,7 @@
       try {
         const r = await socle.api('/api/services/etat'), lignes = [];
         if (!r.jetonPresent) lignes.push('⚠️ Membres en service : DISCORD_BOT_TOKEN absent du .env du serveur — le salon ne peut pas être lu.');
-        else if (!r.salonRegle) lignes.push('Membres en service : réglez l’ID du salon ci-dessus pour activer l’encadré « En service ».');
+        else if (!r.salonRegle) lignes.push('Membres en service : réglez l’ID du salon ci-dessus pour activer l’encadré « En service ».');
         else if (!r.etat?.derniereLecture) lignes.push('Membres en service : première lecture du salon dans moins d’une minute.');
         else if (r.etat.statut === 'erreur') lignes.push(`⚠️ Lecture du salon des services : ${echapper(r.etat.erreur)} (${echapper(quand(r.etat.derniereLecture))}).`);
         else lignes.push(`✓ Salon des services lu le ${echapper(quand(r.etat.derniereLecture))} : ${r.etat.nbLus} nouveau(x) message(s), ${r.etat.nbReconnus} prise(s) ou fin(s) de service reconnue(s). ${r.enService} personne(s) en service. Clôture automatique après ${r.clotureHeures} h.`);

@@ -1,5 +1,5 @@
 // ENTREPRISE — membres en service, lus dans le salon Discord des prises / fins de service. Le bot des services publie un
-// message par événement, avec un « ID service » unique :
+// message par événement, avec un « ID service » unique :
 //   🟢 Service démarré               Employé, Mode, Début, ID service
 //   ⚫ Service terminé                Employé, Cause de fin, Durée réelle, Début, Fin, ID service
 //   🟣 Service fermé pour inactivité (mêmes champs + Fermé par)
@@ -14,7 +14,7 @@
 //   - service jamais fermé : fermé N heures après son début (Paramètres, 12 par défaut) ; une vraie fin reçue plus tard
 //     la remplace ;
 //   - message relu : ignoré (ID service déjà connu).
-// Rien n'est deviné : un message sans « ID service » ni titre reconnu est ignoré. Seuls les messages de bots et de
+// Rien n'est deviné : un message sans « ID service » ni titre reconnu est ignoré. Seuls les messages de bots et de
 // webhooks sont lus : un membre ne peut pas imiter une prise de service en écrivant dans le salon.
 import { config } from '../socle/config.js';
 import { appelBot, ErreurDiscord } from '../socle/discord.js';
@@ -27,7 +27,7 @@ const PAGES_MAX_PAR_PASSE = 10;   // 1 000 messages par minute au plus
 // ---- lecture du salon ----
 // messages propres à la lecture du salon ; les autres cas gardent celui du socle
 const MESSAGES_SALON: Record<number, string> = {
-  403: 'Le bot n’a pas accès à ce salon (droits « Voir le salon » et « Voir les anciens messages »).',
+  403: 'Le bot n’a pas accès à ce salon (droits « Voir le salon » et « Voir les anciens messages »).',
   404: 'Salon introuvable : vérifiez l’ID du salon des services.',
   429: 'Discord demande de ralentir : nouvelle tentative à la prochaine minute.',
 };
@@ -56,7 +56,7 @@ async function lireMessagesSalon(salonId: string, apres: string | null): Promise
 
 // ---- enregistrement ----
 type Fiche = { id: number; prenom: string; nom: string; discordId: string | null };
-// fiche RH de la personne : par identifiant Discord, sinon par « Prénom Nom »
+// fiche RH de la personne : par identifiant Discord, sinon par « Prénom Nom »
 function trouverFiche(employes: Fiche[], ev: EvenementService): Fiche | null {
   if (ev.discordId) { const f = employes.find(e => e.discordId === ev.discordId); if (f) return f; }
   const nom = normaliser(ev.employe);

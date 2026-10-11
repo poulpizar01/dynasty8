@@ -98,7 +98,7 @@
           : ligneVide('Rien de prévu aujourd’hui. <a href="agenda.html">Ajouter un rendez-vous</a>');
       }
 
-      // « En service » : seulement si le salon est réglé (sinon le panneau reste caché)
+      // « En service » : seulement si le salon est réglé (sinon le panneau reste caché)
       if (service.value?.regle) {
         const s = service.value.enService;
         const heure = d => new Date(d).toLocaleTimeString('fr-FR', { ...PARIS, hour: '2-digit', minute: '2-digit' });

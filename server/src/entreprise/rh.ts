@@ -137,13 +137,13 @@ export function refusUnicite(e: unknown): never {
   throw e;
 }
 
-// ---------- candidatures du bot Discord « Roxwood Network Entreprise » ----------
+// ---------- candidatures du bot Discord « Roxwood Network Entreprise » ----------
 // Le socle reçoit l'événement recruitment.updated (signature, serveur Discord, doublons : socle/routes/webhooks.ts) :
 //   payload { ticketId, candidateId (qui a ouvert le ticket), status, answers: [{ question, answer }], … }
 // Le statut ne change que par le staff dans Discord : une candidature passée à ACCEPTED crée la fiche. Les questions du
 // formulaire sont libres (réglées dans le bot) : la question qui donne chaque champ de la fiche se règle dans
 // Ressources humaines. Le bot ne renvoie jamais un événement traité : une candidature acceptée
-// qui ne peut pas encore devenir une fiche (réglage manquant, nom incomplet…) est gardée « à traiter », et RH la
+// qui ne peut pas encore devenir une fiche (réglage manquant, nom incomplet…) est gardée « à traiter », et RH la
 // retraite après correction.
 // Règles : un ticket = une fiche ; un compte Discord qui a déjà une fiche n'en reçoit pas une deuxième, et sa fiche
 // n'est pas modifiée (RH fait foi) ; sans ID employé dans les réponses, ID provisoire « PROV-B… ».
@@ -168,7 +168,7 @@ export async function reglerBot(b: Record<string, unknown>, acteur: Compte): Pro
     // jamais un grade égal ou supérieur à celui de qui règle (ni un grade de direction donné d'office à un inconnu)
     if (!auDessusDe(acteur, v.gradeArrivee)) throw new Refus('Le grade d’arrivée doit être sous le vôtre.', 403);
   }
-  if (v.questionIdentite && (v.questionPrenom || v.questionNom)) throw new Refus('Choisissez soit une question « Prénom Nom », soit deux questions séparées, pas les deux.');
+  if (v.questionIdentite && (v.questionPrenom || v.questionNom)) throw new Refus('Choisissez soit une question « Prénom Nom », soit deux questions séparées, pas les deux.');
   if (!!v.questionPrenom !== !!v.questionNom) throw new Refus('Avec des questions séparées, réglez à la fois celle du prénom et celle du nom.');
   for (const [champ, cle] of Object.entries(REGLAGES_BOT)) await definirReglage(cle, v[champ as keyof Reglages] || null);
 }
@@ -186,7 +186,7 @@ const lireReponses = (brut: unknown): Reponse[] => (Array.isArray(brut) ? brut :
   .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
   .map(r => ({ question: texte(r.question, 200), answer: texte(r.answer, 500) }))
   .slice(0, 50);
-// identité : une question « Prénom Nom » (le premier mot est le prénom), ou deux questions séparées
+// identité : une question « Prénom Nom » (le premier mot est le prénom), ou deux questions séparées
 function identite(reponses: Reponse[], r: Reglages) {
   if (r.questionIdentite) {
     const mots = reponseA(reponses, r.questionIdentite).split(/\s+/).filter(Boolean);
@@ -292,7 +292,7 @@ export async function recevoirCandidature(e: EvenementBot): Promise<void> {
   await consigner(c, await creerDepuisCandidature(c), quand, [...EN_SUSPENS, 'ecartee']);
 }
 
-// retraiter un ticket « à traiter », avec les réglages actuels
+// retraiter un ticket « à traiter », avec les réglages actuels
 export async function traiterEnSuspens(id: number): Promise<Resultat> {
   const a = await prisma.arriveeBot.findUnique({ where: { id } });
   if (!a) throw new Refus('Candidature introuvable.', 404);

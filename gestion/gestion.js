@@ -57,7 +57,7 @@ const GESTION_ICONES = {
 };
 const ico = nom => `<svg class="ico" aria-hidden="true"><use href="#ico-${nom}"></use></svg>`;
 
-// Encadré « En service » : relu chaque minute, seulement dans un onglet visible (chaque requête compte dans la limite
+// Encadré « En service » : relu chaque minute, seulement dans un onglet visible (chaque requête compte dans la limite
 // de l'API du compte) ; une erreur passagère garde le dernier affichage.
 function enService(barre) {
   const encadre = barre.querySelector('[data-en-service]');
@@ -217,7 +217,7 @@ window.gestion = {
   },
 
   // Confirmation dans la page (aucune boîte de dialogue du navigateur : l'ordinateur en jeu ne les affiche pas).
-  // libelle : le bouton dit l'action (« Supprimer l'annonce »), jamais « Confirmer » ; danger = false pour une action
+  // libelle : le bouton dit l'action (« Supprimer l'annonce »), jamais « Confirmer » ; danger = false pour une action
   // qui ne détruit rien (bouton doré). Le focus reste dans la fenêtre, Échap annule, puis le focus revient où il était.
   confirmer(texte, titre = 'Confirmer', libelle = 'Confirmer', { danger = true } = {}) {
     return new Promise(resolve => {

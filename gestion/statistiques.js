@@ -1,5 +1,5 @@
 /* GESTION — ventes & statistiques : totaux des ventes reçues du bot,
-   « Chiffres du tableur » (semaine en cours ou archive du dimanche) et synchronisation du tableur de la Direction.
+   « Chiffres du tableur » (semaine en cours ou archive du dimanche) et synchronisation du tableur de la Direction.
    Serveur : server/src/entreprise/routes/stats.ts. */
 
 const $st = id => document.getElementById(id);
@@ -29,7 +29,7 @@ async function chargerStatistiques() {
   }
 }
 
-// « Chiffres du tableur » : semaine en cours (chiffres actuels) ou semaine archivée (figée le dimanche à 23:59)
+// « Chiffres du tableur » : semaine en cours (chiffres actuels) ou semaine archivée (figée le dimanche à 23:59)
 async function chargerTableur(semaine) {
   gestion.message('zone-message-tableur', '');
   const etatLigne = $st('tableur-etat'), select = $st('select-semaine-tableur');

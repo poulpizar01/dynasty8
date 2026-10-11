@@ -1,7 +1,7 @@
-// ENTREPRISE — messagerie interne (widget « façon MSN » de la gestion, gestion/messagerie.js) : conversations privées
+// ENTREPRISE — messagerie interne (widget « façon MSN » de la gestion, gestion/messagerie.js) : conversations privées
 // entre deux agents validés, quel que soit leur grade. L'expéditeur est toujours le compte de la session, jamais une
 // valeur envoyée par le navigateur. Le widget interroge le serveur toutes les 4 s : la présence (« vu il y a moins de
-// 25 s ») et l'indicateur « en train d'écrire » sont éphémères et restent en mémoire — un seul processus sert le site.
+// 25 s ») et l'indicateur « en train d'écrire » sont éphémères et restent en mémoire — un seul processus sert le site.
 import { Router } from 'express';
 import { prisma } from '../../socle/db.js';
 import { body, entier, text, valide } from '../../socle/http.js';

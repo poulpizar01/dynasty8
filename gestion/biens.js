@@ -91,7 +91,7 @@ function rendreTableBiens(liste) {
 function rendreGrilleBiens(liste) {
   const conteneur = $('vue-grille-biens');
   conteneur.innerHTML = liste.map(b => {
-    // sous-catégorie, catégorie, cohérence : souvent identiques (« Garage · Garage »), affichées une seule fois
+    // sous-catégorie, catégorie, cohérence : souvent identiques (« Garage · Garage »), affichées une seule fois
     const meta = [...new Set([b.sous_categorie, ETIQUETTES_CATEGORIE[b.categorie] || b.categorie, b.coherence].filter(Boolean))].map(echapper).join(' · ');
     const prix = b.dispo_vente ? formaterPrix(b.prix) : b.dispo_location ? `${formaterPrix(b.prix_location)} /sem.` : '—';
     const loc = b.dispo_vente && b.dispo_location ? `<span class="carte-admin-bien-loc">· ${formaterPrix(b.prix_location)} /sem.</span>` : '';
@@ -141,7 +141,7 @@ function actualiserVueAnnonces() {
   $('bouton-reinitialiser-filtres').classList.toggle('cache', !(FILTRE_RECHERCHE || FILTRE_CATEGORIE || FILTRE_STATUT));
   const corps = $('corps-table-biens');
   if (!CACHE_BIENS.length) {
-    corps.innerHTML = '<tr><td colspan="7">Aucune annonce pour le moment. Cliquez sur « Nouvelle annonce » pour commencer.</td></tr>';
+    corps.innerHTML = '<tr><td colspan="7">Aucune annonce pour le moment. Cliquez sur « Nouvelle annonce » pour commencer.</td></tr>';
     $('vue-grille-biens').innerHTML = '';
     $('annonces-pagination').innerHTML = '';
     return;

@@ -61,7 +61,7 @@ async function discord<T>(appel: () => Promise<T>): Promise<T> {
     if (!(e instanceof ErreurDiscord)) throw e;
     const cause = e.statut === 0 ? 'Discord ne répond pas'
       : e.statut === 401 ? 'Le jeton du bot Discord (DISCORD_BOT_TOKEN) est refusé — prévenez la personne qui gère le serveur du site'
-      : e.statut === 403 ? 'Le bot n’a pas le droit de voir les salons ou d’écrire dans ce ticket (« Voir le salon », « Envoyer des messages », « Intégrer des liens »)'
+      : e.statut === 403 ? 'Le bot n’a pas le droit de voir les salons ou d’écrire dans ce ticket (« Voir le salon », « Envoyer des messages », « Intégrer des liens »)'
       : e.statut === 429 ? 'Discord demande de ralentir' : `Discord a refusé la demande (HTTP ${e.statut})`;
     const reessayer = e.statut === 0 || e.statut === 429 ? ' Réessayez dans un instant.' : '';
     throw new Refus(`${cause} : l’événement n’a pas été créé.${reessayer}`, e.statut === 401 || e.statut === 429 ? 503 : 502);

@@ -33,7 +33,7 @@ vitrine.get('/api/biens', async (req, res) => {
   }
   const vendu = q.vendu === '1', categorie = texte(q.categorie), coherence = texte(q.coherence), zone = texte(q.zone).slice(0, 80);
   const where: Prisma.BienWhereInput = {
-    // « Nos dernières ventes » (accueil) est public : un bien vendu y reste même masqué ensuite
+    // « Nos dernières ventes » (accueil) est public : un bien vendu y reste même masqué ensuite
     ...(!tout && !vendu && { disponible: true }),
     ...((CATEGORIES as readonly string[]).includes(categorie) && { categorie }),
     ...(zone && { zone }),
@@ -48,7 +48,7 @@ vitrine.get('/api/biens', async (req, res) => {
   res.json({ biens: biens.map(bienPublic) });
 });
 
-// GET /api/equipe : agents validés qui ont rempli « Mon profil » (ils choisissent d'apparaître sur la vitrine), du grade
+// GET /api/equipe : agents validés qui ont rempli « Mon profil » (ils choisissent d'apparaître sur la vitrine), du grade
 // le plus haut au plus bas, sous leur nom RP — jamais leur pseudo Discord. Ni identifiant de compte : la page n'en a pas
 // besoin pour ouvrir une fiche.
 vitrine.get('/api/equipe', async (_req, res) => {

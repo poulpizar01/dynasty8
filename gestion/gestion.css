@@ -690,3 +690,8 @@ main.admin-contenu:focus { outline: none; }
 #compta-panneau-parametres .champ label { font-size: 0.85rem; text-transform: none; letter-spacing: 0; color: var(--text-muted); }
 /* bouton doré confirmé : le vert ne se lit pas sur l'or, on garde le texte sombre et on souligne d'un contour vert */
 .btn-or.confirme { color: var(--or-contrast) !important; box-shadow: 0 0 0 2px rgba(95, 211, 154, 0.7) !important; }
+
+/* en-tête de section : le texte d'aide prend la place laissée par les commandes à droite (plafonné à 80 caractères,
+   il passait à la ligne alors qu'il restait de la place) */
+.entete-admin > div:first-child { flex: 1 1 320px; min-width: 0; }
+.entete-admin .compta-aide, .entete-admin .comptes-aide { max-width: none; }

@@ -350,7 +350,7 @@ async function chargerFicheBien() {
     const categorieLien = { habitation: "/interieurs.html", garage: "/garages.html" }[bien.categorie] || "/accueil.html";
     const categorieNom = ETIQUETTES_CATEGORIE[bien.categorie] || "Catalogue";
 
-    // Fil d'Ariane + bouton « copier le lien » (pratique pour partager l'annonce sur Discord).
+    // Fil d'Ariane + bouton « copier le lien » (pratique pour partager l'annonce sur Discord).
     const enTeteHTML = `
       <div class="fiche-entete">
         <nav class="fiche-ariane" aria-label="Fil d'Ariane">

@@ -1,8 +1,8 @@
 /* GESTION — ressources humaines : fiches employés, source de vérité de l'identité, du grade et du statut de chacun.
    Les droits viennent du serveur et y sont revérifiés à chaque appel
    (server/src/entreprise/routes/rh.ts) : l'interface ne fait que masquer ce qui serait de toute façon refusé.
-   Les droits RH se règlent par grade dans la page Grades (permissions « RH : … »).
-   Mise en page : ce qui demande une action en tête (« À traiter »), puis la liste triable par colonne, puis les données
+   Les droits RH se règlent par grade dans la page Grades (permissions « RH : … »).
+   Mise en page : ce qui demande une action en tête (« À traiter »), puis la liste triable par colonne, puis les données
    à rattacher et le recrutement (candidatures du bot, réglages repliés). */
 
 let CACHE_EMPLOYES = [];
@@ -49,7 +49,7 @@ async function chargerRh() {
   }
 }
 
-// ---- « À traiter » : des raccourcis vers ce qui demande une action, rien quand tout est en ordre ----
+// ---- « À traiter » : des raccourcis vers ce qui demande une action, rien quand tout est en ordre ----
 function afficherAFaire() {
   const items = [
     A_FAIRE.completer && `<button type="button" class="rh-a-faire-item" data-aller="completer"><strong>${A_FAIRE.completer}</strong> ${A_FAIRE.completer > 1 ? 'fiches à compléter' : 'fiche à compléter'}<small>ID provisoire ou nom manquant</small></button>`,
@@ -281,7 +281,7 @@ async function changerStatutEmploye(id, action) {
   } catch (err) { gestion.message('zone-message-rh', err.message); }
 }
 
-// ---- « À rattacher » : vendeurs des ventes et lignes du tableur sans fiche RH ----
+// ---- « À rattacher » : vendeurs des ventes et lignes du tableur sans fiche RH ----
 async function chargerARattacher() {
   const bloc = $rh('rh-a-rattacher'), contenu = $rh('rh-a-rattacher-contenu');
   try {
@@ -291,7 +291,7 @@ async function chargerARattacher() {
     const parties = [];
     if (r.vendeurs.length) parties.push(`<h3 class="rh-sous-titre">Ventes du bot sans fiche</h3><p class="comptes-aide">Le pseudo reçu ne correspond au pseudo Discord d’aucune fiche.</p>
       <div class="rh-cartes">${r.vendeurs.map(v => ligne(echapper(v.pseudo), `${pluriel(v.ventes, 'vente', 'ventes')}${v.derniereSemaine ? ` · semaine ${echapper(v.derniereSemaine)}` : ''}`, bouton(`data-rh-creer-pseudo="${echapper(v.pseudo)}"`))).join('')}</div>`);
-    if (r.tableur.length) parties.push(`<h3 class="rh-sous-titre">Lignes du tableur sans fiche</h3><p class="comptes-aide">Le nom écrit ne correspond au « Prénom Nom » d’aucune fiche.</p>
+    if (r.tableur.length) parties.push(`<h3 class="rh-sous-titre">Lignes du tableur sans fiche</h3><p class="comptes-aide">Le nom écrit ne correspond au « Prénom Nom » d’aucune fiche.</p>
       <div class="rh-cartes">${r.tableur.map(l => ligne(echapper(l.nom), `${echapper(l.grade || 'Sans grade')} · ${pluriel(l.ventes, 'vente', 'ventes')}, ${pluriel(l.locations, 'location', 'locations')}`, bouton(`data-rh-creer-nom="${echapper(l.nom)}" data-rh-creer-grade="${echapper(l.grade || '')}"`))).join('')}</div>`);
     A_FAIRE.rattacher = r.vendeurs.length + r.tableur.length;
     afficherAFaire();
@@ -320,7 +320,7 @@ const CHAMPS_REGLAGES_BOT = {
 };
 
 // Correspondance « information → question du formulaire » : un menu des questions déjà reçues plutôt qu'un libellé à
-// recopier (une faute de frappe envoyait la candidature en « à traiter ») ; « Autre libellé » ouvre la saisie libre,
+// recopier (une faute de frappe envoyait la candidature en « à traiter ») ; « Autre libellé » ouvre la saisie libre,
 // pour une question pas encore reçue. Le champ texte (caché sauf pour « Autre ») reste ce que lit l'enregistrement.
 const AUTRE_LIBELLE = '__autre-libelle__';   // valeur réservée (un caractère nul était remplacé par le navigateur)
 function brancherQuestion(input, questions) {
@@ -420,7 +420,7 @@ $rh('rh-bot-reglages').addEventListener('submit', async e => {
   else corps.questionIdentite = '';
   try {
     await socle.api('/api/rh/bot/reglages', { method: 'PUT', body: corps });
-    gestion.message('zone-message-rh-bot', 'Réglages enregistrés ✓ Les candidatures « à traiter » peuvent être retraitées.', 'succes');
+    gestion.message('zone-message-rh-bot', 'Réglages enregistrés ✓ Les candidatures « à traiter » peuvent être retraitées.', 'succes');
     chargerArriveesBot();
   } catch (err) { gestion.message('zone-message-rh-bot', err.message); }
 });

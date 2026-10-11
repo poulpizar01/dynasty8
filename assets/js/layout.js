@@ -333,7 +333,7 @@ function texteSansMarquage(texte) {
 }
 
 // Copie un texte dans le presse-papiers. navigator.clipboard n'existe qu'en
-// HTTPS (« contexte sécurisé ») : sur le VPS en HTTP simple ou dans le
+// HTTPS (« contexte sécurisé ») : sur le VPS en HTTP simple ou dans le
 // navigateur du jeu, il est absent — on se rabat alors sur l'ancienne méthode
 // (zone de texte invisible + commande « copy »), qui marche partout.
 async function copierTexte(texte) {
@@ -408,7 +408,7 @@ function fermerSelectOuvert() {
     D8_SELECT_OUVERT = null;
   }
   // Filet de sécurité : aucune liste flottante ne doit rester affichée sans
-  // être « le menu ouvert » (sinon elle reste plantée au milieu de la page).
+  // être « le menu ouvert » (sinon elle reste plantée au milieu de la page).
   document.querySelectorAll(".d8-select-flottant:not(.cache)").forEach((el) => el.classList.add("cache"));
   document.querySelectorAll(".d8-select-enveloppe.ouvert").forEach((el) => el.classList.remove("ouvert"));
 }
@@ -524,7 +524,7 @@ function nettoyerSelectsPortee(portee) {
 // =============================================================================
 // Dates et heures à la française. Les champs natifs <input type="date|time">
 // suivent la langue du navigateur, pas celle de la page : un Chrome en anglais
-// affiche mm/dd/yyyy et « 02:00 PM ». Ces deux aides en font des champs texte
+// affiche mm/dd/yyyy et « 02:00 PM ». Ces deux aides en font des champs texte
 // jj/mm/aaaa et 24 h, mais .value garde le format que lisent les scripts et le
 // serveur (« 2026-10-06 », « 14:30 ») : aucun autre code n'a à changer.
 // Saisie invalide → .value vaut "" (au script de la signaler).
