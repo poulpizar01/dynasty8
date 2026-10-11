@@ -48,6 +48,7 @@ const GESTION_ICONES = {
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   headset: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1"/><rect x="17" y="14" width="4" height="6" rx="1"/>',
   chevron: '<path d="M6 9l6 6 6-6"/>',
+  fermer: '<path d="M6 6l12 12M18 6L6 18"/>',
   key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M18 5l2 2"/>',
   archive: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v11h14V9M10 13h4"/>',
   copy: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
@@ -57,29 +58,103 @@ const GESTION_ICONES = {
 };
 const ico = nom => `<svg class="ico" aria-hidden="true"><use href="#ico-${nom}"></use></svg>`;
 
-// Encadré « En service » : relu chaque minute, seulement dans un onglet visible (chaque requête compte dans la limite
-// de l'API du compte) ; une erreur passagère garde le dernier affichage.
-function enService(barre) {
-  const encadre = barre.querySelector('[data-en-service]');
+// « En service » : un indicateur (bas du menu sur écran large, barre du haut sur téléphone) qui ouvre la liste dans un
+// panneau. Pas dans le menu lui-même : une liste qui bouge seule n'a rien à faire dans la navigation (et l'Accueil a
+// la sienne). Relu chaque minute, seulement dans un onglet visible ; une erreur passagère garde le dernier affichage.
+// Sans annonce automatique (aria-live) : elle reviendrait sur toutes les pages, à chaque relecture.
+function enService(barre, haut) {
+  const declencheurs = [...barre.querySelectorAll('[data-service-indic]'), ...haut.querySelectorAll('[data-service-indic]')];
+  const panneau = document.createElement('div');
+  panneau.className = 'admin-service-panneau';
+  panneau.id = 'menu-en-service';
+  panneau.hidden = true;
+  panneau.setAttribute('role', 'dialog');
+  panneau.setAttribute('aria-labelledby', 'menu-en-service-titre');
+  panneau.innerHTML = `<div class="admin-service-panneau-tete">
+      <span class="pastille-service" aria-hidden="true"></span><h2 id="menu-en-service-titre">En service</h2>
+      <span class="admin-en-service-nombre" data-service-nombre></span>
+      <button type="button" class="admin-icone-bouton" data-service-fermer aria-label="Fermer la liste">${ico('fermer')}</button></div>
+    <ul class="admin-service-liste" data-service-liste></ul>`;
+  document.body.append(panneau);
   const heure = d => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
   const duree = d => { const m = Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`; };
+  let personnes = [], origine = null;
+
+  const dessiner = () => {
+    const n = personnes.length, libelle = `${n} personne${n > 1 ? 's' : ''} en service`;
+    for (const d of declencheurs) {
+      d.querySelector('[data-service-texte]').textContent = d.dataset.serviceIndic === 'court' ? String(n) : `${n} en service`;
+      d.setAttribute('aria-label', `${libelle} : afficher la liste`);
+    }
+    panneau.querySelector('[data-service-nombre]').textContent = n;
+    panneau.querySelector('[data-service-liste]').innerHTML = n
+      ? personnes.map(p => `<li><span class="admin-service-nom">${socle.esc(p.nom)}</span>
+          <span class="admin-service-detail">depuis ${socle.esc(heure(p.depuis))} · ${duree(p.depuis)}${p.mode ? ` · ${socle.esc(p.mode)}` : ''}</span></li>`).join('')
+      : '<li class="admin-service-vide">Personne n’est en service pour le moment.</li>';
+  };
+  // écran large : à droite du menu, aligné sur le bas de l'indicateur ; téléphone : sous la barre du haut
+  const placer = () => {
+    if (!origine) return;
+    const r = origine.getBoundingClientRect();
+    Object.assign(panneau.style, matchMedia('(max-width: 900px)').matches
+      ? { top: `${r.bottom + 8}px`, right: '16px', left: 'auto', bottom: 'auto' }
+      : { left: `${barre.getBoundingClientRect().right + 8}px`, bottom: `${Math.max(16, innerHeight - r.bottom)}px`, top: 'auto', right: 'auto' });
+  };
+  const ouvrir = d => {
+    origine = d;
+    dessiner();
+    panneau.hidden = false;
+    placer();
+    declencheurs.forEach(x => x.setAttribute('aria-expanded', String(x === d)));
+    panneau.querySelector('[data-service-fermer]').focus();
+  };
+  const fermer = (rendreFocus = true) => {
+    if (panneau.hidden) return;
+    panneau.hidden = true;
+    declencheurs.forEach(x => x.setAttribute('aria-expanded', 'false'));
+    if (rendreFocus) origine?.focus();
+    origine = null;
+  };
+  for (const d of declencheurs) d.addEventListener('click', () => (origine === d ? fermer() : ouvrir(d)));
+  panneau.querySelector('[data-service-fermer]').addEventListener('click', () => fermer());
+  panneau.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.stopPropagation(); fermer(); }
+    else if (e.key === 'Tab') {   // le focus reste dans le panneau tant qu'il est ouvert
+      const f = [...panneau.querySelectorAll('button, a[href]')];
+      if (e.shiftKey ? document.activeElement === f[0] : document.activeElement === f.at(-1)) { e.preventDefault(); (e.shiftKey ? f.at(-1) : f[0]).focus(); }
+    }
+  });
+  document.addEventListener('pointerdown', e => { if (!panneau.hidden && !panneau.contains(e.target) && !declencheurs.some(d => d.contains(e.target))) fermer(false); });
+  addEventListener('resize', placer);
+
   const charger = async () => {
     if (document.hidden) return;
     try {
       const r = await socle.api('/api/services/en-cours');
-      encadre.classList.toggle('cache', !r.regle);
-      if (!r.regle) return;
-      encadre.querySelector('[data-en-service-nombre]').textContent = r.enService.length;
-      encadre.querySelector('[data-en-service-liste]').innerHTML = r.enService.length
-        ? r.enService.map(p => `<li title="En service depuis ${socle.esc(heure(p.depuis))}${p.mode ? ' — ' + socle.esc(p.mode) : ''}">
-            <span class="admin-en-service-nom">${socle.esc(p.nom)}</span>
-            <span class="admin-en-service-depuis">depuis ${socle.esc(heure(p.depuis))} · ${duree(p.depuis)}</span></li>`).join('')
-        : '<li class="admin-en-service-vide">Personne pour le moment.</li>';
+      declencheurs.forEach(d => d.classList.toggle('cache', !r.regle));
+      if (!r.regle) { fermer(false); return; }
+      personnes = r.enService;
+      dessiner();
     } catch { /* erreur passagère : dernier affichage gardé */ }
   };
   charger();
   setInterval(charger, 60_000);
   document.addEventListener('visibilitychange', charger);
+}
+
+// Menu : une seule zone qui défile (la navigation), et seulement quand l'écran est trop bas. Un fondu en haut ou en bas
+// signale ce qui est caché (la barre de défilement n'apparaît qu'au survol) ; la rubrique en cours est amenée en vue.
+function indiceDefilement(nav) {
+  const maj = () => {
+    nav.classList.toggle('suite-haut', nav.scrollTop > 2);
+    nav.classList.toggle('suite-bas', nav.scrollTop + nav.clientHeight < nav.scrollHeight - 2);
+  };
+  const actif = nav.querySelector('.actif');
+  if (actif && actif.offsetTop + actif.offsetHeight > nav.clientHeight) nav.scrollTop = actif.offsetTop - nav.clientHeight / 2;
+  maj();
+  nav.addEventListener('scroll', maj, { passive: true });
+  addEventListener('resize', maj);
+  new MutationObserver(maj).observe(nav, { childList: true });
 }
 
 window.gestion = {
@@ -105,23 +180,14 @@ window.gestion = {
     barre.innerHTML = `
       <a href="/accueil.html" class="logo" title="Voir le site public"><img src="/assets/logo-full.png" alt="Dynasty 8" class="logo-entete"></a>
       <nav class="admin-nav">${nav}</nav>
-      <!-- qui est en service, et depuis quand (salon Discord des services, entreprise/services.ts) ; masqué tant que le
-           salon n'est pas réglé -->
-      <div class="admin-en-service cache" data-en-service aria-live="polite">
-        <p class="admin-en-service-titre"><span class="pastille-service" aria-hidden="true"></span> En service <span class="admin-en-service-nombre" data-en-service-nombre>0</span></p>
-        <ul class="admin-en-service-liste" data-en-service-liste></ul>
-      </div>
       <div class="admin-bas">
-        <div class="admin-aide">
-          <p class="admin-aide-titre">${ico('headset')} Besoin d'aide ?</p>
-          <a href="/faq.html" target="_blank" rel="noopener">Consultez notre FAQ</a>
-        </div>
-        <div>
-          <div class="admin-compte-profil">
-            ${moi.avatar ? `<img class="admin-avatar" src="${socle.esc(moi.avatar)}" alt="">` : `<span class="admin-avatar">${socle.esc(initiales(nom))}</span>`}
-            <div><strong>${socle.esc(nom)}</strong><span class="admin-compte-grade">${socle.esc(grade)}</span></div>
-          </div>
-          <button class="btn btn-fantome btn-petit" style="width:100%;" type="button" data-deconnexion>${ico('logout')} Se déconnecter</button>
+        <button type="button" class="admin-service-indic cache" data-service-indic aria-haspopup="dialog" aria-expanded="false" aria-controls="menu-en-service">
+          <span class="pastille-service" aria-hidden="true"></span><span data-service-texte>En service</span>${ico('chevron')}</button>
+        <div class="admin-compte">
+          ${moi.avatar ? `<img class="admin-avatar" src="${socle.esc(moi.avatar)}" alt="">` : `<span class="admin-avatar" aria-hidden="true">${socle.esc(initiales(nom))}</span>`}
+          <div class="admin-compte-texte"><strong>${socle.esc(nom)}</strong><span class="admin-compte-grade">${socle.esc(grade)}</span></div>
+          <a class="admin-icone-bouton" href="/faq.html" target="_blank" rel="noopener" title="Besoin d’aide ? La FAQ" aria-label="FAQ (nouvel onglet)">${ico('headset')}</a>
+          <button type="button" class="admin-icone-bouton" data-deconnexion title="Se déconnecter" aria-label="Se déconnecter">${ico('logout')}</button>
         </div>
       </div>`;
     barre.id = 'admin-menu';
@@ -132,6 +198,8 @@ window.gestion = {
     haut.innerHTML = `<button type="button" class="admin-burger" aria-controls="admin-menu" aria-expanded="false" aria-label="Ouvrir le menu">
         <svg class="ico" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <a href="/accueil.html" class="admin-barre-haut-logo" title="Voir le site public"><img src="/assets/logo-full.png" alt="Dynasty 8"></a>
+      <button type="button" class="admin-service-indic admin-service-indic--haut cache" data-service-indic="court" aria-haspopup="dialog" aria-expanded="false" aria-controls="menu-en-service">
+        <span class="pastille-service" aria-hidden="true"></span><span data-service-texte></span></button>
       ${moi.avatar ? `<img class="admin-avatar" src="${socle.esc(moi.avatar)}" alt="">` : `<span class="admin-avatar" aria-hidden="true">${socle.esc(initiales(nom))}</span>`}`;
     const voile = document.createElement('div');
     voile.className = 'admin-voile';
@@ -174,7 +242,8 @@ window.gestion = {
     document.body.prepend(evitement);
     document.body.classList.add('page-agents', 'admin-connecte');
     fondAnime();
-    enService(barre);
+    enService(barre, haut);
+    indiceDefilement(barre.querySelector('.admin-nav'));
     tablesAdaptatives(main);
     // messagerie interne, sur toutes les pages (chargée ici plutôt qu'inscrite dans chaque page)
     const script = document.createElement('script');
