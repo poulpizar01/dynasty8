@@ -812,3 +812,40 @@ button.grades-poignee:focus-visible { outline: 2px solid var(--d8-gold-300); out
   .grades-tag { white-space: normal; }
   .grade-pied .btn-or { flex-basis: 100%; order: -1; }
 }
+
+/* ---------- Ventes & statistiques (statistiques.html) : chiffres clés, classement de la semaine, lecture du Sheets ---------- */
+.stats-etat { margin: -6px 0 22px; }
+.stats-section { margin-bottom: 30px; }
+.stats-section > .compta-aide { margin-bottom: 12px; }
+.stats-liste .comptes-entete, .stats-liste .comptes-ligne { grid-template-columns: 36px minmax(0, 1.6fr) 80px 90px minmax(150px, 1fr); }
+.stats-entete span:nth-child(n+3) { text-align: right; }
+.stats-rang { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px; background: rgba(154, 166, 190, 0.12); color: var(--text-muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.stats-rang.podium { background: var(--d8-grad-gold); color: var(--or-contrast); font-weight: 700; }
+.stats-agent { display: flex; flex-direction: column; min-width: 0; }
+.stats-nombre { text-align: right; font-size: 1rem; color: var(--text); font-variant-numeric: tabular-nums; }
+.stats-prime { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.stats-prime strong { font-weight: 600; color: var(--gold-light); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stats-prime small { font-size: 0.75rem; color: var(--text-faint); white-space: nowrap; }
+.stats-synchro { padding: 16px 20px; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(14, 26, 50, 0.45); }
+.stats-synchro-tete { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.stats-erreur { color: var(--danger-strong) !important; }
+.stats-explication { margin-top: 12px; }
+.stats-explication summary { cursor: pointer; width: fit-content; font-size: 0.88rem; color: var(--gold-strong); }
+.stats-explication ul { margin: 8px 0 0; padding-left: 1.2em; font-size: 0.85rem; color: var(--text-muted); }
+.stats-explication li { padding: 2px 0; }
+.stats-bot { margin-top: 12px !important; padding-top: 10px; border-top: 1px solid var(--border); }
+@media (max-width: 760px) {
+  .stats-entete { display: none; }
+  .stats-liste .comptes-ligne { grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "rang agent agent" ". ventes locations" ". prime prime"; gap: 8px 12px; }
+  .stats-rang { grid-area: rang; } .stats-agent { grid-area: agent; }
+  .stats-ventes { grid-area: ventes; } .stats-locations { grid-area: locations; } .stats-prime { grid-area: prime; align-items: flex-start; text-align: left; }
+  .stats-nombre { text-align: left; }
+  .stats-nombre::before, .stats-prime::before { content: attr(data-libelle); display: block; font-size: 0.75rem; color: var(--text-faint); }
+}
+#panneau-statistiques .dot-semaine .d8-select-enveloppe { width: 210px; }
+@media (max-width: 760px) {
+  /* chiffres clés : deux par rangée, les primes sur toute la largeur */
+  #stats-chiffres { grid-template-columns: 1fr 1fr; }
+  #stats-chiffres .compta-chiffre.accent { grid-column: 1 / -1; }
+  #stats-chiffres .compta-chiffre strong { font-size: 1.35rem; }
+}

@@ -15,102 +15,52 @@
   <title>Ventes &amp; statistiques — {{nom}}</title>
 </head>
 <body class="page-agents">
-  <!-- GESTION — ventes & statistiques (permission « ventes ») : ventes reçues du bot, chiffres et archives du tableur de
-       la Direction, synchronisation du tableur (« ventes-gerer »). Serveur : entreprise/routes/stats.ts. -->
+  <!-- GESTION — ventes & statistiques (permission « ventes ») : la semaine du Google Sheets de la Direction (en cours ou
+       archivée), classement et primes, totaux des ventes reçues du bot, lecture du Google Sheets (« ventes-gerer »).
+       Serveur : entreprise/routes/stats.ts. -->
   <main class="admin-contenu">
     <section id="panneau-statistiques">
       <div class="entete-admin">
         <div>
           <h1 style="margin-bottom:2px;">Ventes &amp; statistiques</h1>
-          <p style="margin:0;font-size:0.88rem;">Ventes et locations reçues automatiquement du bot, et chiffres du tableur de la Direction.</p>
+          <p style="margin:0;font-size:0.88rem;">Les chiffres de la semaine, lus dans le Google Sheets de la Direction, et les primes qui en découlent.</p>
         </div>
+        <div class="dot-semaine"><label for="select-semaine-tableur">Semaine</label><select id="select-semaine-tableur"></select></div>
       </div>
-      <div id="zone-message-statistiques"></div>
+      <div id="zone-message-statistiques" role="status"></div>
+      <div id="zone-message-tableur" role="status"></div>
 
-      <!-- Totaux agence (toutes semaines confondues) + semaine la plus récente ayant des données, mêmes unités que le
-           récap par agent (chargerStatistiques() dans statistiques.js, /api/stats/semaines). -->
-      <div id="statistiques-vide" class="etat-vide cache">
-        <p>Aucune vente reçue pour le moment. Les données arriveront automatiquement dès que le bot sera connecté.</p>
-      </div>
-      <div id="statistiques-resultat" class="cache">
-        <!-- deux groupes de chiffres côte à côte sur écran large, chacun sous son intitulé -->
-        <div class="stats-groupes">
-        <div>
-        <p class="stats-groupe-titre">Toute l’agence</p>
-        <div class="admin-stats stats-paire">
-          <div class="stat-carte">
-            <span class="stat-icone stat-icone--or"><svg class="ico" aria-hidden="true"><use href="#ico-home"></use></svg></span>
-            <div><div class="stat-valeur" id="stats-total-ventes">—</div><div class="stat-libelle">Ventes</div></div>
-          </div>
-          <div class="stat-carte">
-            <span class="stat-icone stat-icone--ambre"><svg class="ico" aria-hidden="true"><use href="#ico-key"></use></svg></span>
-            <div><div class="stat-valeur" id="stats-total-locations">—</div><div class="stat-libelle">Locations</div></div>
-          </div>
-        </div>
-        </div>
-        <div>
-        <p class="stats-groupe-titre" id="stats-semaine-libelle"></p>
-        <div class="admin-stats stats-paire">
-          <div class="stat-carte">
-            <span class="stat-icone stat-icone--or"><svg class="ico" aria-hidden="true"><use href="#ico-home"></use></svg></span>
-            <div><div class="stat-valeur" id="stats-semaine-ventes">—</div><div class="stat-libelle">Ventes</div></div>
-          </div>
-          <div class="stat-carte">
-            <span class="stat-icone stat-icone--ambre"><svg class="ico" aria-hidden="true"><use href="#ico-key"></use></svg></span>
-            <div><div class="stat-valeur" id="stats-semaine-locations">—</div><div class="stat-libelle">Locations</div></div>
-          </div>
-        </div>
-        </div>
-        </div>
-      </div>
+      <!-- chiffres clés de la semaine affichée (mêmes primes que « Mon profil » et la DOT) -->
+      <div class="compta-chiffres" id="stats-chiffres"></div>
+      <p class="compta-aide stats-etat" id="tableur-etat"></p>
 
-      <!-- Chiffres du tableur : chaque ligne du Google Sheets de la Direction
-           (Synchro Google Sheets), avec ses primes calculées par les barèmes
-           du site — les mêmes montants que « Mon profil » et la DOT. Affiché
-           même sans aucune vente du bot. -->
-      <div id="statistiques-tableur" style="margin-top:36px;">
-        <div class="entete-admin">
+      <section class="stats-section" aria-labelledby="titre-classement">
+        <h2 class="compta-titre" id="titre-classement">Classement de la semaine</h2>
+        <p class="compta-aide">Par ventes et locations. Les primes suivent les barèmes et les réglages de chaque grade (Comptabilité → Rémunération).</p>
+        <div id="tableur-vide" class="etat-vide cache"><p id="tableur-vide-texte">Aucune ligne lue pour le moment.</p></div>
+        <div class="comptes-liste stats-liste cache" id="tableur-resultat"></div>
+      </section>
+
+      <!-- lecture du Google Sheets : état, relecture à la main (« ventes-gerer »), fonctionnement replié -->
+      <section class="stats-section stats-synchro" aria-labelledby="titre-synchro">
+        <div class="stats-synchro-tete">
           <div>
-            <h3 style="margin-bottom:2px;">Chiffres du tableur</h3>
-            <p style="margin:0;font-size:0.88rem;">Ventes et locations lues dans le Google Sheets de la Direction ; primes calculées avec les barèmes du site, comme dans « Mon profil » et la DOT. Archivés chaque dimanche à 23:59 (heure de Paris).</p>
+            <h2 class="compta-sous-titre" id="titre-synchro" style="margin:0 0 2px;">Lecture du Google Sheets</h2>
+            <p class="compta-aide" id="sync-sheet-etat">Chargement…</p>
           </div>
-          <select id="select-semaine-tableur" aria-label="Semaine affichée"></select>
+          <button type="button" class="btn btn-fantome cache" id="bouton-synchroniser-sheet"><svg class="ico" aria-hidden="true"><use href="#ico-sync"></use></svg> Relire maintenant</button>
         </div>
-        <div id="zone-message-tableur"></div>
-        <p class="champ-aide" id="tableur-etat" style="margin:0 0 10px;"></p>
-        <div id="tableur-vide" class="etat-vide cache">
-          <p id="tableur-vide-texte">Aucune ligne lue pour le moment.</p>
-        </div>
-        <div id="tableur-resultat" class="cache" style="overflow-x:auto;">
-          <table class="table-admin">
-            <thead>
-              <tr>
-                <th>Agent</th><th>Grade</th><th style="text-align:right;">Ventes</th><th style="text-align:right;">Locations</th>
-                <th>Prime vente</th><th>Prime locations</th><th>Total primes</th><th>Fiche RH</th><th>Compte du site</th>
-              </tr>
-            </thead>
-            <tbody id="corps-table-tableur"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <h3 class="comptes-sous-titre" style="margin-top:44px;">Synchronisation du tableur</h3>
-      <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">
-        Récupère automatiquement, toutes les 20 minutes (+ à la demande ci-dessous), les ventes et locations de chaque membre depuis le Google Sheets de recap (partagé en lecture seule). Chaque ligne est rattachée à la fiche RH dont le prénom et le nom correspondent ; RH fait foi, le Sheet ne crée aucune fiche et ne change aucun grade. Une ligne sans fiche est signalée dans RH → « À rattacher ». Le compte du site (« Mon profil ») est celui qui a le même ID Discord que la fiche RH.
-      </p>
-      <div id="zone-message-sync-sheet"></div>
-      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
-        <p class="champ-aide" id="sync-sheet-etat" style="margin:0;">Chargement…</p>
-        <button type="button" class="btn btn-or btn-petit cache" id="bouton-synchroniser-sheet"><svg class="ico" aria-hidden="true"><use href="#ico-sync"></use></svg> Synchroniser maintenant</button>
-      </div>
-      <div style="overflow-x:auto;">
-        <table class="table-admin">
-          <thead>
-            <tr><th>Nom (Sheet)</th><th>Grade (Sheet)</th><th style="text-align:right;">Ventes</th><th style="text-align:right;">Locations</th><th>Fiche RH</th><th>Compte du site</th></tr>
-          </thead>
-          <tbody id="corps-table-sync-sheet"><tr><td colspan="6">Chargement…</td></tr></tbody>
-        </table>
-      </div>
+        <details class="stats-explication">
+          <summary>Comment ça marche</summary>
+          <ul>
+            <li>Le site relit le Google Sheets toutes les 20 minutes, ou à la demande avec « Relire maintenant ».</li>
+            <li>Chaque ligne est rattachée à la fiche RH qui porte le même prénom et le même nom. Une ligne sans fiche est signalée dans Ressources humaines → « À rattacher ». Le Google Sheets ne crée aucune fiche et ne change aucun grade.</li>
+            <li>Le compte relié (« Mon profil ») est celui qui a le même ID Discord que la fiche RH.</li>
+            <li>Chaque dimanche à 23:59 (heure de Paris), la semaine est archivée : on la retrouve dans le choix « Semaine » en haut de la page.</li>
+          </ul>
+        </details>
+        <p class="compta-aide stats-bot" id="stats-bot"></p>
+      </section>
     </section>
   </main>
 
