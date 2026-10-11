@@ -210,9 +210,11 @@ function signalerCopie(bouton, reussie, texte) {
   gestion.notifier(texte);
   if (!bouton || bouton.dataset.texteInitial) return;
   bouton.dataset.texteInitial = bouton.innerHTML;
+  // largeur figée : « Copié ✓ » est plus court, le bouton et ses voisins ne doivent pas bouger
+  bouton.style.width = `${bouton.offsetWidth}px`;
   bouton.innerHTML = `${gestion.ico("copy")} Copié ✓`;
   bouton.classList.add("confirme");
-  setTimeout(() => { bouton.innerHTML = bouton.dataset.texteInitial; delete bouton.dataset.texteInitial; bouton.classList.remove("confirme"); }, 2000);
+  setTimeout(() => { bouton.innerHTML = bouton.dataset.texteInitial; delete bouton.dataset.texteInitial; bouton.style.width = ""; bouton.classList.remove("confirme"); }, 2000);
 }
 
 // Une carte de chiffre clé : libellé, montant, précision ; « accent » pour celui qui compte le plus.
@@ -323,7 +325,7 @@ async function copierEcrituresDot(type, idCorps, bouton) {
     if (cellules.length === 4) lignes.push([cellules[0], cellules[1], cellules[2].replace(/[^\d-]/g, "")].join("\t"));
   });
   const n = lignes.length - 1;
-  signalerCopie(bouton, await copierTexte(lignes.join("\n")), `${type === "depense" ? "Dépenses copiées" : "Retraits copiés"} ✓ (${n} ligne${n > 1 ? "s" : ""}, avec les titres) : collez dans Excel ou Google Sheets.`);
+  signalerCopie(bouton, await copierTexte(lignes.join("\n")), `${type === "depense" ? "Dépenses copiées" : "Retraits copiés"} ✓ (${n} ligne${n > 1 ? "s" : ""}, avec les titres)`);
 }
 document.getElementById("bouton-copier-depenses").addEventListener("click", e => copierEcrituresDot("depense", "corps-table-dot-depenses", e.currentTarget));
 document.getElementById("bouton-copier-retraits").addEventListener("click", e => copierEcrituresDot("retrait", "corps-table-dot-retraits", e.currentTarget));
@@ -584,7 +586,7 @@ function afficherSyntheseTablette(releve, paie) {
 document.getElementById("bouton-copier-tablette").addEventListener("click", async e => {
   if (!RELEVE_TABLETTE) return;
   const lignes = [RELEVE_TABLETTE.colonnes, ...RELEVE_TABLETTE.lignes].map(l => l.map(c => String(c ?? "")).join("\t"));
-  signalerCopie(e.currentTarget, await copierTexte(lignes.join("\n")), `Relevé copié ✓ (${RELEVE_TABLETTE.lignes.length} lignes, avec les titres) : collez dans Excel ou Google Sheets.`);
+  signalerCopie(e.currentTarget, await copierTexte(lignes.join("\n")), `Relevé copié ✓ (${RELEVE_TABLETTE.lignes.length} lignes, avec les titres)`);
 });
 
 async function chargerTablette() {
