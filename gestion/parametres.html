@@ -50,7 +50,9 @@
     const $ = id => document.getElementById(id);
     const ATTRIBUTS = { lien: 'type="url" placeholder="https://…"', origine: 'type="url" placeholder="https://…"', 'id-discord': 'type="text" inputmode="numeric"', 'ids-discord': 'type="text"' };
     const APPARENCE = 'Apparence';
-    let groupes = [], discord = { configure: false, roles: [], salons: [], categories: [] }, onglet = null, modifie = false;
+    let groupes = [], discord = { configure: false, roles: [], salons: [], categories: [] }, modifie = false;
+    // onglet demandé par l'adresse (?onglet=Discord, depuis l'Accueil), sinon le premier
+    let onglet = new URLSearchParams(location.search).get('onglet');
     const LISTES = { role: () => discord.roles, salon: () => discord.salons, categorie: () => discord.categories };
     const PREFIXE = { role: '@', salon: '#', categorie: '' };
     const nomDe = (sorte, id) => LISTES[sorte]?.().find(x => x.id === id)?.nom;

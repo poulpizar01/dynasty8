@@ -10,13 +10,13 @@ import { lectureReglee } from '../services.js';
 
 export const services = Router();
 
-// qui est en service, depuis quand (encadré de la barre latérale) : tout compte validé
-services.get('/api/services/en-cours', ...valide, async (_req, res) => {
+// qui est en service, depuis quand (indicateur du menu, Accueil) : tout compte validé ; moi : la ligne du compte connecté
+services.get('/api/services/en-cours', ...valide, async (req, res) => {
   const ouverts = await prisma.service.findMany({ where: { fin: null }, orderBy: { debut: 'asc' }, take: 100 });
   const fiches = new Map((await prisma.employe.findMany({ where: { id: { in: ouverts.map(o => o.employeId).filter((x): x is number => x !== null) } } })).map(e => [e.id, e]));
   res.json({
     regle: lectureReglee(),
-    enService: ouverts.map(o => { const f = o.employeId ? fiches.get(o.employeId) : undefined; return { nom: f ? nomComplet(f) : o.employeNom, depuis: o.debut, mode: o.mode }; }),
+    enService: ouverts.map(o => { const f = o.employeId ? fiches.get(o.employeId) : undefined; return { nom: f ? nomComplet(f) : o.employeNom, depuis: o.debut, mode: o.mode, moi: !!o.discordId && o.discordId === req.compte.discordId }; }),
   });
 });
 

@@ -236,6 +236,47 @@ main.admin-contenu:focus { outline: none; }
 .accueil-liste .accueil-vide { display: block; color: var(--text-faint); font-size: 0.9rem; }
 .accueil-vide a { color: var(--gold-strong); }
 
+/* Accueil : « À traiter » (actions en attente, selon les droits), cartes cliquables, progression vers le palier
+   suivant, panneaux à la hauteur de leur contenu (un panneau vide ne s'étire plus sur celui d'à côté). */
+.accueil-a-traiter { margin: 0 0 20px; }
+.accueil-a-traiter h2 { margin: 0 0 10px; font-size: 1.1rem; }
+.accueil-a-traiter ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.accueil-tache {
+  display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 14px; color: var(--text);
+  border: 1px solid rgba(201, 165, 92, 0.45); border-radius: var(--radius-sm); background: rgba(201, 165, 92, 0.08);
+  transition: background var(--d8-t), border-color var(--d8-t);
+}
+.accueil-tache:hover { background: rgba(201, 165, 92, 0.16); border-color: var(--gold); color: var(--text); }
+.accueil-tache .ico { flex-shrink: 0; width: 18px; height: 18px; margin-left: auto; transform: rotate(-90deg); color: var(--gold-strong); }
+.accueil-tache-nombre {
+  flex-shrink: 0; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 999px; display: inline-flex;
+  align-items: center; justify-content: center; background: var(--d8-grad-gold); color: var(--or-contrast); font-weight: 600; font-size: 13px;
+}
+.accueil-tache--alerte { border-color: rgba(229, 96, 96, 0.5); background: rgba(229, 96, 96, 0.08); }
+.accueil-tache--alerte:hover { border-color: #e56060; background: rgba(229, 96, 96, 0.14); }
+.accueil-tache--alerte .accueil-tache-nombre { background: #c94a4a; color: #fff; }
+.accueil-indicateurs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; margin-bottom: 20px; }
+.stat-carte--lien { align-items: flex-start; color: inherit; transition: border-color var(--d8-t), background var(--d8-t); }
+.stat-carte--lien:hover { border-color: rgba(201, 165, 92, 0.55); color: inherit; }
+.stat-carte--lien:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.accueil-prime .stat-sous-libelle { line-height: 1.45; }
+/* sur téléphone, style.css masque les sous-libellés des cartes : ceux de l'Accueil portent l'information (pas encore
+   calculée, annonces masquées), ils restent */
+.accueil-indicateurs .stat-sous-libelle { display: block; }
+.accueil-paliers { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text-muted); }
+.accueil-paliers li { display: flex; flex-direction: column; gap: 6px; }
+.accueil-paliers strong { color: var(--text); font-weight: 600; }
+.accueil-barre { display: block; height: 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.accueil-barre > span { display: block; height: 100%; border-radius: inherit; background: var(--d8-grad-gold); }
+.accueil-panneaux { align-items: start; }
+.accueil-sous-titre { margin: 16px 0 2px; font-family: var(--d8-font-ui); font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+.accueil-panneau .admin-service-liste { padding: 0; overflow: visible; max-height: none; }
+.accueil-panneau .admin-service-liste li { padding: 9px 0; border-radius: 0; gap: 2px; }
+#service-tout { margin-top: 8px; }
+/* sa propre ligne « en service » (panneau du menu, Accueil) */
+.admin-service-moi .admin-service-nom { color: var(--gold-light); }
+.admin-service-vous { margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 12px; background: rgba(201, 165, 92, 0.16); color: var(--gold-light); }
+
 /* cartes de chiffres : autant par rangée que la place le permet (quatre fixes devenaient illisibles vers 1 024 px) */
 .page-agents .admin-stats:not([style*="grid-template-columns"]) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); }
 @media (max-width: 520px) { .page-agents .admin-stats:not([style*="grid-template-columns"]) { grid-template-columns: 1fr 1fr; } }

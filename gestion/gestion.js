@@ -58,6 +58,15 @@ const GESTION_ICONES = {
 };
 const ico = nom => `<svg class="ico" aria-hidden="true"><use href="#ico-${nom}"></use></svg>`;
 
+// Une personne en service : même ligne dans le panneau du menu et sur l'Accueil (nom, depuis quand, durée, mode) ;
+// la sienne en tête, repérée par « vous » (moi : renvoyé par /api/services/en-cours).
+const heureParis = d => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+const dureeDepuis = d => { const m = Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`; };
+const ordreEnService = liste => [...liste.filter(p => p.moi), ...liste.filter(p => !p.moi)];
+const ligneEnService = p => `<li${p.moi ? ' class="admin-service-moi"' : ''}>
+  <span class="admin-service-nom">${socle.esc(p.nom)}${p.moi ? ' <span class="admin-service-vous">vous</span>' : ''}</span>
+  <span class="admin-service-detail">depuis ${socle.esc(heureParis(p.depuis))} · ${dureeDepuis(p.depuis)}${p.mode ? ` · ${socle.esc(p.mode)}` : ''}</span></li>`;
+
 // « En service » : un indicateur (bas du menu sur écran large, barre du haut sur téléphone) qui ouvre la liste dans un
 // panneau. Pas dans le menu lui-même : une liste qui bouge seule n'a rien à faire dans la navigation (et l'Accueil a
 // la sienne). Relu chaque minute, seulement dans un onglet visible ; une erreur passagère garde le dernier affichage.
@@ -76,8 +85,6 @@ function enService(barre, haut) {
       <button type="button" class="admin-icone-bouton" data-service-fermer aria-label="Fermer la liste">${ico('fermer')}</button></div>
     <ul class="admin-service-liste" data-service-liste></ul>`;
   document.body.append(panneau);
-  const heure = d => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
-  const duree = d => { const m = Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`; };
   let personnes = [], origine = null;
 
   const dessiner = () => {
@@ -88,8 +95,7 @@ function enService(barre, haut) {
     }
     panneau.querySelector('[data-service-nombre]').textContent = n;
     panneau.querySelector('[data-service-liste]').innerHTML = n
-      ? personnes.map(p => `<li><span class="admin-service-nom">${socle.esc(p.nom)}</span>
-          <span class="admin-service-detail">depuis ${socle.esc(heure(p.depuis))} · ${duree(p.depuis)}${p.mode ? ` · ${socle.esc(p.mode)}` : ''}</span></li>`).join('')
+      ? ordreEnService(personnes).map(ligneEnService).join('')
       : '<li class="admin-service-vide">Personne n’est en service pour le moment.</li>';
   };
   // écran large : à droite du menu, aligné sur le bas de l'indicateur ; téléphone : sous la barre du haut
@@ -159,6 +165,8 @@ function indiceDefilement(nav) {
 
 window.gestion = {
   ico,
+  ligneEnService,
+  ordreEnService,
 
   // construit la coque autour de <main class="admin-contenu"> et renvoie le compte connecté
   async coque(rubrique) {

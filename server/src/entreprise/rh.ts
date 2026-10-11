@@ -174,7 +174,7 @@ export async function reglerBot(b: Record<string, unknown>, acteur: Compte): Pro
 }
 
 type Reponse = { question: string; answer: string };
-const EN_SUSPENS = ['refusee'];
+export const EN_SUSPENS = ['refusee'];
 const RE_ID_DISCORD = /^\d{15,22}$/;
 
 const reponseA = (reponses: Reponse[], libelle: string) => {

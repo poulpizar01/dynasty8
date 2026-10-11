@@ -9,7 +9,7 @@ import { carte } from '../carte.js';
 import { configEntreprise } from '../config.js';
 import { lienRegle, sheetRegle, webmapOrigine } from '../parametres.js';
 import { Refus, traiter } from '../refus.js';
-import { primesSelonGrade } from '../stats/calcul.js';
+import { infoPalier, primesSelonGrade } from '../stats/calcul.js';
 import { remunerations } from '../stats/recap.js';
 import { lireActuel, lireArchive, lireBaremes, semaineParis, synchroniserSansErreur } from '../stats/tableur.js';
 import { enregistrerVente, semaines } from '../stats/ventes.js';
@@ -89,8 +89,11 @@ stats.get('/api/profil/primes', ...valide, async (req, res) => {
   // primes selon le grade (interrupteurs de Rémunération) : celui de la fiche RH reliée, sinon celui du compte
   const fiche = ligne?.employeId ? await prisma.employe.findUnique({ where: { id: ligne.employeId }, select: { gradeCle: true } }) : null;
   const ventes = ligne?.nbVentes ?? 0, locations = ligne?.nbLocations ?? 0;
-  const p = primesSelonGrade(remu(fiche?.gradeCle ?? req.compte.gradeCle), baremes, ventes, locations);
-  res.json({ synchronise: !!ligne, ventes, locations, ...p, derniereSync: etat?.derniereSync ?? null });
+  const r = remu(fiche?.gradeCle ?? req.compte.gradeCle);
+  const p = primesSelonGrade(r, baremes, ventes, locations);
+  // prochain palier (Accueil) : null quand la prime est coupée pour ce grade, rien à viser
+  const paliers = { ventes: r.primeVenteActive === false ? null : infoPalier(baremes.ventes, ventes), locations: r.primeLocationActive === false ? null : infoPalier(baremes.locations, locations) };
+  res.json({ synchronise: !!ligne, configure: !!sheetRegle(), ventes, locations, ...p, paliers, derniereSync: etat?.derniereSync ?? null });
 });
 
 // ---------- rémunération (Comptabilité) ----------

@@ -351,6 +351,8 @@ async function chargerArriveesBot() {
     const r = await socle.api('/api/rh/bot');
     const reglable = aDroitRh('parametrer');
     bloc.classList.toggle('cache', !r.arrivees.length && !reglable);
+    // arrivée depuis l'Accueil (« À traiter » → rh.html#rh-bot) : la section n'existait pas encore au chargement
+    if (location.hash === '#rh-bot' && !bloc.classList.contains('cache')) requestAnimationFrame(() => bloc.scrollIntoView({ block: 'start' }));
     $rh('rh-bot-details').classList.toggle('cache', !reglable);
     $rh('rh-bot-etat').textContent = 'Le bot envoie ses candidatures à l’adresse /webhooks/bot du site (abonnement « Candidatures » de son panneau Monitoring).';
     if (reglable) {

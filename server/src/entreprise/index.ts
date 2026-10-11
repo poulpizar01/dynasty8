@@ -8,6 +8,7 @@ import { planifierNettoyagePhotos } from './photos.js';
 import { planifierPurge } from './purge.js';
 import { recevoirCandidature } from './rh.js';
 import { planifierServices } from './services.js';
+import { accueil } from './routes/accueil.js';
 import { agenda } from './routes/agenda.js';
 import { apparence } from './routes/apparence.js';
 import { biens } from './routes/biens.js';
@@ -38,7 +39,7 @@ export const entreprise: Entreprise = {
   },
 
   // apparence en premier : elle répond sur les adresses des images de la marque, avant le fichier livré
-  routes: [apparence, vitrine, biens, profils, messagerie, agenda, rh, stats, compta, services],
+  routes: [apparence, vitrine, biens, profils, messagerie, agenda, rh, stats, compta, services, accueil],
 
   // page Paramètres (socle) : liens et réglages de Dynasty 8, déclarés dans parametres.ts
   parametres: PARAMETRES,
