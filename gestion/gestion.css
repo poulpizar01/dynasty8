@@ -14,12 +14,12 @@ img.admin-avatar { object-fit: cover; padding: 0; }
    défiler, et seulement sur un écran bas : rubriques sur une ligne, à 36 px (44 px dans le tiroir tactile), pour tenir sans barre dès 800 px de haut.
    Ce qui est caché est signalé par un fondu (classes suite-haut / suite-bas, gestion.js) ; la barre n'apparaît qu'au
    survol. Le compte et la déconnexion restent à l'écran quelle que soit la hauteur. */
-.admin-barre-laterale { width: 256px; padding: 18px 12px 12px; }
+.admin-barre-laterale { width: 256px; padding: 14px 12px 10px; }
 .admin-barre-laterale > * { flex-shrink: 0; }
-.admin-barre-laterale a.logo { margin: 0 0 2px 10px !important; padding: 0; width: auto; }
+.admin-barre-laterale a.logo { margin: 0 0 16px 10px !important; padding: 0; width: auto; }
 .admin-barre-laterale a.logo img { width: 116px; }
 .admin-barre-laterale > .admin-nav {
-  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; position: relative; gap: 2px;
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; position: relative; gap: 1px;
   scrollbar-width: thin; scrollbar-color: transparent transparent;
 }
 .admin-barre-laterale > .admin-nav:hover { scrollbar-color: rgba(201, 165, 92, 0.4) transparent; }
@@ -35,7 +35,7 @@ img.admin-avatar { object-fit: cover; padding: 0; }
 .admin-barre-laterale a.lien-onglet { padding: 8px 12px; line-height: 1.35; }
 .page-agents .admin-nav-groupe { padding: 10px 12px 4px; }
 .page-agents .admin-nav-groupe:first-child { padding-top: 4px; }
-.admin-barre-laterale .admin-bas { margin-top: 0; padding-top: 10px; gap: 8px; border-top: 1px solid var(--border); }
+.admin-barre-laterale .admin-bas { margin-top: 0; padding-top: 8px; gap: 8px; border-top: 1px solid var(--border); }
 
 /* pied du menu : indicateur « En service » (ouvre le panneau), puis le compte avec l'aide et la déconnexion */
 .admin-service-indic {
