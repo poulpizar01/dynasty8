@@ -81,14 +81,14 @@ Notes de conventions et de pièges pour un agent Claude Code travaillant sur ce 
 
 ## Ergonomie, accessibilité, responsive
 
-Le site doit rester propre de 360 px à l'écran large : aucun débordement horizontal (un tableau défile dans sa carte, pas la page), menu utilisable à toutes les largeurs. Après un changement de mise en page, contrôler au minimum 375, 768, 1 024 et 1 280 px, vitrine et gestion, menu ouvert compris, et parcourir la page au clavier (Tab, Échap).
+Le site doit rester propre de 360 px à l'écran large : aucun débordement horizontal, ni de la page ni d'un tableau, menu utilisable à toutes les largeurs. Après un changement de mise en page, contrôler au minimum 375, 768, 1 024 et 1 280 px, vitrine et gestion, menu ouvert compris, et parcourir la page au clavier (Tab, Échap).
 
 - Menu de la gestion : à toute largeur **et** toute hauteur d'écran, chaque rubrique, le compte connecté et la déconnexion restent atteignables (téléphone : bouton menu ; écran large : la navigation défile, le compte reste visible). Un menu horizontal qui défile sans indice cache des rubriques.
 - Confirmation : la fenêtre de la coque (`gestion.confirmer` dans le modèle), jamais `confirm()`, `alert()` ni `prompt()` (invisibles en jeu, docs/folkos.md). Le bouton nomme l'action (« Supprimer le grade », pas « OK ») et n'est rouge que si elle détruit.
 - Toute fenêtre (confirmation, modale, tiroir) : focus placé dedans à l'ouverture, Tab qui y boucle, Échap qui ferme, focus rendu à l'élément d'origine, titre relié par `aria-labelledby` — sinon le clavier agit sur la page cachée derrière.
 - Structure : un `<h1>` par page (son titre) ; chaque champ a un nom accessible (`<label for>`, sinon `aria-label` : un placeholder ne compte pas) ; un bouton à icône seule porte `aria-label`.
 - Lisibilité : texte de 12 px au moins (13 px pour un bouton, surtout en majuscules) ; contraste 4,5:1 pour le texte, 3:1 pour un gros titre, un contour de champ ou une icône utile ; cible cliquable de 24 px au moins, 44 px visés sur téléphone.
-- Tableau à actions : sur téléphone, ses actions restent visibles (ligne en carte, ou colonne d'actions toujours à l'écran). Un élément flottant (bulle, bouton fixe) ne masque jamais la dernière ligne ni une action : réserver sa place en bas du contenu.
+- Tableau : trop large pour sa place, il devient une grille de cartes (`tablesAdaptatives` dans la coque du modèle) plutôt que de défiler de côté, ce qui cache des colonnes — souvent les actions. Un montant ne se coupe pas sur deux lignes. Un élément flottant (bulle, bouton fixe) ne masque jamais la dernière ligne ni une action : réserver sa place en bas du contenu.
 - Textes : une erreur dit ce qui s'est passé et quoi faire (le message technique seul ne suffit pas) ; un état vide dit ce qui manque et comment commencer ; une même chose porte le même nom sur toutes les pages.
 
 ## Audits
