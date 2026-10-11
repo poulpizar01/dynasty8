@@ -8,7 +8,9 @@ import { gradeDe, tousLesGrades } from '../../socle/droits.js';
 import { sheetRegle } from '../parametres.js';
 import { nomComplet } from '../rh.js';
 import { normaliserTexte } from '../texte.js';
-import { montantPalier, semaineISO, type Palier } from './calcul.js';
+import { primesSelonGrade, semaineISO, type Palier } from './calcul.js';
+// import circulaire avec recap.ts (qui lit lireBaremes ici) : sans effet, seules des fonctions sont échangées
+import { remunerations } from './recap.js';
 
 export class TableurNonConfigure extends Error {
   constructor() { super('Synchronisation en attente : réglez le lien du Google Sheets dans Paramètres.'); }
@@ -138,17 +140,20 @@ const employeResume = (e: { id: number; idEmploye: string; prenom: string; nom: 
 // Chiffres actuels : chaque ligne lue, ses primes (barèmes du site), sa fiche RH et le compte relié. Nom et grade
 // viennent de RH quand la ligne a sa fiche (RH fait foi). Sert à l'écran ET à l'archive.
 export async function lireActuel() {
-  const [lignes, baremes] = await Promise.all([prisma.ligneTableur.findMany({ orderBy: { ligneSheet: 'asc' } }), lireBaremes()]);
+  const [lignes, baremes, remu] = await Promise.all([prisma.ligneTableur.findMany({ orderBy: { ligneSheet: 'asc' } }), lireBaremes(), remunerations()]);
   const [employes, comptes] = await Promise.all([
     prisma.employe.findMany({ where: { id: { in: lignes.map(l => l.employeId).filter((x): x is number => x !== null) } } }),
     prisma.compte.findMany({ where: { id: { in: lignes.map(l => l.compteId).filter((x): x is number => x !== null) } }, select: { id: true, nom: true, pseudo: true } }),
   ]);
   const employeDe = new Map(employes.map(e => [e.id, e])), compteDe = new Map(comptes.map(c => [c.id, c.nom ?? c.pseudo]));
+  const gradeParLibelle = new Map(tousLesGrades().map(g => [normaliserTexte(g.libelle), g.cle]));
   let lueLe: Date | null = null;
   const resultat = lignes.map(l => {
     if (!lueLe || l.majLe > lueLe) lueLe = l.majLe;
-    const primeVente = montantPalier(baremes.ventes, l.nbVentes), primeLocations = montantPalier(baremes.locations, l.nbLocations);
-    const employe = employeResume(l.employeId ? employeDe.get(l.employeId) : null);
+    const fiche = l.employeId ? employeDe.get(l.employeId) : null;
+    // primes selon le grade (interrupteurs de Rémunération) : celui de la fiche RH, sinon celui écrit dans le tableur
+    const { primeVente, primeLocations } = primesSelonGrade(remu(fiche?.gradeCle ?? gradeParLibelle.get(normaliserTexte(l.gradeSheet)) ?? null), baremes, l.nbVentes, l.nbLocations);
+    const employe = employeResume(fiche);
     return {
       ligneSheet: l.ligneSheet, nom: employe?.nomComplet ?? l.nomSheet, nomTableur: l.nomSheet, grade: employe?.grade ?? l.gradeSheet,
       ventes: l.nbVentes, locations: l.nbLocations, primeVente, primeLocations, primeTotale: primeVente + primeLocations,

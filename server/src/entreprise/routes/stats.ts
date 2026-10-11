@@ -9,7 +9,8 @@ import { carte } from '../carte.js';
 import { configEntreprise } from '../config.js';
 import { lienRegle, sheetRegle, webmapOrigine } from '../parametres.js';
 import { Refus, traiter } from '../refus.js';
-import { montantPalier } from '../stats/calcul.js';
+import { primesSelonGrade } from '../stats/calcul.js';
+import { remunerations } from '../stats/recap.js';
 import { lireActuel, lireArchive, lireBaremes, semaineParis, synchroniserSansErreur } from '../stats/tableur.js';
 import { enregistrerVente, semaines } from '../stats/ventes.js';
 
@@ -73,14 +74,17 @@ stats.post('/api/tableur/synchroniser', ...gerer, async (_req, res) => {
 // Ventes et locations de la ligne du tableur reliée à ce compte, primes recalculées avec les barèmes du site. Toujours
 // des zéros tant qu'aucune ligne n'est reliée.
 stats.get('/api/profil/primes', ...valide, async (req, res) => {
-  const [ligne, baremes, etat] = await Promise.all([
+  const [ligne, baremes, etat, remu] = await Promise.all([
     prisma.ligneTableur.findFirst({ where: { compteId: req.compte.id } }),
     lireBaremes(),
     prisma.tableurEtat.findUnique({ where: { id: 1 } }),
+    remunerations(),
   ]);
+  // primes selon le grade (interrupteurs de Rémunération) : celui de la fiche RH reliée, sinon celui du compte
+  const fiche = ligne?.employeId ? await prisma.employe.findUnique({ where: { id: ligne.employeId }, select: { gradeCle: true } }) : null;
   const ventes = ligne?.nbVentes ?? 0, locations = ligne?.nbLocations ?? 0;
-  const primeVente = montantPalier(baremes.ventes, ventes), primeLocations = montantPalier(baremes.locations, locations);
-  res.json({ synchronise: !!ligne, ventes, locations, primeVente, primeLocations, primeTotale: primeVente + primeLocations, derniereSync: etat?.derniereSync ?? null });
+  const p = primesSelonGrade(remu(fiche?.gradeCle ?? req.compte.gradeCle), baremes, ventes, locations);
+  res.json({ synchronise: !!ligne, ventes, locations, ...p, derniereSync: etat?.derniereSync ?? null });
 });
 
 // ---------- rémunération (Comptabilité) ----------

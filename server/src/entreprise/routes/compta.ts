@@ -150,10 +150,9 @@ const caBrut = (colonnes: string[], lignes: string[][]) => {
 const semaineDemandee = (v: unknown) => String(v ?? '').trim().toUpperCase();
 
 // tableau des salariés « prêt à copier-coller » : RUN / FACTURE / VENTE viennent du relevé Tablettes (retrouvé par nom
-// RP), jamais des ventes du bot ; salaire = fixe du grade + primes du tableur
-compta.get('/api/compta/dot/salaries', ...gerer, traiter(async (req, res) => {
-  const semaine = semaineDemandee(req.query.semaine);
-  if (!semaine) throw new Refus('Le paramètre « semaine » est obligatoire (ex : S36-26).');
+// RP), jamais des ventes du bot. Le tableau et le total de la déclaration viennent de ce seul calcul : salaire = fixe
+// (si activé) + primes du tableur (si activées) + paie à l'heure ; un interrupteur coupé dans Rémunération ne verse rien.
+async function salariesDot(semaine: string) {
   const [agents, releve, primePour, remu] = await Promise.all([recapAvecPrimesTableur(semaine), dernierReleve(), primesTableur(), remunerations()]);
   // paie à l'heure (stagiaires), par nom du relevé : ajoutée au salaire déclaré
   const paieParNom = new Map(releve ? (await paieHoraire(releve.colonnes, releve.lignes)).lignes.map(p => [normaliserNom(p.nom), p.montant]) : []);
@@ -171,7 +170,7 @@ compta.get('/api/compta/dot/salaries', ...gerer, traiter(async (req, res) => {
     return {
       employeId: a.employeId, idEmploye: a.idEmploye, statut: a.statut, identite: a.identite, identiteRp: a.identiteRp, grade: a.grade,
       run, facture, vente, caTotalRealise: run + facture + vente, trouveDansTablette: !!ligne,
-      salaireFixe: a.salaireFixe, primeTotale: a.primeTotale, paieHoraire: paie, salaireTotal: (a.salaireFixe || 0) + (a.primeTotale || 0) + paie,
+      salaireFixe: a.salaireVerse, primeTotale: a.primeTotale, paieHoraire: paie, salaireTotal: a.salaireVerse + a.primeTotale + paie,
     };
   });
   // Toute personne du relevé sans fiche RH active est ajoutée : si elle a facturé, elle doit figurer dans la
@@ -190,7 +189,13 @@ compta.get('/api/compta/dot/salaries', ...gerer, traiter(async (req, res) => {
       resultat.push({ identite: nom, identiteRp: nom, grade: rang || '—', run, facture, vente, caTotalRealise: run + facture + vente, trouveDansTablette: true, horsReferentiel: true, salaireFixe, primeTotale, paieHoraire: paie, salaireTotal: salaireFixe + primeTotale + paie });
     }
   }
-  res.json({ agents: resultat, tabletteTrouvee: !!releve });
+  return { agents: resultat, tabletteTrouvee: !!releve };
+}
+
+compta.get('/api/compta/dot/salaries', ...gerer, traiter(async (req, res) => {
+  const semaine = semaineDemandee(req.query.semaine);
+  if (!semaine) throw new Refus('Le paramètre « semaine » est obligatoire (ex : S36-26).');
+  res.json(await salariesDot(semaine));
 }));
 
 // Résumé de la déclaration : CA brut (dernier relevé) − dépenses = bénéfice imposable → tranche du barème → impôts ;
@@ -207,7 +212,8 @@ compta.get('/api/compta/dot/resume', ...gerer, async (req, res) => {
   const tranche = imposable === null ? null : bareme.find(t => b >= t.seuilMin && b <= t.seuilMax) ?? bareme.at(-1) ?? null;
   const impots = imposable === null || !tranche ? null : Math.round(imposable * tranche.taux);
   const apresImpots = imposable === null || impots === null ? null : imposable - impots;
-  const primes = semaine ? (await recapAvecPrimesTableur(semaine)).reduce((s, a) => s + a.totalAVerser, 0) : null;
+  // total des salaires = somme du tableau des salariés (même calcul, paie à l'heure et personnes hors RH comprises)
+  const primes = semaine ? (await salariesDot(semaine)).agents.reduce((s, a) => s + Number(a.salaireTotal || 0), 0) : null;
   res.json({
     semaine: semaine || null, caBrut: ca, caBrutTrouve: ca !== null,
     caBrutSource: releve && ca !== null ? { importeLe: releve.importeLe, importePar: releve.importePar, nbLignes: releve.lignes.filter(l => !estTotal(l)).length } : null,

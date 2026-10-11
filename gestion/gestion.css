@@ -753,3 +753,4 @@ main.admin-contenu:focus { outline: none; }
 .remu-grades { grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); }
 .remu-ligne-libelle { white-space: nowrap; }
 .remu-grade .remu-montant { width: 140px; }
+.remu-ligne-aide { display: block; font-size: 0.75rem; color: var(--text-faint); }

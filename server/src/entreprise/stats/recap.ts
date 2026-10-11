@@ -3,10 +3,10 @@
 // (ventes/locations de sa ligne, barèmes du site) : le calcul par semaine depuis les ventes du bot n'est gardé ici que
 // pour le salaire fixe et le classement — jamais deux sources mélangées dans un même montant.
 import { prisma } from '../../socle/db.js';
-import { gradeDe } from '../../socle/droits.js';
+import { gradeDe, tousLesGrades } from '../../socle/droits.js';
 import { reglage } from '../../socle/reglages.js';
 import { normaliserTexte } from '../texte.js';
-import { calculerFinances, compterAchats, compterLocations, montantPalier, sommeFacture } from './calcul.js';
+import { calculerFinances, compterAchats, compterLocations, primesSelonGrade, sommeFacture } from './calcul.js';
 import { lireBaremes } from './tableur.js';
 import { lireLignes } from './ventes.js';
 
@@ -51,13 +51,16 @@ export async function recapSemaine(semaine: string) {
 
 // Primes du tableur : par fiche RH pour une ligne rattachée, par nom écrit pour une ligne sans fiche (personnes du
 // relevé Tablettes qui n'ont pas — encore — de fiche).
+// Primes selon le grade (interrupteurs de Rémunération) : celui de la fiche RH, sinon celui écrit dans le tableur.
 export async function primesTableur() {
-  const [lignes, baremes] = await Promise.all([prisma.ligneTableur.findMany(), lireBaremes()]);
+  const [lignes, baremes, remu, employes] = await Promise.all([prisma.ligneTableur.findMany(), lireBaremes(), remunerations(), prisma.employe.findMany({ select: { id: true, gradeCle: true } })]);
+  const gradeFiche = new Map(employes.map(e => [e.id, e.gradeCle]));
+  const gradeParLibelle = new Map(tousLesGrades().map(g => [normaliserTexte(g.libelle), g.cle]));
   type Primes = { ventes: number; locations: number; primeVente: number; primeLocations: number; primeTotale: number };
   const parEmploye = new Map<number, Primes>(), parNomSansFiche = new Map<string, Primes>();
   for (const l of lignes) {
-    const primeVente = montantPalier(baremes.ventes, l.nbVentes), primeLocations = montantPalier(baremes.locations, l.nbLocations);
-    const v = { ventes: l.nbVentes, locations: l.nbLocations, primeVente, primeLocations, primeTotale: primeVente + primeLocations };
+    const grade = (l.employeId ? gradeFiche.get(l.employeId) : null) ?? gradeParLibelle.get(normaliserTexte(l.gradeSheet)) ?? null;
+    const v = { ventes: l.nbVentes, locations: l.nbLocations, ...primesSelonGrade(remu(grade), baremes, l.nbVentes, l.nbLocations) };
     if (l.employeId) parEmploye.set(l.employeId, v);
     else if (l.nomNormalise && !parNomSansFiche.has(l.nomNormalise)) parNomSansFiche.set(l.nomNormalise, v);
   }

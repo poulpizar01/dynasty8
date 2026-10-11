@@ -296,6 +296,23 @@ export function calculerFinances({
   };
 }
 
+// ---- salaire de la semaine : LA règle, utilisée partout (DOT, Mon profil, Ventes & statistiques) ----
+// Un interrupteur coupé dans Comptabilité > Rémunération = rien de versé pour cette composante : ni salaire fixe, ni
+// prime de ventes, ni prime de locations. La paie à l'heure dépend du taux horaire (0 = rien).
+export type ReglageGrade = { salaireFixe?: number; salaireActif?: boolean; primeVenteActive?: boolean; primeLocationActive?: boolean };
+
+export function primesSelonGrade(r: ReglageGrade, baremes: { ventes: Palier[]; locations: Palier[] }, ventes: number, locations: number) {
+  const primeVente = r.primeVenteActive === false ? 0 : montantPalier(baremes.ventes, ventes);
+  const primeLocations = r.primeLocationActive === false ? 0 : montantPalier(baremes.locations, locations);
+  return { primeVente, primeLocations, primeTotale: primeVente + primeLocations };
+}
+
+export function salaireSemaine(r: ReglageGrade, baremes: { ventes: Palier[]; locations: Palier[] }, { ventes = 0, locations = 0, paieHoraire = 0 }: { ventes?: number; locations?: number; paieHoraire?: number }) {
+  const salaireFixe = r.salaireActif ? r.salaireFixe || 0 : 0;
+  const primes = primesSelonGrade(r, baremes, ventes, locations);
+  return { salaireFixe, ...primes, paieHoraire, total: salaireFixe + primes.primeTotale + paieHoraire };
+}
+
 // ---- formatage (séparateur de milliers : espace insécable, suffixe $) ------
 
 export function formaterMontantStats(valeur: unknown): string {

@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import {
   montantPalier, infoPalier, parseMontant, parseQuantite,
   semaineISO, lundiDeSemaineISO, analyserCodeSemaine, ecartSemaineEnJours,
-  calculerFinances, formaterMontantStats,
+  calculerFinances, formaterMontantStats, primesSelonGrade, salaireSemaine,
 } from "../src/entreprise/stats/calcul.js";
 
 // Barèmes réels du site (valeurs de départ, voir la migration stats).
@@ -160,4 +160,51 @@ test("salaire inactif, primes désactivées, ventes de formation", () => {
 test("formatage des montants", () => {
   assert.match(formaterMontantStats(1400000), /1.400.000/);
   assert.match(formaterMontantStats(0), /0/);
+});
+
+// ---- salaire de la semaine : un interrupteur coupé ne verse rien (règle de la Direction) ----
+const BAREMES = { ventes: BAREME_VENTES, locations: BAREME_LOCATIONS };
+
+test("salaireSemaine : tout activé = fixe + paliers + paie à l'heure", () => {
+  const r = salaireSemaine({ salaireFixe: 8000, salaireActif: true, primeVenteActive: true, primeLocationActive: true }, BAREMES, { ventes: 25, locations: 45, paieHoraire: 6000 });
+  assert.deepEqual(r, { salaireFixe: 8000, primeVente: 10000, primeLocations: 30000, primeTotale: 40000, paieHoraire: 6000, total: 54000 });
+});
+
+test("salaireSemaine : salaire fixe coupé = pas de fixe, même s'il est réglé", () => {
+  const r = salaireSemaine({ salaireFixe: 8000, salaireActif: false, primeVenteActive: true, primeLocationActive: true }, BAREMES, { ventes: 25 });
+  assert.equal(r.salaireFixe, 0);
+  assert.equal(r.total, 10000);
+});
+
+test("salaireSemaine : prime ventes coupée = 0 $ de prime ventes, même au-dessus d'un palier", () => {
+  const r = salaireSemaine({ salaireFixe: 0, salaireActif: false, primeVenteActive: false, primeLocationActive: true }, BAREMES, { ventes: 100, locations: 20 });
+  assert.equal(r.primeVente, 0);
+  assert.equal(r.primeLocations, 10000);
+  assert.equal(r.total, 10000);
+});
+
+test("salaireSemaine : prime locations coupée = 0 $ de prime locations", () => {
+  const r = primesSelonGrade({ primeVenteActive: true, primeLocationActive: false }, BAREMES, 40, 100);
+  assert.deepEqual(r, { primeVente: 15000, primeLocations: 0, primeTotale: 15000 });
+});
+
+test("salaireSemaine : tout coupé, sans paie à l'heure = 0 $", () => {
+  const r = salaireSemaine({ salaireFixe: 50000, salaireActif: false, primeVenteActive: false, primeLocationActive: false }, BAREMES, { ventes: 100, locations: 100 });
+  assert.equal(r.total, 0);
+});
+
+test("primesSelonGrade : grade sans réglage = primes actives (comme calculerFinances)", () => {
+  assert.equal(primesSelonGrade({}, BAREMES, 20, 0).primeVente, 10000);
+});
+
+test("salaireSemaine et calculerFinances donnent les mêmes primes et le même fixe", () => {
+  for (const reglage of [
+    { salaireFixe: 20000, salaireActif: true, primeVenteActive: true, primeLocationActive: false },
+    { salaireFixe: 20000, salaireActif: false, primeVenteActive: false, primeLocationActive: true },
+  ]) {
+    const a = salaireSemaine(reglage, BAREMES, { ventes: 63, locations: 41 });
+    const b = calculerFinances({ nbAchats: 63, nbLocations: 41, facture: 0, baremeVentes: BAREME_VENTES, baremeLocations: BAREME_LOCATIONS, tauxCommission: 0, ...reglage });
+    assert.equal(a.primeTotale, b.primeTotale);
+    assert.equal(a.salaireFixe, b.salaireVerse);
+  }
 });

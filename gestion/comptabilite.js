@@ -69,9 +69,10 @@ function rendreGradesRemu() {
         ${interrupteurRemu(`data-remu="primeLocationActive"`, g.primeLocationActive, `Prime locations pour ${nom}`)}
         <span class="remu-ligne-libelle">Prime locations</span><span class="remu-ligne-note">selon le barème</span>
       </div>
-      <div class="remu-ligne${Number(g.tauxHoraire) > 0 ? "" : " inactive"}">
+      <!-- pas d’interrupteur : 0 $ / h = pas de paie à l’heure ; le champ reste toujours modifiable -->
+      <div class="remu-ligne">
         <span class="remu-ligne-vide" aria-hidden="true"></span>
-        <span class="remu-ligne-libelle">Paie à l’heure</span>
+        <span class="remu-ligne-libelle">Paie à l’heure<small class="remu-ligne-aide">0 = aucune</small></span>
         <span class="annonce-montant remu-montant"><input type="number" min="0" step="100" inputmode="numeric" data-remu="tauxHoraire" value="${Number(g.tauxHoraire) || 0}" aria-label="Taux horaire de ${nom}, en dollars par heure (0 : pas de paie à l’heure)"><span aria-hidden="true">$ / h</span></span>
       </div>
     </article>`;
@@ -97,7 +98,6 @@ document.getElementById("remu-grades").addEventListener("change", async e => {
     await socle.api(`/api/stats/remuneration/grades/${encodeURIComponent(carte.dataset.grade)}`, { method: "PATCH", body: { [cle]: valeur } });
     const g = REMU.grades.find(x => x.grade === carte.dataset.grade);
     if (g) g[cle] = valeur;
-    if (cle === "tauxHoraire") champ.closest(".remu-ligne").classList.toggle("inactive", !(valeur > 0));
     gestion.notifier(`${g ? g.libelle : "Grade"} : rémunération enregistrée ✓`);
     rendreBaremeRemu("vente"); rendreBaremeRemu("location"); rendreSimulateurRemu();
   } catch (err) {
