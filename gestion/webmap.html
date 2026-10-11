@@ -34,6 +34,14 @@
       const o = await socle.api('/api/outils');
       document.getElementById('non-reglee').classList.toggle('cache', o.webmap);
       if (!o.webmap) return;
+      // en http (dev), la CSP bloquerait le cadre (boîte vide, erreur dans la console) : on le dit plutôt
+      if (location.protocol !== 'https:') {
+        const p = document.createElement('p');
+        p.className = 'champ-aide';
+        p.textContent = 'En local (http), la carte ne peut pas s’afficher dans la page : utilisez « Ouvrir en plein écran ». En ligne (https), elle s’affiche ici.';
+        document.getElementById('boite').replaceWith(p);
+        return;
+      }
       const cadre = document.createElement('iframe');
       cadre.src = '/api/carte/';
       cadre.title = 'Carte interactive du serveur';

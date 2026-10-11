@@ -117,7 +117,7 @@ function injecterEntete(cleActive) {
     navWebmap.addEventListener("click", (ev) => {
       const toggle = document.querySelector("[data-webmap-toggle]");
       const boite = document.querySelector("[data-webmap-boite]");
-      if (!toggle || !boite) return;
+      if (!toggle || !boite || location.protocol !== "https:") return;
       ev.preventDefault();
       if (boite.classList.contains("cache")) toggle.click();
       else boite.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -733,13 +733,17 @@ function demarrerPoussiereOr() {
 // Bouton "Voir la WebMap" (accueil, cohérence, cohérences) : au clic,
 // insère la carte dans un <iframe> juste en dessous du bouton (jamais de
 // nouvel onglet) et ne la charge qu'une seule fois, au premier clic, pour
-// ne pas imposer ce script tiers à tous les visiteurs de la page.
+// ne pas imposer ce script tiers à tous les visiteurs de la page. Le cadre
+// n'est permis qu'en https (CSP du site, entreprise/index.ts) : en http (dev),
+// il serait bloqué et resterait vide, la carte s'ouvre donc dans un onglet.
+const CADRE_CARTE_PERMIS = location.protocol === "https:";
 function initialiserWebmapInline() {
   const bouton = document.querySelector("[data-webmap-toggle]");
   const boite = document.querySelector("[data-webmap-boite]");
   if (!bouton || !boite) return;
   let chargee = false;
   bouton.addEventListener("click", () => {
+    if (!CADRE_CARTE_PERMIS) { window.open(LIEN_WEBMAP, "_blank", "noopener"); return; }
     const maintenantCachee = boite.classList.toggle("cache");
     if (maintenantCachee) { bouton.textContent = "Voir la WebMap"; return; }
     if (!chargee) {
