@@ -72,68 +72,53 @@
         </div>
       </div>
 
-      <!-- Sous-onglet : Paramètres — rémunération (salaire fixe, primes vente/location par palier, interrupteurs par
-           grade), enregistrée dans remunerations_grades et baremes_primes (routes/stats.ts) : les tables que lisent la
-           DOT et les primes partout, donc rien à synchroniser. -->
+      <!-- Sous-onglet : Rémunération (salaire fixe, primes par palier, taux horaire, par grade), enregistrée dans
+           remunerations_grades et baremes_primes (routes/stats.ts) : les tables que lisent la DOT et les primes partout.
+           Salaire de la semaine = fixe (si activé) + palier ventes (si activé) + palier locations (si activé)
+           + heures × taux horaire. Chaque modification s'enregistre aussitôt. -->
       <div id="compta-panneau-parametres" class="cache">
-        <div class="entete-admin" style="margin-top:20px;">
+        <div class="entete-admin" style="margin-top:24px;">
           <div>
             <h2 class="compta-titre">Rémunération</h2>
-            <p class="compta-aide">Ce que touche chaque grade : un salaire fixe, des paliers selon les ventes et les locations, un taux horaire. Repris partout : « Mon profil », « Ventes &amp; statistiques », déclaration DOT. Chaque modification s’enregistre aussitôt.</p>
+            <p class="compta-aide">Ce que touche chaque grade par semaine. Repris dans « Mon profil », « Ventes &amp; statistiques » et la déclaration DOT. Chaque modification s’enregistre aussitôt.</p>
           </div>
         </div>
-        <div id="zone-message-parametres"></div>
+        <div id="zone-message-parametres" role="status"></div>
 
-        <h3 class="compta-sous-titre">Par grade</h3>
-        <p class="compta-aide" style="margin:0 0 12px;">Les 3 interrupteurs sont indépendants : un grade peut toucher le salaire fixe, le salaire aux paliers, les deux, ou aucun des deux. Le taux horaire (en $ par heure, 0 = aucun) paie les heures de service du relevé Tablettes, en plus des paliers.</p>
-        <div style="overflow-x:auto;">
-          <table class="table-admin" id="table-remuneration-grades">
-            <thead>
-              <tr>
-                <th>Grade</th>
-                <th style="text-align:center;">Salaire fixe</th>
-                <th style="text-align:right;">Montant / semaine</th>
-                <th style="text-align:center;">Paliers ventes</th>
-                <th style="text-align:center;">Paliers locations</th>
-                <th style="text-align:right;">Taux horaire</th>
-              </tr>
-            </thead>
-            <tbody id="corps-table-remuneration-grades"><tr><td colspan="6">Chargement…</td></tr></tbody>
-          </table>
+        <div class="remu-formule" aria-label="Calcul du salaire de la semaine">
+          <span class="remu-formule-titre">Salaire de la semaine</span>
+          <span class="remu-terme">Salaire fixe</span><span class="remu-op" aria-hidden="true">+</span>
+          <span class="remu-terme">Prime ventes</span><span class="remu-op" aria-hidden="true">+</span>
+          <span class="remu-terme">Prime locations</span><span class="remu-op" aria-hidden="true">+</span>
+          <span class="remu-terme">Heures × taux horaire</span>
         </div>
 
-        <div style="display:flex; gap:28px; flex-wrap:wrap; margin-top:30px;">
-          <div style="flex:1; min-width:280px;">
-            <h3 class="compta-sous-titre" style="margin-top:0;">Paliers selon les ventes</h3>
-            <p class="compta-aide" style="margin:0 0 10px;">Nombre de ventes atteint → montant de salaire (le palier le plus haut atteint s'applique).</p>
-            <div style="overflow-x:auto;">
-              <table class="table-admin" id="table-baremes-vente">
-                <thead><tr><th>Ventes atteintes</th><th style="text-align:right;">Montant</th><th></th></tr></thead>
-                <tbody id="corps-table-baremes-vente"><tr><td colspan="3">Chargement…</td></tr></tbody>
-              </table>
-            </div>
-            <div class="palier-ajout" data-type="vente" style="display:flex;gap:8px;align-items:end;margin-top:12px;">
-              <div class="champ" style="margin:0;flex:1;"><label>Seuil</label><input type="number" min="1" step="1" class="palier-nouveau-seuil" placeholder="ex. 20"></div>
-              <div class="champ" style="margin:0;flex:1;"><label>Montant</label><input type="number" min="0" step="1000" class="palier-nouveau-montant" placeholder="ex. 10000"></div>
-              <button type="button" class="btn btn-fantome btn-petit palier-ajouter" style="margin-bottom:18px;">+ Ajouter</button>
-            </div>
+        <section class="remu-section" aria-labelledby="titre-remu-grades">
+          <h3 class="compta-sous-titre" id="titre-remu-grades">Par grade</h3>
+          <p class="compta-aide">Activez ce que touche chaque grade. Les primes suivent les barèmes plus bas, les mêmes pour tous les grades.</p>
+          <div class="remu-grades" id="remu-grades"><p class="compta-aide">Chargement…</p></div>
+        </section>
+
+        <section class="remu-section" aria-labelledby="titre-remu-baremes">
+          <h3 class="compta-sous-titre" id="titre-remu-baremes">Barèmes des primes</h3>
+          <p class="compta-aide">La prime est celle du plus haut palier atteint dans la semaine ; sous le premier palier, pas de prime.</p>
+          <div class="remu-baremes">
+            <div class="remu-bareme" data-type="vente"></div>
+            <div class="remu-bareme" data-type="location"></div>
           </div>
-          <div style="flex:1; min-width:280px;">
-            <h3 class="compta-sous-titre" style="margin-top:0;">Paliers selon les locations</h3>
-            <p class="compta-aide" style="margin:0 0 10px;">Nombre de locations atteint → montant de salaire (le palier le plus haut atteint s'applique).</p>
-            <div style="overflow-x:auto;">
-              <table class="table-admin" id="table-baremes-location">
-                <thead><tr><th>Locations atteintes</th><th style="text-align:right;">Montant</th><th></th></tr></thead>
-                <tbody id="corps-table-baremes-location"><tr><td colspan="3">Chargement…</td></tr></tbody>
-              </table>
-            </div>
-            <div class="palier-ajout" data-type="location" style="display:flex;gap:8px;align-items:end;margin-top:12px;">
-              <div class="champ" style="margin:0;flex:1;"><label>Seuil</label><input type="number" min="1" step="1" class="palier-nouveau-seuil" placeholder="ex. 20"></div>
-              <div class="champ" style="margin:0;flex:1;"><label>Montant</label><input type="number" min="0" step="1000" class="palier-nouveau-montant" placeholder="ex. 10000"></div>
-              <button type="button" class="btn btn-fantome btn-petit palier-ajouter" style="margin-bottom:18px;">+ Ajouter</button>
-            </div>
+        </section>
+
+        <section class="remu-section remu-simulateur" aria-labelledby="titre-remu-simu">
+          <h3 class="compta-sous-titre" id="titre-remu-simu" style="margin-top:0;">Vérifier un salaire</h3>
+          <p class="compta-aide">Avec les réglages ci-dessus, combien touche cette personne cette semaine ?</p>
+          <div class="remu-simu-champs">
+            <div class="champ"><label for="simu-grade">Grade</label><select id="simu-grade"></select></div>
+            <div class="champ"><label for="simu-ventes">Ventes</label><input type="number" id="simu-ventes" min="0" step="1" value="25" inputmode="numeric"></div>
+            <div class="champ"><label for="simu-locations">Locations</label><input type="number" id="simu-locations" min="0" step="1" value="5" inputmode="numeric"></div>
+            <div class="champ"><label for="simu-heures">Heures de service</label><input type="number" id="simu-heures" min="0" step="0.5" value="10" inputmode="decimal"></div>
           </div>
-        </div>
+          <div class="remu-simu-resultat" id="simu-resultat" aria-live="polite"></div>
+        </section>
       </div>
 
       <!-- Sous-onglet : DOT — la déclaration hebdomadaire versée à la DOT (organisme fiscal du serveur RP), calculée à

@@ -24,153 +24,183 @@ document.querySelectorAll(".compta-sous-onglet").forEach((btn) => {
 });
 
 // ---------------------------------------------------------------------------
-// Comptabilité -> Paramètres : rémunération (salaire fixe, primes par palier,
-// interrupteurs par grade), enregistrée dans remunerations_grades et
-// baremes_primes (routes/stats.ts) — les tables que lisent la DOT et les primes
-// partout : un changement ici s'applique au prochain calcul.
+// Comptabilité -> Rémunération : une carte par grade (fixe, primes, taux horaire), les deux barèmes de primes, et un
+// simulateur. Enregistré dans remunerations_grades et baremes_primes (routes/stats.ts), les tables que lisent la DOT
+// et les primes partout : un changement ici s'applique au prochain calcul.
+// Salaire de la semaine = fixe (si activé) + palier ventes (si activé) + palier locations (si activé)
+// + heures × taux horaire ; palier = le plus haut seuil atteint (stats/calcul.ts, montantPalier).
 // ---------------------------------------------------------------------------
 
-function switchRemunerationHtml(attribut, cle, actif) {
-  return `<label class="d8-switch"><input type="checkbox" ${attribut}="${echapper(cle)}" ${actif ? "checked" : ""}><span class="d8-switch-piste"></span></label>`;
-}
+let REMU = { grades: [], baremesVentes: [], baremesLocations: [] };
+const montantPalierRemu = (bareme, valeur) => [...bareme].sort((a, b) => a.seuil - b.seuil).reduce((m, p) => (valeur >= p.seuil ? p.montant : m), 0);
+const interrupteurRemu = (attributs, actif, libelle) =>
+  `<label class="d8-switch" title="${libelle}"><input type="checkbox" ${attributs} ${actif ? "checked" : ""} aria-label="${libelle}"><span class="d8-switch-piste"></span></label>`;
 
 async function chargerRemuneration() {
   gestion.message("zone-message-parametres", "");
   try {
-    const r = await socle.api("/api/stats/remuneration");
-    document.getElementById("corps-table-remuneration-grades").innerHTML = r.grades.map((g) => `
-      <tr>
-        <td><span class="puce" style="background:${g.couleur || "#8a93b8"}26;color:${g.couleur || "#8a93b8"};">${echapper(g.libelle)}</span></td>
-        <td style="text-align:center;">${switchRemunerationHtml("data-salaire-actif", g.grade, g.salaireActif)}</td>
-        <td style="text-align:right;"><input type="number" class="table-input" min="0" step="1000" style="text-align:right;max-width:160px;" data-salaire-montant="${echapper(g.grade)}" value="${g.salaireFixe}"></td>
-        <td style="text-align:center;">${switchRemunerationHtml("data-prime-vente-active", g.grade, g.primeVenteActive)}</td>
-        <td style="text-align:center;">${switchRemunerationHtml("data-prime-location-active", g.grade, g.primeLocationActive)}</td>
-        <td style="text-align:right;"><input type="number" class="table-input" min="0" step="100" style="text-align:right;max-width:130px;" data-taux-horaire="${echapper(g.grade)}" value="${g.tauxHoraire || 0}" aria-label="Taux horaire de ${echapper(g.libelle)}"></td>
-      </tr>`).join("");
-    cablerRemunerationGrades();
-
-    rendreBaremesPrimes("vente", r.baremesVentes);
-    rendreBaremesPrimes("location", r.baremesLocations);
+    REMU = await socle.api("/api/stats/remuneration");
+    rendreGradesRemu();
+    rendreBaremeRemu("vente");
+    rendreBaremeRemu("location");
+    rendreSimulateurRemu();
   } catch (e) {
-    document.getElementById("corps-table-remuneration-grades").innerHTML = `<tr><td colspan="6">Erreur de chargement.</td></tr>`;
-    gestion.message("zone-message-parametres", "Impossible de charger les réglages de rémunération : " + e.message);
+    document.getElementById("remu-grades").innerHTML = "";
+    gestion.message("zone-message-parametres", "Impossible de charger la rémunération : " + e.message);
   }
 }
 
-function cablerRemunerationGrades() {
-  const corps = document.getElementById("corps-table-remuneration-grades");
-  corps.querySelectorAll("[data-salaire-actif]").forEach((el) => {
-    el.addEventListener("change", () => modifierGradeRemuneration(el.dataset.salaireActif, { salaireActif: el.checked }));
-  });
-  corps.querySelectorAll("[data-prime-vente-active]").forEach((el) => {
-    el.addEventListener("change", () => modifierGradeRemuneration(el.dataset.primeVenteActive, { primeVenteActive: el.checked }));
-  });
-  corps.querySelectorAll("[data-prime-location-active]").forEach((el) => {
-    el.addEventListener("change", () => modifierGradeRemuneration(el.dataset.primeLocationActive, { primeLocationActive: el.checked }));
-  });
-  corps.querySelectorAll("[data-taux-horaire]").forEach((el) => {
-    el.addEventListener("change", () => {
-      const val = el.value === "" ? 0 : Number(el.value);
-      if (!isFinite(val) || val < 0) {
-        gestion.message("zone-message-parametres", "Le taux horaire doit être un nombre positif.");
-        chargerRemuneration();
-        return;
-      }
-      modifierGradeRemuneration(el.dataset.tauxHoraire, { tauxHoraire: val });
-    });
-  });
-  corps.querySelectorAll("[data-salaire-montant]").forEach((el) => {
-    el.addEventListener("change", () => {
-      const val = el.value === "" ? 0 : Number(el.value);
-      if (!isFinite(val) || val < 0) {
-        gestion.message("zone-message-parametres", "Le montant du salaire doit être un nombre positif.");
-        chargerRemuneration();
-        return;
-      }
-      modifierGradeRemuneration(el.dataset.salaireMontant, { salaireFixe: val });
-    });
-  });
+function rendreGradesRemu() {
+  document.getElementById("remu-grades").innerHTML = REMU.grades.map(g => {
+    const cle = echapper(g.grade), couleur = echapper(g.couleur || "#8a93b8");
+    const nom = echapper(g.libelle);
+    return `<article class="remu-grade" style="--grade:${couleur}" data-grade="${cle}">
+      <h4 class="remu-grade-nom"><span class="pastille-grade" style="background:${couleur}"></span>${nom}</h4>
+      <div class="remu-ligne${g.salaireActif ? "" : " inactive"}">
+        ${interrupteurRemu(`data-remu="salaireActif"`, g.salaireActif, `Salaire fixe pour ${nom}`)}
+        <span class="remu-ligne-libelle">Salaire fixe</span>
+        <span class="annonce-montant remu-montant"><input type="number" min="0" step="1000" inputmode="numeric" data-remu="salaireFixe" value="${Number(g.salaireFixe) || 0}" ${g.salaireActif ? "" : "disabled"} aria-label="Salaire fixe de ${nom}, en dollars par semaine"><span aria-hidden="true">$ / sem.</span></span>
+      </div>
+      <div class="remu-ligne${g.primeVenteActive ? "" : " inactive"}">
+        ${interrupteurRemu(`data-remu="primeVenteActive"`, g.primeVenteActive, `Prime ventes pour ${nom}`)}
+        <span class="remu-ligne-libelle">Prime ventes</span><span class="remu-ligne-note">selon le barème</span>
+      </div>
+      <div class="remu-ligne${g.primeLocationActive ? "" : " inactive"}">
+        ${interrupteurRemu(`data-remu="primeLocationActive"`, g.primeLocationActive, `Prime locations pour ${nom}`)}
+        <span class="remu-ligne-libelle">Prime locations</span><span class="remu-ligne-note">selon le barème</span>
+      </div>
+      <div class="remu-ligne${Number(g.tauxHoraire) > 0 ? "" : " inactive"}">
+        <span class="remu-ligne-vide" aria-hidden="true"></span>
+        <span class="remu-ligne-libelle">Paie à l’heure</span>
+        <span class="annonce-montant remu-montant"><input type="number" min="0" step="100" inputmode="numeric" data-remu="tauxHoraire" value="${Number(g.tauxHoraire) || 0}" aria-label="Taux horaire de ${nom}, en dollars par heure (0 : pas de paie à l’heure)"><span aria-hidden="true">$ / h</span></span>
+      </div>
+    </article>`;
+  }).join("") || `<p class="compta-aide">Aucun grade : créez-les d’abord dans la page Grades.</p>`;
 }
 
-async function modifierGradeRemuneration(grade, patch) {
+// un seul écouteur pour toutes les cartes : un interrupteur ou un montant modifié s'enregistre aussitôt
+document.getElementById("remu-grades").addEventListener("change", async e => {
+  const champ = e.target.closest("[data-remu]"), carte = e.target.closest("[data-grade]");
+  if (!champ || !carte) return;
+  const cle = champ.dataset.remu;
+  let valeur = champ.type === "checkbox" ? champ.checked : champ.value === "" ? 0 : Number(champ.value);
+  if (champ.type !== "checkbox" && (!Number.isFinite(valeur) || valeur < 0)) {
+    gestion.notifier("Montant invalide : un nombre positif, sans espace ni « $ ».", "erreur");
+    return chargerRemuneration();
+  }
+  // retour immédiat : la ligne se grise ou se rallume avant même la réponse du serveur
+  if (champ.type === "checkbox") {
+    champ.closest(".remu-ligne").classList.toggle("inactive", !valeur);
+    champ.closest(".remu-ligne").querySelector("input[type=number]")?.toggleAttribute("disabled", !valeur);
+  }
   try {
-    await socle.api(`/api/stats/remuneration/grades/${encodeURIComponent(grade)}`, { method: "PATCH", body: patch });
-    gestion.notifier("Rémunération enregistrée ✓");
-  } catch (e) {
-    gestion.message("zone-message-parametres", "Impossible d'enregistrer : " + e.message);
+    await socle.api(`/api/stats/remuneration/grades/${encodeURIComponent(carte.dataset.grade)}`, { method: "PATCH", body: { [cle]: valeur } });
+    const g = REMU.grades.find(x => x.grade === carte.dataset.grade);
+    if (g) g[cle] = valeur;
+    if (cle === "tauxHoraire") champ.closest(".remu-ligne").classList.toggle("inactive", !(valeur > 0));
+    gestion.notifier(`${g ? g.libelle : "Grade"} : rémunération enregistrée ✓`);
+    rendreBaremeRemu("vente"); rendreBaremeRemu("location"); rendreSimulateurRemu();
+  } catch (err) {
+    gestion.notifier("Non enregistré : " + err.message, "erreur");
     chargerRemuneration();
   }
+});
+
+// ---- barèmes : « Dès 20 ventes → 10 000 $ », modifiables sur place, ajout en dernière ligne ----
+function rendreBaremeRemu(type) {
+  const bloc = document.querySelector(`.remu-bareme[data-type="${type}"]`);
+  const paliers = [...(type === "vente" ? REMU.baremesVentes : REMU.baremesLocations)].sort((a, b) => a.seuil - b.seuil);
+  const unite = type === "vente" ? "ventes" : "locations";
+  const actif = type === "vente" ? "primeVenteActive" : "primeLocationActive";
+  const utilisateurs = REMU.grades.filter(g => g[actif]).map(g => echapper(g.libelle));
+  bloc.innerHTML = `
+    <h4 class="remu-bareme-titre">Prime ${type === "vente" ? "ventes" : "locations"}</h4>
+    <p class="remu-bareme-grades">${utilisateurs.length ? `Pour : ${utilisateurs.join(", ")}` : "Aucun grade ne la touche pour l’instant."}</p>
+    <ol class="remu-paliers">
+      ${paliers.map(p => `<li class="remu-palier" data-palier="${p.id}">
+        <span class="remu-palier-des">Dès</span>
+        <input type="number" min="1" step="1" inputmode="numeric" data-palier-champ="seuil" value="${p.seuil}" aria-label="Seuil du palier, en ${unite}">
+        <span class="remu-palier-unite">${unite}</span>
+        <span class="remu-palier-fleche" aria-hidden="true">→</span>
+        <span class="annonce-montant remu-montant"><input type="number" min="0" step="1000" inputmode="numeric" data-palier-champ="montant" value="${p.montant}" aria-label="Prime de ce palier, en dollars"><span aria-hidden="true">$</span></span>
+        <button type="button" class="actions-icone actions-icone--danger" data-palier-supprimer="${p.id}" aria-label="Supprimer le palier dès ${p.seuil} ${unite}">${gestion.ico("trash")}</button>
+      </li>`).join("") || `<li class="remu-palier-vide">Aucun palier : pas de prime ${unite === "ventes" ? "aux ventes" : "aux locations"}.</li>`}
+      <li class="remu-palier remu-palier-nouveau">
+        <span class="remu-palier-des">Dès</span>
+        <input type="number" min="1" step="1" inputmode="numeric" data-nouveau="seuil" placeholder="${(paliers.at(-1)?.seuil || 0) + 20}" aria-label="Seuil du nouveau palier, en ${unite}">
+        <span class="remu-palier-unite">${unite}</span>
+        <span class="remu-palier-fleche" aria-hidden="true">→</span>
+        <span class="annonce-montant remu-montant"><input type="number" min="0" step="1000" inputmode="numeric" data-nouveau="montant" placeholder="${(paliers.at(-1)?.montant || 0) + 5000}" aria-label="Prime du nouveau palier, en dollars"><span aria-hidden="true">$</span></span>
+        <button type="button" class="btn btn-fantome btn-petit" data-palier-ajouter>Ajouter</button>
+      </li>
+    </ol>`;
 }
 
-function rendreBaremesPrimes(type, paliers) {
-  const corps = document.getElementById(`corps-table-baremes-${type}`);
-  if (!paliers.length) {
-    corps.innerHTML = `<tr><td colspan="3">Aucun palier — ajoutez-en un ci-dessous.</td></tr>`;
-    return;
-  }
-  corps.innerHTML = paliers.map((p) => `
-    <tr>
-      <td><input type="number" class="table-input" min="1" step="1" style="max-width:110px;" data-palier-seuil="${p.id}" value="${p.seuil}"></td>
-      <td style="text-align:right;"><input type="number" class="table-input" min="0" step="1000" style="max-width:140px;text-align:right;" data-palier-montant="${p.id}" value="${p.montant}"></td>
-      <td><button type="button" class="actions-icone actions-icone--danger" data-palier-supprimer="${p.id}" title="Supprimer ce palier" aria-label="Supprimer ce palier">${gestion.ico('trash')}</button></td>
-    </tr>`).join("");
-  corps.querySelectorAll("[data-palier-seuil]").forEach((el) => {
-    el.addEventListener("change", () => modifierPalierPrime(el.dataset.palierSeuil, { seuil: Number(el.value) }));
-  });
-  corps.querySelectorAll("[data-palier-montant]").forEach((el) => {
-    el.addEventListener("change", () => modifierPalierPrime(el.dataset.palierMontant, { montant: Number(el.value) }));
-  });
-  corps.querySelectorAll("[data-palier-supprimer]").forEach((btn) => {
-    btn.addEventListener("click", () => supprimerPalierPrime(btn.dataset.palierSupprimer));
-  });
-}
-
-async function modifierPalierPrime(id, patch) {
-  try {
-    await socle.api(`/api/stats/baremes/${id}`, { method: "PATCH", body: patch });
-    gestion.notifier("Rémunération enregistrée ✓");
-  } catch (e) {
-    gestion.message("zone-message-parametres", "Impossible d'enregistrer : " + e.message);
-  } finally {
-    chargerRemuneration();
-  }
-}
-
-async function supprimerPalierPrime(id) {
-  const ok = await gestion.confirmer("Ce palier de prime sera définitivement supprimé.", "Supprimer ce palier ?", "Supprimer le palier");
-  if (!ok) return;
-  try {
-    await socle.api(`/api/stats/baremes/${id}`, { method: "DELETE" });
-    chargerRemuneration();
-  } catch (e) {
-    gestion.message("zone-message-parametres", "Impossible de supprimer : " + e.message);
-  }
-}
-
-document.querySelectorAll(".palier-ajout").forEach((bloc) => {
+document.querySelectorAll(".remu-bareme").forEach(bloc => {
   const type = bloc.dataset.type;
-  bloc.querySelector(".palier-ajouter").addEventListener("click", async () => {
-    const seuilEl = bloc.querySelector(".palier-nouveau-seuil");
-    const montantEl = bloc.querySelector(".palier-nouveau-montant");
-    const seuil = Number(seuilEl.value);
-    const montant = Number(montantEl.value);
-    if (!seuilEl.value || !Number.isFinite(seuil) || !Number.isInteger(seuil) || seuil <= 0) {
-      gestion.message("zone-message-parametres", "Le seuil (nombre à atteindre) doit être un nombre entier positif.");
-      return;
-    }
-    if (montantEl.value === "" || !Number.isFinite(montant) || montant < 0) {
-      gestion.message("zone-message-parametres", "Le montant de la prime doit être un nombre positif.");
-      return;
+  bloc.addEventListener("change", async e => {
+    const champ = e.target.closest("[data-palier-champ]");
+    if (!champ) return;
+    const valeur = Number(champ.value);
+    const seuil = champ.dataset.palierChamp === "seuil";
+    if (champ.value === "" || !Number.isFinite(valeur) || valeur < (seuil ? 1 : 0) || (seuil && !Number.isInteger(valeur))) {
+      gestion.notifier(seuil ? "Seuil invalide : un nombre entier, 1 ou plus." : "Montant invalide : un nombre positif.", "erreur");
+      return chargerRemuneration();
     }
     try {
-      await socle.api("/api/stats/baremes", { method: "POST", body: { type, seuil, montant } });
-      seuilEl.value = "";
-      montantEl.value = "";
-      chargerRemuneration();
-    } catch (e) {
-      gestion.message("zone-message-parametres", "Impossible d'ajouter ce palier : " + e.message);
-    }
+      await socle.api(`/api/stats/baremes/${champ.closest("[data-palier]").dataset.palier}`, { method: "PATCH", body: { [champ.dataset.palierChamp]: valeur } });
+      gestion.notifier("Barème enregistré ✓");
+    } catch (err) { gestion.notifier("Non enregistré : " + err.message, "erreur"); }
+    chargerRemuneration();
   });
+  bloc.addEventListener("click", async e => {
+    const suppr = e.target.closest("[data-palier-supprimer]");
+    if (suppr) {
+      if (!await gestion.confirmer("Ce palier ne comptera plus dans les primes.", "Supprimer ce palier ?", "Supprimer le palier")) return;
+      try { await socle.api(`/api/stats/baremes/${suppr.dataset.palierSupprimer}`, { method: "DELETE" }); gestion.notifier("Palier supprimé ✓"); }
+      catch (err) { gestion.notifier("Non supprimé : " + err.message, "erreur"); }
+      return chargerRemuneration();
+    }
+    if (!e.target.closest("[data-palier-ajouter]")) return;
+    const seuil = Number(bloc.querySelector('[data-nouveau="seuil"]').value), montant = Number(bloc.querySelector('[data-nouveau="montant"]').value);
+    if (!Number.isInteger(seuil) || seuil < 1) { gestion.notifier("Indiquez le nombre à atteindre (entier, 1 ou plus).", "erreur"); return bloc.querySelector('[data-nouveau="seuil"]').focus(); }
+    if (bloc.querySelector('[data-nouveau="montant"]').value === "" || !Number.isFinite(montant) || montant < 0) { gestion.notifier("Indiquez le montant de la prime.", "erreur"); return bloc.querySelector('[data-nouveau="montant"]').focus(); }
+    try { await socle.api("/api/stats/baremes", { method: "POST", body: { type, seuil, montant } }); gestion.notifier("Palier ajouté ✓"); }
+    catch (err) { gestion.notifier("Non ajouté : " + err.message, "erreur"); }
+    chargerRemuneration();
+  });
+  // Entrée dans la ligne d'ajout = « Ajouter »
+  bloc.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.closest("[data-nouveau]")) { e.preventDefault(); bloc.querySelector("[data-palier-ajouter]").click(); } });
+});
+
+// ---- simulateur : même règle que le serveur, sur les réglages affichés ----
+function rendreSimulateurRemu() {
+  const select = document.getElementById("simu-grade"), avant = select.value;
+  select.innerHTML = REMU.grades.map(g => `<option value="${echapper(g.grade)}">${echapper(g.libelle)}</option>`).join("");
+  if (REMU.grades.some(g => g.grade === avant)) select.value = avant;
+  else if (REMU.grades.length) select.value = REMU.grades.at(-1).grade;   // le grade le plus bas, le cas le plus courant
+  ameliorerSelect(select);
+  calculerSimulateurRemu();
+}
+function calculerSimulateurRemu() {
+  const g = REMU.grades.find(x => x.grade === document.getElementById("simu-grade").value);
+  const zone = document.getElementById("simu-resultat");
+  if (!g) { zone.textContent = ""; return; }
+  const n = id => Math.max(0, Number(document.getElementById(id).value) || 0);
+  const ventes = n("simu-ventes"), locations = n("simu-locations"), heures = n("simu-heures");
+  const lignes = [
+    ["Salaire fixe", g.salaireActif ? Number(g.salaireFixe) || 0 : null, g.salaireActif ? "" : "non versé à ce grade"],
+    ["Prime ventes", g.primeVenteActive ? montantPalierRemu(REMU.baremesVentes, ventes) : null, g.primeVenteActive ? `${ventes} vente${ventes > 1 ? "s" : ""}` : "non versée à ce grade"],
+    ["Prime locations", g.primeLocationActive ? montantPalierRemu(REMU.baremesLocations, locations) : null, g.primeLocationActive ? `${locations} location${locations > 1 ? "s" : ""}` : "non versée à ce grade"],
+    ["Paie à l’heure", Number(g.tauxHoraire) > 0 ? Math.round(heures * g.tauxHoraire) : null, Number(g.tauxHoraire) > 0 ? `${heures} h × ${formaterArgentStats(g.tauxHoraire)}` : "pas de taux horaire"],
+  ];
+  const total = lignes.reduce((t, [, v]) => t + (v || 0), 0);
+  zone.innerHTML = `<ul class="remu-simu-detail">${lignes.map(([l, v, note]) => `<li class="${v === null ? "inactive" : ""}"><span>${l}<small>${echapper(note)}</small></span><strong>${v === null ? "—" : formaterArgentStats(v)}</strong></li>`).join("")}</ul>
+    <p class="remu-simu-total"><span>${echapper(g.libelle)} toucherait</span><strong>${formaterArgentStats(total)}</strong></p>`;
+}
+["simu-grade", "simu-ventes", "simu-locations", "simu-heures"].forEach(id => {
+  document.getElementById(id).addEventListener("input", calculerSimulateurRemu);
+  document.getElementById(id).addEventListener("change", calculerSimulateurRemu);
 });
 
 // ---------------------------------------------------------------------------

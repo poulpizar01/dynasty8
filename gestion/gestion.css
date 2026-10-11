@@ -695,3 +695,61 @@ main.admin-contenu:focus { outline: none; }
    il passait à la ligne alors qu'il restait de la place) */
 .entete-admin > div:first-child { flex: 1 1 320px; min-width: 0; }
 .entete-admin .compta-aide, .entete-admin .comptes-aide { max-width: none; }
+
+/* ---------- Comptabilité > Rémunération : formule, cartes par grade, barèmes en paliers, simulateur ---------- */
+.remu-section { margin-bottom: 30px; }
+.remu-formule { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 26px; padding: 14px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(14, 26, 50, 0.55); }
+.remu-formule-titre { margin-right: 6px; color: var(--gold-light); font-weight: 600; }
+.remu-formule-titre::after { content: " ="; color: var(--text-faint); font-weight: 400; }
+.remu-terme { padding: 4px 12px; border-radius: 999px; background: rgba(201, 165, 92, 0.12); color: var(--text); font-size: 0.88rem; }
+.remu-op { color: var(--text-faint); }
+
+.remu-grades { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; margin-top: 12px; }
+.remu-grade { padding: 14px 16px 8px; border: 1px solid var(--border); border-top: 3px solid var(--grade); border-radius: var(--radius); background: rgba(14, 26, 50, 0.6); }
+.remu-grade-nom { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-family: var(--d8-font-display); font-weight: 400; font-size: 1.15rem; color: var(--text); }
+.remu-ligne { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 48px; padding: 4px 0; border-top: 1px solid var(--border); }
+.remu-ligne-libelle { color: var(--text); font-size: 0.92rem; }
+.remu-ligne-note { font-size: 0.8rem; color: var(--text-faint); justify-self: end; }
+.remu-ligne.inactive .remu-ligne-libelle, .remu-ligne.inactive .remu-ligne-note { color: var(--text-faint); }
+.remu-ligne.inactive .remu-montant { opacity: 0.45; }
+.remu-montant { width: 150px; }
+.remu-montant input {
+  width: 100%; min-height: 38px; padding: 6px 70px 6px 10px; border: 1px solid rgba(201, 165, 92, 0.28); border-radius: var(--radius-sm);
+  background: rgba(6, 12, 26, 0.55); color: var(--text); font: inherit; font-size: 0.92rem; text-align: right; font-variant-numeric: tabular-nums;
+}
+.remu-montant input:focus { outline: none; border-color: var(--d8-gold-400); }
+.remu-montant span { right: 10px; font-size: 0.8rem; }
+.remu-grade .remu-montant input { padding-right: 62px; }
+.remu-palier .remu-montant input { padding-right: 26px; }
+
+.remu-baremes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 14px; margin-top: 12px; }
+.remu-bareme { padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(14, 26, 50, 0.6); }
+.remu-bareme-titre { margin: 0; font-size: 1rem; font-weight: 500; color: var(--text); font-family: var(--d8-font-ui); }
+.remu-bareme-grades { margin: 2px 0 10px; font-size: 0.8rem; color: var(--text-faint); }
+.remu-paliers { list-style: none; margin: 0; padding: 0; }
+.remu-palier { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); }
+.remu-palier > input { width: 72px; min-height: 38px; padding: 6px 8px; border: 1px solid rgba(201, 165, 92, 0.28); border-radius: var(--radius-sm); background: rgba(6, 12, 26, 0.55); color: var(--text); font: inherit; text-align: right; font-variant-numeric: tabular-nums; }
+.remu-palier > input:focus { outline: none; border-color: var(--d8-gold-400); }
+.remu-palier-des, .remu-palier-unite { font-size: 0.88rem; color: var(--text-muted); }
+.remu-palier-unite { min-width: 64px; }
+.remu-palier-fleche { color: var(--gold-strong); }
+.remu-palier .remu-montant { width: 130px; }
+.remu-palier .actions-icone, .remu-palier .btn { margin-left: auto; }
+.remu-palier-nouveau { border-top-style: dashed; }
+.remu-palier-nouveau > input, .remu-palier-nouveau .remu-montant input { border-style: dashed; }
+.remu-palier-vide { padding: 10px 0; font-size: 0.85rem; color: var(--text-faint); border-top: 1px solid var(--border); }
+
+.remu-simulateur { padding: 18px 22px; border: 1px solid var(--d8-gold-400); border-radius: var(--radius); background: linear-gradient(135deg, rgba(201, 165, 92, 0.1), rgba(14, 26, 50, 0.6) 60%); }
+.remu-simu-champs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 12px; }
+.remu-simu-champs .champ { margin: 0; }
+.remu-simu-champs label { font-size: 0.85rem !important; }
+.remu-simu-detail { list-style: none; margin: 12px 0 0; padding: 0; max-width: 560px; }
+.remu-simu-detail li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 0.92rem; color: var(--text); }
+.remu-simu-detail li small { margin-left: 8px; color: var(--text-faint); font-size: 0.8rem; }
+.remu-simu-detail li.inactive { color: var(--text-faint); }
+.remu-simu-detail strong { font-weight: 500; font-variant-numeric: tabular-nums; }
+.remu-simu-total { display: flex; justify-content: space-between; align-items: baseline; max-width: 560px; margin: 10px 0 0; color: var(--gold-light); }
+.remu-simu-total strong { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.remu-grades { grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); }
+.remu-ligne-libelle { white-space: nowrap; }
+.remu-grade .remu-montant { width: 140px; }
