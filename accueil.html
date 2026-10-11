@@ -344,8 +344,10 @@
     });
 
   // Compteur animé du hero (« 7 biens au catalogue »).
+  // une fois par visite, comme le dessin du logo
+  const compteursVus = (() => { try { const v = sessionStorage.getItem('d8.compteurs'); sessionStorage.setItem('d8.compteurs', '1'); return !!v; } catch (e) { return false; } })();
   function animerCompteur(el, cible) {
-    if (reduireMouvement || !cible) { el.textContent = cible; return; }
+    if (reduireMouvement || compteursVus || !cible) { el.textContent = cible; return; }
     const t0 = performance.now(), duree = 1100;
     (function tick(now) {
       const p = Math.min(1, (now - t0) / duree), e = 1 - Math.pow(1 - p, 3);
@@ -522,7 +524,9 @@ const enJeu = (() => { try { return window.self !== window.top; } catch (e) { re
   }
   addEventListener('resize', resize); resize();
 
-  const ease=x=>1-Math.pow(1-x,3); const t0=performance.now(); const sp=reduced?4:1;
+  // dessin du logo une fois par visite : au retour sur l'accueil dans le même onglet, il est déjà en place
+  const dejaVu = (() => { try { const v = sessionStorage.getItem('d8.logo'); sessionStorage.setItem('d8.logo', '1'); return !!v; } catch (e) { return false; } })();
+  const ease=x=>1-Math.pow(1-x,3); const t0=performance.now() - (dejaVu ? 60000 : 0); const sp=reduced?4:1;
   let visible=true;
   new IntersectionObserver((e)=>{visible=e[0].isIntersecting;},{threshold:0}).observe(canvas);
   function frame(now){

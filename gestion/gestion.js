@@ -20,6 +20,8 @@ const GESTION_NAV = [
   { cle: 'webmap', href: 'webmap.html', label: 'WebMap', icone: 'map', permission: 'parametres' },
   // lien réglé dans Paramètres, servi aux seuls comptes validés (/api/outils) : ajouté au menu s'il est réglé
   { cle: 'registre', label: 'Registre', icone: 'book', externe: true, regle: 'registre' },
+  // le site public (même onglet ; « Mon espace » de son en-tête ramène ici)
+  { cle: 'site', href: '/accueil.html', label: 'Voir le site', icone: 'globe' },
 ];
 
 // icônes au trait fin (sprite injecté une fois par page) : <svg class="ico"><use href="#ico-…"></use></svg>
@@ -48,6 +50,8 @@ const GESTION_ICONES = {
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   headset: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1"/><rect x="17" y="14" width="4" height="6" rx="1"/>',
   chevron: '<path d="M6 9l6 6 6-6"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  externe: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   fermer: '<path d="M6 6l12 12M18 6L6 18"/>',
   key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M18 5l2 2"/>',
   archive: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v11h14V9M10 13h4"/>',
@@ -66,6 +70,22 @@ const ordreEnService = liste => [...liste.filter(p => p.moi), ...liste.filter(p 
 const ligneEnService = p => `<li${p.moi ? ' class="admin-service-moi"' : ''}>
   <span class="admin-service-nom">${socle.esc(p.nom)}${p.moi ? ' <span class="admin-service-vous">vous</span>' : ''}</span>
   <span class="admin-service-detail">depuis ${socle.esc(heureParis(p.depuis))} · ${dureeDepuis(p.depuis)}${p.mode ? ` · ${socle.esc(p.mode)}` : ''}</span></li>`;
+
+// Ce que le menu affiche du compte (nom, avatar, grade, permissions) et les liens réglés, gardé pour l'onglet : la page
+// suivante dessine son menu sans attendre le serveur. Affichage seulement ; effacé à la déconnexion, et dès que le
+// serveur ne reconnaît plus la session. Le site public perd aussi son repère « Mon espace » (localStorage d8.espace).
+const memoCoque = {
+  cle: 'gestion.coque',
+  lire() { try { return JSON.parse(sessionStorage.getItem(this.cle)); } catch { return null; } },
+  ecrire(moi, outils) {
+    const m = { moi: { nom: moi.nom, pseudo: moi.pseudo, avatar: moi.avatar, proprietaire: moi.proprietaire, grade: moi.grade ? { libelle: moi.grade.libelle } : null, permissions: moi.permissions }, outils };
+    try { sessionStorage.setItem(this.cle, JSON.stringify(m)); } catch { /* stockage refusé : menu dessiné à la réponse */ }
+    return m;
+  },
+  effacer() {
+    try { sessionStorage.removeItem(this.cle); sessionStorage.removeItem('gestion.service'); localStorage.removeItem('d8.espace'); } catch { /* rien à effacer */ }
+  },
+};
 
 // « En service » : un indicateur (bas du menu sur écran large, barre du haut sur téléphone) qui ouvre la liste dans un
 // panneau. Pas dans le menu lui-même : une liste qui bouge seule n'a rien à faire dans la navigation (et l'Accueil a
@@ -133,14 +153,21 @@ function enService(barre, haut) {
   document.addEventListener('pointerdown', e => { if (!panneau.hidden && !panneau.contains(e.target) && !declencheurs.some(d => d.contains(e.target))) fermer(false); });
   addEventListener('resize', placer);
 
+  // dernier état connu, gardé pour l'onglet : l'indicateur s'affiche dès l'arrivée sur une page, puis se met à jour
+  // (il apparaissait à chaque page après la réponse du serveur)
+  const appliquer = r => {
+    declencheurs.forEach(d => d.classList.toggle('cache', !r.regle));
+    if (!r.regle) { fermer(false); return; }
+    personnes = r.enService;
+    dessiner();
+  };
+  try { const memo = JSON.parse(sessionStorage.getItem('gestion.service')); if (memo) appliquer(memo); } catch { /* pas de mémo */ }
   const charger = async () => {
     if (document.hidden) return;
     try {
       const r = await socle.api('/api/services/en-cours');
-      declencheurs.forEach(d => d.classList.toggle('cache', !r.regle));
-      if (!r.regle) { fermer(false); return; }
-      personnes = r.enService;
-      dessiner();
+      appliquer(r);
+      try { sessionStorage.setItem('gestion.service', JSON.stringify(r)); } catch { /* stockage refusé */ }
     } catch { /* erreur passagère : dernier affichage gardé */ }
   };
   charger();
@@ -173,33 +200,23 @@ window.gestion = {
     const sprite = document.createElement('div');
     sprite.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" style="display:none">${Object.entries(GESTION_ICONES).map(([n, d]) => `<symbol id="ico-${n}" viewBox="0 0 24 24">${d}</symbol>`).join('')}</svg>`;
     document.body.prepend(sprite.firstChild);
-    let moi;
-    try { moi = await socle.moi(); }
-    catch (e) { erreurDeChargement(document.querySelector('main.admin-contenu'), e); throw e; }
-    // un groupe sans aucune rubrique visible n'est pas affiché
-    const visibles = GESTION_NAV.filter(l => (l.groupe || !l.permission || socle.peut(moi, l.permission)) && !l.regle);
-    const nav = visibles.filter((l, i) => !l.groupe || (visibles[i + 1] && !visibles[i + 1].groupe)).map(l => l.groupe
-      ? `<p class="admin-nav-groupe">${socle.esc(l.groupe)}</p>`
-      : `<a class="lien-onglet${l.cle === rubrique ? ' actif' : ''}" href="${l.href}"${l.cle === rubrique ? ' aria-current="page"' : ''}${l.externe ? ' target="_blank" rel="noopener"' : ''}>${ico(l.icone)}<span>${socle.esc(l.label)}</span></a>`).join('');
-    const nom = moi.nom || moi.pseudo;
-    const grade = moi.grade?.libelle || (moi.proprietaire ? 'Propriétaire' : 'Sans grade');
+
+    // La coque est posée tout de suite, avant toute réponse du serveur : sinon chaque page s'affichait d'abord sans
+    // menu, puis tout sautait de la largeur du menu. Le menu est dessiné d'après le compte gardé pour cet onglet
+    // (memoCoque : simple affichage, le serveur contrôle chaque page et chaque requête), puis redessiné si la réponse
+    // diffère. Sans mémo (premier passage), sa place est réservée, vide.
+    const memo = memoCoque.lire();
     const barre = document.createElement('aside');
     barre.className = 'admin-barre-laterale';
+    barre.id = 'admin-menu';
     barre.innerHTML = `
       <a href="/accueil.html" class="logo" title="Voir le site public"><img src="/assets/logo-full.png" alt="Dynasty 8" class="logo-entete"></a>
-      <nav class="admin-nav">${nav}</nav>
+      <nav class="admin-nav" aria-label="Rubriques"></nav>
       <div class="admin-bas">
         <button type="button" class="admin-service-indic cache" data-service-indic aria-haspopup="dialog" aria-expanded="false" aria-controls="menu-en-service">
           <span class="pastille-service" aria-hidden="true"></span><span data-service-texte>En service</span>${ico('chevron')}</button>
-        <div class="admin-compte">
-          ${moi.avatar ? `<img class="admin-avatar" src="${socle.esc(moi.avatar)}" alt="">` : `<span class="admin-avatar" aria-hidden="true">${socle.esc(initiales(nom))}</span>`}
-          <div class="admin-compte-texte"><strong>${socle.esc(nom)}</strong><span class="admin-compte-grade">${socle.esc(grade)}</span></div>
-          <a class="admin-icone-bouton" href="/faq.html" target="_blank" rel="noopener" title="Besoin d’aide ? La FAQ" aria-label="FAQ (nouvel onglet)">${ico('headset')}</a>
-          <button type="button" class="admin-icone-bouton" data-deconnexion title="Se déconnecter" aria-label="Se déconnecter">${ico('logout')}</button>
-        </div>
+        <div class="admin-compte" data-compte></div>
       </div>`;
-    barre.id = 'admin-menu';
-    barre.querySelector('[data-deconnexion]').addEventListener('click', () => socle.deconnexion());
     // téléphone et tablette : barre du haut, la barre latérale entière s'ouvre en tiroir (compte et déconnexion compris)
     const haut = document.createElement('header');
     haut.className = 'admin-barre-haut';
@@ -208,7 +225,29 @@ window.gestion = {
       <a href="/accueil.html" class="admin-barre-haut-logo" title="Voir le site public"><img src="/assets/logo-full.png" alt="Dynasty 8"></a>
       <button type="button" class="admin-service-indic admin-service-indic--haut cache" data-service-indic="court" aria-haspopup="dialog" aria-expanded="false" aria-controls="menu-en-service">
         <span class="pastille-service" aria-hidden="true"></span><span data-service-texte></span></button>
-      ${moi.avatar ? `<img class="admin-avatar" src="${socle.esc(moi.avatar)}" alt="">` : `<span class="admin-avatar" aria-hidden="true">${socle.esc(initiales(nom))}</span>`}`;
+      <span data-avatar></span>`;
+    const dessiner = (moi, outils) => {
+      // un groupe sans aucune rubrique visible n'est pas affiché ; un lien réglé (registre) seulement s'il l'est
+      const visibles = GESTION_NAV.filter(l => l.groupe || (l.regle ? outils?.[l.regle] : !l.permission || socle.peut(moi, l.permission)));
+      barre.querySelector('.admin-nav').innerHTML = visibles.filter((l, i) => !l.groupe || (visibles[i + 1] && !visibles[i + 1].groupe)).map(l => l.groupe
+        ? `<p class="admin-nav-groupe">${socle.esc(l.groupe)}</p>`
+        : `<a class="lien-onglet${l.cle === rubrique ? ' actif' : ''}" href="${socle.esc(l.regle ? outils[l.regle] : l.href)}"${l.cle === rubrique ? ' aria-current="page"' : ''}${l.externe ? ' target="_blank" rel="noopener"' : ''}>${ico(l.icone)}<span>${socle.esc(l.label)}</span></a>`).join('');
+      const nom = moi.nom || moi.pseudo;
+      const grade = moi.grade?.libelle || (moi.proprietaire ? 'Propriétaire' : 'Sans grade');
+      const avatar = moi.avatar ? `<img class="admin-avatar" src="${socle.esc(moi.avatar)}" alt="">` : `<span class="admin-avatar" aria-hidden="true">${socle.esc(initiales(nom))}</span>`;
+      barre.querySelector('[data-compte]').innerHTML = `${avatar}
+        <div class="admin-compte-texte"><strong>${socle.esc(nom)}</strong><span class="admin-compte-grade">${socle.esc(grade)}</span></div>
+        <a class="admin-icone-bouton" href="/faq.html" target="_blank" rel="noopener" title="Besoin d’aide ? La FAQ" aria-label="FAQ (nouvel onglet)">${ico('headset')}</a>
+        <button type="button" class="admin-icone-bouton" data-deconnexion title="Se déconnecter" aria-label="Se déconnecter">${ico('logout')}</button>`;
+      haut.querySelector('[data-avatar]').innerHTML = avatar;
+    };
+    if (memo) dessiner(memo.moi, memo.outils);
+    barre.addEventListener('click', e => {
+      if (!e.target.closest('[data-deconnexion]')) return;
+      memoCoque.effacer();
+      socle.deconnexion();
+    });
+
     const voile = document.createElement('div');
     voile.className = 'admin-voile';
     const burger = haut.querySelector('.admin-burger');
@@ -223,18 +262,6 @@ window.gestion = {
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && document.body.classList.contains('admin-menu-ouvert')) { ouvrir(false); burger.focus(); }
     });
-    // liens réglés dans Paramètres (registre) : ni dans la page ni dans le dépôt, servis aux seuls comptes validés
-    socle.api('/api/outils').then(o => {
-      for (const l of GESTION_NAV.filter(x => x.regle && o[x.regle])) {
-        const lien = document.createElement('a');
-        lien.className = 'lien-onglet';
-        lien.href = o[l.regle];
-        lien.target = '_blank';
-        lien.rel = 'noopener';
-        lien.innerHTML = `${ico(l.icone)}<span>${socle.esc(l.label)}</span>`;
-        barre.querySelector('.admin-nav').append(lien);
-      }
-    }).catch(() => {});
     const main = document.querySelector('main.admin-contenu');
     const coque = document.createElement('div');
     coque.className = 'admin-shell';
@@ -250,6 +277,14 @@ window.gestion = {
     document.body.prepend(evitement);
     document.body.classList.add('page-agents', 'admin-connecte');
     fondAnime();
+
+    // compte connecté et liens réglés (registre, /api/outils), lus ensemble
+    let moi, outils;
+    try { [moi, outils] = await Promise.all([socle.moi(), socle.api('/api/outils').catch(() => memo?.outils ?? {})]); }
+    catch (e) { memoCoque.effacer(); erreurDeChargement(main, e); throw e; }
+    if (JSON.stringify(memoCoque.ecrire(moi, outils)) !== JSON.stringify(memo)) dessiner(moi, outils);
+    // le site public lit ce repère pour afficher « Mon espace » (et « Modifier l'annonce » à qui gère les biens)
+    try { localStorage.setItem('d8.espace', JSON.stringify({ biens: socle.peut(moi, 'biens') })); } catch { /* stockage refusé : bouton par défaut */ }
     enService(barre, haut);
     indiceDefilement(barre.querySelector('.admin-nav'));
     tablesAdaptatives(main);

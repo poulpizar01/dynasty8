@@ -42,6 +42,7 @@ function rendreStats() {
       <span class="stat-icone stat-icone--${couleur}">${gestion.ico(icone)}</span>
       <div><div class="stat-valeur">${valeur}</div><div class="stat-libelle">${libelle}</div><div class="stat-sous-libelle">${sous}</div></div>
     </div>`;
+  $('admin-stats').removeAttribute('aria-busy');
   $('admin-stats').innerHTML = carte('home', 'or', total, 'Annonces', 'Total des biens')
     + carte('eye', 'vert', visibles, 'Visibles', 'En ligne sur le site')
     + carte('star', 'or', coupsDeCoeur, 'Coups de cœur', 'En vitrine sur l\'accueil')
@@ -65,6 +66,7 @@ function biensFiltres() {
 
 const puceStatut = b => (b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-masquee">Masquée</span>');
 const boutonsActions = (b, rond) => `
+  <a class="actions-icone${rond ? ' actions-icone--rond' : ''}" href="/bien.html?id=${b.id}" title="Voir sur le site" aria-label="Voir sur le site">${gestion.ico('globe')}</a>
   <button type="button" class="actions-icone${rond ? ' actions-icone--rond' : ''}" data-editer="${b.id}" title="Modifier" aria-label="Modifier">${gestion.ico('pencil')}</button>
   <button type="button" class="actions-icone${rond ? ' actions-icone--rond' : ''} actions-icone--danger" data-supprimer="${b.id}" title="Supprimer" aria-label="Supprimer">${gestion.ico('trash')}</button>`;
 
@@ -630,4 +632,11 @@ $('bouton-supprimer-bien').addEventListener('click', () => { const id = $('bien-
 // menus déroulants aux couleurs du site (layout.js)
 ['filtre-categorie', 'filtre-statut', 'bien-sous-categorie', 'bien-coherence', 'bien-vip'].forEach(id => ameliorerSelect($(id)));
 
-gestion.coque('biens').then(chargerTableBiens);
+// biens.html?modifier=<id> (« Modifier l'annonce » de la page publique du bien) : ouvre directement sa fenêtre ; le
+// paramètre est retiré de l'adresse pour qu'un rechargement ne la rouvre pas
+gestion.coque('biens').then(chargerTableBiens).then(() => {
+  const id = Number(new URLSearchParams(location.search).get('modifier'));
+  if (!id) return;
+  history.replaceState(null, '', location.pathname);
+  if (CACHE_BIENS.some(b => b.id === id)) ouvrirModaleBien(id);
+});

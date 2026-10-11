@@ -39,6 +39,22 @@
 <script>
   initialiserLayout("");
   chargerFicheBien();
+  // agent qui gère les annonces (repère posé par l'espace agents, simple affichage : la page de gestion vérifie les
+  // droits) : un lien pour modifier ce bien
+  (() => {
+    let espace = null;
+    try { espace = JSON.parse(localStorage.getItem("d8.espace")); } catch (e) { /* stockage refusé */ }
+    const id = Number(new URLSearchParams(location.search).get("id"));
+    if (!espace?.biens || !id) return;
+    const barre = document.createElement("p");
+    barre.className = "fiche-agent";
+    const lien = document.createElement("a");
+    lien.className = "btn btn-fantome btn-petit";
+    lien.href = `/gestion/biens.html?modifier=${id}`;
+    lien.textContent = "Modifier l’annonce";
+    barre.append(lien);
+    document.getElementById("fiche-bien").before(barre);
+  })();
 </script>
 </body>
 </html>

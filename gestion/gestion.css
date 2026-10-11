@@ -11,7 +11,7 @@
 img.admin-avatar { object-fit: cover; padding: 0; }
 
 /* Écran large : trois zones — logo, navigation, pied (indicateur « En service », compte). Seule la navigation peut
-   défiler, et seulement sur un écran bas : rubriques sur une ligne, à 36 px (44 px dans le tiroir tactile), pour tenir sans barre dès 800 px de haut.
+   défiler, et seulement sur un écran bas : rubriques sur une ligne, à 34 px (44 px dans le tiroir tactile), pour tenir sans barre dès 800 px de haut.
    Ce qui est caché est signalé par un fondu (classes suite-haut / suite-bas, gestion.js) ; la barre n'apparaît qu'au
    survol. Le compte et la déconnexion restent à l'écran quelle que soit la hauteur. */
 .admin-barre-laterale { width: 256px; padding: 14px 12px 10px; }
@@ -32,8 +32,8 @@ img.admin-avatar { object-fit: cover; padding: 0; }
   -webkit-mask-image: linear-gradient(transparent, #000 32px, #000 calc(100% - 48px), transparent);
   mask-image: linear-gradient(transparent, #000 32px, #000 calc(100% - 48px), transparent);
 }
-.admin-barre-laterale a.lien-onglet { padding: 8px 12px; line-height: 1.35; }
-.page-agents .admin-nav-groupe { padding: 10px 12px 4px; }
+.admin-barre-laterale a.lien-onglet { padding: 7px 12px; line-height: 1.35; }
+.page-agents .admin-nav-groupe { padding: 9px 12px 3px; }
 .page-agents .admin-nav-groupe:first-child { padding-top: 4px; }
 .admin-barre-laterale .admin-bas { margin-top: 0; padding-top: 8px; gap: 8px; border-top: 1px solid var(--border); }
 
@@ -107,6 +107,10 @@ img.admin-avatar { object-fit: cover; padding: 0; }
   .admin-menu-ouvert { overflow: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { .admin-barre-laterale { transition: none !important; } }
+
+/* Avant gestion.coque() : la place du menu est déjà réservée. La coque se pose avant le premier affichage ; ceci couvre
+   un navigateur qui peindrait la page plus tôt (le contenu ne saute plus de la largeur du menu). */
+@media (min-width: 901px) { body:not(.admin-connecte) > main.admin-contenu { margin-left: 256px; } }
 
 /* lien d'évitement (gestion.js) : visible seulement quand il reçoit le focus */
 .evitement {
@@ -235,6 +239,17 @@ main.admin-contenu:focus { outline: none; }
 .accueil-texte { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
 .accueil-liste .accueil-vide { display: block; color: var(--text-faint); font-size: 0.9rem; }
 .accueil-vide a { color: var(--gold-strong); }
+
+/* Squelettes : la place d'un contenu qui arrive, à sa taille, pour que rien ne saute à son arrivée. */
+@keyframes squelette { 50% { opacity: 0.55; } }
+.squelette { animation: squelette 1.4s ease-in-out infinite; }
+.squelette .stat-icone { background: rgba(255, 255, 255, 0.06); }
+.squelette .stat-valeur, .squelette .stat-libelle, .squelette .stat-sous-libelle { width: 60%; border-radius: 4px; background: rgba(255, 255, 255, 0.06); color: transparent; }
+.squelette .stat-libelle { width: 80%; margin-top: 4px; }
+.accueil-attente .stat-carte { min-height: 96px; }
+.accueil-attente .accueil-panneau { min-height: 220px; }
+.accueil-corps[aria-busy="true"] { display: none; }
+@media (prefers-reduced-motion: reduce) { .squelette { animation: none; } }
 
 /* Accueil : « À traiter » (actions en attente, selon les droits), cartes cliquables, progression vers le palier
    suivant, panneaux à la hauteur de leur contenu (un panneau vide ne s'étire plus sur celui d'à côté). */

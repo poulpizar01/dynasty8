@@ -102,7 +102,7 @@ function injecterEntete(cleActive) {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>
           <span>WebMap</span>
         </a>
-        <a href="/gestion/" class="btn btn-fantome btn-petit">Espace agents</a>
+        <a href="/gestion/" class="btn btn-fantome btn-petit">${agentConnu() ? "Mon espace" : "Espace agents"}</a>
       </div>
     </div>`;
   const bouton = document.getElementById("bouton-menu");
@@ -128,6 +128,12 @@ function injecterEntete(cleActive) {
   const bascule = () => monte.classList.toggle("entete-scrolled", window.scrollY > 24);
   bascule();
   window.addEventListener("scroll", bascule, { passive: true });
+}
+
+// Agent déjà passé par l'espace agents dans ce navigateur (repère d8.espace posé par la coque de la gestion, effacé
+// à la déconnexion) : le bouton de l'en-tête dit « Mon espace ». Simple affichage, aucune donnée personnelle.
+function agentConnu() {
+  try { return !!localStorage.getItem("d8.espace"); } catch (e) { return false; }
 }
 
 function injecterPied() {

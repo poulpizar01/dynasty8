@@ -1430,6 +1430,7 @@ section.section.serre {
 .fiche-fiche { position: sticky; top: 100px; }
 .fiche-fiche h1 { font-family: var(--d8-font-display); font-weight: 500; font-style: normal; }
 .fiche-fiche p { max-width: 62ch; }
+.fiche-agent { display: flex; justify-content: flex-end; margin: 0 0 16px; }
 .fiche-prix { font-family: var(--d8-font-ui); font-weight: 500; font-size: 2.1rem; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
 .fiche-prix > span:not(.prix-valeur) { font-size: 1rem; font-weight: 400; color: var(--text-faint); font-family: var(--d8-font-ui); }
 .fiche-carac {

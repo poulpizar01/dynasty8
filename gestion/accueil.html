@@ -26,6 +26,13 @@
       </div>
     </div>
     <div id="zone-message"></div>
+    <!-- en attendant les données : une silhouette de la page, puis tout s'affiche d'un coup (les blocs ne se poussent
+         plus les uns les autres en arrivant) -->
+    <div class="accueil-attente" id="accueil-attente" aria-hidden="true">
+      <div class="accueil-indicateurs"><div class="stat-carte squelette"></div><div class="stat-carte squelette"></div></div>
+      <div class="accueil-panneaux"><div class="accueil-panneau squelette"></div><div class="accueil-panneau squelette"></div></div>
+    </div>
+    <div class="accueil-corps" id="accueil-corps" aria-busy="true">
     <section class="accueil-a-traiter cache" id="a-traiter" aria-labelledby="titre-a-traiter">
       <h2 id="titre-a-traiter">À traiter</h2>
       <ul id="a-traiter-liste"></ul>
@@ -51,6 +58,7 @@
         <ul class="accueil-liste admin-service-liste" id="en-service"></ul>
         <button type="button" class="btn btn-fantome btn-petit cache" id="service-tout" aria-controls="en-service" aria-expanded="false"></button>
       </section>
+    </div>
     </div>
   </main>
   <script>
@@ -147,6 +155,8 @@
         tout.addEventListener('click', () => dessiner(tout.getAttribute('aria-expanded') !== 'true'));
         dessiner(false);
       }
+      document.getElementById('accueil-attente').remove();
+      document.getElementById('accueil-corps').removeAttribute('aria-busy');
       const erreur = [taches, primes, biens].find(r => r.status === 'rejected');
       if (erreur) gestion.message('zone-message', erreur.reason.message);
     });
