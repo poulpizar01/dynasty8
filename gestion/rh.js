@@ -1,19 +1,24 @@
 /* GESTION — ressources humaines : fiches employés, source de vérité de l'identité, du grade et du statut de chacun.
    Les droits viennent du serveur et y sont revérifiés à chaque appel
    (server/src/entreprise/routes/rh.ts) : l'interface ne fait que masquer ce qui serait de toute façon refusé.
-   Les droits RH se règlent par grade dans la page Grades (permissions « RH : … »). */
+   Les droits RH se règlent par grade dans la page Grades (permissions « RH : … »).
+   Mise en page : ce qui demande une action en tête (« À traiter »), puis la liste triable par colonne, puis les données
+   à rattacher et le recrutement (candidatures du bot, réglages repliés). */
 
 let CACHE_EMPLOYES = [];
-let GRADES_EMPLOYES = [];   // [{ cle, libelle }], dans l'ordre de la page Grades
+let GRADES_EMPLOYES = [];   // [{ cle, libelle }], dans l'ordre de la page Grades (= hiérarchie)
 let GRADES_ATTRIBUABLES = [];   // clés des grades qu'on peut donner (sous le sien) : les autres restent grisés
 let DROITS_RH = new Set();
 let FICHE_OUVERTE = null;   // id de la fiche en cours d'édition ; null = création
+let FILTRE_STATUT = 'actif';
+let TRI = { cle: 'grade', sens: 1 };   // colonne et sens du tri de la liste
+const A_FAIRE = { completer: 0, candidatures: 0, rattacher: 0 };
 
 const aDroitRh = droit => DROITS_RH.has(droit);
 const $rh = id => document.getElementById(id);
-const libelleGrade = cle => GRADES_EMPLOYES.find(g => g.cle === cle)?.libelle || cle;
-const dateCourte = iso => { if (!iso) return '—'; const [a, m, j] = String(iso).split('-'); return `${j}/${m}/${a}`; };
+const dateCourte = iso => { if (!iso) return '—'; const [a, m, j] = String(iso).slice(0, 10).split('-'); return `${j}/${m}/${a}`; };
 const dateHeure = d => (d ? new Date(d).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' }) : '—');
+const pluriel = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
 
 async function chargerRh() {
   gestion.message('zone-message-rh', '');
@@ -28,60 +33,160 @@ async function chargerRh() {
     const filtre = $rh('filtre-rh-grade'), valeur = filtre.value;
     filtre.innerHTML = `<option value="">Tous les grades</option>${options}`;
     filtre.value = valeur;
+    ameliorerSelect(filtre);
     $rh('bouton-nouvel-employe').classList.toggle('cache', !aDroitRh('creer'));
     $rh('rh-nb-actifs').textContent = r.effectif.actifs;
-    $rh('rh-nb-inactifs').textContent = r.effectif.inactifs;
-    $rh('rh-repartition').textContent = r.effectif.parGrade.length ? `Effectif actif par grade : ${r.effectif.parGrade.map(g => `${g.grade} ${g.nombre}`).join(' · ')}` : '';
-    ameliorerSelect(filtre);
-    ameliorerSelect($rh('filtre-rh-statut'));
-    ameliorerSelect($rh('tri-rh'));
+    $rh('rh-repartition').textContent = r.effectif.parGrade.map(g => `${g.grade} ${g.nombre}`).join(' · ');
+    $rh('rh-nb-inactifs-texte').textContent = r.effectif.inactifs ? pluriel(r.effectif.inactifs, 'ancien employé', 'anciens employés') : '';
+    A_FAIRE.completer = CACHE_EMPLOYES.filter(e => e.aCompleter && e.statut === 'actif').length;
     afficherEmployes();
+    afficherAFaire();
     chargerARattacher();
     chargerArriveesBot();
   } catch (e) {
-    gestion.message('zone-message-rh', `Impossible de charger RH : ${e.message}`);
+    gestion.message('zone-message-rh', `Impossible de charger les fiches : ${e.message}`);
   }
+}
+
+// ---- « À traiter » : des raccourcis vers ce qui demande une action, rien quand tout est en ordre ----
+function afficherAFaire() {
+  const items = [
+    A_FAIRE.completer && `<button type="button" class="rh-a-faire-item" data-aller="completer"><strong>${A_FAIRE.completer}</strong> ${A_FAIRE.completer > 1 ? 'fiches à compléter' : 'fiche à compléter'}<small>ID provisoire ou nom manquant</small></button>`,
+    A_FAIRE.candidatures && `<button type="button" class="rh-a-faire-item" data-aller="rh-bot"><strong>${A_FAIRE.candidatures}</strong> ${A_FAIRE.candidatures > 1 ? 'candidatures à traiter' : 'candidature à traiter'}<small>Réponses du formulaire illisibles</small></button>`,
+    A_FAIRE.rattacher && `<button type="button" class="rh-a-faire-item" data-aller="rh-a-rattacher"><strong>${A_FAIRE.rattacher}</strong> ${A_FAIRE.rattacher > 1 ? 'données à rattacher' : 'donnée à rattacher'}<small>Ventes ou tableur sans fiche</small></button>`,
+  ].filter(Boolean);
+  $rh('rh-a-faire').classList.toggle('cache', !items.length);
+  $rh('rh-a-faire-liste').innerHTML = items.join('');
+  const filtreCompleter = document.querySelector('[data-statut="a-completer"]');
+  filtreCompleter.classList.toggle('cache', !A_FAIRE.completer && FILTRE_STATUT !== 'a-completer');
+}
+$rh('rh-a-faire-liste').addEventListener('click', e => {
+  const b = e.target.closest('[data-aller]');
+  if (!b) return;
+  if (b.dataset.aller === 'completer') { choisirStatut('a-completer'); $rh('titre-employes').scrollIntoView({ block: 'start' }); return; }
+  $rh(b.dataset.aller).scrollIntoView({ block: 'start' });
+});
+
+// ---- liste des employés : filtres, recherche, tri par colonne ----
+const rangGrade = cle => { const i = GRADES_EMPLOYES.findIndex(g => g.cle === cle); return i < 0 ? GRADES_EMPLOYES.length : i; };
+const COMPARER = {
+  nom: (a, b) => a.nomComplet.localeCompare(b.nomComplet, 'fr', { sensitivity: 'base' }),
+  grade: (a, b) => rangGrade(a.grade) - rangGrade(b.grade) || COMPARER.nom(a, b),
+  discord: (a, b) => String(a.discordPseudo || '~').localeCompare(String(b.discordPseudo || '~'), 'fr', { sensitivity: 'base' }),
+  arrivee: (a, b) => String(a.dateArrivee || '9999').localeCompare(String(b.dateArrivee || '9999')),
+};
+const COLONNES = [['nom', 'Employé'], ['grade', 'Grade'], ['discord', 'Discord'], ['arrivee', 'Arrivée']];
+
+function choisirStatut(statut) {
+  FILTRE_STATUT = statut;
+  document.querySelectorAll('[data-statut]').forEach(b => { const actif = b.dataset.statut === statut; b.classList.toggle('actif', actif); b.setAttribute('aria-pressed', String(actif)); });
+  afficherAFaire();
+  afficherEmployes();
 }
 
 function afficherEmployes() {
   const recherche = $rh('recherche-employes').value.trim().toLowerCase();
-  const grade = $rh('filtre-rh-grade').value, statut = $rh('filtre-rh-statut').value;
-  const liste = CACHE_EMPLOYES.filter(e => (!grade || e.grade === grade) && (!statut || e.statut === statut)
-    && (!recherche || [e.nomComplet, e.idEmploye, e.discordPseudo, e.discordId].some(v => String(v || '').toLowerCase().includes(recherche))));
-  // hiérarchie : l'ordre du serveur (actifs, puis grade selon la page Grades, puis nom) ; sinon par nom
-  if ($rh('tri-rh').value === 'alpha') liste.sort((a, b) => a.nomComplet.localeCompare(b.nomComplet, 'fr', { sensitivity: 'base' }));
-  $rh('rh-vide').classList.toggle('cache', liste.length > 0);
-  $rh('rh-resultat').classList.toggle('cache', liste.length === 0);
-  const corps = $rh('corps-table-employes');
-  corps.innerHTML = liste.map(e => {
-    const aCompleter = e.aCompleter ? ' <span class="puce puce-or" title="ID employé provisoire, ou prénom / nom manquant : à compléter dans la fiche.">à compléter</span>' : '';
-    const statut = e.statut === 'actif' ? '<span class="puce puce-ok">Actif</span>'
-      : `<span class="puce puce-masquee">Inactif</span>${e.dateDepart ? `<br><span class="champ-aide">parti le ${dateCourte(e.dateDepart)}</span>` : ''}`;
-    // pseudo d’abord ; l’ID (18 chiffres) en petit dessous : il sert à vérifier, pas à lire
-    const discord = [e.discordPseudo && echapper(e.discordPseudo), e.discordId && `<span class="champ-aide rh-id-discord">${echapper(e.discordId)}</span>`].filter(Boolean).join('<br>') || '<span class="champ-aide">—</span>';
-    const bascule = e.statut === 'actif'
-      ? (aDroitRh('desactiver') ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-desactiver="${e.id}">Désactiver</button>` : '')
-      : (aDroitRh('reactiver') ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-reactiver="${e.id}">Réactiver</button>` : '');
-    return `<tr>
-      <td data-libelle="ID employé" style="white-space:nowrap;">${echapper(e.idEmploye)}${e.idProvisoire ? '<br><span class="champ-aide">provisoire</span>' : ''}</td>
-      <td><strong>${echapper(e.nomComplet)}</strong>${aCompleter}</td>
-      <td data-libelle="Grade">${echapper(e.gradeLibelle)}</td>
-      <td data-libelle="Statut">${statut}</td>
-      <td data-libelle="Discord">${discord}</td>
-      <td data-libelle="Arrivée">${dateCourte(e.dateArrivee)}</td>
-      <td class="table-cartes-actions"><div class="actions-ligne"><button type="button" class="btn btn-fantome btn-petit" data-rh-fiche="${e.id}">Ouvrir la fiche</button>${bascule}</div></td>
-    </tr>`;
+  const grade = $rh('filtre-rh-grade').value;
+  const correspond = e => FILTRE_STATUT === 'a-completer' ? e.aCompleter && e.statut === 'actif' : !FILTRE_STATUT || e.statut === FILTRE_STATUT;
+  for (const b of document.querySelectorAll('[data-nb-statut]')) {
+    const s = b.dataset.nbStatut;
+    b.textContent = CACHE_EMPLOYES.filter(e => s === 'a-completer' ? e.aCompleter && e.statut === 'actif' : !s || e.statut === s).length;
+  }
+  const liste = CACHE_EMPLOYES.filter(e => correspond(e) && (!grade || e.grade === grade)
+    && (!recherche || [e.nomComplet, e.idEmploye, e.discordPseudo, e.discordId].some(v => String(v || '').toLowerCase().includes(recherche))))
+    .sort((a, b) => COMPARER[TRI.cle](a, b) * TRI.sens);
+
+  const entete = COLONNES.map(([cle, libelle]) => {
+    const actif = TRI.cle === cle;
+    return `<button type="button" class="rh-tri${actif ? ' actif' : ''}" data-tri="${cle}" aria-sort="${actif ? (TRI.sens > 0 ? 'ascending' : 'descending') : 'none'}"
+      aria-label="Trier par ${libelle.toLowerCase()}${actif ? (TRI.sens > 0 ? ', ordre croissant' : ', ordre décroissant') : ''}">${libelle}<span class="rh-tri-fleche" aria-hidden="true">${actif ? (TRI.sens > 0 ? '↑' : '↓') : '↕'}</span></button>`;
   }).join('');
-  corps.querySelectorAll('[data-rh-fiche]').forEach(b => b.addEventListener('click', () => ouvrirFicheEmploye(Number(b.dataset.rhFiche))));
-  corps.querySelectorAll('[data-rh-desactiver]').forEach(b => b.addEventListener('click', () => changerStatutEmploye(Number(b.dataset.rhDesactiver), 'desactiver')));
-  corps.querySelectorAll('[data-rh-reactiver]').forEach(b => b.addEventListener('click', () => changerStatutEmploye(Number(b.dataset.rhReactiver), 'reactiver')));
+
+  const lignes = liste.map(e => {
+    const etiquettes = [
+      e.aCompleter ? '<span class="puce puce-or">À compléter</span>' : '',
+      e.statut === 'inactif' ? `<span class="puce puce-masquee">Parti${e.dateDepart ? ` le ${dateCourte(e.dateDepart)}` : ''}</span>` : '',
+    ].join('');
+    const actions = [
+      `<button type="button" role="menuitem" data-rh-fiche="${e.id}">${gestion.ico('user')} Ouvrir la fiche</button>`,
+      e.statut === 'actif' && aDroitRh('desactiver') ? `<button type="button" role="menuitem" class="danger" data-rh-desactiver="${e.id}">${gestion.ico('lock')} Désactiver (départ)</button>` : '',
+      e.statut !== 'actif' && aDroitRh('reactiver') ? `<button type="button" role="menuitem" data-rh-reactiver="${e.id}">${gestion.ico('sync')} Réactiver</button>` : '',
+    ].join('');
+    return `<div class="comptes-ligne rh-ligne${e.statut === 'inactif' ? ' refuse' : ''}">
+      <button type="button" class="rh-employe" data-rh-fiche="${e.id}">
+        <span class="admin-avatar" aria-hidden="true">${echapper(initiales(e.nomComplet))}</span>
+        <span class="rh-employe-texte"><span class="comptes-nom"><strong>${echapper(e.nomComplet)}</strong>${etiquettes}</span>
+          <span class="comptes-pseudo">${echapper(e.idEmploye)}${e.idProvisoire ? ' · provisoire' : ''}</span></span>
+      </button>
+      <span class="rh-cellule" data-libelle="Grade">${echapper(e.gradeLibelle)}</span>
+      <span class="rh-cellule" data-libelle="Discord">${e.discordPseudo ? `${echapper(e.discordPseudo)}` : '<span class="comptes-discret">—</span>'}${e.discordId ? `<span class="rh-id-discord">${echapper(e.discordId)}</span>` : ''}</span>
+      <span class="rh-cellule" data-libelle="Arrivée">${dateCourte(e.dateArrivee)}</span>
+      <div class="comptes-menu">
+        <button type="button" class="comptes-menu-bouton" aria-haspopup="menu" aria-expanded="false" aria-label="Actions pour ${echapper(e.nomComplet)}">⋯</button>
+        <div class="comptes-menu-liste cache" role="menu">${actions}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  $rh('rh-liste').innerHTML = liste.length
+    ? `<div class="comptes-entete rh-entete">${entete}<span></span></div>${lignes}`
+    : `<p class="comptes-vide">${CACHE_EMPLOYES.length ? 'Aucun employé ne correspond à ces critères.' : 'Aucune fiche pour le moment. Ajoutez un membre pour commencer.'}</p>`;
 }
 $rh('recherche-employes').addEventListener('input', afficherEmployes);
 $rh('filtre-rh-grade').addEventListener('change', afficherEmployes);
-$rh('filtre-rh-statut').addEventListener('change', afficherEmployes);
-$rh('tri-rh').addEventListener('change', afficherEmployes);
+document.querySelectorAll('[data-statut]').forEach(b => b.addEventListener('click', () => choisirStatut(b.dataset.statut)));
 
-// fiche : consultation, modification, ou création (id absent, avec un pré-remplissage éventuel)
+// clics de la liste : tri, fiche, menu « ⋯ » et ses actions (un seul écouteur : la liste est redessinée à chaque fois)
+let MENU_OUVERT = null;
+function fermerMenuRh(rendreFocus) {
+  if (!MENU_OUVERT) return;
+  MENU_OUVERT.querySelector('.comptes-menu-liste').classList.add('cache');
+  const b = MENU_OUVERT.querySelector('.comptes-menu-bouton');
+  b.setAttribute('aria-expanded', 'false');
+  if (rendreFocus) b.focus();
+  MENU_OUVERT = null;
+}
+$rh('rh-liste').addEventListener('click', e => {
+  const tri = e.target.closest('[data-tri]');
+  if (tri) {
+    TRI = TRI.cle === tri.dataset.tri ? { cle: TRI.cle, sens: -TRI.sens } : { cle: tri.dataset.tri, sens: 1 };
+    afficherEmployes();
+    document.querySelector(`[data-tri="${TRI.cle}"]`)?.focus();
+    return;
+  }
+  const ouvreur = e.target.closest('.comptes-menu-bouton');
+  if (ouvreur) {
+    const menu = ouvreur.closest('.comptes-menu');
+    if (MENU_OUVERT === menu) return fermerMenuRh(true);
+    fermerMenuRh(false);
+    const liste = menu.querySelector('.comptes-menu-liste');
+    liste.classList.remove('cache');
+    liste.classList.toggle('vers-le-haut', ouvreur.getBoundingClientRect().bottom + liste.offsetHeight + 16 > innerHeight);
+    ouvreur.setAttribute('aria-expanded', 'true');
+    liste.querySelector('[role=menuitem]').focus();
+    MENU_OUVERT = menu;
+    return;
+  }
+  const b = e.target.closest('[data-rh-fiche], [data-rh-desactiver], [data-rh-reactiver]');
+  if (!b) return;
+  fermerMenuRh(false);
+  if (b.dataset.rhFiche) ouvrirFicheEmploye(Number(b.dataset.rhFiche));
+  else if (b.dataset.rhDesactiver) changerStatutEmploye(Number(b.dataset.rhDesactiver), 'desactiver');
+  else changerStatutEmploye(Number(b.dataset.rhReactiver), 'reactiver');
+});
+document.addEventListener('click', e => { if (MENU_OUVERT && !MENU_OUVERT.contains(e.target)) fermerMenuRh(false); });
+document.addEventListener('keydown', e => {
+  if (!MENU_OUVERT) return;
+  if (e.key === 'Escape') { e.preventDefault(); fermerMenuRh(true); }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const items = [...MENU_OUVERT.querySelectorAll('[role=menuitem]')], i = items.indexOf(document.activeElement);
+    items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
+  }
+});
+
+// ---- fiche : consultation, modification, ou création (id absent, avec un pré-remplissage éventuel) ----
+let OUVREUR_FICHE = null;
 async function ouvrirFicheEmploye(id, preremplissage) {
   gestion.message('zone-message-modale-employe', '');
   let f = { grade: GRADES_EMPLOYES.at(-1)?.cle || '', ...(preremplissage || {}) };
@@ -89,10 +194,11 @@ async function ouvrirFicheEmploye(id, preremplissage) {
     try { f = await socle.api(`/api/rh/employes/${id}`); }
     catch (e) { gestion.message('zone-message-rh', e.message); return; }
   }
+  OUVREUR_FICHE = document.activeElement;
   FICHE_OUVERTE = id || null;
   // fiche d'un grade égal ou supérieur, ou sa propre fiche : en lecture seule (le serveur le refuserait)
   const peutEcrire = id ? aDroitRh('modifier') && f.modifiable !== false : aDroitRh('creer');
-  $rh('modale-employe-titre').textContent = id ? `Fiche employé — ${f.nomComplet}` : 'Ajouter un membre';
+  $rh('modale-employe-titre').textContent = id ? f.nomComplet : 'Ajouter un membre';
   const champs = {
     'employe-prenom': f.prenom, 'employe-nom': f.nom, 'employe-id': f.idEmploye,
     'employe-discord-id': f.discordId, 'employe-discord-pseudo': f.discordPseudo,
@@ -111,18 +217,20 @@ async function ouvrirFicheEmploye(id, preremplissage) {
   const bouton = $rh('employe-enregistrer');
   bouton.classList.toggle('cache', !peutEcrire);
   bouton.textContent = id ? 'Enregistrer les modifications' : 'Ajouter le membre';
-  $rh('employe-statut').textContent = id ? `Statut : ${f.statut}${f.idProvisoire ? ' — ID employé provisoire : à remplacer par le vrai.' : ''}` : '';
+  $rh('employe-statut').textContent = id
+    ? `${f.statut === 'actif' ? 'Employé actif' : 'Ancien employé'}${f.idProvisoire ? '. ID employé provisoire : remplacez-le par le vrai.' : '.'}${peutEcrire ? '' : ' Fiche en lecture seule (grade égal ou supérieur au vôtre).'}`
+    : '';
   const h = f.historique;
-  $rh('employe-historique').innerHTML = h ? [
-    `Ventes rattachées : <strong>${h.ventesEnregistrees}</strong>${h.derniereVente ? ` — dernière reçue le ${dateHeure(h.derniereVente)}` : ''}`,
-    h.tableurSemaineEnCours ? `Tableur, semaine en cours : ${h.tableurSemaineEnCours.ventes} vente(s), ${h.tableurSemaineEnCours.locations} location(s)` : 'Absent du tableur cette semaine',
-    `Semaines archivées du tableur : ${h.semainesArchivees}`,
-    f.compteDuSite ? `Compte du site : ${echapper(f.compteDuSite.nom)}${f.compteDuSite.grade ? ` (${echapper(f.compteDuSite.grade)})` : ''}` : 'Aucun compte du site relié (même ID Discord)',
-  ].join('<br>') : '';
+  $rh('employe-historique').innerHTML = h ? `<ul class="rh-historique">
+    <li><span>Ventes reçues du bot</span><strong>${h.ventesEnregistrees}</strong>${h.derniereVente ? `<small>dernière le ${dateHeure(h.derniereVente)}</small>` : ''}</li>
+    <li><span>Tableur, semaine en cours</span>${h.tableurSemaineEnCours ? `<strong>${pluriel(h.tableurSemaineEnCours.ventes, 'vente', 'ventes')}, ${pluriel(h.tableurSemaineEnCours.locations, 'location', 'locations')}</strong>` : '<strong>Absent</strong>'}</li>
+    <li><span>Semaines archivées</span><strong>${h.semainesArchivees}</strong></li>
+    <li><span>Compte du site</span><strong>${f.compteDuSite ? `${echapper(f.compteDuSite.nom)}${f.compteDuSite.grade ? ` (${echapper(f.compteDuSite.grade)})` : ''}` : 'Aucun (même ID Discord)'}</strong></li>
+  </ul>` : '';
   $rh('modale-employe').classList.remove('cache');
-  if (peutEcrire) $rh('employe-prenom').focus();
+  (peutEcrire ? $rh('employe-prenom') : $rh('fermer-modale-employe')).focus();
 }
-const fermerModaleEmploye = () => $rh('modale-employe').classList.add('cache');
+const fermerModaleEmploye = () => { $rh('modale-employe').classList.add('cache'); if (OUVREUR_FICHE?.isConnected) OUVREUR_FICHE.focus(); };
 $rh('bouton-nouvel-employe').addEventListener('click', () => ouvrirFicheEmploye(null));
 $rh('fermer-modale-employe').addEventListener('click', fermerModaleEmploye);
 $rh('modale-employe').addEventListener('click', e => { if (e.target.id === 'modale-employe') fermerModaleEmploye(); });
@@ -143,7 +251,7 @@ $rh('formulaire-employe').addEventListener('submit', async e => {
     if (creation) await socle.api('/api/rh/employes', { method: 'POST', body: corps });
     else await socle.api(`/api/rh/employes/${FICHE_OUVERTE}`, { method: 'PATCH', body: corps });
     fermerModaleEmploye();
-    gestion.message('zone-message-rh', creation ? 'Membre ajouté ✓' : 'Fiche mise à jour ✓', 'succes');
+    gestion.message('zone-message-rh', creation ? 'Membre ajouté ✓' : 'Fiche enregistrée ✓', 'succes');
     chargerRh();
   } catch (err) {
     gestion.message('zone-message-modale-employe', err.message);
@@ -158,31 +266,25 @@ async function changerStatutEmploye(id, action) {
   if (!ok) return;
   try {
     await socle.api(`/api/rh/employes/${id}/${action}`, { method: 'POST', body: {} });
-    gestion.message('zone-message-rh', action === 'desactiver' ? 'Employé désactivé ✓' : 'Employé réactivé ✓', 'succes');
+    gestion.message('zone-message-rh', action === 'desactiver' ? `${nom} a quitté l’effectif actif ✓` : `${nom} a réintégré l’effectif ✓`, 'succes');
     chargerRh();
   } catch (err) { gestion.message('zone-message-rh', err.message); }
 }
 
-// « À rattacher » : vendeurs des ventes et lignes du tableur sans fiche RH
+// ---- « À rattacher » : vendeurs des ventes et lignes du tableur sans fiche RH ----
 async function chargerARattacher() {
   const bloc = $rh('rh-a-rattacher'), contenu = $rh('rh-a-rattacher-contenu');
   try {
     const r = await socle.api('/api/rh/a-rattacher');
     const bouton = attributs => (aDroitRh('creer') ? `<button type="button" class="btn btn-fantome btn-petit" ${attributs}>Créer la fiche</button>` : '');
+    const ligne = (titre, detail, action) => `<div class="rh-carte"><div class="rh-carte-texte"><strong>${titre}</strong><small>${detail}</small></div>${action}</div>`;
     const parties = [];
-    if (r.vendeurs.length) {
-      parties.push(`<p class="champ-aide" style="margin:14px 0 6px;"><strong>Ventes reçues du bot sans fiche</strong> — le pseudo envoyé ne correspond au pseudo Discord d'aucune fiche.</p>
-        <div style="overflow-x:auto;"><table class="table-admin"><thead><tr><th>Pseudo reçu</th><th style="text-align:right;">Ventes</th><th>Dernière semaine</th><th></th></tr></thead><tbody>
-        ${r.vendeurs.map(v => `<tr><td>${echapper(v.pseudo)}</td><td style="text-align:right;">${v.ventes}</td><td>${echapper(v.derniereSemaine || '—')}</td><td>${bouton(`data-rh-creer-pseudo="${echapper(v.pseudo)}"`)}</td></tr>`).join('')}
-        </tbody></table></div>`);
-    }
-    if (r.tableur.length) {
-      parties.push(`<p class="champ-aide" style="margin:14px 0 6px;"><strong>Lignes du tableur sans fiche</strong> — le nom écrit ne correspond au « Prénom Nom » d'aucune fiche.</p>
-        <div style="overflow-x:auto;"><table class="table-admin"><thead><tr><th>Nom dans le tableur</th><th>Grade</th><th style="text-align:right;">Ventes</th><th style="text-align:right;">Locations</th><th></th></tr></thead><tbody>
-        ${r.tableur.map(l => `<tr><td>${echapper(l.nom)}</td><td>${echapper(l.grade || '—')}</td><td style="text-align:right;">${l.ventes}</td><td style="text-align:right;">${l.locations}</td>
-          <td>${bouton(`data-rh-creer-nom="${echapper(l.nom)}" data-rh-creer-grade="${echapper(l.grade || '')}"`)}</td></tr>`).join('')}
-        </tbody></table></div>`);
-    }
+    if (r.vendeurs.length) parties.push(`<h3 class="rh-sous-titre">Ventes du bot sans fiche</h3><p class="comptes-aide">Le pseudo reçu ne correspond au pseudo Discord d’aucune fiche.</p>
+      <div class="rh-cartes">${r.vendeurs.map(v => ligne(echapper(v.pseudo), `${pluriel(v.ventes, 'vente', 'ventes')}${v.derniereSemaine ? ` · semaine ${echapper(v.derniereSemaine)}` : ''}`, bouton(`data-rh-creer-pseudo="${echapper(v.pseudo)}"`))).join('')}</div>`);
+    if (r.tableur.length) parties.push(`<h3 class="rh-sous-titre">Lignes du tableur sans fiche</h3><p class="comptes-aide">Le nom écrit ne correspond au « Prénom Nom » d’aucune fiche.</p>
+      <div class="rh-cartes">${r.tableur.map(l => ligne(echapper(l.nom), `${echapper(l.grade || 'Sans grade')} · ${pluriel(l.ventes, 'vente', 'ventes')}, ${pluriel(l.locations, 'location', 'locations')}`, bouton(`data-rh-creer-nom="${echapper(l.nom)}" data-rh-creer-grade="${echapper(l.grade || '')}"`))).join('')}</div>`);
+    A_FAIRE.rattacher = r.vendeurs.length + r.tableur.length;
+    afficherAFaire();
     bloc.classList.toggle('cache', !parties.length);
     contenu.innerHTML = parties.join('');
     contenu.querySelectorAll('[data-rh-creer-pseudo]').forEach(b => b.addEventListener('click', () => ouvrirFicheEmploye(null, { discordPseudo: b.dataset.rhCreerPseudo })));
@@ -195,12 +297,12 @@ async function chargerARattacher() {
   } catch { bloc.classList.add('cache'); }
 }
 
-// ---- arrivées reçues du bot Discord et réglages de leur lecture ----
-const LIBELLES_ARRIVEE_BOT = {
-  creee: '<span class="puce puce-ok">Fiche créée</span>',
-  existante: '<span class="puce puce-masquee">Déjà une fiche</span>',
-  refusee: '<span class="puce puce-or">À traiter</span>',
-  ecartee: '<span class="puce puce-masquee">Écartée</span>',
+// ---- recrutement : candidatures acceptées reçues du bot Discord, et réglages de leur lecture ----
+const ETATS_ARRIVEE = {
+  creee: { classe: 'ok', libelle: 'Fiche créée' },
+  existante: { classe: 'neutre', libelle: 'Avait déjà une fiche' },
+  refusee: { classe: 'alerte', libelle: 'À traiter' },
+  ecartee: { classe: 'neutre', libelle: 'Écartée' },
 };
 const CHAMPS_REGLAGES_BOT = {
   questionIdentite: 'rh-bot-q-identite', questionIdEmploye: 'rh-bot-q-id-employe', questionPrenom: 'rh-bot-q-prenom',
@@ -213,33 +315,41 @@ async function chargerArriveesBot() {
     const r = await socle.api('/api/rh/bot');
     const reglable = aDroitRh('parametrer');
     bloc.classList.toggle('cache', !r.arrivees.length && !reglable);
+    $rh('rh-bot-details').classList.toggle('cache', !reglable);
     $rh('rh-bot-etat').textContent = 'Le bot envoie ses candidatures à l’adresse /webhooks/bot du site (abonnement « Candidatures » de son panneau Monitoring).';
-    $rh('rh-bot-reglages').classList.toggle('cache', !reglable);
     if (reglable) {
       const select = $rh('rh-bot-grade');
-      select.innerHTML = '<option value="">— à régler —</option>' + r.grades.map(g => `<option value="${echapper(g.cle)}">${echapper(g.libelle)}</option>`).join('');
+      select.innerHTML = '<option value="">À régler</option>' + r.grades.map(g => `<option value="${echapper(g.cle)}">${echapper(g.libelle)}</option>`).join('');
       select.value = r.reglages.gradeArrivee || '';
       ameliorerSelect(select);
       for (const [champ, id] of Object.entries(CHAMPS_REGLAGES_BOT)) $rh(id).value = r.reglages[champ] || '';
       $rh('rh-bot-questions-vues').innerHTML = r.questionsVues.map(q => `<option value="${echapper(q)}"></option>`).join('');
+      // un réglage manquant bloque les candidatures : on ouvre les réglages d'office
+      if (!r.reglages.gradeArrivee || (!r.reglages.questionIdentite && !(r.reglages.questionPrenom && r.reglages.questionNom))) $rh('rh-bot-details').open = true;
     }
+    A_FAIRE.candidatures = r.arrivees.filter(a => a.resultat === 'refusee').length;
+    afficherAFaire();
     const peutCreer = aDroitRh('creer');
-    $rh('rh-bot-contenu').innerHTML = r.arrivees.length
-      ? `<div style="overflow-x:auto;"><table class="table-admin"><thead><tr><th>Reçu le</th><th>Candidat</th><th>ID Discord</th><th>Résultat</th><th>Fiche</th></tr></thead><tbody>
-        ${r.arrivees.map(a => `<tr>
-          <td>${dateHeure(a.recuLe)}</td>
-          <td>${echapper(a.nomRecu || (a.discordId ? `Discord ${a.discordId}` : '—'))}</td>
-          <td>${echapper(a.discordId || '—')}</td>
-          <td>${LIBELLES_ARRIVEE_BOT[a.resultat] || echapper(a.resultat)}${a.motif ? `<div class="champ-aide">${echapper(a.motif)}</div>` : ''}</td>
-          <td>${a.employe
-            ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-fiche="${a.employe.id}">${echapper(a.employe.idEmploye)} — ${echapper(a.employe.nomComplet)}</button>${a.employe.statut === 'inactif' ? ' <span class="puce puce-masquee">Inactif</span>' : ''}`
+    // les candidatures à traiter d'abord, puis les plus récentes
+    const arrivees = [...r.arrivees].sort((a, b) => (a.resultat === 'refusee' ? 0 : 1) - (b.resultat === 'refusee' ? 0 : 1) || new Date(b.recuLe) - new Date(a.recuLe));
+    $rh('rh-bot-contenu').innerHTML = arrivees.length
+      ? `<div class="rh-candidatures">${arrivees.map(a => {
+          const etat = ETATS_ARRIVEE[a.resultat] || { classe: 'neutre', libelle: 'En attente' };
+          const nom = a.nomRecu || (a.discordId ? `Compte Discord ${a.discordId}` : 'Candidat inconnu');
+          const actions = a.employe
+            ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-fiche="${a.employe.id}">Ouvrir la fiche ${echapper(a.employe.idEmploye)}</button>`
             : peutCreer && (a.traitable || a.ecartable)
-              ? (a.traitable ? `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-action="traiter" data-rh-bot-id="${a.id}">Retraiter</button> ` : '')
+              ? (a.traitable ? `<button type="button" class="btn btn-or btn-petit" data-rh-bot-action="traiter" data-rh-bot-id="${a.id}">Retraiter</button>` : '')
                 + `<button type="button" class="btn btn-fantome btn-petit" data-rh-bot-action="ecarter" data-rh-bot-id="${a.id}">Écarter</button>`
-              : '—'}</td>
-        </tr>`).join('')}
-        </tbody></table></div>`
-      : '<p class="champ-aide">Aucune candidature acceptée reçue pour le moment.</p>';
+              : '';
+          return `<article class="rh-candidature rh-etat-${etat.classe}">
+            <div class="rh-candidature-tete"><strong>${echapper(nom)}</strong><span class="rh-etat">${etat.libelle}</span></div>
+            <p class="rh-candidature-date">Reçue le ${dateHeure(a.recuLe)}${a.employe?.statut === 'inactif' ? ' · fiche inactive' : ''}</p>
+            ${a.motif ? `<p class="rh-candidature-motif">${echapper(a.motif)}</p>` : ''}
+            ${actions ? `<div class="rh-candidature-actions">${actions}</div>` : ''}
+          </article>`;
+        }).join('')}</div>`
+      : '<p class="comptes-vide rh-vide-bot">Aucune candidature reçue pour le moment.</p>';
     document.querySelectorAll('[data-rh-bot-fiche]').forEach(b => b.addEventListener('click', () => ouvrirFicheEmploye(Number(b.dataset.rhBotFiche))));
     document.querySelectorAll('[data-rh-bot-action]').forEach(b => b.addEventListener('click', async () => {
       const ecarterLigne = b.dataset.rhBotAction === 'ecarter';
@@ -262,7 +372,7 @@ $rh('rh-bot-reglages').addEventListener('submit', async e => {
   for (const [champ, id] of Object.entries(CHAMPS_REGLAGES_BOT)) corps[champ] = $rh(id).value.trim();
   try {
     await socle.api('/api/rh/bot/reglages', { method: 'PUT', body: corps });
-    gestion.message('zone-message-rh-bot', 'Réglages du bot enregistrés ✓', 'succes');
+    gestion.message('zone-message-rh-bot', 'Réglages enregistrés ✓ Les candidatures « à traiter » peuvent être retraitées.', 'succes');
     chargerArriveesBot();
   } catch (err) { gestion.message('zone-message-rh-bot', err.message); }
 });

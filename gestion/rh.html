@@ -22,125 +22,122 @@
       <div class="entete-admin">
         <div>
           <h1 style="margin-bottom:2px;">Ressources humaines</h1>
-          <p style="margin:0;font-size:0.88rem;">La fiche de chaque employé : identité, grade et statut, repris automatiquement par les ventes, la DOT et les statistiques.</p>
+          <p style="margin:0;font-size:0.88rem;">La fiche de chaque employé : identité, grade, statut. Les ventes, la DOT et les statistiques s’y rattachent.</p>
         </div>
         <button type="button" class="btn btn-or cache" id="bouton-nouvel-employe">+ Ajouter un membre</button>
       </div>
-      <div id="zone-message-rh"></div>
+      <div id="zone-message-rh" role="status"></div>
 
-      <div class="admin-stats" style="grid-template-columns:repeat(2,minmax(0,220px));margin-bottom:10px;">
-        <div class="stat-carte">
-          <span class="stat-icone stat-icone--vert"><svg class="ico" aria-hidden="true"><use href="#ico-users"></use></svg></span>
-          <div><div class="stat-valeur" id="rh-nb-actifs">—</div><div class="stat-libelle">Effectif actif</div></div>
+      <!-- en tête : l'effectif, et ce qui demande une action (masqué quand il n'y a rien à faire) -->
+      <div class="rh-synthese">
+        <div class="rh-effectif">
+          <p class="rh-effectif-chiffre"><span id="rh-nb-actifs">—</span> <span>employés actifs</span></p>
+          <p class="rh-effectif-detail"><span id="rh-repartition"></span><span class="rh-anciens" id="rh-nb-inactifs-texte"></span></p>
         </div>
-        <div class="stat-carte">
-          <span class="stat-icone stat-icone--ambre"><svg class="ico" aria-hidden="true"><use href="#ico-archive"></use></svg></span>
-          <div><div class="stat-valeur" id="rh-nb-inactifs">—</div><div class="stat-libelle">Anciens employés</div></div>
+        <div class="rh-a-faire cache" id="rh-a-faire" aria-labelledby="titre-a-faire">
+          <h2 id="titre-a-faire">À traiter</h2>
+          <div class="rh-a-faire-liste" id="rh-a-faire-liste"></div>
         </div>
       </div>
-      <p class="champ-aide" id="rh-repartition" style="margin:0 0 18px;"></p>
 
-      <div class="annonces-outils">
-        <div class="annonces-recherche">
-          <span class="annonces-recherche-icone" aria-hidden="true"><svg class="ico"><use href="#ico-search"></use></svg></span>
-          <input type="search" id="recherche-employes" aria-label="Rechercher un employé" placeholder="Rechercher un nom, un ID, un pseudo Discord…">
+      <section class="rh-section" aria-labelledby="titre-employes">
+        <h2 id="titre-employes" class="rh-titre">Employés</h2>
+        <div class="comptes-outils">
+          <div class="comptes-filtres" role="group" aria-label="Afficher">
+            <button type="button" class="comptes-filtre actif" data-statut="actif" aria-pressed="true">Actifs <span data-nb-statut="actif"></span></button>
+            <button type="button" class="comptes-filtre" data-statut="inactif" aria-pressed="false">Anciens <span data-nb-statut="inactif"></span></button>
+            <button type="button" class="comptes-filtre" data-statut="" aria-pressed="false">Tous <span data-nb-statut=""></span></button>
+            <button type="button" class="comptes-filtre cache" data-statut="a-completer" aria-pressed="false">À compléter <span data-nb-statut="a-completer"></span></button>
+          </div>
+          <div class="rh-outils-droite">
+            <select id="filtre-rh-grade" aria-label="Filtrer par grade"><option value="">Tous les grades</option></select>
+            <div class="comptes-recherche">
+              <svg class="ico" aria-hidden="true"><use href="#ico-search"></use></svg>
+              <input type="search" id="recherche-employes" aria-label="Rechercher un employé" placeholder="Nom, ID, pseudo Discord">
+            </div>
+          </div>
         </div>
-        <select id="filtre-rh-grade" aria-label="Filtrer par grade"><option value="">Tous les grades</option></select>
-        <select id="filtre-rh-statut" aria-label="Filtrer par statut">
-          <option value="actif">Effectif actif</option>
-          <option value="inactif">Anciens employés</option>
-          <option value="">Tous</option>
-        </select>
-        <select id="tri-rh" aria-label="Trier le tableau">
-          <option value="hierarchie">Tri : hiérarchie</option>
-          <option value="alpha">Tri : nom (A → Z)</option>
-        </select>
-      </div>
+        <div class="comptes-liste rh-liste" id="rh-liste"></div>
+      </section>
 
-      <div id="rh-vide" class="etat-vide cache"><p>Aucun employé ne correspond à ces critères.</p></div>
-      <div id="rh-resultat" style="overflow-x:auto;">
-        <table class="table-admin table-cartes">
-          <thead>
-            <tr><th>ID employé</th><th data-titre>Nom</th><th>Grade</th><th>Statut</th><th>Discord</th><th>Arrivée</th><th></th></tr>
-          </thead>
-          <tbody id="corps-table-employes"></tbody>
-        </table>
-      </div>
-
-      <!-- Données des autres modules sans fiche RH : vendeurs inconnus des
-           ventes du bot, lignes du tableur sans employé. -->
-      <div id="rh-a-rattacher" class="cache" style="margin-top:36px;">
-        <h3 class="comptes-sous-titre">À rattacher</h3>
-        <p class="champ-aide" style="max-width:760px;">Données reçues par les autres modules sans fiche RH correspondante. Créez la fiche, ou renseignez le pseudo Discord (ventes) ou le prénom et le nom (tableur) d'une fiche existante : elles s'y rattachent automatiquement.</p>
+      <!-- Données des autres modules sans fiche RH : vendeurs inconnus des ventes du bot, lignes du tableur sans employé. -->
+      <section class="rh-section cache" id="rh-a-rattacher" aria-labelledby="titre-rattacher">
+        <h2 id="titre-rattacher" class="rh-titre">À rattacher</h2>
+        <p class="comptes-aide">Des ventes ou des lignes du tableur ne correspondent à aucune fiche. Créez la fiche, ou corrigez le pseudo Discord (ventes) ou le prénom et le nom (tableur) d’une fiche existante : elles s’y rattachent d’elles-mêmes.</p>
         <div id="rh-a-rattacher-contenu"></div>
-      </div>
+      </section>
 
-      <!-- Candidatures acceptées reçues du bot Discord « Roxwood Network
-           Entreprise » (webhook recruitment.updated, reçu par le socle sur /webhooks/bot),
-           et leurs réglages. -->
-      <div id="rh-bot" class="cache" style="margin-top:36px;">
-        <h3 class="comptes-sous-titre">Arrivées reçues du bot</h3>
-        <p class="champ-aide" style="max-width:760px;">Quand une personne habilitée valide une candidature dans Discord (« Statut → Accepté »), la fiche est créée ici automatiquement, à partir des réponses du formulaire. Un ID employé « PROV-B… » est provisoire : remplacez-le par le vrai dans la fiche. Un compte Discord qui a déjà une fiche n'en reçoit pas une deuxième. Une candidature « à traiter » attend un réglage : corrigez-le puis cliquez « Retraiter ».</p>
-        <div id="zone-message-rh-bot"></div>
-        <p class="champ-aide" id="rh-bot-etat" style="margin:0 0 12px;"></p>
-        <form id="rh-bot-reglages" class="cache" style="max-width:760px;margin-bottom:16px;">
-          <datalist id="rh-bot-questions-vues"></datalist>
-          <div class="champ-deux">
-            <div class="champ">
-              <label for="rh-bot-grade">Grade à l'arrivée</label>
-              <select id="rh-bot-grade"></select>
-              <p class="champ-aide">Grade de la fiche créée pour chaque candidature acceptée.</p>
-            </div>
-          </div>
-          <p class="champ-aide" style="margin:6px 0 10px;"><strong>Questions du formulaire de candidature</strong> — le libellé exact de chaque question, tel qu'il est réglé dans le bot (panneau « Recrutement »). Une question vide n'est pas lue.</p>
-          <div class="champ-deux">
-            <div class="champ">
-              <label for="rh-bot-q-identite">Prénom et nom (une seule question)</label>
-              <input type="text" id="rh-bot-q-identite" maxlength="200" list="rh-bot-questions-vues" placeholder="libellé exact de la question">
-              <p class="champ-aide">Ex. « Nom RP » : le premier mot devient le prénom, le reste le nom.</p>
-            </div>
-            <div class="champ">
-              <label for="rh-bot-q-id-employe">ID employé</label>
-              <input type="text" id="rh-bot-q-id-employe" maxlength="200" list="rh-bot-questions-vues" placeholder="libellé exact de la question">
-              <p class="champ-aide">Vide : ID provisoire PROV-B…</p>
-            </div>
-          </div>
-          <div class="champ-deux">
-            <div class="champ">
-              <label for="rh-bot-q-prenom">Prénom (question séparée)</label>
-              <input type="text" id="rh-bot-q-prenom" maxlength="200" list="rh-bot-questions-vues" placeholder="libellé exact de la question">
-              <p class="champ-aide">Seulement si le prénom et le nom sont deux questions.</p>
-            </div>
-            <div class="champ">
-              <label for="rh-bot-q-nom">Nom (question séparée)</label>
-              <input type="text" id="rh-bot-q-nom" maxlength="200" list="rh-bot-questions-vues" placeholder="libellé exact de la question">
-              <p class="champ-aide">À régler avec la question du prénom.</p>
-            </div>
-          </div>
-          <div class="champ-deux">
-            <div class="champ">
-              <label for="rh-bot-q-telephone">Téléphone</label>
-              <input type="text" id="rh-bot-q-telephone" maxlength="200" list="rh-bot-questions-vues" placeholder="libellé exact de la question">
-              <p class="champ-aide">Facultatif.</p>
-            </div>
-            <div class="champ">
-              <label for="rh-bot-q-rib">RIB</label>
-              <input type="text" id="rh-bot-q-rib" maxlength="200" list="rh-bot-questions-vues" placeholder="libellé exact de la question">
-              <p class="champ-aide">Facultatif.</p>
-            </div>
-          </div>
-          <button type="submit" class="btn btn-fantome btn-petit">Enregistrer les réglages</button>
-        </form>
+      <!-- Candidatures acceptées reçues du bot Discord « Roxwood Network Entreprise » (webhook recruitment.updated, reçu par
+           le socle sur /webhooks/bot), et leurs réglages. -->
+      <section class="rh-section cache" id="rh-bot" aria-labelledby="titre-recrutement">
+        <h2 id="titre-recrutement" class="rh-titre">Recrutement</h2>
+        <p class="comptes-aide">Une candidature acceptée dans Discord crée sa fiche ici, à partir des réponses du formulaire. Celles qui n’ont pas pu être lues attendent ci-dessous.</p>
+        <div id="zone-message-rh-bot" role="status"></div>
         <div id="rh-bot-contenu"></div>
-      </div>
 
+        <details class="rh-reglages cache" id="rh-bot-details">
+          <summary>Réglages de lecture des candidatures</summary>
+          <form id="rh-bot-reglages">
+            <datalist id="rh-bot-questions-vues"></datalist>
+            <ol class="rh-etapes">
+              <li>
+                <h3>Grade donné à l’arrivée</h3>
+                <div class="champ" style="max-width:340px;">
+                  <label for="rh-bot-grade" class="visuellement-cache">Grade à l’arrivée</label>
+                  <select id="rh-bot-grade"></select>
+                </div>
+              </li>
+              <li>
+                <h3>Questions du formulaire de candidature</h3>
+                <p class="comptes-aide">Le libellé exact de chaque question, tel que réglé dans le bot (panneau « Recrutement »). Les questions déjà reçues sont proposées en tapant. Une question vide n’est pas lue.</p>
+                <div class="champ-deux">
+                  <div class="champ">
+                    <label for="rh-bot-q-identite">Prénom et nom, en une question</label>
+                    <input type="text" id="rh-bot-q-identite" maxlength="200" list="rh-bot-questions-vues" placeholder="Ex. Nom RP">
+                    <p class="champ-aide">Le premier mot devient le prénom, le reste le nom.</p>
+                  </div>
+                  <div class="champ">
+                    <label for="rh-bot-q-id-employe">ID employé <small>facultatif</small></label>
+                    <input type="text" id="rh-bot-q-id-employe" maxlength="200" list="rh-bot-questions-vues">
+                    <p class="champ-aide">Vide : un ID provisoire PROV-B…, à remplacer ensuite.</p>
+                  </div>
+                </div>
+                <div class="champ-deux">
+                  <div class="champ">
+                    <label for="rh-bot-q-prenom">Ou prénom, en question séparée</label>
+                    <input type="text" id="rh-bot-q-prenom" maxlength="200" list="rh-bot-questions-vues">
+                  </div>
+                  <div class="champ">
+                    <label for="rh-bot-q-nom">et nom, en question séparée</label>
+                    <input type="text" id="rh-bot-q-nom" maxlength="200" list="rh-bot-questions-vues">
+                  </div>
+                </div>
+                <div class="champ-deux">
+                  <div class="champ">
+                    <label for="rh-bot-q-telephone">Téléphone <small>facultatif</small></label>
+                    <input type="text" id="rh-bot-q-telephone" maxlength="200" list="rh-bot-questions-vues">
+                  </div>
+                  <div class="champ">
+                    <label for="rh-bot-q-rib">RIB <small>facultatif</small></label>
+                    <input type="text" id="rh-bot-q-rib" maxlength="200" list="rh-bot-questions-vues">
+                  </div>
+                </div>
+              </li>
+            </ol>
+            <div class="rh-reglages-pied">
+              <p class="comptes-aide" id="rh-bot-etat"></p>
+              <button type="submit" class="btn btn-or">Enregistrer les réglages</button>
+            </div>
+          </form>
+        </details>
+      </section>
     </section>
   </main>
 
 <div class="modale-fond cache" id="modale-employe">
-  <div class="modale" style="max-width:640px;">
+  <div class="modale modale-fiche-rh" style="max-width:640px;" role="dialog" aria-modal="true" aria-labelledby="modale-employe-titre">
     <div class="modale-entete">
-      <h3 id="modale-employe-titre">Fiche employé</h3>
+      <h2 id="modale-employe-titre" class="modale-titre">Fiche employé</h2>
       <button type="button" id="fermer-modale-employe" aria-label="Fermer">✕</button>
     </div>
     <div id="zone-message-modale-employe"></div>
