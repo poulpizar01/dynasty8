@@ -129,8 +129,10 @@
           <p class="comptes-discret">Demande du ${dateHeure(c.creeLe)}</p>
           ${gerable(c) ? `<div class="comptes-demande-actions">
             <label class="comptes-demande-grade"><span>Grade</span>${choixGrade(c, false)}</label>
-            <button type="button" class="btn btn-or" data-action="valide">Valider</button>
-            <button type="button" class="btn btn-fantome" data-action="refuse">Refuser</button>
+            <div class="comptes-demande-boutons">
+              <button type="button" class="btn btn-fantome" data-action="refuse">Refuser</button>
+              <button type="button" class="btn btn-or" data-action="valide">Valider</button>
+            </div>
           </div>` : '<p class="comptes-discret">Son grade dépasse le vôtre : un responsable plus haut gradé doit valider.</p>'}
         </article>`).join('');
 

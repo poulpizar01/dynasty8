@@ -754,3 +754,7 @@ main.admin-contenu:focus { outline: none; }
 .remu-ligne-libelle { white-space: nowrap; }
 .remu-grade .remu-montant { width: 140px; }
 .remu-ligne-aide { display: block; font-size: 0.75rem; color: var(--text-faint); }
+/* demande à valider : le grade sur toute la largeur, puis Refuser et Valider côte à côte, de même largeur */
+.comptes-demande-actions { flex-direction: column; align-items: stretch; }
+.comptes-demande-grade { flex: none; }
+.comptes-demande-boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
