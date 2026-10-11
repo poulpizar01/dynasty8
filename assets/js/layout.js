@@ -521,6 +521,80 @@ function nettoyerSelectsPortee(portee) {
 }
 
 // =============================================================================
+// Dates et heures à la française. Les champs natifs <input type="date|time">
+// suivent la langue du navigateur, pas celle de la page : un Chrome en anglais
+// affiche mm/dd/yyyy et « 02:00 PM ». Ces deux aides en font des champs texte
+// jj/mm/aaaa et 24 h, mais .value garde le format que lisent les scripts et le
+// serveur (« 2026-10-06 », « 14:30 ») : aucun autre code n'a à changer.
+// Saisie invalide → .value vaut "" (au script de la signaler).
+// =============================================================================
+const VALEUR_INPUT = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+
+function champDateFr(input) {
+  if (!input || input.dataset.fr) return;
+  input.dataset.fr = "1";
+  input.type = "text";
+  Object.assign(input, { inputMode: "numeric", placeholder: "jj/mm/aaaa", maxLength: 10, autocomplete: "off" });
+  input.pattern = "\\d{2}/\\d{2}/\\d{4}";
+  input.title = "Date au format jj/mm/aaaa";
+  const versIso = (t) => {
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(t).trim());
+    if (!m) return "";
+    const d = new Date(+m[3], +m[2] - 1, +m[1]);
+    if (d.getMonth() !== +m[2] - 1 || d.getDate() !== +m[1]) return "";   // 31/02 refusé
+    return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  };
+  const versFr = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ""); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; };
+  Object.defineProperty(input, "value", {
+    configurable: true,
+    get() { return versIso(VALEUR_INPUT.get.call(this)); },
+    set(v) { VALEUR_INPUT.set.call(this, versFr(v)); },
+  });
+  // les barres s'ajoutent d'elles-mêmes : « 06102026 » devient « 06/10/2026 »
+  input.addEventListener("input", (ev) => {
+    if (ev.inputType && !ev.inputType.startsWith("insert")) return;   // effacement : on laisse faire
+    const chiffres = VALEUR_INPUT.get.call(input).replace(/\D/g, "").slice(0, 8);
+    VALEUR_INPUT.set.call(input, [chiffres.slice(0, 2), chiffres.slice(2, 4), chiffres.slice(4)].filter(Boolean).join("/"));
+  });
+}
+
+function champHeureFr(input, pasMinutes = 15) {
+  if (!input || input.dataset.fr) return;
+  input.dataset.fr = "1";
+  input.type = "text";
+  Object.assign(input, { inputMode: "numeric", placeholder: "hh:mm", maxLength: 5, autocomplete: "off" });
+  input.pattern = "\\d{2}:\\d{2}";
+  input.title = "Heure au format 24 h, par exemple 14:30";
+  const normaliser = (t) => {
+    const m = /^(\d{1,2})[:hH]?(\d{2})?$/.exec(String(t).trim());
+    if (!m || +m[1] > 23 || +(m[2] || 0) > 59) return "";
+    return `${m[1].padStart(2, "0")}:${m[2] || "00"}`;
+  };
+  Object.defineProperty(input, "value", {
+    configurable: true,
+    get() { return normaliser(VALEUR_INPUT.get.call(this)); },
+    set(v) { VALEUR_INPUT.set.call(this, normaliser(v) || ""); },
+  });
+  // « 1430 » devient « 14:30 » ; en quittant le champ, « 9 » devient « 09:00 »
+  input.addEventListener("input", (ev) => {
+    if (ev.inputType && !ev.inputType.startsWith("insert")) return;
+    const chiffres = VALEUR_INPUT.get.call(input).replace(/\D/g, "").slice(0, 4);
+    VALEUR_INPUT.set.call(input, chiffres.length > 2 ? `${chiffres.slice(0, 2)}:${chiffres.slice(2)}` : chiffres);
+  });
+  input.addEventListener("blur", () => { const n = normaliser(VALEUR_INPUT.get.call(input)); if (n) VALEUR_INPUT.set.call(input, n); });
+  // flèches haut / bas : un pas de 15 minutes, comme dans les agendas courants
+  input.addEventListener("keydown", (ev) => {
+    if (ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
+    ev.preventDefault();
+    const [h, m] = (input.value || "09:00").split(":").map(Number);
+    let total = h * 60 + m + (ev.key === "ArrowUp" ? pasMinutes : -pasMinutes);
+    total = ((Math.round(total / pasMinutes) * pasMinutes) % 1440 + 1440) % 1440;
+    input.value = `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+// =============================================================================
 // Cartes « hub » en 3D + poussière d'or de fond (toutes les pages publiques).
 // - habillerCartesHub() : bascule vers la souris, reflet qui suit le curseur,
 //   apparition en cascade, et remplacement des emojis par des icônes dorées au

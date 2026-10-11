@@ -13,7 +13,7 @@ img.admin-avatar { object-fit: cover; padding: 0; }
 /* Écran large : seul le menu défile, le logo et le bas de la barre (compte, déconnexion) restent à l'écran quelle que
    soit la hauteur de la fenêtre. */
 .admin-barre-laterale > * { flex-shrink: 0; }
-.admin-barre-laterale > .admin-nav { flex: 0 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.admin-barre-laterale > .admin-nav { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
 .admin-barre-laterale .admin-bas { padding-top: 14px; gap: 10px; }
 .admin-barre-haut, .admin-voile { display: none; }
 
@@ -115,14 +115,6 @@ main.admin-contenu:focus { outline: none; }
 .admin-en-service-nom { font-size: 0.8rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .admin-en-service-depuis, .admin-en-service-vide { font-size: 0.72rem; color: var(--text-faint); }
 
-/* ---- agenda : couleur selon « Visible par » (agenda.js) ---- */
-.agenda-evenement.agenda-vis-patrons, .agenda-mois-evenement.agenda-vis-patrons { border-left: 3px solid #e8534a; }
-.agenda-evenement.agenda-vis-direction, .agenda-mois-evenement.agenda-vis-direction { border-left: 3px solid #8a7cf0; }
-.agenda-evenement.agenda-vis-tous, .agenda-mois-evenement.agenda-vis-tous { border-left: 3px solid #3ccf7a; }
-.agenda-legende { display: inline-block; padding: 0 6px; margin: 0 2px; border-left: 3px solid var(--d8-gold-400); border-radius: 3px; background: rgba(201, 165, 92, 0.14); }
-.agenda-legende-patrons { border-left-color: #e8534a; }
-.agenda-legende-direction { border-left-color: #8a7cf0; }
-.agenda-legende-tous { border-left-color: #3ccf7a; }
 
 /* titre de la page : un <h1> par page (lecteurs d'écran), à la taille des anciens titres de section */
 .admin-contenu h1 { font-size: clamp(1.9rem, 3vw, 2.75rem); line-height: 1.15; }
@@ -166,17 +158,12 @@ main.admin-contenu:focus { outline: none; }
 .page-agents .admin-aide a { display: inline-block; padding: 4px 0; }
 .page-agents .puce { font-size: 0.75rem; }
 .page-agents .champ label { font-size: 12px; }
-.page-agents .agenda-entete-jour-date { font-size: 0.75rem; }
 
 /* Ventes & statistiques : « Toute l'agence » et « Semaine … » côte à côte quand la place le permet */
 .stats-groupes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 8px 24px; margin-bottom: 8px; }
 .stats-groupe-titre { margin: 0 0 8px; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
 .admin-stats.stats-paire { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-/* agenda : un événement court (30 min) met l'heure et le titre sur une ligne, sinon le titre disparaissait */
-.agenda-evenement--court { flex-direction: row; align-items: center; gap: 6px; padding-top: 0; padding-bottom: 0; }
-.agenda-evenement--court .agenda-evenement-heure { flex-shrink: 0; }
-.agenda-evenement--court .agenda-evenement-titre { min-width: 0; }
 
 /* accueil : rendez-vous du jour et membres en service, côte à côte quand la place le permet */
 .accueil-panneaux { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; margin: 6px 0 22px; }
@@ -191,7 +178,6 @@ main.admin-contenu:focus { outline: none; }
 .accueil-texte { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
 .accueil-liste .accueil-vide { display: block; color: var(--text-faint); font-size: 0.9rem; }
 .accueil-vide a { color: var(--gold-strong); }
-.page-agents .agenda-heure-label { font-size: 0.75rem; }
 
 /* cartes de chiffres : autant par rangée que la place le permet (quatre fixes devenaient illisibles vers 1 024 px) */
 .page-agents .admin-stats:not([style*="grid-template-columns"]) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }

@@ -268,3 +268,7 @@ $rh('rh-bot-reglages').addEventListener('submit', async e => {
 });
 
 gestion.coque('rh').then(chargerRh);
+
+// dates à la française (le champ natif suivait la langue du navigateur : mm/jj/aaaa en anglais)
+champDateFr($rh('employe-arrivee'));
+champDateFr($rh('employe-depart'));

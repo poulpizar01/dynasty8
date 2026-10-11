@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="/assets/css/style.css">
   <link rel="stylesheet" href="/gestion/gestion.css">
+  <link rel="stylesheet" href="/gestion/agenda.css">
   <script src="/socle/socle.js"></script>
   <script src="/assets/js/layout.js"></script>
   <script src="/gestion/gestion.js"></script>
@@ -19,61 +20,71 @@
        règles dans entreprise/agenda-regles.ts). -->
   <main class="admin-contenu admin-contenu--pleine">
     <section id="panneau-agenda" class="panneau-agenda">
-      <div class="agenda-entete">
-        <div>
-          <h1 style="margin-bottom:2px;">Mon agenda</h1>
-          <p class="agenda-sous-titre"><span id="agenda-plage-dates"></span></p>
+      <header class="agenda-entete">
+        <div class="agenda-titre">
+          <h1>Agenda</h1>
+          <p class="agenda-periode" id="agenda-plage-dates" aria-live="polite"></p>
         </div>
-        <div class="agenda-entete-actions">
-          <div class="agenda-vue-toggle" role="group" aria-label="Choisir la vue">
-            <button type="button" class="agenda-vue-bouton" data-vue="mois">Mois</button>
-            <button type="button" class="agenda-vue-bouton actif" data-vue="semaine">Semaine</button>
-            <button type="button" class="agenda-vue-bouton" data-vue="jour">Jour</button>
+        <div class="agenda-commandes">
+          <!-- masqué sur téléphone : la vue liste (bandeau de la semaine + rendez-vous du jour) s’impose (agenda.js) -->
+          <div class="agenda-vues" role="group" aria-label="Affichage">
+            <button type="button" class="agenda-vue-bouton" data-vue="jour" aria-pressed="false">Jour</button>
+            <button type="button" class="agenda-vue-bouton actif" data-vue="semaine" aria-pressed="true">Semaine</button>
+            <button type="button" class="agenda-vue-bouton" data-vue="mois" aria-pressed="false">Mois</button>
           </div>
-          <button type="button" class="btn btn-fantome btn-petit" id="agenda-semaine-precedente" aria-label="Période précédente">‹</button>
-          <button type="button" class="btn btn-fantome btn-petit" id="agenda-aujourdhui">Aujourd'hui</button>
-          <button type="button" class="btn btn-fantome btn-petit" id="agenda-semaine-suivante" aria-label="Période suivante">›</button>
-          <button type="button" class="btn btn-or btn-petit" id="agenda-nouvel-evenement">+ Événement</button>
+          <div class="agenda-navigation">
+            <button type="button" class="agenda-fleche agenda-fleche--avant" id="agenda-semaine-precedente" aria-label="Période précédente"><svg class="ico" aria-hidden="true"><use href="#ico-chevron"></use></svg></button>
+            <button type="button" class="agenda-aujourdhui-bouton" id="agenda-aujourdhui">Aujourd’hui</button>
+            <button type="button" class="agenda-fleche agenda-fleche--apres" id="agenda-semaine-suivante" aria-label="Période suivante"><svg class="ico" aria-hidden="true"><use href="#ico-chevron"></use></svg></button>
+          </div>
+          <button type="button" class="btn btn-or agenda-ajouter" id="agenda-nouvel-evenement" aria-label="Nouvel événement"><svg class="ico" aria-hidden="true"><use href="#ico-plus"></use></svg><span>Nouvel événement</span></button>
         </div>
-      </div>
+      </header>
+      <!-- la couleur d’un événement dit qui le voit -->
+      <p class="agenda-legende">
+        <span class="agenda-legende-titre">Visible par</span>
+        <span class="agenda-pastille agenda-vis-perso">Perso</span>
+        <span class="agenda-pastille agenda-vis-patrons">Patrons</span>
+        <span class="agenda-pastille agenda-vis-direction">Direction</span>
+        <span class="agenda-pastille agenda-vis-tous">Tous</span>
+      </p>
       <div id="zone-message-agenda"></div>
       <div class="agenda-grille-conteneur" id="agenda-grille-conteneur">
         <div class="agenda-grille" id="agenda-grille"></div>
       </div>
-      <p class="agenda-note">Cliquez sur une case pour ajouter un événement, sur un événement pour le voir ou le modifier. <span class="agenda-legende agenda-legende-perso">Perso</span> vous seul (et la personne concernée) · <span class="agenda-legende agenda-legende-patrons">Patrons</span> <span class="agenda-legende agenda-legende-direction">Direction</span> <span class="agenda-legende agenda-legende-tous">Tous</span> selon vos rôles Discord.</p>
     </section>
   </main>
 
 <div class="modale-fond cache" id="modale-evenement">
-  <div class="modale" style="max-width:480px;">
+  <div class="modale modale-evenement" role="dialog" aria-modal="true" aria-labelledby="titre-modale-evenement">
     <div class="modale-entete">
-      <h3 id="titre-modale-evenement">Nouvel événement</h3>
+      <h2 id="titre-modale-evenement">Nouvel événement</h2>
       <button id="fermer-modale-evenement" type="button" aria-label="Fermer">✕</button>
     </div>
-    <div id="zone-message-modale-evenement"></div>
-    <form id="formulaire-evenement">
+    <form id="formulaire-evenement" novalidate>
       <input type="hidden" id="evenement-id">
       <div class="champ">
-        <label for="evenement-titre">Titre <span class="champ-obligatoire">*</span></label>
-        <input type="text" id="evenement-titre" maxlength="80" placeholder="Ex : Visite Eclipse Tower">
-        <p class="champ-erreur cache" id="erreur-evenement-titre">Le titre est obligatoire.</p>
+        <label for="evenement-titre">Titre</label>
+        <input type="text" id="evenement-titre" maxlength="80" placeholder="Ex. Visite, Eclipse Tower">
+        <p class="champ-erreur cache" id="erreur-evenement-titre">Donnez un titre à l’événement.</p>
       </div>
-      <div class="champ">
-        <label for="evenement-jour">Date <span class="champ-obligatoire">*</span></label>
-        <input type="date" id="evenement-jour">
-      </div>
-      <div class="champ-deux">
+      <div class="evenement-quand">
         <div class="champ">
-          <label for="evenement-heure-debut">Heure de début <span class="champ-obligatoire">*</span></label>
+          <label for="evenement-jour">Date</label>
+          <input type="date" id="evenement-jour">
+          <p class="champ-erreur cache" id="erreur-evenement-jour">Date au format jj/mm/aaaa.</p>
+        </div>
+        <div class="champ">
+          <label for="evenement-heure-debut">Début</label>
           <input type="time" id="evenement-heure-debut" step="300">
         </div>
         <div class="champ">
-          <label for="evenement-heure-fin">Heure de fin <span class="champ-obligatoire">*</span></label>
+          <label for="evenement-heure-fin">Fin</label>
           <input type="time" id="evenement-heure-fin" step="300">
         </div>
       </div>
-      <p class="champ-erreur cache" id="erreur-evenement-heures">L'heure de fin doit être après l'heure de début.</p>
-      <!-- seules les visibilités que le compte peut créer sont proposées ; « Pour » : la personne d'un « Perso »
+      <p class="champ-erreur cache" id="erreur-evenement-heures">Heures au format 24 h (14:30) ; la fin doit être après le début.</p>
+      <!-- seules les visibilités que le compte peut créer sont proposées ; « Pour » : la personne d’un « Perso »
            (soi-même, ou une fiche RH : envoi dans son ticket Discord) -->
       <div class="champ">
         <label for="evenement-visibilite">Visible par</label>
@@ -82,17 +93,18 @@
       <div class="champ cache" id="champ-evenement-pour">
         <label for="evenement-pour">Pour</label>
         <select id="evenement-pour"></select>
-        <p class="champ-aide">Pour quelqu'un d'autre : l'événement est posté dans le ticket Discord que cette personne a ouvert, et apparaît aussi dans son agenda.</p>
+        <p class="champ-aide">Pour quelqu’un d’autre : l’événement est posté dans son ticket Discord et apparaît dans son agenda.</p>
       </div>
       <div class="champ">
-        <label for="evenement-notes">Descriptif (optionnel)</label>
-        <textarea id="evenement-notes" maxlength="500" placeholder="Détails, lieu de rendez-vous, contact..."></textarea>
+        <label for="evenement-notes">Notes <small>facultatif</small></label>
+        <textarea id="evenement-notes" maxlength="500" rows="3" placeholder="Lieu de rendez-vous, contact, détails…"></textarea>
       </div>
-      <p class="champ-aide cache" id="evenement-origine" style="margin:6px 0 0;"></p>
-      <div style="display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;">
-        <button type="submit" class="btn btn-or" style="flex:1;" id="bouton-enregistrer-evenement">Enregistrer</button>
+      <p class="champ-aide cache" id="evenement-origine"></p>
+      <div id="zone-message-modale-evenement" role="status"></div>
+      <div class="evenement-pied">
+        <button type="button" class="btn btn-fantome evenement-supprimer cache" id="bouton-supprimer-evenement">Supprimer</button>
         <button type="button" class="btn btn-fantome" id="bouton-annuler-evenement">Annuler</button>
-        <button type="button" class="btn btn-danger cache" id="bouton-supprimer-evenement">Supprimer</button>
+        <button type="submit" class="btn btn-or" id="bouton-enregistrer-evenement">Enregistrer</button>
       </div>
     </form>
   </div>
