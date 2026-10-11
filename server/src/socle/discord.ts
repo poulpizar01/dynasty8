@@ -2,6 +2,7 @@
 // la lecture des erreurs. Le socle s'en sert pour les rôles (roles-discord.ts) ; l'entreprise pour ce qu'elle fait
 // avec le bot (lire un salon, poster dans un ticket…), en documentant les droits que cela demande au bot.
 import { config } from './config.js';
+import { appelSimule } from './discord-simulation.js';
 
 const API = 'https://discord.com/api/v10';
 export const ID_DISCORD = /^\d{15,22}$/;
@@ -27,6 +28,7 @@ export const botDiscordConfigure = (): boolean => !!config.discord.botToken;
 export async function appelBot(methode: 'GET' | 'POST' | 'PATCH' | 'DELETE', chemin: string, corps?: unknown): Promise<unknown> {
   if (!config.discord.botToken) throw new ErreurDiscord(401, 'Bot Discord non configuré (DISCORD_BOT_TOKEN absent).');
   if (!chemin.startsWith('/') || chemin.includes('..')) throw new Error(`chemin Discord invalide : ${chemin}`);
+  if (config.discord.simulation) return appelSimule(methode, chemin, corps);
   let r: Response;
   try {
     r = await fetch(API + chemin, {

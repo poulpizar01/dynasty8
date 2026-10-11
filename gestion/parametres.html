@@ -83,6 +83,9 @@
         </section>`).join('')
         : '<p class="intro">Aucun réglage déclaré pour ce site (entreprise.parametres).</p>';
       $('enregistrer').hidden = !groupes.length;
+      // faux bot du développement : les listes sont fictives, à ne pas confondre avec le vrai serveur
+      if (discord.simulation && groupes.some(g => g.onglet === ongletCourant && g.reglages.some(r => r.discord)))
+        $('panneaux').insertAdjacentHTML('afterbegin', '<p class="intro"><strong>Bot Discord simulé (développement)</strong> : rôles, salons et catégories sont fictifs, rien n’est envoyé à Discord.</p>');
       marquer(false);
     }
     function marquer(oui) { modifie = oui; $('modifie').hidden = !oui; }
