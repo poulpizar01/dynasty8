@@ -31,27 +31,10 @@
     <div class="section-entete" style="text-align:left;margin:0 0 24px;">
       <span class="etiquette">Guide officiel</span>
       <h2 id="coherence-guide-titre">Guide complet</h2>
-      <p style="margin:0;" id="coherence-guide-souslignee">Parcourez le règlement complet, diapositive par diapositive.</p>
+      <p style="margin:0;" id="coherence-guide-souslignee">Le règlement officiel de la zone, tenu à jour par la Direction de l’agence.</p>
     </div>
-    <div class="guide-astuce">
-      💡&nbsp;<span>Conseil : utilisez les flèches de votre clavier (← →) ou les boutons ci-dessous pour parcourir les diapositives.</span>
-    </div>
-    <!-- Diaporama construit par monterDiaporamaCoherence() (coherences-guides.js). -->
-    <div id="guide-diaporama-zone"></div>
-    <div class="guide-diaporama-actions">
-      <a id="guide-lien-gslide" target="_blank" rel="noopener" class="btn btn-fantome btn-petit cache">Ouvrir sur Google Slides ↗</a>
-    </div>
-  </div>
-</section>
-
-<section class="section serre alterne">
-  <div class="conteneur" style="max-width:980px;">
-    <div class="section-entete" style="text-align:left;margin:0 0 32px;">
-      <span class="etiquette">En résumé</span>
-      <h2>Ce que cette cohérence justifie</h2>
-    </div>
-    <div id="coherence-sections"></div>
-    <p class="champ-aide" style="margin-top:24px;">Ce résumé écrit reprend le règlement officiel ci-dessus. Pour toute question sur un cas précis, un agent Dynasty 8 peut vous répondre directement sur le Discord du serveur.</p>
+    <!-- présentation Google Slides de la zone, chargée au clic (monterPresentationCoherence, coherences-guides.js) -->
+    <div id="guide-presentation"></div>
   </div>
 </section>
 
@@ -90,18 +73,13 @@
   document.getElementById("coherence-titre").textContent = `Cohérence ${zone}`;
   document.getElementById("coherence-intro").textContent = guide.intro;
   document.getElementById("coherence-guide-titre").textContent = `Guide complet — ${zone}`;
-  document.getElementById("coherence-guide-souslignee").textContent = `Guide complet pour comprendre les règles de cohérence ${zone === "Habitation" ? "des habitations" : "de " + zone} sur le serveur.`;
   document.getElementById("coherence-catalogue-titre").textContent = `Biens rattachés à la cohérence ${zone}`;
   document.title = `Cohérence ${zone} — Dynasty 8`;
-  document.getElementById("coherence-sections").innerHTML = rendreResumeCoherence(zone);
 
   chargerBiens({ coherence: zone, cible: "grille-biens", videMessage: `Aucun bien rattaché à la cohérence ${zone} pour le moment.` });
 
-  monterDiaporamaCoherence(document.getElementById("guide-diaporama-zone"), zone);
-  // lien de la présentation : réglé dans Paramètres, rempli par layout.js (masqué s'il est vide)
-  const lienSlides = document.getElementById("guide-lien-gslide");
-  lienSlides.dataset.lien = guide.lienSlides;
-  appliquerLiens(lienSlides.parentElement);
+  monterPresentationCoherence(document.getElementById("guide-presentation"), zone,
+    "Le guide de cette cohérence n’est pas encore en ligne. Nos agents peuvent vous renseigner sur le Discord de l’agence.");
 </script>
 </body>
 </html>

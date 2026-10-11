@@ -1652,35 +1652,24 @@ section.section.serre {
 .guide-liste li::before {
   content: "▸"; position: absolute; left: 0; top: 0; color: var(--gold);
 }
-.guide-biens-grille {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px;
-}
-.guide-bien-carte {
-  padding: 18px 20px; border: 1px solid var(--border); border-radius: var(--radius-sm);
-  background: var(--bg-card); transition: border-color 0.2s;
-}
-.guide-bien-carte:hover { border-color: var(--gold); }
-.guide-bien-carte strong { display: block; color: var(--text); font-size: 0.98rem; margin-bottom: 10px; }
-.guide-bien-prix { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 8px; }
-.guide-bien-prix span { font-size: 0.85rem; color: var(--gold-strong); }
-.guide-bien-prix span em { font-style: normal; color: var(--text-faint); margin-right: 4px; }
-.guide-bien-note { font-size: 0.82rem; color: var(--text-faint); margin: 0; line-height: 1.5; }
-.guide-interieur-options { font-size: 0.88rem; color: var(--text-muted); margin: 0 0 8px; }
+/* ---------- pages de cohérence : présentation Google Slides (coherences-guides.js) ---------- */
 
-/* ---------- pages de cohérence : diaporama (visualiseur de slides) ---------- */
-
-.guide-astuce {
-  display: flex; align-items: center; gap: 10px; padding: 14px 18px; margin-bottom: 22px;
-  background: rgba(207, 159, 86, 0.1); border: 1px solid rgba(207, 159, 86, 0.35);
-  border-radius: var(--radius-sm); color: var(--text-muted); font-size: 0.92rem;
+.guide-presentation-cadre {
+  position: relative; width: 100%; padding-bottom: calc(56.25% + 29px); /* 16:9 + barre du lecteur de Google */
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
 }
-.guide-diaporama {
-  position: relative; width: 100%; aspect-ratio: 16 / 9; background: var(--bg-card);
-  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
-  display: flex; align-items: center; justify-content: center; outline: none;
+.guide-presentation-cadre iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+.guide-presentation-attente {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 20px; text-align: center;
 }
-.guide-diaporama:focus-visible { border-color: var(--gold); }
-.guide-diaporama img { width: 100%; height: 100%; object-fit: contain; background: #fff; display: block; }
+.guide-presentation-titre { margin: 0; font-size: 1.05rem; color: var(--text); }
+.guide-presentation-note { margin: 0; font-size: 0.82rem; color: var(--text-muted); max-width: 420px; }
+.guide-presentation--vide {
+  padding: 28px 24px; border: 1px dashed var(--border); border-radius: var(--radius); color: var(--text-muted); text-align: center;
+}
+.guide-presentation--vide p { margin: 0; }
+.guide-presentation-actions { display: flex; justify-content: center; margin: 18px 0 8px; }
 
 /* Bloc "WebMap" intégré à la page (accueil, cohérence, cohérences) : la
    carte externe s'affiche directement ici au clic, sans nouvel onglet et
@@ -1691,27 +1680,6 @@ section.section.serre {
   border-radius: var(--radius); overflow: hidden;
 }
 .webmap-boite iframe { display: block; width: 100%; height: min(75vh, 720px); border: 0; }
-.guide-diapo-nav {
-  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
-  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border-light);
-  background: rgba(10, 15, 34, 0.65); color: var(--text); font-size: 1.5rem; line-height: 1;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
-}
-.guide-diapo-nav:hover { background: var(--gold); border-color: var(--gold); color: var(--accent-contrast); }
-.guide-diapo-prev { left: 14px; }
-.guide-diapo-next { right: 14px; }
-.guide-diapo-compteur {
-  position: absolute; bottom: 12px; right: 14px; z-index: 2; padding: 4px 12px;
-  border-radius: 999px; background: rgba(10, 15, 34, 0.7); color: var(--text-muted); font-size: 0.78rem;
-}
-.guide-diaporama-actions { display: flex; justify-content: center; margin: 18px 0 8px; }
-@media (max-width: 640px) {
-  .guide-diapo-nav { width: 36px; height: 36px; font-size: 1.2rem; }
-  .guide-diapo-prev { left: 8px; }
-  .guide-diapo-next { right: 8px; }
-}
-
 /* ---------- page équipe (/equipe.html) ---------- */
 
 /* Bandeau des 4 points forts, sous le hero : une seule barre arrondie

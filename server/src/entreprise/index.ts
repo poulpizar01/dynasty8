@@ -46,7 +46,9 @@ export const entreprise: Entreprise = {
   // WebMap : relayée sur son sous-domaine, servi à part du site (carte.ts) ; la vitrine l'affiche dans une iframe (https
   // seulement : en dev, l'iframe est refusée, la carte s'ouvre en pleine page)
   ...(carte && { hotes: { [carte.hote]: relaisCarte } }),
-  ...(carte?.url.startsWith('https://') && { csp: { frame: [carte.url] } }),
+  // cadres permis : la carte, et le lecteur Google Slides des guides de cohérence (coherences-guides.js : chargé au clic
+  // seulement ; seule source du règlement de chaque zone, tenu par la Direction ; annoncé dans confidentialite.html)
+  csp: { frame: ['https://docs.google.com', ...(carte?.url.startsWith('https://') ? [carte.url] : [])] },
 
   // événements du bot Discord entreprise (docs/webhooks.md) : candidatures acceptées → fiches RH
   webhooks: {
