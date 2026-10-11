@@ -313,7 +313,7 @@ const CHAMPS_REGLAGES_BOT = {
 // Correspondance « information → question du formulaire » : un menu des questions déjà reçues plutôt qu'un libellé à
 // recopier (une faute de frappe envoyait la candidature en « à traiter ») ; « Autre libellé » ouvre la saisie libre,
 // pour une question pas encore reçue. Le champ texte (caché sauf pour « Autre ») reste ce que lit l'enregistrement.
-const AUTRE_LIBELLE = '\u0000autre';
+const AUTRE_LIBELLE = '__autre-libelle__';   // valeur réservée (un caractère nul était remplacé par le navigateur)
 function brancherQuestion(input, questions) {
   let choix = $rh(`${input.id}-choix`);
   if (!choix) {
