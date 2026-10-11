@@ -95,7 +95,7 @@ function cablerRemunerationGrades() {
 async function modifierGradeRemuneration(grade, patch) {
   try {
     await socle.api(`/api/stats/remuneration/grades/${encodeURIComponent(grade)}`, { method: "PATCH", body: patch });
-    gestion.message("zone-message-parametres", "Enregistré ✓", "succes");
+    gestion.notifier("Rémunération enregistrée ✓");
   } catch (e) {
     gestion.message("zone-message-parametres", "Impossible d'enregistrer : " + e.message);
     chargerRemuneration();
@@ -128,7 +128,7 @@ function rendreBaremesPrimes(type, paliers) {
 async function modifierPalierPrime(id, patch) {
   try {
     await socle.api(`/api/stats/baremes/${id}`, { method: "PATCH", body: patch });
-    gestion.message("zone-message-parametres", "Enregistré ✓", "succes");
+    gestion.notifier("Rémunération enregistrée ✓");
   } catch (e) {
     gestion.message("zone-message-parametres", "Impossible d'enregistrer : " + e.message);
   } finally {
@@ -203,9 +203,21 @@ document.getElementById("select-semaine-dot").addEventListener("change", () => {
   chargerDotSalaries();
 });
 
-function ligneResumeDot(libelle, valeur, gras) {
-  return `<tr><td>${libelle}</td><td style="text-align:right;">${gras ? `<strong>${valeur}</strong>` : valeur}</td></tr>`;
+// Résultat d'une copie : notification en bas de l'écran (la zone de message en haut de l'onglet était hors de vue quand
+// on copiait en bas) et le bouton qui affiche « Copié ✓ » deux secondes.
+function signalerCopie(bouton, reussie, texte) {
+  if (!reussie) { gestion.notifier("Copie impossible : sélectionnez le tableau à la main puis Ctrl+C.", "erreur"); return; }
+  gestion.notifier(texte);
+  if (!bouton || bouton.dataset.texteInitial) return;
+  bouton.dataset.texteInitial = bouton.innerHTML;
+  bouton.innerHTML = `${gestion.ico("copy")} Copié ✓`;
+  bouton.classList.add("confirme");
+  setTimeout(() => { bouton.innerHTML = bouton.dataset.texteInitial; delete bouton.dataset.texteInitial; bouton.classList.remove("confirme"); }, 2000);
 }
+
+// Une carte de chiffre clé : libellé, montant, précision ; « accent » pour celui qui compte le plus.
+const carteChiffre = (libelle, valeur, precision, accent) => `<div class="compta-chiffre${accent ? " accent" : ""}">
+  <span class="compta-chiffre-libelle">${libelle}</span><strong>${valeur}</strong>${precision ? `<small>${precision}</small>` : ""}</div>`;
 
 async function chargerDotResume() {
   gestion.message("zone-message-dot", "");
@@ -217,20 +229,25 @@ async function chargerDotResume() {
     // Le CA Brut reflète toujours le dernier relevé Tablettes importé, quel
     // qu'il soit — pas d'avertissement sur son contenu, la Direction gère
     // elle-même ce qu'elle importe.
-    document.getElementById("corps-table-dot-resume").innerHTML = [
-      ligneResumeDot("CA Brut" + (r.caBrutTrouve ? "" : " <span class=\"champ-aide\">(aucun relevé Tablettes importé)</span>"), val(r.caBrut)),
-      ligneResumeDot("Dépense déductible", val(r.depenseDeductible)),
-      ligneResumeDot("Bénéfice imposable", val(r.beneficeImposable)),
-      ligneResumeDot("Taux d'imposition", r.tauxImposition == null ? "—" : Math.round(r.tauxImposition * 100) + " %"),
-      ligneResumeDot("Montant des impôts", val(r.montantImpots)),
-      ligneResumeDot("Bénéfice après impôts", val(r.beneficeApresImpots), true),
-      ligneResumeDot("Montant total des salaires (fixe + paliers)" + (semaine ? "" : " <span class=\"champ-aide\">(choisissez une semaine)</span>"), val(r.montantTotalPrimes)),
-      ligneResumeDot("Bénéfice après salaires", val(r.beneficeApresPrimes)),
-      ligneResumeDot("Retraits", val(r.retraits)),
-      ligneResumeDot("Bénéfice net", val(r.beneficeNet), true),
+    const taux = r.tauxImposition == null ? "" : `${Math.round(r.tauxImposition * 100)} %`;
+    document.getElementById("dot-chiffres").innerHTML = [
+      carteChiffre("Impôts à déclarer", val(r.montantImpots), taux ? `taux de la tranche : ${taux}` : "aucun barème pour ce bénéfice"),
+      carteChiffre("Bénéfice net", val(r.beneficeNet), "après impôts et retraits", true),
+      carteChiffre("Salaires de la semaine", val(r.montantTotalPrimes), r.beneficeApresPrimes == null ? "choisissez une semaine avec des ventes" : `reste ${val(r.beneficeApresPrimes)} après impôts et salaires`),
+    ].join("");
+    // le calcul tel que le fait le serveur : CA − dépenses = imposable ; − impôts ; − retraits = net (les salaires sont à part)
+    const etape = (signe, libelle, valeur, classe = "") => `<li class="${classe}"><span class="dot-signe" aria-hidden="true">${signe}</span><span>${libelle}</span><strong>${valeur}</strong></li>`;
+    document.getElementById("dot-calcul").innerHTML = [
+      etape("", "CA brut" + (r.caBrutTrouve ? " <small>(total du relevé Tablettes)</small>" : " <small>(aucun relevé importé)</small>"), val(r.caBrut)),
+      etape("−", "Dépenses déductibles", val(r.depenseDeductible)),
+      etape("=", "Bénéfice imposable", val(r.beneficeImposable), "sous-total"),
+      etape("−", `Impôts${taux ? ` (${taux})` : ""}`, val(r.montantImpots)),
+      etape("=", "Bénéfice après impôts", val(r.beneficeApresImpots), "sous-total"),
+      etape("−", "Retraits", val(r.retraits)),
+      etape("=", "Bénéfice net", val(r.beneficeNet), "total"),
     ].join("");
     document.getElementById("dot-plafonds").innerHTML = r.plafonds
-      ? `Plafonds de la tranche : salaire max. ${formaterArgentStats(r.plafonds.salaireMaxEmploye)} (employé) / ${formaterArgentStats(r.plafonds.salaireMaxPatron)} (patron) — prime max. ${formaterArgentStats(r.plafonds.primeMaxEmploye)} (employé) / ${formaterArgentStats(r.plafonds.primeMaxPatron)} (patron).`
+      ? `Plafonds de cette tranche : salaire ${formaterArgentStats(r.plafonds.salaireMaxEmploye)} (employé), ${formaterArgentStats(r.plafonds.salaireMaxPatron)} (patron) ; prime ${formaterArgentStats(r.plafonds.primeMaxEmploye)} (employé), ${formaterArgentStats(r.plafonds.primeMaxPatron)} (patron).`
       : "";
   } catch (e) {
     gestion.message("zone-message-dot", "Impossible de charger le résumé DOT : " + e.message);
@@ -255,6 +272,9 @@ async function chargerDotEcritures() {
     };
     rendre("depense", "corps-table-dot-depenses");
     rendre("retrait", "corps-table-dot-retraits");
+    const total = type => CACHE_ECRITURES_DOT.filter(e => e.type === type).reduce((t, e) => t + Number(e.montant || 0), 0);
+    document.getElementById("dot-total-depenses").textContent = formaterArgentStats(total("depense"));
+    document.getElementById("dot-total-retraits").textContent = formaterArgentStats(total("retrait"));
     document.querySelectorAll("[data-ecriture-supprimer]").forEach((btn) => {
       btn.addEventListener("click", () => supprimerEcritureDot(Number(btn.dataset.ecritureSupprimer)));
     });
@@ -294,7 +314,7 @@ document.getElementById("bouton-reinitialiser-retraits").addEventListener("click
 // « Copier le tableau » (dépenses ou retraits) : même principe que pour le
 // tableau des salariés — copie au format tableur (colonnes séparées par des
 // tabulations), prêt à coller dans Excel/Google Sheets.
-async function copierEcrituresDot(type, idCorps) {
+async function copierEcrituresDot(type, idCorps, bouton) {
   const entetes = ["Date", "Justificatif", "Montant"];
   const lignes = [entetes.join("\t")];
   document.querySelectorAll(`#${idCorps} tr`).forEach((tr) => {
@@ -302,14 +322,11 @@ async function copierEcrituresDot(type, idCorps) {
     // montant copié comme un vrai nombre (« 1 200 $ » -> 1200) pour que le tableur puisse calculer dessus
     if (cellules.length === 4) lignes.push([cellules[0], cellules[1], cellules[2].replace(/[^\d-]/g, "")].join("\t"));
   });
-  if (await copierTexte(lignes.join("\n"))) {
-    gestion.message("zone-message-dot", "Tableau copié ✓ Vous pouvez le coller dans Excel/Google Sheets.", "succes");
-  } else {
-    gestion.message("zone-message-dot", "Impossible de copier automatiquement — sélectionnez le tableau à la main (Ctrl+C).");
-  }
+  const n = lignes.length - 1;
+  signalerCopie(bouton, await copierTexte(lignes.join("\n")), `${type === "depense" ? "Dépenses copiées" : "Retraits copiés"} ✓ (${n} ligne${n > 1 ? "s" : ""}, avec les titres) : collez dans Excel ou Google Sheets.`);
 }
-document.getElementById("bouton-copier-depenses").addEventListener("click", () => copierEcrituresDot("depense", "corps-table-dot-depenses"));
-document.getElementById("bouton-copier-retraits").addEventListener("click", () => copierEcrituresDot("retrait", "corps-table-dot-retraits"));
+document.getElementById("bouton-copier-depenses").addEventListener("click", e => copierEcrituresDot("depense", "corps-table-dot-depenses", e.currentTarget));
+document.getElementById("bouton-copier-retraits").addEventListener("click", e => copierEcrituresDot("retrait", "corps-table-dot-retraits", e.currentTarget));
 
 function ouvrirModaleEcritureDot(type) {
   document.getElementById("ecriture-dot-type").value = type;
@@ -388,9 +405,10 @@ let DOT_SALARIES = []; // dernier tableau chargé (données brutes, pas le HTML)
 function formuleCaTotal(numeroLigne) {
   return `=C${numeroLigne}+D${numeroLigne}+E${numeroLigne}`;
 }
-document.getElementById("bouton-copier-salaries").addEventListener("click", async () => {
+document.getElementById("bouton-copier-salaries").addEventListener("click", async e => {
+  const bouton = e.currentTarget;
   if (!DOT_SALARIES.length) {
-    gestion.message("zone-message-dot", "Rien à copier : choisissez une semaine avec des salariés.");
+    gestion.notifier("Rien à copier : choisissez une semaine avec des salariés.", "erreur");
     return;
   }
   const champLigne = document.getElementById("dot-copie-premiere-ligne");
@@ -407,11 +425,7 @@ document.getElementById("bouton-copier-salaries").addEventListener("click", asyn
     nombre(a.salaireTotal),
     "0",
   ].join("\t"));
-  if (await copierTexte(lignes.join("\n"))) {
-    gestion.message("zone-message-dot", `Tableau copié ✓ (${lignes.length} salariés, sans la ligne de titres). Collez-le en ligne ${premiereLigne}, colonne A, du document DOT : la colonne CA TOTAL REALISE arrive en formule.`, "succes");
-  } else {
-    gestion.message("zone-message-dot", "Impossible de copier automatiquement — sélectionnez le tableau à la main (Ctrl+C).");
-  }
+  signalerCopie(bouton, await copierTexte(lignes.join("\n")), `${lignes.length} salariés copiés ✓ Collez en ligne ${premiereLigne}, colonne A, du document DOT.`);
 });
 
 // Découpe un texte collé en colonnes + lignes. On essaie d'abord les
@@ -553,6 +567,26 @@ function afficherPaieHoraire(p) {
     </tr>`).join("") + `<tr class="ligne-total"><td colspan="5">Total paie à l'heure</td><td style="text-align:right;"><strong>${formaterArgentStats(p.total)}</strong></td></tr>`;
 }
 
+// Chiffres clés du relevé : le total « entreprise » (CA brut de la DOT), le nombre de membres, la paie à l'heure.
+let RELEVE_TABLETTE = null;
+function afficherSyntheseTablette(releve, paie) {
+  const colonnes = releve.colonnes.map(c => String(c).toLowerCase());
+  const iTotal = colonnes.findIndex(c => c.includes("total"));
+  const ligneTotal = releve.lignes.find(comptaLigneEstTotal);
+  const membres = releve.lignes.filter(l => !comptaLigneEstTotal(l)).length;
+  const caBrut = iTotal >= 0 && ligneTotal ? `${ligneTotal[iTotal]} $` : "—";
+  document.getElementById("compta-tablette-synthese").innerHTML = [
+    carteChiffre("CA brut", caBrut, "repris dans la déclaration DOT", true),
+    carteChiffre("Membres du relevé", String(membres), ""),
+    paie && paie.lignes && paie.lignes.length ? carteChiffre("Paie à l’heure", formaterArgentStats(paie.total), "comprise dans les salaires") : "",
+  ].join("");
+}
+document.getElementById("bouton-copier-tablette").addEventListener("click", async e => {
+  if (!RELEVE_TABLETTE) return;
+  const lignes = [RELEVE_TABLETTE.colonnes, ...RELEVE_TABLETTE.lignes].map(l => l.map(c => String(c ?? "")).join("\t"));
+  signalerCopie(e.currentTarget, await copierTexte(lignes.join("\n")), `Relevé copié ✓ (${RELEVE_TABLETTE.lignes.length} lignes, avec les titres) : collez dans Excel ou Google Sheets.`);
+});
+
 async function chargerTablette() {
   gestion.message("zone-message-tablette", "");
   try {
@@ -564,6 +598,7 @@ async function chargerTablette() {
       vide.classList.remove("cache");
       resultat.classList.add("cache");
       boutonReset.classList.add("cache");
+      document.getElementById("bouton-copier-tablette").classList.add("cache");
       afficherPaieHoraire(null);
       return;
     }
@@ -572,6 +607,9 @@ async function chargerTablette() {
     boutonReset.classList.remove("cache");
     document.getElementById("compta-tablette-info").textContent =
       `Importé par ${reponse.import.importe_par || "un membre"} le ${formaterDateHeureCompta(reponse.import.importe_le)}.`;
+    RELEVE_TABLETTE = reponse.import;
+    document.getElementById("bouton-copier-tablette").classList.remove("cache");
+    afficherSyntheseTablette(reponse.import, reponse.paie_horaire);
     const table = document.getElementById("table-tablette");
     table.innerHTML = rendreTableCompta(reponse.import.colonnes, reponse.import.lignes, true);
     table.querySelectorAll(".compta-supprimer-ligne").forEach((btn) => {

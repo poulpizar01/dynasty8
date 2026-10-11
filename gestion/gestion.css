@@ -631,3 +631,60 @@ main.admin-contenu:focus { outline: none; }
 .rh-precision { display: block; margin-top: 6px; font-size: 0.8rem; color: var(--text-faint); }
 /* étiquette « Obligatoire » (plutôt qu'un astérisque que rien n'explique) */
 .rh-obligatoire { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: rgba(201, 165, 92, 0.16); color: var(--gold-strong); font-size: 0.72rem; font-weight: 600; vertical-align: 1px; }
+
+/* notifications (gestion.notifier) : en bas au centre, au-dessus de tout, au-dessus de la bulle de messagerie */
+.notifications { position: fixed; left: 50%; bottom: 24px; z-index: 100200; display: flex; flex-direction: column; align-items: center; gap: 8px; transform: translateX(-50%); width: min(92vw, 520px); pointer-events: none; }
+.notification {
+  padding: 10px 18px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); font-size: 0.9rem; text-align: center;
+  background: #10301f; color: #c9f2da; border: 1px solid rgba(95, 211, 154, 0.45); animation: notification-entree 0.2s ease-out;
+}
+.notification-erreur { background: #3a1414; color: #ffd5d0; border-color: rgba(239, 127, 115, 0.5); }
+.notification.sortie { opacity: 0; transform: translateY(6px); transition: opacity 0.25s, transform 0.25s; }
+@keyframes notification-entree { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .notification { animation: none; } .notification.sortie { transition: none; } }
+/* bouton qui confirme son action (« Copié ✓ ») pendant deux secondes */
+.btn.confirme, .actions-icone.confirme { border-color: rgba(95, 211, 154, 0.6) !important; color: #8fe0ad !important; }
+
+/* ---------- Comptabilité (comptabilite.html) : chiffres clés, calcul de la DOT, titres lisibles ---------- */
+.compta-titre, .entete-admin .compta-titre { margin: 0 0 4px; font-family: var(--d8-font-display); font-weight: 400; font-size: 1.35rem; color: var(--text); }
+.compta-sous-titre { margin: 26px 0 6px; font-family: var(--d8-font-ui); font-size: 1rem; font-weight: 500; color: var(--text); }
+.compta-aide { margin: 0; font-size: 0.85rem; color: var(--text-faint); max-width: 80ch; }
+.compta-total-mini { margin-left: 8px; font-size: 0.85rem; font-weight: 500; color: var(--gold-strong); font-variant-numeric: tabular-nums; }
+#compta-panneau-tablettes > .entete-admin, #compta-panneau-parametres > .entete-admin, #compta-panneau-dot > .entete-admin { margin-top: 24px !important; }
+
+/* chiffres clés : trois au plus, le plus important en doré */
+.compta-chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; margin: 4px 0 18px; }
+.compta-chiffres:empty { display: none; }
+.compta-chiffre { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(14, 26, 50, 0.6); min-width: 0; }
+.compta-chiffre-libelle { font-size: 0.85rem; color: var(--text-muted); }
+.compta-chiffre strong { font-family: var(--d8-font-ui); font-size: 1.6rem; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.compta-chiffre small { font-size: 0.8rem; color: var(--text-faint); }
+.compta-chiffre.accent { border-color: var(--d8-gold-400); background: linear-gradient(135deg, rgba(201, 165, 92, 0.14), rgba(14, 26, 50, 0.6) 60%); }
+.compta-chiffre.accent strong { color: var(--gold-light); }
+
+/* DOT : semaine, calcul ligne à ligne (signe, libellé, montant ; sous-totaux et total marqués) */
+.dot-semaine { display: flex; align-items: center; gap: 10px; }
+.dot-semaine label { font-size: 0.85rem; color: var(--text-muted); text-transform: none; letter-spacing: 0; margin: 0; }
+.dot-semaine .d8-select-enveloppe { width: 170px; }
+.dot-semaine select { min-height: 40px; }
+.dot-calcul-bloc { padding: 18px 22px; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(14, 26, 50, 0.45); margin-bottom: 8px; }
+.dot-calcul { list-style: none; margin: 0; padding: 0; max-width: 640px; }
+.dot-calcul li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: baseline; gap: 10px; padding: 8px 0; font-size: 0.92rem; color: var(--text-muted); }
+.dot-calcul li strong { font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dot-calcul li small { color: var(--text-faint); font-size: 0.8rem; }
+.dot-signe { color: var(--text-faint); text-align: center; font-variant-numeric: tabular-nums; }
+.dot-calcul li.sous-total { border-top: 1px solid var(--border); color: var(--text); }
+.dot-calcul li.sous-total strong { font-weight: 600; }
+.dot-calcul li.total { margin-top: 4px; padding: 12px 0 4px; border-top: 2px solid var(--d8-gold-400); color: var(--gold-light); font-size: 1rem; }
+.dot-calcul li.total strong { color: var(--gold-light); font-weight: 700; font-size: 1.1rem; }
+
+.dot-ecritures { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 24px; margin-top: 14px; }
+.dot-etapes { margin: 10px 0 0; padding-left: 1.3em; font-size: 0.85rem; color: var(--text-muted); }
+.dot-etapes li { padding: 2px 0; }
+.dot-etapes li::marker { color: var(--gold-strong); font-weight: 600; }
+.dot-copie-libelle { text-transform: none !important; letter-spacing: 0 !important; font-size: 0.85rem !important; color: var(--text-muted) !important; }
+
+/* rémunération : intitulés des champs d'ajout de palier en casse normale */
+#compta-panneau-parametres .champ label { font-size: 0.85rem; text-transform: none; letter-spacing: 0; color: var(--text-muted); }
+/* bouton doré confirmé : le vert ne se lit pas sur l'or, on garde le texte sombre et on souligne d'un contour vert */
+.btn-or.confirme { color: var(--or-contrast) !important; box-shadow: 0 0 0 2px rgba(95, 211, 154, 0.7) !important; }

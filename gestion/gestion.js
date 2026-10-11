@@ -184,6 +184,26 @@ window.gestion = {
     return moi;
   },
 
+  // Notification en bas de l'écran, visible quel que soit le défilement (une confirmation affichée en haut de page
+  // passait inaperçue quand on avait cliqué en bas) ; lue par les lecteurs d'écran ; s'efface après quelques secondes.
+  notifier(texte, type = 'succes') {
+    let zone = document.getElementById('notifications');
+    if (!zone) {
+      zone = document.createElement('div');
+      zone.id = 'notifications';
+      zone.className = 'notifications';
+      zone.setAttribute('role', 'status');
+      zone.setAttribute('aria-live', 'polite');
+      document.body.append(zone);
+    }
+    zone.replaceChildren();   // une seule à la fois : la plus récente (empilées, elles masquaient la page)
+    const n = document.createElement('div');
+    n.className = `notification notification-${type === 'erreur' ? 'erreur' : 'succes'}`;
+    n.textContent = texte;
+    zone.append(n);
+    setTimeout(() => { n.classList.add('sortie'); setTimeout(() => n.remove(), 300); }, type === 'erreur' ? 6000 : 3200);
+  },
+
   // message dans une zone de la page (texte seulement, jamais de HTML) ; type : 'succes' ou 'erreur'
   message(zone, texte, type = 'erreur') {
     const el = typeof zone === 'string' ? document.getElementById(zone) : zone;
