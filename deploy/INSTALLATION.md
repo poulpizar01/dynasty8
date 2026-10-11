@@ -50,7 +50,7 @@ Modèle commenté : [`.env.example`](../.env.example), à copier en `.env`. Vale
 | `STATS_BOT_SECRET` | `openssl rand -hex 32` ; à transmettre en privé à qui programme le bot de ventes | vous |
 | `WEBMAP_HOTE` | `carte.dynasty8.fbfa.fr` (sous-domaine de la carte) | — |
 
-Les **liens** ne se règlent pas dans le `.env` : adresse de la WebMap, Google Sheets du tableur, registre, Discord de l'agence, boutique VIP, partenaire décoration, salon des services et réglages de l'agenda se renseignent après l'installation dans l'espace agents, onglet **Paramètres** (permission « Paramètres du site »). L'adresse de la WebMap doit être publique, en https : le site refuse une adresse du serveur lui-même ou d'un réseau privé.
+Les **liens** ne se règlent pas dans le `.env` : adresse de la WebMap, Google Sheets du tableur, registre, Discord de l'agence, boutique VIP, partenaire décoration, présentations Google Slides des quatre cohérences, salon des services et réglages de l'agenda se renseignent après l'installation dans l'espace agents, onglet **Paramètres** (permission « Paramètres du site »). L'adresse de la WebMap doit être publique, en https : le site refuse une adresse du serveur lui-même ou d'un réseau privé.
 
 Le site **refuse de démarrer** sur un réglage incomplet ou mal formé, et dit lequel dans `docker logs dynasty8-app`. Les réglages facultatifs (FolkOS, bots, Google Sheets, WebMap) peuvent rester vides au premier démarrage et être remplis ensuite (`docker compose up -d` après chaque modification du `.env`).
 

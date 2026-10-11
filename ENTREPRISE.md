@@ -42,7 +42,7 @@ Porté sur le modèle depuis une première version jamais mise en production (Ja
 
 ## Liens et réglages
 
-- Les liens du site (Discord de l'agence, boutique VIP, partenaire, registre, WebMap, Google Sheets) et les réglages des services et de l'agenda se règlent dans **Paramètres** : capacité du socle (`socle/parametres.ts`), réglages de Dynasty 8 déclarés dans `parametres.ts` (`PARAMETRES`, par groupes ; la page se construit d'après eux). Le Google Sheets est enregistré comme lien complet vers l'onglet (`sheetRegle()`). Côté pages publiques : `data-lien="<clé>"`, rempli par `layout.js` depuis `GET /api/liens` (les pages publiques ne chargent pas `socle.js`) ; un lien vide masque le bouton.
+- Les liens du site (Discord de l'agence, boutique VIP, partenaire, présentations Google Slides des cohérences, registre, WebMap, Google Sheets) et les réglages des services et de l'agenda se règlent dans **Paramètres** : capacité du socle (`socle/parametres.ts`), réglages de Dynasty 8 déclarés dans `parametres.ts` (`PARAMETRES`, par groupes ; la page se construit d'après eux). Le Google Sheets est enregistré comme lien complet vers l'onglet (`sheetRegle()`), une présentation de cohérence comme lien d'ouverture (`lireLienSlides()` : Google Slides seulement ; `lienSlides` de chaque guide dans `coherences-guides.js`). Côté pages publiques : `data-lien="<clé>"`, rempli par `layout.js` depuis `GET /api/liens` (les pages publiques ne chargent pas `socle.js`) ; un lien vide masque le bouton.
 - **Jamais réglables** : les liens de la signature Roxwood Network (site et Discord du réseau, pied de page) et l'invitation « Découvrir nos offres » de `equipe.html` restent écrits en dur.
 
 ## Gestion

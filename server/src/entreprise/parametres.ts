@@ -19,6 +19,17 @@ export function lireLienSheet(valeur: string): { id: string; gid: string } | nul
 }
 const lienSheet = (s: { id: string; gid: string }) => `https://docs.google.com/spreadsheets/d/${s.id}/edit#gid=${s.gid}`;
 
+// présentation Google Slides d'un guide de cohérence : lien de partage (ou identifiant seul) → lien d'ouverture
+function lireLienSlides(valeur: string): string | { erreur: string } {
+  let id = /^[A-Za-z0-9_-]{20,}$/.test(valeur) ? valeur : null;
+  if (!id) try {
+    const u = new URL(valeur);
+    if (u.protocol === 'https:' && u.hostname === 'docs.google.com') id = u.pathname.match(/^\/presentation\/d\/([A-Za-z0-9_-]{20,})(?:\/|$)/)?.[1] ?? null;
+  } catch { /* erreur ci-dessous */ }
+  return id ? `https://docs.google.com/presentation/d/${id}/edit` : { erreur: 'collez le lien de la présentation Google Slides (https://docs.google.com/presentation/d/…).' };
+}
+const slides = (cle: string, zone: string) => ({ cle, type: 'lien' as const, public: true, libelle: `Cohérence ${zone}`, aide: '', lire: lireLienSlides });
+
 // Onglets de la page Paramètres : Liens, Google Sheets et carte, Discord (Apparence : propre à la page). Les aides parlent
 // à la Direction, pas à un administrateur : ni .env ni jargon ; un réglage Discord se choisit par son nom (discord).
 export const PARAMETRES: GroupeParametres[] = [
@@ -29,6 +40,10 @@ export const PARAMETRES: GroupeParametres[] = [
     { cle: 'discord_agence', type: 'lien', public: true, libelle: 'Discord de l’agence', aide: 'Boutons « Nous contacter » et pied de page.' },
     { cle: 'boutique_vip', type: 'lien', public: true, libelle: 'Boutique VIP', aide: 'Boutons de la page VIP.' },
     { cle: 'discord_partenaire_deco', type: 'lien', public: true, libelle: 'Discord du partenaire décoration', aide: 'Bouton « Rejoindre Terra Home Deco » de l’accueil.' },
+  ] },
+  { onglet: 'Liens', titre: 'Présentations des cohérences', intro: 'Bouton « Ouvrir sur Google Slides » de chaque page de cohérence. La présentation doit être partagée à « Tous les utilisateurs disposant du lien ». Vide : bouton masqué.', reglages: [
+    slides('slides_coherence_habitation', 'Habitation'), slides('slides_coherence_garage', 'Garage'),
+    slides('slides_coherence_cayo_perico', 'Cayo Perico'), slides('slides_coherence_roxwood', 'Roxwood'),
   ] },
   { onglet: 'Google Sheets et carte', titre: 'Google Sheets de la Direction', intro: 'Les ventes et locations de chaque agent, lues toutes les 20 minutes pour les primes.', reglages: [
     // enregistré sous la forme d'un lien complet vers l'onglet (identifiant du classeur + gid)

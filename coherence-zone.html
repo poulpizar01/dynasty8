@@ -39,7 +39,7 @@
     <!-- Diaporama construit par monterDiaporamaCoherence() (coherences-guides.js). -->
     <div id="guide-diaporama-zone"></div>
     <div class="guide-diaporama-actions">
-      <a href="#" id="guide-lien-gslide" target="_blank" rel="noopener" class="btn btn-fantome btn-petit">Ouvrir sur Google Slides ↗</a>
+      <a id="guide-lien-gslide" target="_blank" rel="noopener" class="btn btn-fantome btn-petit cache">Ouvrir sur Google Slides ↗</a>
     </div>
   </div>
 </section>
@@ -98,7 +98,10 @@
   chargerBiens({ coherence: zone, cible: "grille-biens", videMessage: `Aucun bien rattaché à la cohérence ${zone} pour le moment.` });
 
   monterDiaporamaCoherence(document.getElementById("guide-diaporama-zone"), zone);
-  document.getElementById("guide-lien-gslide").href = `https://docs.google.com/presentation/d/${guide.gslideId}/edit`;
+  // lien de la présentation : réglé dans Paramètres, rempli par layout.js (masqué s'il est vide)
+  const lienSlides = document.getElementById("guide-lien-gslide");
+  lienSlides.dataset.lien = guide.lienSlides;
+  appliquerLiens(lienSlides.parentElement);
 </script>
 </body>
 </html>

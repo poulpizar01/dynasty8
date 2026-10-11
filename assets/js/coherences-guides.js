@@ -17,7 +17,7 @@ const GUIDES_COHERENCE = {
     icone: "🏠",
     slug: "habitation",
     nbSlides: 26,
-    gslideId: "16zKe1r6JM_0afDDEyDDUBjec7ZZPlj25rBh6zG28bD0",
+    lienSlides: "slides_coherence_habitation",   // réglé dans Paramètres → Liens
     intro: "La cohérence Habitation atteste que votre personnage dispose d'un logement légal à Los Santos, avec un intérieur cohérent par rapport au bâtiment choisi.",
     sections: [
       {
@@ -134,7 +134,7 @@ const GUIDES_COHERENCE = {
     icone: "🚗",
     slug: "garage",
     nbSlides: 7,
-    gslideId: "1sf3yrdeyxgoltDHLmkUpC1iRajHRA18acsZjG63yoP8",
+    lienSlides: "slides_coherence_garage",   // réglé dans Paramètres → Liens
     intro: "La cohérence Garage relie la taille et le standing d'un bâtiment à sa capacité de stationnement réelle : un petit local ne peut pas justifier un grand parking, et inversement.",
     sections: [
       {
@@ -187,7 +187,7 @@ const GUIDES_COHERENCE = {
     icone: "🏝️",
     slug: "cayo-perico",
     nbSlides: 5,
-    gslideId: "1MvrINN7FmrbdDrDLQsMWadXXHjYEWXOundWPWRA5pkA",
+    lienSlides: "slides_coherence_cayo_perico",   // réglé dans Paramètres → Liens
     intro: "La cohérence Cayo Perico concerne les biens situés sur l'île de Cayo Perico, une zone de jeu à part avec ses propres intérieurs autorisés selon le type de bâtiment.",
     sections: [
       {
@@ -212,7 +212,7 @@ const GUIDES_COHERENCE = {
     icone: "🌲",
     slug: "roxwood",
     nbSlides: 11,
-    gslideId: "1-8UcXPy4TNC6VpnSpu9t3e0YghjF9okH__h3riJtV5M",
+    lienSlides: "slides_coherence_roxwood",   // réglé dans Paramètres → Liens
     intro: "La cohérence Roxwood concerne le secteur résidentiel de Roxwood, avec ses propres zones réservées et ses règles de garages spécifiques aux grandes villas du secteur.",
     sections: [
       {
