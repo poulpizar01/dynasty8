@@ -89,6 +89,7 @@ Le site doit rester propre de 360 px à l'écran large : aucun débordement hori
 - Structure : un `<h1>` par page (son titre) ; chaque champ a un nom accessible (`<label for>`, sinon `aria-label` : un placeholder ne compte pas) ; un bouton à icône seule porte `aria-label`.
 - Lisibilité : texte de 12 px au moins (13 px pour un bouton, surtout en majuscules) ; contraste 4,5:1 pour le texte, 3:1 pour un gros titre, un contour de champ ou une icône utile ; cible cliquable de 24 px au moins, 44 px visés sur téléphone.
 - Tableau : trop large pour sa place, il devient une grille de cartes (`tablesAdaptatives` dans la coque du modèle) plutôt que de défiler de côté, ce qui cache des colonnes — souvent les actions. Un montant ne se coupe pas sur deux lignes. Un élément flottant (bulle, bouton fixe) ne masque jamais la dernière ligne ni une action : réserver sa place en bas du contenu.
+- Dates et heures : à la française et à l’heure de Paris. Un `<input type="date">` ou `type="time"` natif suit la langue du navigateur, pas celle de la page (mm/dd/yyyy, « 02:00 PM » dans un Chrome anglais) : champ texte jj/mm/aaaa et 24 h à la place ; « aujourd’hui » et l’heure actuelle se calculent avec `timeZone: 'Europe/Paris'`, jamais avec l’horloge locale de l’ordinateur.
 - Textes : une erreur dit ce qui s'est passé et quoi faire (le message technique seul ne suffit pas) ; un état vide dit ce qui manque et comment commencer ; une même chose porte le même nom sur toutes les pages.
 
 ## Audits
