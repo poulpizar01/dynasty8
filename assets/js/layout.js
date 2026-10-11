@@ -472,9 +472,12 @@ function ameliorerSelect(select, pastille, portee) {
     const r = select.getBoundingClientRect();
     const hauteurEstimee = Math.min(select.options.length * 38 + 12, 260);
     const largeur = Math.max(Math.round(r.width), 230);
-    // On ne laisse jamais le menu déborder à droite de la fenêtre.
-    const gauche = Math.min(Math.round(r.left), window.innerWidth - largeur - 8);
-    flottant.style.left = Math.max(8, gauche) + "px";
+    // Le menu ne déborde jamais à droite : s'il ne tient pas en partant du bord gauche du champ, il s'aligne sur son
+    // bord droit. Largeur utile sans la barre de défilement (innerWidth la compte : le menu passait dessous).
+    const visible = document.documentElement.clientWidth;
+    let gauche = Math.round(r.left);
+    if (gauche + largeur > visible - 8) gauche = Math.round(r.right) - largeur;
+    flottant.style.left = Math.max(8, Math.min(gauche, visible - largeur - 8)) + "px";
     flottant.style.width = largeur + "px";
     if (r.bottom + hauteurEstimee > window.innerHeight && r.top > hauteurEstimee) {
       flottant.style.top = Math.round(r.top - hauteurEstimee - 6) + "px";
