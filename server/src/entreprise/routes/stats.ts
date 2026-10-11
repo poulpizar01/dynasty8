@@ -62,6 +62,12 @@ stats.get('/api/tableur/etat', ...voir, async (_req, res) => {
   });
 });
 
+// état seul de la lecture, pour la page Paramètres (qui règle le lien sans forcément voir les ventes)
+stats.get('/api/tableur/etat-lecture', ...permission('parametres'), async (_req, res) => {
+  const etat = await prisma.tableurEtat.findUnique({ where: { id: 1 }, select: { statut: true, derniereSync: true, erreur: true, nbLignes: true } });
+  res.json({ configure: !!sheetRegle(), etat });
+});
+
 stats.post('/api/tableur/synchroniser', ...gerer, async (_req, res) => {
   if (!sheetRegle()) { res.status(503).json({ error: 'Synchronisation en attente : réglez le lien du Google Sheets dans Paramètres.' }); return; }
   // l'échec est enregistré comme pour la synchronisation automatique (visible dans l'état), puis rapporté

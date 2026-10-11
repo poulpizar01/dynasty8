@@ -849,3 +849,44 @@ button.grades-poignee:focus-visible { outline: 2px solid var(--d8-gold-300); out
   #stats-chiffres .compta-chiffre.accent { grid-column: 1 / -1; }
   #stats-chiffres .compta-chiffre strong { font-size: 1.35rem; }
 }
+
+/* ---------- Paramètres (parametres.html) : onglets, états, choix Discord par nom, agenda en tableau ---------- */
+.param-etats { display: flex; flex-direction: column; gap: 6px; margin: 14px 0 6px; }
+.param-etats:empty { display: none; }
+.param-etat { margin: 0; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.88rem; border-left: 3px solid; }
+.param-etat.ok { background: rgba(95, 211, 154, 0.08); border-color: #5fd39a; color: #c9f2da; }
+.param-etat.alerte { background: rgba(201, 165, 92, 0.1); border-color: var(--d8-gold-400); color: var(--gold-light); }
+.param-etat.erreur { background: rgba(232, 83, 74, 0.1); border-color: var(--danger-strong); color: #ffd5d0; }
+.param-etat.neutre { background: rgba(154, 166, 190, 0.08); border-color: var(--text-faint); color: var(--text-muted); }
+.param-groupe { padding: 20px 0 6px; border-bottom: 1px solid var(--border); max-width: 880px; }
+.param-groupe:last-child { border-bottom: 0; }
+#panneaux .champ label { display: block; margin-bottom: 6px; font-size: 0.875rem; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-muted); }
+.param-pied { position: sticky; bottom: 16px; z-index: 5; display: flex; align-items: center; justify-content: flex-end; gap: 12px; max-width: 880px; margin-top: 12px; pointer-events: none; }
+.param-pied > * { pointer-events: auto; }
+.param-pied .btn { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+.param-modifie { padding: 6px 12px; border-radius: 999px; background: rgba(8, 15, 32, 0.9); border: 1px solid rgba(201, 165, 92, 0.4); font-size: 0.85rem; color: var(--gold-light); }
+.choix-discord { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.choix-etiquette { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 12px; border-radius: 999px; background: rgba(114, 137, 218, 0.18); color: #c9d3f7; font-size: 0.88rem; }
+.choix-etiquette button { width: 22px; height: 22px; border: 0; border-radius: 999px; background: none; color: inherit; font-size: 1rem; line-height: 1; cursor: pointer; }
+.choix-etiquette button:hover, .choix-etiquette button:focus-visible { background: rgba(255, 255, 255, 0.12); outline: none; }
+.choix-discord .d8-select-enveloppe { flex: 1 1 200px; min-width: 0; }
+.choix-discord select { min-height: 40px; }
+.param-agenda { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; }
+.param-agenda-ligne { display: grid; grid-template-columns: 170px minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.param-agenda-ligne:last-child { border-bottom: 0; }
+.param-agenda-ligne.entete { padding-top: 8px; padding-bottom: 8px; font-size: 0.8rem; color: var(--text-faint); }
+.param-agenda-ligne strong { font-weight: 500; color: var(--text); }
+.param-agenda-ligne input { width: 100%; min-height: 40px; padding: 8px 12px; border: 1px solid rgba(201, 165, 92, 0.28); border-radius: var(--radius-sm); background: rgba(6, 12, 26, 0.55); color: var(--text); font: inherit; font-size: 0.9rem; }
+.param-sans { font-size: 0.85rem; color: var(--text-faint); }
+@media (max-width: 760px) {
+  .param-agenda-ligne { grid-template-columns: 1fr; gap: 8px; }
+  /* la bulle de messagerie occupe le coin droit : on lui laisse sa place, mention raccourcie */
+  .param-pied { padding-right: 72px; }
+  .param-modifie-long { display: none; }
+  .param-modifie-court { display: inline !important; }
+  .param-agenda-ligne.entete { display: none; }
+  .param-agenda-ligne [data-libelle]::before { content: attr(data-libelle); display: block; margin-bottom: 4px; font-size: 0.78rem; color: var(--text-faint); }
+}
+
+.param-modifie-court { display: none; }
+.param-modifie { white-space: nowrap; }
