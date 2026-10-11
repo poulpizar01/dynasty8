@@ -174,13 +174,19 @@ async function supprimerBien(id, depuisModale = false) {
 
 // ---- barre d'outils : recherche, filtres, bascule liste/grille ----
 
+// Sous 1 200 px, le tableau ne tient plus (7 colonnes) : la grille s’impose et le choix de la vue disparaît ; au-delà,
+// la vue choisie revient.
+const ECRAN_ETROIT_BIENS = matchMedia('(max-width: 1199px)');
 function appliquerModeVueBiens() {
-  for (const mode of ['liste', 'grille']) {
-    $(`vue-${mode}-biens`).classList.toggle('cache', MODE_VUE_BIENS !== mode);
-    $(`bouton-vue-${mode}`).classList.toggle('actif', MODE_VUE_BIENS === mode);
-    $(`bouton-vue-${mode}`).setAttribute('aria-pressed', String(MODE_VUE_BIENS === mode));
+  const mode = ECRAN_ETROIT_BIENS.matches ? 'grille' : MODE_VUE_BIENS;
+  document.querySelector('.annonces-vue-toggle').classList.toggle('cache', ECRAN_ETROIT_BIENS.matches);
+  for (const m of ['liste', 'grille']) {
+    $(`vue-${m}-biens`).classList.toggle('cache', mode !== m);
+    $(`bouton-vue-${m}`).classList.toggle('actif', mode === m);
+    $(`bouton-vue-${m}`).setAttribute('aria-pressed', String(mode === m));
   }
 }
+ECRAN_ETROIT_BIENS.addEventListener('change', appliquerModeVueBiens);
 $('bouton-vue-liste').addEventListener('click', () => { MODE_VUE_BIENS = 'liste'; appliquerModeVueBiens(); });
 $('bouton-vue-grille').addEventListener('click', () => { MODE_VUE_BIENS = 'grille'; appliquerModeVueBiens(); });
 appliquerModeVueBiens();
