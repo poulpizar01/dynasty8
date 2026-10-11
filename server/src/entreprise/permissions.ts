@@ -1,20 +1,22 @@
 // ENTREPRISE — permissions propres à Dynasty 8, cochées par grade dans la gestion (page Grades).
-// Clé : minuscules, chiffres, tirets, stable dans le temps (elle est enregistrée dans les grades) ; « comptes » et
-// « grades » appartiennent au socle. Fichier sans import (le socle le lit avant de charger les routes).
+// Clé : minuscules, chiffres, tirets, stable dans le temps (elle est enregistrée dans les grades) ; « comptes » et
+// « grades » appartiennent au socle. Fichier sans import (le socle le lit avant de charger les routes).
+// Libellé : lu sous le titre de sa catégorie dans la page Grades (« Ressources humaines », « Ventes et argent ») :
+// il ne répète pas la catégorie, mais se comprend seul (« Ajouter un employé », pas « Ajouter »).
 import type { Permission } from '../socle/contrat.js';
 
 export const permissions: Permission[] = [
-  { cle: 'biens', libelle: 'Gérer les biens', description: 'Créer, modifier, masquer et supprimer les biens du catalogue ; voir les biens masqués' },
+  { cle: 'biens', libelle: 'Gérer les annonces', description: 'Créer, modifier, masquer et supprimer les biens du catalogue ; voir les biens masqués' },
   // Ressources humaines : chaque permission rh-* suppose rh-voir (vérifié par les routes)
-  { cle: 'rh-voir', libelle: 'RH : consulter', description: 'Voir les fiches employés, l’effectif et les arrivées reçues du bot' },
-  { cle: 'rh-creer', libelle: 'RH : ajouter', description: 'Créer une fiche ; retraiter ou écarter une candidature reçue du bot' },
-  { cle: 'rh-modifier', libelle: 'RH : modifier', description: 'Modifier une fiche employé' },
-  { cle: 'rh-desactiver', libelle: 'RH : désactiver', description: 'Passer un employé « inactif » (départ)' },
-  { cle: 'rh-reactiver', libelle: 'RH : réactiver', description: 'Réintégrer un ancien employé' },
-  { cle: 'rh-sensible', libelle: 'RH : téléphone et RIB', description: 'Voir et modifier le téléphone et le RIB des employés' },
-  { cle: 'rh-parametrer', libelle: 'RH : réglages du bot', description: 'Régler la réception des candidatures du bot (grade d’arrivée, questions du formulaire)' },
-  { cle: 'ventes', libelle: 'Ventes & statistiques', description: 'Voir les ventes reçues du bot, les totaux, les anomalies et les chiffres du tableur de la Direction' },
-  { cle: 'ventes-gerer', libelle: 'Ventes : gérer', description: 'Lancer la synchronisation du tableur de la Direction' },
-  { cle: 'compta', libelle: 'Comptabilité', description: 'Relevé Tablettes, rémunération (salaires, paliers de primes) et déclaration DOT' },
-  // « parametres » (liens, services, agenda, apparence) est une permission du socle
+  { cle: 'rh-voir', libelle: 'Consulter les fiches', description: 'Voir les fiches employés, l’effectif et les candidatures reçues' },
+  { cle: 'rh-creer', libelle: 'Ajouter un employé', description: 'Créer une fiche ; retraiter ou écarter une candidature reçue' },
+  { cle: 'rh-modifier', libelle: 'Modifier une fiche', description: 'Changer l’identité, le grade ou les dates d’un employé' },
+  { cle: 'rh-desactiver', libelle: 'Enregistrer un départ', description: 'Passer un employé en « ancien employé »' },
+  { cle: 'rh-reactiver', libelle: 'Réintégrer un ancien employé', description: 'Remettre un ancien employé dans l’effectif actif' },
+  { cle: 'rh-sensible', libelle: 'Voir le téléphone et le RIB', description: 'Voir et modifier le téléphone et le RIB des employés' },
+  { cle: 'rh-parametrer', libelle: 'Régler le recrutement', description: 'Choisir comment les candidatures acceptées sur Discord remplissent les fiches' },
+  { cle: 'ventes', libelle: 'Voir les ventes et les statistiques', description: 'Ventes reçues, totaux, anomalies et chiffres du Google Sheets de la Direction' },
+  { cle: 'ventes-gerer', libelle: 'Relire le Google Sheets', description: 'Lancer à la main la lecture du Google Sheets de la Direction' },
+  { cle: 'compta', libelle: 'Gérer la comptabilité', description: 'Relevé Tablettes, rémunération (salaires, paliers de primes) et déclaration DOT' },
+  // « parametres » (liens, services, agenda, apparence) est une permission du socle
 ];

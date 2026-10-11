@@ -181,9 +181,10 @@
       [grades, permissions, r] = await Promise.all([socle.api('/api/grades'), socle.api('/api/permissions'), socle.api('/api/grades/roles-discord').catch(() => ({ roles: [] }))]);
       roles = r.roles || [];
       // sans bot relié au site, pas de liste : on dit pourquoi, et comment saisir l’identifiant en attendant
+      // sans liste des rôles : une explication pour la personne qui gère les grades, sans vocabulaire technique
       $('role-aide-bot').textContent = roles.length ? '' : r.configure === false
-        ? 'La liste des rôles s’affiche ici quand le bot Discord est relié au site (DISCORD_BOT_TOKEN, voir le guide d’installation). En attendant, collez l’identifiant du rôle.'
-        : `Liste des rôles indisponible${r.erreur ? ` : ${r.erreur}` : ''}. Collez l’identifiant du rôle en attendant.`;
+        ? 'Pour choisir le rôle dans une liste, le bot Discord de l’agence doit être relié au site : demandez-le à la personne qui s’occupe du site. En attendant, collez l’identifiant du rôle.'
+        : 'La liste des rôles Discord n’a pas pu être chargée. Réessayez plus tard, ou collez l’identifiant du rôle.';
       $('role-aide-bot').classList.toggle('cache', !!roles.length);
       document.querySelector('.role-aide-identifiant').classList.toggle('cache', !!roles.length);   // choix par le nom : plus besoin
       if (r.erreur) gestion.message('zone-message', r.erreur);
