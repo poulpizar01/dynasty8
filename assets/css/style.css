@@ -300,7 +300,14 @@ label, .eyebrow-label {
   font-family: var(--d8-font-display); font-style: normal; font-weight: 300;
   font-size: 22px; color: var(--d8-cream);
 }
-@media (max-width: 480px) { .logo-texte { display: none; } .logo-filet { display: none; } }
+@media (max-width: 480px) {
+  .logo-texte { display: none; } .logo-filet { display: none; }
+  /* téléphone : monogramme et trois boutons sur une seule ligne dès 360 px (avec 24 px de marge et d'écart, les
+     boutons passaient à la ligne et doublaient la hauteur de l'en-tête) */
+  .entete-barre { padding: 12px 16px; gap: 10px; }
+  .nav-cta { gap: 8px; }
+}
+@media (max-width: 400px) { .logo-marque { height: 30px; } .nav-cta .btn-petit { padding-left: 12px; padding-right: 12px; } }
 
 .nav-principale {
   display: flex;
@@ -413,15 +420,19 @@ label, .eyebrow-label {
   gap: 4px;
 }
 
+/* chevron dessiné (deux bordures d'un carré tourné), centré sur le milieu du texte : le caractère « ⌄ » se posait
+   en bas de sa ligne. Décalé vers le haut fermé, vers le bas ouvert, pour que la pointe reste au milieu. */
 .nav-chevron {
-  font-size: 0.7rem;
+  flex-shrink: 0; width: 6px; height: 6px; margin-left: 4px;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
   color: var(--text-faint);
+  transform: translateY(-30%) rotate(45deg);
   transition: transform 0.2s ease, color 0.15s;
 }
 
 .nav-avec-sous-menu:hover .nav-chevron,
 .nav-avec-sous-menu:focus-within .nav-chevron {
-  transform: rotate(180deg);
+  transform: translateY(30%) rotate(225deg);
   color: var(--gold);
 }
 

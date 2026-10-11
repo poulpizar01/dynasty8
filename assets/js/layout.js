@@ -79,7 +79,7 @@ function injecterEntete(cleActive) {
       const sousLiens = l.sousMenu.map((s) => `<a href="${s.href}">${s.texte}</a>`).join("");
       return `
         <div class="nav-avec-sous-menu">
-          <a href="${l.href}" class="nav-lien-principal" ${actif ? 'aria-current="page"' : ""}>${l.texte} <span class="nav-chevron" aria-hidden="true">⌄</span></a>
+          <a href="${l.href}" class="nav-lien-principal" ${actif ? 'aria-current="page"' : ""}>${l.texte}<span class="nav-chevron" aria-hidden="true"></span></a>
           <div class="nav-sous-menu">${sousLiens}</div>
         </div>`;
     }
