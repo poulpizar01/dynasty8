@@ -25,6 +25,8 @@ h1,h2,h3{font-family:var(--display);line-height:1.15;margin:0 0 .5em}
 .rail__moi strong,.rail__moi small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rail__moi small{color:var(--ink2)}
 .rail__burger{display:none}
+/* avant gestion.coque() : la place du menu est déjà réservée, le contenu ne saute pas de sa largeur */
+@media (min-width:901px){body>main.contenu{margin-left:240px}}
 .contenu{padding:36px clamp(16px,4vw,48px) 64px;max-width:1100px;width:100%;min-width:0}
 @media (max-width:900px){
   .coque{grid-template-columns:1fr}

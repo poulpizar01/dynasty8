@@ -10,40 +10,48 @@ const GESTION_NAV = [
   { href: 'compte.html', label: 'Mon compte' },
 ];
 
+// Ce que le menu affiche du compte, gardé pour l'onglet (sessionStorage) : la page suivante pose son menu sans attendre
+// le serveur. Sinon chaque page s'affichait d'abord sans menu, puis tout sautait de sa largeur. Affichage seulement (le
+// serveur contrôle chaque page et chaque requête) ; effacé à la déconnexion et quand la session n'est plus reconnue.
+const memoCoque = {
+  cle: 'gestion.coque',
+  lire() { try { return JSON.parse(sessionStorage.getItem(this.cle)); } catch { return null; } },
+  ecrire(moi) {
+    const m = { nom: moi.nom, pseudo: moi.pseudo, avatar: moi.avatar, proprietaire: moi.proprietaire, grade: moi.grade ? { libelle: moi.grade.libelle } : null, permissions: moi.permissions };
+    try { sessionStorage.setItem(this.cle, JSON.stringify(m)); } catch { /* stockage refusé : menu dessiné à la réponse */ }
+    return m;
+  },
+  effacer() { try { sessionStorage.removeItem(this.cle); } catch { /* rien à effacer */ } },
+};
+
 window.gestion = {
-  // construit la coque autour de <main class="contenu"> et renvoie le compte connecté
+  // construit la coque autour de <main class="contenu"> et renvoie le compte connecté. La coque est posée tout de suite,
+  // menu dessiné d'après le compte gardé pour l'onglet (place vide au premier passage), puis redessiné si la réponse
+  // du serveur diffère.
   async coque() {
-    let moi;
-    // compte illisible (serveur arrêté, trop de requêtes, coupure) : la page le dit au lieu de rester vide ;
-    // une session expirée est déjà renvoyée vers la connexion par socle.api()
-    try { moi = await socle.moi(); }
-    catch (e) {
-      const p = Object.assign(document.createElement('p'), { className: 'message', textContent: `La page n’a pas pu se charger : ${e.message}` });
-      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: 'Réessayer' });
-      b.addEventListener('click', () => location.reload());
-      document.querySelector('main.contenu')?.replaceChildren(p, b);
-      throw e;
-    }
     const page = location.pathname.split('/').pop() || 'accueil.html';
+    const memo = memoCoque.lire();
     const rail = document.createElement('aside');
     rail.className = 'rail';
     rail.innerHTML = `
       <a class="rail__marque" href="accueil.html"><img src="/assets/logo.png" alt="" width="32" height="32"><span>${socle.esc(socle.nomSite)}</span></a>
       <button class="rail__burger" type="button" aria-label="Menu" aria-expanded="false">☰</button>
-      <nav class="rail__nav">${GESTION_NAV.filter(l => !l.permission || socle.peut(moi, l.permission)).map(l =>
-        `<a href="${l.href}"${l.href === page ? ' aria-current="page"' : ''}>${socle.esc(l.label)}</a>`).join('')}
-        <a href="/">Site public</a>
-      </nav>
-      <div class="rail__moi">
+      <nav class="rail__nav"></nav>
+      <div class="rail__moi"></div>`;
+    const dessiner = moi => {
+      rail.querySelector('.rail__nav').innerHTML = GESTION_NAV.filter(l => !l.permission || socle.peut(moi, l.permission)).map(l =>
+        `<a href="${l.href}"${l.href === page ? ' aria-current="page"' : ''}>${socle.esc(l.label)}</a>`).join('') + '<a href="/">Site public</a>';
+      rail.querySelector('.rail__moi').innerHTML = `
         ${moi.avatar ? `<img src="${socle.esc(moi.avatar)}" alt="">` : '<span class="avatar"></span>'}
         <div><strong>${socle.esc(moi.nom || moi.pseudo)}</strong><small>${socle.esc(moi.grade?.libelle || (moi.proprietaire ? 'Propriétaire' : 'Sans grade'))}</small></div>
-        <button class="btn btn--petit" type="button" data-deconnexion>Quitter</button>
-      </div>`;
+        <button class="btn btn--petit" type="button" data-deconnexion>Quitter</button>`;
+    };
+    if (memo) dessiner(memo);
     const burger = rail.querySelector('.rail__burger');
     const ouvrir = ouvert => { rail.classList.toggle('is-open', ouvert); burger.setAttribute('aria-expanded', String(ouvert)); };
     burger.addEventListener('click', () => ouvrir(!rail.classList.contains('is-open')));
     rail.addEventListener('keydown', e => { if (e.key === 'Escape' && rail.classList.contains('is-open')) { ouvrir(false); burger.focus(); } });
-    rail.querySelector('[data-deconnexion]').addEventListener('click', () => socle.deconnexion());
+    rail.addEventListener('click', e => { if (e.target.closest('[data-deconnexion]')) { memoCoque.effacer(); socle.deconnexion(); } });
     const coque = document.createElement('div');
     coque.className = 'coque';
     const main = document.querySelector('main.contenu');
@@ -57,6 +65,20 @@ window.gestion = {
     evitement.href = `#${main.id}`;
     evitement.textContent = 'Aller au contenu';
     document.body.prepend(evitement);
+
+    let moi;
+    // compte illisible (serveur arrêté, trop de requêtes, coupure) : la page le dit au lieu de rester vide ;
+    // une session expirée est déjà renvoyée vers la connexion par socle.api()
+    try { moi = await socle.moi(); }
+    catch (e) {
+      memoCoque.effacer();
+      const p = Object.assign(document.createElement('p'), { className: 'message', textContent: `La page n’a pas pu se charger : ${e.message}` });
+      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: 'Réessayer' });
+      b.addEventListener('click', () => location.reload());
+      main.replaceChildren(p, b);
+      throw e;
+    }
+    if (JSON.stringify(memoCoque.ecrire(moi)) !== JSON.stringify(memo)) dessiner(moi);
     tablesAdaptatives(main);
     return moi;
   },
