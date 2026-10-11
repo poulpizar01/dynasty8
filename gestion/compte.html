@@ -22,75 +22,94 @@
     <div class="entete-admin">
       <div>
         <h1 style="margin-bottom:2px;">Mon profil</h1>
-        <p style="margin:0;font-size:0.88rem;">Votre nom RP et votre fiche publique, affichée sur la page « Notre équipe » du site.</p>
+        <p style="margin:0;font-size:0.88rem;">Vos primes de la semaine, et la fiche que voient les visiteurs sur la page « Notre équipe ».</p>
       </div>
     </div>
     <div id="zone-message"></div>
 
-    <div class="carte-table" style="padding:20px 22px;margin-bottom:22px;">
-      <div class="cellule-compte"><span id="avatar"></span><div><strong id="pseudo"></strong><div class="admin-compte-grade" id="grade"></div></div></div>
-    </div>
-
-    <!-- ventes, locations et primes de la ligne du tableur de la Direction reliée à ce compte (primes recalculées avec
-         les barèmes du site, comme partout) -->
-    <h3 class="comptes-sous-titre" style="margin:0 0 4px;">Mes ventes &amp; mon salaire</h3>
-    <p class="champ-aide" id="primes-maj" style="margin:0 0 12px;"></p>
-    <div class="admin-stats" style="margin-bottom:8px;">
-      <div class="stat-carte"><span class="stat-icone stat-icone--or"><svg class="ico" aria-hidden="true"><use href="#ico-home"></use></svg></span><div><div class="stat-valeur" id="primes-ventes">0</div><div class="stat-libelle">Ventes</div></div></div>
-      <div class="stat-carte"><span class="stat-icone stat-icone--ambre"><svg class="ico" aria-hidden="true"><use href="#ico-key"></use></svg></span><div><div class="stat-valeur" id="primes-locations">0</div><div class="stat-libelle">Locations</div></div></div>
-      <div class="stat-carte"><span class="stat-icone stat-icone--vert">$</span><div><div class="stat-valeur" id="primes-vente">0 $</div><div class="stat-libelle">Salaire ventes</div></div></div>
-      <div class="stat-carte"><span class="stat-icone stat-icone--vert">$</span><div><div class="stat-valeur" id="primes-location">0 $</div><div class="stat-libelle">Salaire locations</div></div></div>
-      <div class="stat-carte"><span class="stat-icone stat-icone--mauve">Σ</span><div><div class="stat-valeur" id="primes-total">0 $</div><div class="stat-libelle">Total salaire</div></div></div>
-    </div>
-    <p class="champ-aide cache" id="primes-non-relie" style="margin-bottom:22px;">Votre nom n'est pas encore reconnu dans le tableur de la Direction : demandez-lui de vérifier votre fiche (prénom, nom et ID Discord) dans Ressources humaines.</p>
-    <div style="margin-bottom:22px;"></div>
-
-    <form id="formNom" class="carte-table" style="padding:20px 22px;margin-bottom:22px;">
-      <div class="champ">
-        <label for="nom">Nom RP</label>
-        <input type="text" id="nom" maxlength="64" required>
-        <p class="champ-aide">Affiché dans l'espace agents et sur la page « Notre équipe ».</p>
+    <!-- primes de la ligne du tableur de la Direction reliée à ce compte (recalculées avec les barèmes du site) :
+         le total d’abord, puis d’où il vient -->
+    <section class="profil-semaine" aria-labelledby="titre-semaine">
+      <div class="profil-semaine-total">
+        <h2 id="titre-semaine">Ma prime de la semaine</h2>
+        <p class="profil-semaine-montant" id="primes-total">—</p>
+        <p class="profil-semaine-maj" id="primes-maj"></p>
       </div>
-      <button class="btn btn-or" type="submit">Enregistrer</button>
-    </form>
+      <dl class="profil-semaine-detail">
+        <div><dt>Ventes</dt><dd><span id="primes-ventes">0</span><strong id="primes-vente">0 $</strong></dd></div>
+        <div><dt>Locations</dt><dd><span id="primes-locations">0</span><strong id="primes-location">0 $</strong></dd></div>
+      </dl>
+      <p class="profil-semaine-alerte cache" id="primes-non-relie">Votre nom n’est pas encore reconnu dans le tableur de la Direction. Demandez-lui de vérifier votre fiche (prénom, nom, ID Discord) dans Ressources humaines.</p>
+    </section>
 
-    <div class="carte-table" style="padding:20px 22px;margin-bottom:22px;">
-      <h3 class="comptes-sous-titre" style="margin-top:0;">Profil public</h3>
-      <div id="profil"></div>
+    <!-- la fiche publique, et à côté, la carte telle qu’elle s’affiche sur la page équipe -->
+    <div class="profil-fiche">
+      <section class="profil-fiche-formulaire" aria-labelledby="titre-fiche">
+        <h2 id="titre-fiche">Ma fiche</h2>
+        <div id="profil"></div>
+      </section>
+      <aside class="profil-fiche-apercu" aria-labelledby="titre-apercu">
+        <h2 id="titre-apercu">Sur la page équipe</h2>
+        <article class="carte-membre" id="apercu-carte" aria-hidden="true">
+          <div class="carte-membre-photo"><div class="carte-membre-photo-cadre" id="apercu-photo"></div></div>
+          <div class="carte-membre-corps">
+            <h3 id="apercu-nom"></h3>
+            <span class="carte-membre-poste" id="apercu-poste"></span>
+            <div class="carte-membre-specialite cache" id="apercu-specialite"><span>Spécialité</span><strong></strong></div>
+          </div>
+        </article>
+        <p class="profil-apercu-note" id="apercu-note">Mis à jour pendant que vous écrivez. La biographie s’affiche quand un visiteur ouvre votre profil.</p>
+      </aside>
     </div>
 
-    <div class="carte-table" style="padding:20px 22px;">
-      <h3 class="comptes-sous-titre" style="margin-top:0;">Supprimer mon compte</h3>
-      <p class="champ-aide">Votre compte est effacé du site. Vous pourrez vous reconnecter plus tard, mais il faudra une nouvelle validation.</p>
-      <button class="btn btn-danger" type="button" id="supprimer">Supprimer mon compte</button>
-    </div>
+    <section class="profil-compte" aria-labelledby="titre-compte">
+      <h2 id="titre-compte" class="visuellement-cache">Mon compte</h2>
+      <p>Connecté avec Discord : <strong id="pseudo"></strong> · <span id="grade"></span></p>
+      <button class="btn btn-fantome btn-petit profil-supprimer" type="button" id="supprimer">Supprimer mon compte</button>
+    </section>
   </main>
   <script>
     gestion.coque('compte').then(moi => {
-      const nom = moi.nom || moi.pseudo;
-      document.getElementById('avatar').innerHTML = moi.avatar ? `<img class="admin-avatar" src="${echapper(moi.avatar)}" alt="">` : `<span class="admin-avatar">${echapper(nom.slice(0, 2).toUpperCase())}</span>`;
       document.getElementById('pseudo').textContent = `@${moi.pseudo}`;
-      document.getElementById('grade').textContent = moi.grade?.libelle || (moi.proprietaire ? 'Propriétaire' : 'Sans grade');
-      document.getElementById('nom').value = moi.nom || '';
-      profilEditeur(document.getElementById('profil'), { adresse: '/api/profil', nom: () => document.getElementById('nom').value || moi.pseudo }).charger();
+      const grade = moi.grade?.libelle || (moi.proprietaire ? 'Propriétaire' : 'Sans grade');
+      document.getElementById('grade').textContent = grade;
+
+      // aperçu de la carte de la page équipe : mêmes classes que la vitrine (equipe.html), mêmes règles que le serveur
+      // (poste vide → grade ; sans nom RP, pas de carte)
+      const initiales = t => String(t || '?').trim().split(/s+/).slice(0, 2).map(m => m[0]?.toUpperCase()).join('') || '?';
+      const apercu = e => {
+        const cadre = document.getElementById('apercu-photo');
+        cadre.className = 'carte-membre-photo-cadre' + (e.photo ? '' : ' sans-photo');
+        cadre.textContent = '';
+        if (e.photo) { const img = document.createElement('img'); img.src = e.photo; img.alt = ''; cadre.append(img); }
+        else { const s = document.createElement('span'); s.className = 'carte-membre-initiales'; s.textContent = initiales(e.nom); cadre.append(s); }
+        document.getElementById('apercu-nom').textContent = e.nom || 'Votre nom RP';
+        document.getElementById('apercu-poste').textContent = e.poste || grade || 'Agent immobilier';
+        const spe = document.getElementById('apercu-specialite');
+        spe.classList.toggle('cache', !e.specialite);
+        spe.querySelector('strong').textContent = e.specialite;
+        const sansNom = !e.nom;
+        document.getElementById('apercu-carte').classList.toggle('profil-apercu-absent', sansNom);
+        document.getElementById('apercu-note').textContent = sansNom
+          ? 'Sans nom RP, votre carte n’apparaît pas sur la page équipe.'
+          : 'Mis à jour pendant que vous écrivez. La biographie s’affiche quand un visiteur ouvre votre profil.';
+      };
+      profilEditeur(document.getElementById('profil'), { adresse: '/api/profil', nom: () => moi.nom || '', champNom: moi.nom || '', surChangement: apercu }).charger();
+
       socle.api('/api/profil/primes').then(p => {
         const argent = v => `${Math.round(Number(v) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} $`;
-        document.getElementById('primes-ventes').textContent = p.ventes;
-        document.getElementById('primes-locations').textContent = p.locations;
+        const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
+        document.getElementById('primes-ventes').textContent = pluriel(p.ventes, 'vente');
+        document.getElementById('primes-locations').textContent = pluriel(p.locations, 'location');
         document.getElementById('primes-vente').textContent = argent(p.primeVente);
         document.getElementById('primes-location').textContent = argent(p.primeLocations);
         document.getElementById('primes-total').textContent = argent(p.primeTotale);
         document.getElementById('primes-non-relie').classList.toggle('cache', p.synchronise);
-        document.getElementById('primes-maj').textContent = p.derniereSync ? `Dernière lecture du tableur : ${new Date(p.derniereSync).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' })}` : '';
-      }).catch(() => {});
-    });
-    document.getElementById('formNom').addEventListener('submit', async e => {
-      e.preventDefault();
-      try { await socle.api('/api/moi', { method: 'PATCH', body: { nom: document.getElementById('nom').value } }); gestion.message('zone-message', 'Nom enregistré.', 'succes'); }
-      catch (err) { gestion.message('zone-message', err.message); }
+        document.getElementById('primes-maj').textContent = p.derniereSync ? `Chiffres du tableur lus le ${new Date(p.derniereSync).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' })}` : '';
+      }).catch(e => { document.getElementById('primes-maj').textContent = 'Primes indisponibles : ' + e.message; });
     });
     document.getElementById('supprimer').addEventListener('click', async () => {
-      if (!await gestion.confirmer('Votre compte sera définitivement effacé du site.', 'Supprimer votre compte ?', 'Supprimer mon compte')) return;
+      if (!await gestion.confirmer('Votre compte est effacé du site. Pour revenir, il faudra vous reconnecter et être validé à nouveau.', 'Supprimer votre compte ?', 'Supprimer mon compte')) return;
       try { await socle.api('/api/moi', { method: 'DELETE' }); location.href = '/'; } catch (e) { gestion.message('zone-message', e.message); }
     });
   </script>

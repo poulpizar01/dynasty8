@@ -325,3 +325,73 @@ main.admin-contenu:focus { outline: none; }
 .page-agents .stat-carte { flex-wrap: wrap; row-gap: 10px; min-width: 0; }
 .page-agents .stat-carte > div { flex: 1 1 96px; min-width: 0; }
 .page-agents .stat-valeur, .page-agents .stat-libelle { overflow-wrap: anywhere; }
+
+/* titre lu par les lecteurs d'écran, invisible à l'écran */
+.visuellement-cache { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- Mon profil (compte.html) : la prime de la semaine, la fiche et son aperçu, le compte ---------- */
+.page-agents .admin-contenu h2.profil-titre, .profil-semaine h2, .profil-fiche h2 {
+  margin: 0; font-family: var(--d8-font-display); font-weight: 400; font-size: 1.3rem; color: var(--text);
+}
+
+/* la semaine : le total en grand, puis d'où il vient */
+.profil-semaine {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 18px 32px; align-items: center;
+  margin-bottom: 28px; padding: 22px 26px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(201, 165, 92, 0.1), rgba(14, 26, 50, 0.6) 55%);
+}
+.profil-semaine-montant { margin: 6px 0 2px; font-family: var(--d8-font-display); font-size: clamp(2rem, 4vw, 2.6rem); line-height: 1.1; color: var(--gold-light); font-variant-numeric: tabular-nums; }
+.profil-semaine-maj { margin: 0; font-size: 0.82rem; color: var(--text-faint); }
+.profil-semaine-detail { margin: 0; display: flex; flex-direction: column; }
+.profil-semaine-detail > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.profil-semaine-detail > div:last-child { border-bottom: 0; }
+.profil-semaine-detail dt { color: var(--text-muted); }
+.profil-semaine-detail dd { margin: 0; display: flex; align-items: baseline; gap: 18px; }
+.profil-semaine-detail dd span { font-size: 0.85rem; color: var(--text-faint); }
+.profil-semaine-detail dd strong { min-width: 96px; text-align: right; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
+.profil-semaine-alerte { grid-column: 1 / -1; margin: 0; padding: 10px 14px; border-radius: var(--radius-sm); background: rgba(228, 199, 126, 0.1); color: var(--gold-light); font-size: 0.85rem; }
+
+/* la fiche à gauche, son aperçu à droite (collant) */
+.profil-fiche { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 28px; align-items: start; margin-bottom: 28px; }
+.profil-fiche-formulaire { padding: 22px 26px; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(14, 26, 50, 0.6); }
+.profil-fiche-formulaire h2 { margin-bottom: 18px; }
+.profil-fiche-apercu { position: sticky; top: 24px; }
+.profil-fiche-apercu h2 { margin-bottom: 12px; font-size: 1.05rem; color: var(--text-muted); }
+.profil-fiche-apercu .carte-membre { pointer-events: none; }
+.profil-fiche-apercu .carte-membre.profil-apercu-absent { opacity: 0.45; }
+.profil-apercu-note { margin: 10px 0 0; font-size: 0.82rem; color: var(--text-faint); }
+
+/* éditeur (aussi dans la fenêtre de Comptes) : intitulés en casse normale, photo en ligne */
+.profil-editeur label { font-size: inherit; text-transform: none; letter-spacing: 0; }
+.profil-editeur .champ label { display: block; margin-bottom: 6px; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
+.profil-editeur .champ label small { font-weight: 400; color: var(--text-faint); }
+.profil-photo-ligne { display: flex; align-items: center; gap: 18px; margin-bottom: 20px; }
+.profil-editeur .profil-photo-apercu { width: 88px; height: 88px; flex-shrink: 0; }
+.profil-photo-actions { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.profil-photo-actions strong { font-weight: 500; color: var(--text); }
+.profil-photo-actions small { font-size: 0.82rem; color: var(--text-faint); }
+.profil-photo-boutons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.profil-libelle-ligne { display: flex; align-items: baseline; justify-content: space-between; }
+.profil-compteur { font-size: 0.78rem; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.profil-pied { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 4px; }
+.profil-pied [data-zone-message] { flex: 1; min-width: 0; }
+.profil-pied [data-zone-message] .message { margin: 0; padding: 8px 12px; font-size: 0.88rem; }
+
+/* le compte : une ligne discrète, la suppression à l'écart */
+.profil-compte { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0 0; border-top: 1px solid var(--border); }
+.profil-compte p { margin: 0; font-size: 0.88rem; color: var(--text-faint); }
+.profil-compte strong { color: var(--text-muted); font-weight: 500; }
+.profil-supprimer { color: var(--danger-strong); border-color: rgba(232, 83, 74, 0.35); }
+
+@media (max-width: 960px) {
+  .profil-fiche { grid-template-columns: minmax(0, 1fr); }
+  .profil-fiche-apercu { position: static; max-width: 300px; }
+}
+@media (max-width: 640px) {
+  .profil-semaine { grid-template-columns: minmax(0, 1fr); padding: 18px; }
+  .profil-fiche-formulaire { padding: 18px; }
+  .profil-fiche-apercu { max-width: 220px; }   /* la photo en portrait prendrait tout l écran */
+  .profil-editeur .champ-deux { grid-template-columns: 1fr; gap: 0; }
+  .profil-pied { flex-wrap: wrap; }
+  .profil-pied .btn-or { flex-basis: 100%; min-height: 44px; }
+}

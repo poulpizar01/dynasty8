@@ -1,46 +1,74 @@
-/* GESTION — éditeur du profil public d'un agent (page « Notre équipe » de la vitrine) : photo (fichier ou lien),
-   poste, spécialité, biographie. Utilisé par « Mon profil » (compte.html) et par la Direction (comptes.html).
+/* GESTION — éditeur du profil public d'un agent (page « Notre équipe » de la vitrine) : photo, poste, spécialité,
+   biographie. Utilisé par « Mon profil » (compte.html) et par la Direction (comptes.html).
    Serveur : server/src/entreprise/routes/profils.ts.
-     const editeur = profilEditeur(conteneur, { adresse: '/api/profil', nom: () => 'Prénom Nom', apresEnregistrement });
+     const editeur = profilEditeur(conteneur, { adresse: '/api/profil', nom: () => 'Prénom Nom', apresEnregistrement,
+                                                champNom: 'Marc Delmas', surChangement: etat => … });
      await editeur.charger();
+   champNom (Mon profil seulement) : ajoute le nom RP au même formulaire, enregistré avec le reste (PATCH /api/moi) ;
+   surChangement : appelé à chaque modification ({ nom, poste, specialite, bio, photo }), pour un aperçu en direct.
    La photo est envoyée dès sa sélection (le serveur la contrôle et la convertit), puis enregistrée avec le reste du
    profil : tant que « Enregistrer » n'a pas réussi, l'ancienne photo reste celle du site. */
-function profilEditeur(conteneur, { adresse, nom, apresEnregistrement }) {
+let PROFIL_EDITEURS = 0;
+function profilEditeur(conteneur, { adresse, nom, apresEnregistrement, champNom, surChangement }) {
+  const n = ++PROFIL_EDITEURS, id = c => `profil-${n}-${c}`;
+  const avecNom = champNom !== undefined;
   conteneur.innerHTML = `
-    <div data-zone-message></div>
-    <div class="profil-mise-en-page">
-      <div class="profil-photo-bloc">
+    <form data-formulaire class="profil-editeur" novalidate>
+      <div class="profil-photo-ligne">
         <div class="profil-photo-apercu" data-apercu></div>
-        <button type="button" class="btn btn-fantome btn-petit" data-changer>📁 Changer la photo</button>
-        <input type="file" accept="image/jpeg,image/png,image/webp" class="cache" data-fichier>
-        <button type="button" class="btn btn-fantome btn-petit cache" data-retirer>✕ Retirer la photo</button>
-        <p class="champ-erreur cache" data-erreur-photo></p>
-        <p class="champ-aide" style="text-align:center;">Format carré recommandé — JPG, PNG ou WEBP.</p>
+        <div class="profil-photo-actions">
+          <strong>Photo</strong>
+          <small>Portrait de préférence. JPG, PNG ou WEBP, 15 Mo au plus.</small>
+          <div class="profil-photo-boutons">
+            <button type="button" class="btn btn-fantome btn-petit" data-changer></button>
+            <input type="file" accept="image/jpeg,image/png,image/webp" class="cache" data-fichier>
+            <button type="button" class="btn btn-fantome btn-petit cache" data-retirer></button>
+          </div>
+          <p class="champ-erreur cache" data-erreur-photo></p>
+        </div>
       </div>
-      <form data-formulaire>
+      ${avecNom ? `
+      <div class="champ">
+        <label for="${id("nom")}">Nom RP</label>
+        <input type="text" id="${id("nom")}" maxlength="64" data-champ="nom" autocomplete="off">
+        <p class="champ-aide">Votre nom dans l’espace agents et sur la page équipe.</p>
+        <p class="champ-erreur cache" data-erreur-nom>Indiquez votre nom RP : sans lui, vous n’apparaissez pas sur la page équipe.</p>
+      </div>` : ""}
+      <div class="champ-deux">
         <div class="champ">
-          <label>Intitulé du poste</label>
-          <input type="text" maxlength="80" aria-label="Intitulé du poste" placeholder="Ex : Agent — Habitation" data-champ="poste">
-          <p class="champ-aide">Affiché sous le nom, sur la page équipe du site. Vide : le grade.</p>
+          <label for="${id("poste")}">Poste <small>facultatif</small></label>
+          <input type="text" id="${id("poste")}" maxlength="80" placeholder="Ex. Agent, habitations" data-champ="poste">
+          <p class="champ-aide">Vide : le grade s’affiche à la place.</p>
         </div>
         <div class="champ">
-          <label>Spécialité</label>
-          <input type="text" maxlength="100" aria-label="Spécialité" placeholder="Ex : Villas & Maisons" data-champ="specialite">
+          <label for="${id("specialite")}">Spécialité <small>facultatif</small></label>
+          <input type="text" id="${id("specialite")}" maxlength="100" placeholder="Ex. Villas et maisons" data-champ="specialite">
         </div>
-        <div class="champ">
-          <label>Biographie</label>
-          <textarea maxlength="1000" aria-label="Biographie" placeholder="Quelques lignes : parcours, ce que vous aimez chez Dynasty 8…" data-champ="bio"></textarea>
-          <p class="champ-aide" data-compteur>0 / 1000</p>
+      </div>
+      <div class="champ">
+        <div class="profil-libelle-ligne">
+          <label for="${id("bio")}">Biographie <small>facultatif</small></label>
+          <span class="profil-compteur" data-compteur>0 / 1000</span>
         </div>
-        <button type="submit" class="btn btn-or" data-enregistrer>Enregistrer le profil</button>
-      </form>
-    </div>`;
+        <textarea id="${id("bio")}" maxlength="1000" rows="5" placeholder="Votre parcours, ce que vous aimez dans le métier…" data-champ="bio"></textarea>
+        <p class="champ-aide">Lue quand un visiteur ouvre votre profil sur la page équipe.</p>
+      </div>
+      <div class="profil-pied">
+        <div data-zone-message role="status"></div>
+        <button type="submit" class="btn btn-or" data-enregistrer>Enregistrer</button>
+      </div>
+    </form>`;
   const q = s => conteneur.querySelector(`[${s}]`);
-  const champ = n => conteneur.querySelector(`[data-champ="${n}"]`);
-  const etat = { photo: '', edition: 0, transfert: null, enregistrement: false };
+  const champ = c => conteneur.querySelector(`[data-champ="${c}"]`);
+  const etat = { photo: '', edition: 0, transfert: null, enregistrement: false, nomInitial: '' };
 
   const erreurPhoto = texte => { q('data-erreur-photo').textContent = texte || ''; q('data-erreur-photo').classList.toggle('cache', !texte); };
   const compteur = () => { q('data-compteur').textContent = `${champ('bio').value.length} / 1000`; };
+  const nomAffiche = () => (avecNom ? champ('nom').value.trim() : nom() || '');   // Mon profil : le champ fait foi, même vide
+  const prevenir = () => surChangement?.({
+    nom: nomAffiche(), poste: champ('poste').value.trim(), specialite: champ('specialite').value.trim(),
+    bio: champ('bio').value.trim(), photo: etat.photo, envoi: !!etat.transfert,
+  });
 
   function dessiner() {
     const apercu = q('data-apercu');
@@ -52,17 +80,18 @@ function profilEditeur(conteneur, { adresse, nom, apresEnregistrement }) {
       apercu.append(img);
     } else {
       const initiales = document.createElement('span');
-      initiales.textContent = String(nom() || '?').trim().split(/\s+/).slice(0, 2).map(m => m[0]?.toUpperCase()).join('') || '?';
+      initiales.textContent = String(nomAffiche() || '?').trim().split(/\s+/).slice(0, 2).map(m => m[0]?.toUpperCase()).join('') || '?';
       apercu.append(initiales);
     }
     apercu.style.opacity = etat.transfert ? '0.5' : '';
     apercu.setAttribute('aria-busy', String(!!etat.transfert));
-    q('data-changer').textContent = etat.transfert ? '⏳ Envoi de la photo…' : '📁 Changer la photo';
+    q('data-changer').textContent = etat.transfert ? 'Envoi de la photo…' : etat.photo ? 'Changer la photo' : 'Ajouter une photo';
     q('data-changer').disabled = etat.enregistrement;
-    q('data-retirer').textContent = etat.transfert ? '✕ Annuler l’envoi' : '✕ Retirer la photo';
+    q('data-retirer').textContent = etat.transfert ? 'Annuler l’envoi' : 'Retirer';
     q('data-retirer').classList.toggle('cache', !etat.photo && !etat.transfert);
     q('data-retirer').disabled = etat.enregistrement;
     if (!etat.enregistrement) q('data-enregistrer').disabled = !!etat.transfert;
+    prevenir();
   }
 
   function annulerTransfert() {
@@ -98,28 +127,39 @@ function profilEditeur(conteneur, { adresse, nom, apresEnregistrement }) {
     const fichier = e.target.files?.[0];
     e.target.value = '';
     if (!fichier) return;
-    if (fichier.size > 15 * 1024 * 1024) { erreurPhoto('Image trop lourde (15 Mo max).'); return; }
+    if (fichier.size > 15 * 1024 * 1024) { erreurPhoto('Image trop lourde (15 Mo au plus).'); return; }
     envoyer(fichier);
   });
   q('data-retirer').addEventListener('click', () => { if (etat.transfert) annulerTransfert(); else etat.photo = ''; dessiner(); });
-  champ('bio').addEventListener('input', compteur);
+  q('data-formulaire').addEventListener('input', () => { compteur(); if (avecNom) dessiner(); else prevenir(); });
 
   q('data-formulaire').addEventListener('submit', async e => {
     e.preventDefault();
-    gestion.message(q('data-zone-message'), '');
-    if (etat.transfert) { gestion.message(q('data-zone-message'), 'Attendez la fin de l’envoi de la photo avant d’enregistrer.'); return; }
+    const zone = q('data-zone-message');
+    gestion.message(zone, '');
+    if (etat.transfert) { gestion.message(zone, 'Attendez la fin de l’envoi de la photo avant d’enregistrer.'); return; }
+    if (avecNom) {
+      const vide = !champ('nom').value.trim();
+      q('data-erreur-nom').classList.toggle('cache', !vide);
+      if (vide) { champ('nom').focus(); return; }
+    }
     const bouton = q('data-enregistrer'), texte = bouton.textContent;
     bouton.disabled = true;
     bouton.textContent = 'Enregistrement…';
     etat.enregistrement = true;
     dessiner();
     try {
+      // le nom RP (compte, socle) puis la fiche publique (entreprise) : un seul bouton pour ce qui finit sur la même carte
+      if (avecNom && champ('nom').value.trim() !== etat.nomInitial) {
+        await socle.api('/api/moi', { method: 'PATCH', body: { nom: champ('nom').value.trim() } });
+        etat.nomInitial = champ('nom').value.trim();
+      }
       const p = await socle.api(adresse, { method: 'PUT', body: { poste: champ('poste').value, specialite: champ('specialite').value, bio: champ('bio').value, photo: etat.photo } });
       etat.photo = p.photo;
-      gestion.message(q('data-zone-message'), 'Profil enregistré ✓ Les changements sont déjà visibles sur la page équipe du site.', 'succes');
+      gestion.message(zone, 'Enregistré ✓ Déjà visible sur la page équipe.', 'succes');
       apresEnregistrement?.(p);
     } catch (err) {
-      gestion.message(q('data-zone-message'), err.message);
+      gestion.message(zone, err.message);
     } finally {
       etat.enregistrement = false;
       bouton.disabled = false;
@@ -133,9 +173,10 @@ function profilEditeur(conteneur, { adresse, nom, apresEnregistrement }) {
       annulerTransfert();
       erreurPhoto('');
       gestion.message(q('data-zone-message'), '');
+      if (avecNom) { champ('nom').value = champNom || ''; etat.nomInitial = (champNom || '').trim(); }
       try {
         const p = await socle.api(adresse);
-        for (const n of ['poste', 'specialite', 'bio']) champ(n).value = p[n] || '';
+        for (const c of ['poste', 'specialite', 'bio']) champ(c).value = p[c] || '';
         etat.photo = p.photo || '';
       } catch (e) { gestion.message(q('data-zone-message'), `Impossible de charger le profil : ${e.message}`); }
       compteur();
