@@ -43,7 +43,8 @@ Pages de `gestion/` : mêmes niveaux, contrôlés par le serveur avant tout envo
 | `PUT /api/grades/ordre` | `grades` | `{ ordre: [cle…] }` (tous les grades) ; hors propriétaire, les grades jusqu'au sien restent en place |
 | `DELETE /api/grades/:cle` | `grades` | Grade sous le sien et porté par aucun compte (`409` sinon) |
 | `GET /api/liens` | public | Liens publics réglés dans Paramètres : `{ cle: url }` (`''` si vide) ; lus par `socle.js` pour les `data-lien` |
-| `GET /api/parametres` | `parametres` | Réglages déclarés par l'entreprise : `{ groupes: [{ titre, intro, reglages: [{ cle, type, libelle, aide, public, valeur, min?, max?, defaut? }] }] }` |
+| `GET /api/parametres` | `parametres` | Réglages déclarés par l'entreprise : `{ groupes: [{ titre, intro, onglet, reglages: [{ cle, type, libelle, aide, public, discord, valeur, min?, max?, defaut? }] }] }` (`discord` : `role`, `salon`, `categorie` ou `null`) |
+| `GET /api/parametres/discord` | `parametres` | Rôles, salons et catégories du serveur Discord, pour les choisir par leur nom : `{ configure, roles: [{ id, nom, couleur }], salons: [{ id, nom, categorie, position }], categories: [{ id, nom, position }], erreur? }` ; `configure: false` sans `DISCORD_BOT_TOKEN` (cache 5 min) |
 | `PUT /api/parametres` | `parametres` | `{ <cle>: valeur }` (seulement les clés envoyées ; `''` vide le réglage) ; tout ou rien : `400` avec le premier refus |
 | `POST /webhooks/bot` | signature du bot | Réception des événements du bot entreprise : voir [webhooks.md](webhooks.md) |
 | `GET /healthz` | public (bloqué par nginx) | Santé du site pour Docker : `{ ok: true }` ou `503` |

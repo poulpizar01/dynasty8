@@ -108,3 +108,14 @@ table.en-cartes td select{width:100%;min-width:0}
 .seul{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
 .seul .carte{max-width:440px;width:100%;text-align:center;padding:36px 28px}
 .seul img{margin:0 auto 18px;width:72px;height:72px}
+
+/* ---------- page Paramètres : onglets, choix Discord par nom, pied d'enregistrement ---------- */
+.onglets{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px}
+.onglet{padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:var(--bg2);color:var(--ink2);font:inherit;font-weight:600;cursor:pointer}
+.onglet.actif{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.choix-discord{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.choix-etiquettes{display:contents}
+.choix-discord .badge{display:inline-flex;align-items:center;gap:4px;font-size:13px}
+.choix-retirer{border:0;background:none;color:inherit;font-size:15px;line-height:1;cursor:pointer;padding:0 2px}
+.choix-discord select{width:auto;min-width:200px;flex:1}
+.param-pied{position:sticky;bottom:0;justify-content:flex-end;padding:12px 0;background:var(--bg)}

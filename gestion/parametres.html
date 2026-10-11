@@ -13,48 +13,124 @@
   <script src="/gestion/gestion.js"></script>
 </head>
 <body>
-  <!-- Paramètres du site (API du socle : /api/parametres, docs/api.md ; permission « parametres »). Les champs sont
+  <!-- Paramètres du site (API du socle : /api/parametres, docs/api.md ; permission « parametres »). Les champs sont
        construits d'après les réglages déclarés dans entreprise.parametres : rien à écrire ici pour en ajouter un.
-       Apparence libre. -->
+       Un onglet par « onglet » déclaré, enregistré à part ; un réglage Discord (rôle, salon, catégorie) se choisit par
+       son nom quand le bot est relié au site (/api/parametres/discord), sinon par son identifiant. Apparence libre. -->
   <main class="contenu">
     <p class="surtitre">Gestion</p>
     <h1 class="page-titre">Paramètres</h1>
     <p class="intro">Liens et réglages du site. Chacun s'applique dès l'enregistrement, sans redémarrer le site.</p>
+    <div class="onglets" role="tablist" id="onglets"></div>
     <p class="message" id="msg" hidden></p>
-    <form id="form">
-      <div id="groupes"></div>
-      <button class="btn btn--accent" id="enregistrer">Enregistrer</button>
+    <form id="form" novalidate>
+      <div id="panneaux"></div>
+      <div class="ligne param-pied">
+        <span class="muet" id="modifie" hidden>Modifications non enregistrées</span>
+        <button class="btn btn--accent" id="enregistrer">Enregistrer</button>
+      </div>
     </form>
   </main>
   <script>
     const $ = id => document.getElementById(id), msg = $('msg');
+    const esc = socle.esc;
     const ATTRIBUTS = {
       lien: 'type="url" placeholder="https://…"', origine: 'type="url" placeholder="https://…"', texte: 'type="text"',
-      'id-discord': 'type="text" inputmode="numeric" placeholder="identifiant Discord"', 'ids-discord': 'type="text" placeholder="identifiants séparés par des espaces"',
+      'id-discord': 'type="text" inputmode="numeric"', 'ids-discord': 'type="text"',
     };
+    let groupes = [], discord = { configure: false, roles: [], salons: [], categories: [] }, ongletCourant = null, modifie = false;
+    const LISTES = { role: () => discord.roles, salon: () => discord.salons, categorie: () => discord.categories };
+    const PREFIXE = { role: '@', salon: '#', categorie: '' };
+    const nomDe = (sorte, id) => LISTES[sorte]?.().find(x => x.id === id)?.nom;
 
-    function afficher(groupes) {
-      $('groupes').innerHTML = groupes.length ? groupes.map(g => `
+    // Réglage Discord choisi par son nom : étiquettes (avec ×) + menu « Ajouter… » ; la valeur reste dans un champ
+    // caché data-cle (identifiants séparés par des espaces), lue telle quelle à l'enregistrement.
+    function choixDiscord(r) {
+      const ids = String(r.valeur || '').split(/\s+/).filter(Boolean), plusieurs = r.type === 'ids-discord';
+      const options = LISTES[r.discord]().filter(x => !ids.includes(x.id));
+      return `<div class="choix-discord" data-choix="${esc(r.cle)}" data-plusieurs="${plusieurs ? 1 : 0}" data-sorte="${esc(r.discord)}">
+        <input type="hidden" data-cle="${esc(r.cle)}" value="${esc(ids.join(' '))}">
+        <span class="choix-etiquettes">${ids.map(id => `<span class="badge">${esc(PREFIXE[r.discord] + (nomDe(r.discord, id) || `introuvable (${id})`))}
+          <button type="button" class="choix-retirer" data-retirer="${esc(id)}" aria-label="Retirer ${esc(nomDe(r.discord, id) || id)}">×</button></span>`).join('')}</span>
+        ${plusieurs || !ids.length ? `<select id="p-${esc(r.cle)}" aria-label="${esc(r.libelle)}"><option value="">${ids.length ? 'Ajouter…' : 'Choisir…'}</option>
+          ${options.map(x => `<option value="${esc(x.id)}">${esc(PREFIXE[r.discord] + x.nom)}${x.categorie ? ` (${esc(x.categorie)})` : ''}</option>`).join('')}</select>` : ''}
+      </div>`;
+    }
+
+    function champ(r) {
+      const avecListe = r.discord && discord.configure && LISTES[r.discord]().length;
+      return `<div class="champ">
+        <label for="p-${esc(r.cle)}">${esc(r.libelle)}${r.public ? ' <span style="font-weight:400;color:var(--ink2)">· affiché sur le site public</span>' : ''}</label>
+        ${avecListe ? choixDiscord(r) : `<input id="p-${esc(r.cle)}" data-cle="${esc(r.cle)}" value="${esc(r.valeur)}" autocomplete="off"
+          ${r.type === 'entier' ? `type="number" step="1" min="${Number(r.min)}" max="${Number(r.max)}" placeholder="${Number(r.defaut)}"` : ATTRIBUTS[r.type] || 'type="text"'}>`}
+        <small>${esc(r.aide)}${r.discord && !avecListe ? ` ${esc(aideIdentifiant())}` : ''}</small>
+      </div>`;
+    }
+    const aideIdentifiant = () => discord.configure
+      ? (discord.erreur ? `Liste Discord indisponible (${discord.erreur}) : collez l’identifiant.` : 'Collez l’identifiant.')
+      : 'Pour choisir dans une liste, le bot Discord doit être relié au site (demandez-le à qui s’occupe du site) ; en attendant, collez l’identifiant (Discord, mode développeur : clic droit → « Copier l’identifiant »).';
+
+    function afficher() {
+      const onglets = [...new Set(groupes.map(g => g.onglet))];
+      if (!onglets.includes(ongletCourant)) ongletCourant = onglets[0] ?? null;
+      $('onglets').hidden = onglets.length < 2;
+      $('onglets').innerHTML = onglets.map(o => `<button type="button" role="tab" class="onglet${o === ongletCourant ? ' actif' : ''}" aria-selected="${o === ongletCourant}" data-onglet="${esc(o)}">${esc(o)}</button>`).join('');
+      $('panneaux').innerHTML = groupes.length ? groupes.filter(g => g.onglet === ongletCourant).map(g => `
         <section class="carte">
-          <h2>${socle.esc(g.titre)}</h2>
-          ${g.intro ? `<p class="intro">${socle.esc(g.intro)}</p>` : ''}
-          ${g.reglages.map(r => `
-            <div class="champ">
-              <label for="p-${socle.esc(r.cle)}">${socle.esc(r.libelle)}${r.public ? ' <span style="font-weight:400;color:var(--ink2)">· affiché sur le site public</span>' : ''}</label>
-              <input id="p-${socle.esc(r.cle)}" data-cle="${socle.esc(r.cle)}" value="${socle.esc(r.valeur)}" autocomplete="off"
-                ${r.type === 'entier' ? `type="number" step="1" min="${Number(r.min)}" max="${Number(r.max)}" placeholder="${Number(r.defaut)}"` : ATTRIBUTS[r.type] || 'type="text"'}>
-              <small>${socle.esc(r.aide)}</small>
-            </div>`).join('')}
+          <h2>${esc(g.titre)}</h2>
+          ${g.intro ? `<p class="intro">${esc(g.intro)}</p>` : ''}
+          ${g.reglages.map(champ).join('')}
         </section>`).join('')
         : '<p class="intro">Aucun réglage déclaré pour ce site (entreprise.parametres).</p>';
       $('enregistrer').hidden = !groupes.length;
+      marquer(false);
+    }
+    function marquer(oui) { modifie = oui; $('modifie').hidden = !oui; }
+
+    async function charger() {
+      [groupes, discord] = await Promise.all([
+        socle.api('/api/parametres').then(r => r.groupes),
+        socle.api('/api/parametres/discord').catch(() => ({ configure: false, roles: [], salons: [], categories: [] })),
+      ]);
+      afficher();
     }
 
-    const charger = async () => afficher((await socle.api('/api/parametres')).groupes);
+    // un changement non enregistré : on prévient avant de changer d'onglet (rien n'est perdu sans le dire)
+    $('onglets').addEventListener('click', async e => {
+      const b = e.target.closest('[data-onglet]');
+      if (!b || b.dataset.onglet === ongletCourant) return;
+      if (modifie && !await gestion.confirmer('Les modifications de cet onglet ne sont pas enregistrées.', 'Changer d’onglet ?', 'Abandonner les modifications')) return;
+      ongletCourant = b.dataset.onglet;
+      afficher();
+    });
+    $('form').addEventListener('input', () => marquer(true));
+    // choix Discord : ajouter depuis le menu, retirer avec ×
+    $('panneaux').addEventListener('change', e => {
+      const sel = e.target.closest('.choix-discord select');
+      if (!sel || !sel.value) return;
+      const bloc = sel.closest('[data-choix]'), cache = bloc.querySelector('[data-cle]');
+      cache.value = bloc.dataset.plusieurs === '1' ? [...cache.value.split(/\s+/).filter(Boolean), sel.value].join(' ') : sel.value;
+      redessinerChoix(bloc);
+    });
+    $('panneaux').addEventListener('click', e => {
+      const b = e.target.closest('[data-retirer]');
+      if (!b) return;
+      const bloc = b.closest('[data-choix]'), cache = bloc.querySelector('[data-cle]');
+      cache.value = cache.value.split(/\s+/).filter(x => x && x !== b.dataset.retirer).join(' ');
+      redessinerChoix(bloc);
+    });
+    function redessinerChoix(bloc) {
+      const r = groupes.flatMap(g => g.reglages).find(x => x.cle === bloc.dataset.choix);
+      r.valeur = bloc.querySelector('[data-cle]').value;
+      bloc.outerHTML = choixDiscord(r);
+      marquer(true);
+      document.querySelector(`[data-choix="${CSS.escape(r.cle)}"] select`)?.focus();
+    }
 
+    // enregistre les réglages de l'onglet affiché (le serveur n'écrit que les clés reçues)
     $('form').addEventListener('submit', async e => {
       e.preventDefault();
-      const corps = Object.fromEntries([...document.querySelectorAll('[data-cle]')].map(c => [c.dataset.cle, c.value.trim()]));
+      const corps = Object.fromEntries([...$('panneaux').querySelectorAll('[data-cle]')].map(c => [c.dataset.cle, c.value.trim()]));
       $('enregistrer').disabled = true;
       try {
         await socle.api('/api/parametres', { method: 'PUT', body: corps });
