@@ -194,6 +194,31 @@ function injecterPied() {
     </div>`;
 }
 
+// Changement de page (site et espace agents) : au clic sur un lien du site, le contenu s'efface en 130 ms avant de
+// partir, et la rubrique cliquée du menu de la gestion s'allume aussitôt ; la page suivante fait apparaître le sien
+// (style.css, d8-entree). Rien pour un lien qui ouvre un autre onglet, une autre adresse que le site, la même page,
+// une connexion (/auth) ou un clic déjà pris en charge par la page ; rien non plus pour qui demande moins d'animations.
+(function transitionsDePage() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  document.addEventListener("click", (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest("a[href]");
+    if (!a || a.target || a.hasAttribute("download")) return;
+    const url = new URL(a.href, location.href);
+    if (url.origin !== location.origin || /^\/(auth|api)\//.test(url.pathname)) return;
+    if (url.pathname === location.pathname && url.search === location.search) return;
+    e.preventDefault();
+    if (a.classList.contains("lien-onglet")) {
+      document.querySelectorAll("a.lien-onglet.actif").forEach((x) => { x.classList.remove("actif"); x.removeAttribute("aria-current"); });
+      a.classList.add("actif");
+    }
+    document.body.classList.add("page-sortie");
+    setTimeout(() => { location.href = url.href; }, 130);
+  });
+  // retour par le bouton Précédent (page reprise du cache) : le contenu réapparaît
+  addEventListener("pageshow", () => document.body && document.body.classList.remove("page-sortie"));
+})();
+
 // Ordinateur en jeu (FolkOS, FiveM) : le SDK de l'opérateur est chargé par le socle
 // (socle/folkos.js). EN_JEU sert ici à couper les effets WebGL : dans la CEF de FiveM,
 // le GPU est partagé avec le jeu, et une animation plein écran fait chuter les FPS du
