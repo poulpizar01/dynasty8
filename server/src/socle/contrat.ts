@@ -24,14 +24,18 @@ export type EvenementBot = { guildId: string; eventType: string; payload: unknow
 //     espaces).
 // lire / afficher : saisie propre au site (ex. lien Google Sheets → identifiant) : lire renvoie la valeur à enregistrer
 // ou { erreur }, afficher la valeur montrée dans le formulaire.
+// discord (id-discord, ids-discord) : ce que désigne l'identifiant (rôle, salon, catégorie) ; avec le bot relié au site,
+// la page Paramètres le fait choisir par son nom (GET /api/parametres/discord) au lieu de le faire recopier.
+// onglet (groupe) : nom de l'onglet de la page Paramètres où ranger le groupe ; sans onglet : « Réglages ».
 export type TypeParametre = 'lien' | 'origine' | 'texte' | 'entier' | 'id-discord' | 'ids-discord';
 export type DefinitionParametre = {
   cle: string; type: TypeParametre; libelle: string; aide: string; public?: boolean;
   min?: number; max?: number; defaut?: number;
   lire?: (saisie: string) => string | { erreur: string };
   afficher?: (valeur: string) => string;
+  discord?: 'role' | 'salon' | 'categorie';
 };
-export type GroupeParametres = { titre: string; intro?: string; reglages: DefinitionParametre[] };
+export type GroupeParametres = { titre: string; intro?: string; onglet?: string; reglages: DefinitionParametre[] };
 
 export type Entreprise = {
   // nom de la page de gestion/ (sans .html) → niveau

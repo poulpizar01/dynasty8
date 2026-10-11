@@ -4,7 +4,8 @@
 // (contrat.ts), par groupes ; le socle les valide, les range dans ses réglages (clés « site.<cle> ») et sert :
 //   - GET /api/liens : les liens publics (déclarés `public`), pour les pages publiques : `data-lien="<cle>"`, rempli par
 //     socle.js ; un lien vide masque l'élément ;
-//   - GET / PUT /api/parametres : la page Paramètres de la gestion (construite d'après les déclarations).
+//   - GET / PUT /api/parametres : la page Paramètres de la gestion (construite d'après les déclarations) ;
+//   - GET /api/parametres/discord : rôles, salons et catégories du serveur Discord, pour les choisir par leur nom.
 // Lecture dans le code de l'entreprise : parametre(), lienParametre(), origineParametre(), entierParametre(),
 // idsParametre(). Ce module ne lit pas entreprise/index.ts (dépendance circulaire) : index.ts lui transmet les
 // déclarations au démarrage (declarerParametres).
@@ -12,6 +13,9 @@ import { Router } from 'express';
 import type { DefinitionParametre, GroupeParametres } from './contrat.js';
 import { hoteInterdit } from './adresses.js';
 import { body, permission } from './http.js';
+import { botDiscordConfigure } from './discord.js';
+import { rolesDiscord, RolesIndisponibles } from './roles-discord.js';
+import { salonsDiscord } from './salons-discord.js';
 import { definirReglage, reglage } from './reglages.js';
 
 let groupes: GroupeParametres[] = [];
@@ -25,6 +29,7 @@ export function declarerParametres(liste: GroupeParametres[] = []): void {
     if (!/^[a-z0-9_]{2,34}$/.test(d.cle)) throw new Error(`entreprise.parametres : clé invalide « ${d.cle} » (minuscules, chiffres, _ ; 34 caractères au plus)`);
     if (definitions.has(d.cle)) throw new Error(`entreprise.parametres : « ${d.cle} » déclaré deux fois`);
     if (d.public && d.type !== 'lien') throw new Error(`entreprise.parametres : « ${d.cle} » : seul un lien peut être public`);
+    if (d.discord && d.type !== 'id-discord' && d.type !== 'ids-discord') throw new Error(`entreprise.parametres : « ${d.cle} » : discord seulement pour id-discord ou ids-discord`);
     if (d.type === 'entier' && !(Number.isInteger(d.min) && Number.isInteger(d.max) && Number.isInteger(d.defaut))) throw new Error(`entreprise.parametres : « ${d.cle} » : min, max et defaut entiers attendus`);
     definitions.set(d.cle, d);
   }
@@ -86,17 +91,29 @@ parametres.get('/api/liens', (_req, res) => {
 parametres.get('/api/parametres', ...gerer, (_req, res) => {
   res.json({
     groupes: groupes.map(g => ({
-      titre: g.titre, intro: g.intro ?? '',
+      titre: g.titre, intro: g.intro ?? '', onglet: g.onglet || 'Réglages',
       reglages: g.reglages.map(d => {
         const valeur = parametre(d.cle);
         return {
-          cle: d.cle, type: d.type, libelle: d.libelle, aide: d.aide, public: !!d.public,
+          cle: d.cle, type: d.type, libelle: d.libelle, aide: d.aide, public: !!d.public, discord: d.discord ?? null,
           valeur: d.afficher ? d.afficher(valeur) : valeur,
           ...(d.type === 'entier' && { min: d.min, max: d.max, defaut: d.defaut }),
         };
       }),
     })),
   });
+});
+
+// rôles, salons et catégories du serveur Discord, pour les choisir par leur nom ; sans bot relié : configure false (la
+// page fait alors saisir l'identifiant). Une erreur de Discord est renvoyée en clair, la page reste utilisable.
+parametres.get('/api/parametres/discord', ...gerer, async (_req, res) => {
+  if (!botDiscordConfigure()) { res.json({ configure: false, roles: [], salons: [], categories: [] }); return; }
+  try {
+    const [roles, { salons, categories }] = await Promise.all([rolesDiscord(), salonsDiscord()]);
+    res.json({ configure: true, roles: roles.map(({ id, nom, couleur }) => ({ id, nom, couleur })), salons, categories });
+  } catch (e) {
+    res.json({ configure: true, roles: [], salons: [], categories: [], erreur: e instanceof RolesIndisponibles ? e.message : 'Discord ne répond pas pour le moment.' });
+  }
 });
 
 // enregistre les réglages présents dans le corps ; tout ou rien (une erreur n'en écrit aucun)
