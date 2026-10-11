@@ -328,7 +328,7 @@ function brancherQuestion(input, questions) {
   }
   const valeur = input.value.trim();
   const connue = !valeur || questions.includes(valeur);
-  choix.innerHTML = '<option value="">Aucune question</option>'
+  choix.innerHTML = `<option value="">${echapper(input.dataset.vide || 'Pas demandé')}</option>`
     + questions.map(q => `<option value="${echapper(q)}">« ${echapper(q)} »</option>`).join('')
     + `<option value="${AUTRE_LIBELLE}">Autre libellé…</option>`;
   choix.value = connue ? valeur : AUTRE_LIBELLE;
@@ -346,11 +346,13 @@ async function chargerArriveesBot() {
     $rh('rh-bot-etat').textContent = 'Le bot envoie ses candidatures à l’adresse /webhooks/bot du site (abonnement « Candidatures » de son panneau Monitoring).';
     if (reglable) {
       const select = $rh('rh-bot-grade');
-      select.innerHTML = '<option value="">À régler</option>' + r.grades.map(g => `<option value="${echapper(g.cle)}">${echapper(g.libelle)}</option>`).join('');
+      select.innerHTML = '<option value="">À choisir</option>' + r.grades.map(g => `<option value="${echapper(g.cle)}">${echapper(g.libelle)}</option>`).join('');
       select.value = r.reglages.gradeArrivee || '';
       ameliorerSelect(select);
       for (const [champ, id] of Object.entries(CHAMPS_REGLAGES_BOT)) $rh(id).value = r.reglages[champ] || '';
       for (const id of Object.values(CHAMPS_REGLAGES_BOT)) brancherQuestion($rh(id), r.questionsVues);
+      // prénom et nom : en deux questions si elles sont réglées (et pas celle en une seule)
+      choisirModeNom(r.reglages.questionPrenom && r.reglages.questionNom && !r.reglages.questionIdentite ? 'deux' : 'une');
       // un réglage manquant bloque les candidatures : on ouvre les réglages d'office
       if (!r.reglages.gradeArrivee || (!r.reglages.questionIdentite && !(r.reglages.questionPrenom && r.reglages.questionNom))) $rh('rh-bot-details').open = true;
     }
@@ -393,10 +395,19 @@ async function chargerArriveesBot() {
   } catch { bloc.classList.add('cache'); }
 }
 
+// le formulaire demande le prénom et le nom en une question ou en deux : on n’affiche (et n’enregistre) que le mode choisi
+function choisirModeNom(mode) {
+  document.querySelectorAll('[name="rh-mode-nom"]').forEach(r => { r.checked = r.value === mode; });
+  document.querySelectorAll('[data-mode-nom]').forEach(b => b.classList.toggle('cache', b.dataset.modeNom !== mode));
+}
+document.querySelectorAll('[name="rh-mode-nom"]').forEach(r => r.addEventListener('change', () => choisirModeNom(r.value)));
+
 $rh('rh-bot-reglages').addEventListener('submit', async e => {
   e.preventDefault();
   const corps = { gradeArrivee: $rh('rh-bot-grade').value };
   for (const [champ, id] of Object.entries(CHAMPS_REGLAGES_BOT)) corps[champ] = $rh(id).value.trim();
+  if (document.querySelector('[name="rh-mode-nom"]:checked')?.value === 'deux') corps.questionIdentite = '';
+  else { corps.questionPrenom = ''; corps.questionNom = ''; }
   try {
     await socle.api('/api/rh/bot/reglages', { method: 'PUT', body: corps });
     gestion.message('zone-message-rh-bot', 'Réglages enregistrés ✓ Les candidatures « à traiter » peuvent être retraitées.', 'succes');
