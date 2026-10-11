@@ -202,3 +202,10 @@ main.admin-contenu:focus { outline: none; }
 .page-agents .table-admin td[style*="text-align:right"], .page-agents .table-admin th[style*="text-align:right"] { white-space: nowrap; }
 .table-admin.en-cartes tr.ligne-total { border-color: var(--d8-gold-400); background: rgba(201, 165, 92, 0.1); }
 .table-admin.en-cartes tr.ligne-total td { border: none !important; }
+
+/* grille des annonces : toutes les images à la même taille (une photo haute agrandissait son cadre malgré le ratio),
+   et le prix comme les actions alignés en bas de chaque carte, que le titre tienne sur une ligne ou deux */
+.carte-admin-bien-visuel { overflow: hidden; min-height: 0; flex-shrink: 0; }
+.carte-admin-bien-visuel img { position: absolute; inset: 0; }
+.carte-admin-bien-corps { flex: 1; }
+.carte-admin-bien-pied { margin-top: auto !important; }

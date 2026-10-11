@@ -91,7 +91,8 @@ function rendreTableBiens(liste) {
 function rendreGrilleBiens(liste) {
   const conteneur = $('vue-grille-biens');
   conteneur.innerHTML = liste.map(b => {
-    const meta = [b.sous_categorie, ETIQUETTES_CATEGORIE[b.categorie] || b.categorie, b.coherence].filter(Boolean).map(echapper).join(' · ');
+    // sous-catégorie, catégorie, cohérence : souvent identiques (« Garage · Garage »), affichées une seule fois
+    const meta = [...new Set([b.sous_categorie, ETIQUETTES_CATEGORIE[b.categorie] || b.categorie, b.coherence].filter(Boolean))].map(echapper).join(' · ');
     const prix = b.dispo_vente ? formaterPrix(b.prix) : b.dispo_location ? `${formaterPrix(b.prix_location)} /sem.` : '—';
     const loc = b.dispo_vente && b.dispo_location ? `<span class="carte-admin-bien-loc">· ${formaterPrix(b.prix_location)} /sem.</span>` : '';
     return `
