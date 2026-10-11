@@ -184,25 +184,6 @@ body::after {
     linear-gradient(180deg, rgba(6, 12, 26, 0.1) 0%, rgba(6, 12, 26, 0.55) 100%);
 }
 
-/* ---------- cadre de page (double filet or) ---------- */
-/* Élément décoratif fixe, injecté une fois par page (voir layout.js), présent sur
-   toutes les pages publiques. z-index sous l'en-tête (50) et sous les menus
-   déroulants pour ne jamais passer devant un élément cliquable. */
-.d8-frame {
-  /* Le haut du cadre est calé par layout.js juste sous l'en-tête (variable
-     --d8-frame-top, mesurée en JS) pour ne jamais traverser le logo ni le
-     menu — la valeur ci-dessous n'est qu'un repli avant l'exécution du JS. */
-  position: fixed; top: var(--d8-frame-top, 18px); right: 18px; bottom: 18px; left: 18px;
-  z-index: 45; pointer-events: none;
-  border: 1px solid rgba(201, 165, 92, 0.5);
-}
-.d8-frame::before {
-  content: ""; position: absolute; inset: 8px;
-  border: 1px solid rgba(201, 165, 92, 0.18);
-}
-@media (max-width: 768px) { .d8-frame { right: 10px; bottom: 10px; left: 10px; } .d8-frame::before { display: none; } }
-@media (max-width: 480px) { .d8-frame { display: none; } }
-
 /* Titres : serif italique fine — jamais de gras, le luxe est dans la finesse. */
 h1, h2, h3, h4 {
   font-family: var(--d8-font-display);

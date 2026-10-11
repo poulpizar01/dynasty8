@@ -188,43 +188,6 @@ function injecterPied() {
     </div>`;
 }
 
-// Double filet or fixe en bordure de la fenêtre (le "cadre" du thème Marbre & Or) —
-// purement décoratif, jamais au-dessus d'un élément cliquable (z-index sous l'en-tête,
-// pointer-events désactivés) et masqué automatiquement en-dessous de 480px.
-function injecterCadre() {
-  if (document.querySelector(".d8-frame")) return;
-  const cadre = document.createElement("div");
-  cadre.className = "d8-frame";
-  cadre.setAttribute("aria-hidden", "true");
-  document.body.appendChild(cadre);
-
-  ajusterCadre();
-
-  // Le haut du cadre doit toujours rester juste sous l'en-tête, jamais le
-  // traverser : on recalcule dès que la hauteur de l'en-tête change (menu qui
-  // repasse à la ligne, menu mobile ouvert, redimensionnement, polices qui
-  // finissent de charger après le premier rendu).
-  const entete = document.querySelector(".entete");
-  if (entete && "ResizeObserver" in window) {
-    new ResizeObserver(ajusterCadre).observe(entete);
-  } else {
-    window.addEventListener("resize", ajusterCadre);
-  }
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(ajusterCadre);
-  }
-}
-
-// Mesure la hauteur réelle de l'en-tête et pousse le haut du cadre juste en
-// dessous (petite marge de 10px), via la variable CSS --d8-frame-top.
-function ajusterCadre() {
-  const entete = document.querySelector(".entete");
-  const cadre = document.querySelector(".d8-frame");
-  if (!entete || !cadre) return;
-  const hauteur = entete.getBoundingClientRect().height;
-  cadre.style.setProperty("--d8-frame-top", (hauteur + 10) + "px");
-}
-
 // Ordinateur en jeu (FolkOS, FiveM) : le SDK de l'opérateur est chargé par le socle
 // (socle/folkos.js). EN_JEU sert ici à couper les effets WebGL : dans la CEF de FiveM,
 // le GPU est partagé avec le jeu, et une animation plein écran fait chuter les FPS du
@@ -235,7 +198,6 @@ window.D8_EN_JEU = EN_JEU;
 function initialiserLayout(cleActive) {
   injecterEntete(cleActive);
   injecterPied();
-  injecterCadre();
   appliquerLiens();
   demarrerDiaporamaHero();
   // Grilles déjà présentes dans le HTML statique au chargement (équipe, services,
