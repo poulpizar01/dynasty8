@@ -207,6 +207,8 @@ $('bouton-reinitialiser-filtres').addEventListener('click', () => {
 function remplirSousCategories(categorie, valeurSelectionnee) {
   const select = $('bien-sous-categorie');
   $('ligne-bien-meuble').classList.toggle('cache', categorie !== 'habitation');
+  $('ligne-bien-sous-categorie').classList.toggle('cache', categorie !== 'habitation');   // un garage n’a pas de type
+  majSegmentsCategorie();
   if (categorie === 'habitation') {
     select.disabled = false;
     select.innerHTML = SOUS_CATEGORIES_HABITATION.map(s => `<option value="${echapper(s)}">${echapper(s)}</option>`).join('');
@@ -223,8 +225,67 @@ $('bien-categorie').addEventListener('change', e => remplirSousCategories(e.targ
 $('bien-coherence').addEventListener('change', e => { e.target.dataset.modifieManuellement = '1'; });
 
 // ---- transaction : vente et/ou location, chacune avec sa propre ligne de prix ----
-$('bien-dispo-vente').addEventListener('change', e => $('ligne-bien-prix-vente').classList.toggle('cache', !e.target.checked));
-$('bien-dispo-location').addEventListener('change', e => $('ligne-bien-prix-location').classList.toggle('cache', !e.target.checked));
+function majTransactionsBien() {
+  for (const [type, id] of [['vente', 'bien-dispo-vente'], ['location', 'bien-dispo-location']]) {
+    const coche = $(id).checked;
+    $(`ligne-bien-prix-${type}`).classList.toggle('cache', !coche);
+    document.querySelector(`.annonce-transaction[data-transaction="${type}"]`).classList.toggle('actif', coche);
+  }
+}
+$('bien-dispo-vente').addEventListener('change', majTransactionsBien);
+$('bien-dispo-location').addEventListener('change', majTransactionsBien);
+
+// ---- catégorie : deux boutons (Habitation / Garage) qui pilotent le <select> caché ----
+function majSegmentsCategorie() {
+  for (const b of document.querySelectorAll('[data-categorie]')) {
+    const choisi = b.dataset.categorie === $('bien-categorie').value;
+    b.classList.toggle('actif', choisi);
+    b.setAttribute('aria-checked', String(choisi));
+    b.tabIndex = choisi ? 0 : -1;
+  }
+}
+document.querySelectorAll('[data-categorie]').forEach(b => {
+  b.addEventListener('click', () => {
+    if ($('bien-categorie').value === b.dataset.categorie) return;
+    $('bien-categorie').value = b.dataset.categorie;
+    $('bien-categorie').dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  // flèches gauche / droite entre les deux choix, comme un groupe de boutons radio
+  b.addEventListener('keydown', e => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+    e.preventDefault();
+    const autre = [...document.querySelectorAll('[data-categorie]')].find(x => x !== b);
+    autre.click(); autre.focus();
+  });
+});
+
+// ---- sommaire : une coche par étape remplie, l’étape lue en surbrillance, clic = défilement jusqu’à elle ----
+function majSommaireBien() {
+  const prixOk = (caseId, prixId) => $(caseId).checked && $(prixId).value !== '' && Number($(prixId).value) >= 0;
+  const etats = {
+    bien: !!$('bien-titre').value.trim(),
+    prix: ($('bien-dispo-vente').checked || $('bien-dispo-location').checked)
+      && (!$('bien-dispo-vente').checked || prixOk('bien-dispo-vente', 'bien-prix-vente'))
+      && (!$('bien-dispo-location').checked || prixOk('bien-dispo-location', 'bien-prix-location')),
+    photos: IMAGES_BIEN.length > 0,
+    description: !!$('bien-description').value.trim(),
+    details: !!($('bien-places').value || $('bien-coffre').value || $('bien-vip').value),
+    publication: true,
+  };
+  for (const a of document.querySelectorAll('.annonce-sommaire [data-etape]')) a.classList.toggle('fait', etats[a.dataset.etape]);
+}
+$('formulaire-bien').addEventListener('input', majSommaireBien);
+$('formulaire-bien').addEventListener('change', majSommaireBien);
+document.querySelectorAll('.annonce-sommaire a').forEach(a => a.addEventListener('click', e => {
+  e.preventDefault();   // pas d’ancre dans l’adresse : on fait défiler le corps de la fenêtre
+  document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+}));
+const observateurEtapes = new IntersectionObserver(entrees => {
+  for (const e of entrees) if (e.isIntersecting) {
+    document.querySelectorAll('.annonce-sommaire a').forEach(a => a.classList.toggle('courant', a.getAttribute('href') === '#' + e.target.id));
+  }
+}, { root: document.querySelector('.annonce-corps'), rootMargin: '-10% 0px -70% 0px' });
+document.querySelectorAll('.annonce-etape').forEach(e => observateurEtapes.observe(e));
 
 // ---- photos : fichier envoyé tel quel, ou lien téléchargé par le serveur ----
 // Le serveur contrôle, réencode (WebP) et stocke chaque photo, puis renvoie son adresse : c'est elle seule que garde
@@ -295,6 +356,7 @@ function redessinerImagesBien() {
   });
   const n = TRANSFERTS_BIEN.length;
   $('bien-images-compteur').textContent = `${IMAGES_BIEN.length} / ${MAX_PHOTOS_BIEN}${n ? ` · ${n} en cours d'envoi` : ''}`;
+  majSommaireBien();   // l’étape Photos se coche dès la première photo
   const bloque = IMAGES_BIEN.length + n >= MAX_PHOTOS_BIEN || SAUVEGARDE_BIEN_EN_COURS;
   $('bouton-parcourir').disabled = bloque;
   if (!SAUVEGARDE_BIEN_EN_COURS) {
@@ -425,6 +487,7 @@ const CHAMPS_TEXTE = ['bien-titre', 'bien-categorie', 'bien-sous-categorie', 'bi
 const CASES = ['bien-meuble', 'bien-dispo-vente', 'bien-dispo-location', 'bien-coup-de-coeur', 'bien-disponible', 'bien-vendu', 'bien-standing'];
 const etatFormulaireBien = () => JSON.stringify([CHAMPS_TEXTE.map(id => $(id).value), CASES.map(id => $(id).checked), IMAGES_BIEN]);
 
+let OUVREUR_MODALE_BIEN = null;
 function ouvrirModaleBien(id) {
   const bien = id ? CACHE_BIENS.find(b => b.id === id) : null;
   $('titre-modale-bien').textContent = bien ? 'Modifier l’annonce' : 'Nouvelle annonce';
@@ -441,10 +504,9 @@ function ouvrirModaleBien(id) {
   const dispoVente = bien ? !!bien.dispo_vente : true, dispoLocation = !!bien?.dispo_location;
   $('bien-dispo-vente').checked = dispoVente;
   $('bien-prix-vente').value = bien?.dispo_vente ? bien.prix : '';
-  $('ligne-bien-prix-vente').classList.toggle('cache', !dispoVente);
   $('bien-dispo-location').checked = dispoLocation;
   $('bien-prix-location').value = bien?.dispo_location ? bien.prix_location : '';
-  $('ligne-bien-prix-location').classList.toggle('cache', !dispoLocation);
+  majTransactionsBien();
   $('bien-coffre').value = bien?.coffre_kg ?? '';
   $('bien-vip').value = bien?.vip ? 'vip' : '';
   $('bien-description').value = bien?.description || '';
@@ -459,7 +521,11 @@ function ouvrirModaleBien(id) {
   reinitialiserTransfertsBien();
   IMAGES_BIEN = bien?.images ? bien.images.slice(0, MAX_PHOTOS_BIEN) : [];
   redessinerImagesBien();
+  majSommaireBien();
+  OUVREUR_MODALE_BIEN = document.activeElement;
   $('modale-bien').classList.remove('cache');
+  document.querySelector('.annonce-corps').scrollTop = 0;
+  $('bien-titre').focus();
   ETAT_INITIAL_BIEN = etatFormulaireBien();
 }
 
@@ -468,6 +534,7 @@ function fermerModaleBien() {
   reinitialiserTransfertsBien();
   redessinerImagesBien();
   $('modale-bien').classList.add('cache');
+  OUVREUR_MODALE_BIEN?.focus?.();   // le focus revient au bouton qui a ouvert la fenêtre
 }
 
 async function demanderFermetureModaleBien() {
@@ -505,7 +572,13 @@ $('formulaire-bien').addEventListener('submit', async e => {
   if (!dispoVente && !dispoLocation) erreur('erreur-bien-transaction');
   if (dispoVente && !positif(prixVente)) erreur('erreur-bien-prix-vente');
   if (dispoLocation && !positif(prixLocation)) erreur('erreur-bien-prix-location');
-  if (!valide) { gestion.message('zone-message-modale-bien', 'Corrigez les champs indiqués en rouge avant d’enregistrer.'); return; }
+  if (!valide) {
+    // on amène la personne au premier champ à corriger plutôt qu’en haut de la fenêtre
+    const premiere = document.querySelector('#formulaire-bien .champ-erreur:not(.cache)');
+    premiere?.closest('.annonce-etape')?.scrollIntoView({ block: 'start' });
+    premiere?.closest('.champ, .annonce-etape')?.querySelector('input:not([type=hidden]), textarea')?.focus({ preventScroll: true });
+    return;
+  }
   if (TRANSFERTS_BIEN.length) { gestion.message('zone-message-modale-bien', 'Attendez la fin de l’envoi des photos avant d’enregistrer.'); return; }
 
   const id = $('bien-id').value;
@@ -540,7 +613,7 @@ $('formulaire-bien').addEventListener('submit', async e => {
   try {
     await socle.api(id ? `/api/biens/${id}` : '/api/biens', { method: id ? 'PUT' : 'POST', body: bien });
     ETAT_INITIAL_BIEN = etatFormulaireBien();
-    gestion.message('zone-message-modale-bien', id ? 'Bien mis à jour ✓' : 'Bien ajouté avec succès ✓', 'succes');
+    gestion.message('zone-message-modale-bien', 'Annonce enregistrée ✓', 'succes');
     await chargerTableBiens();
     setTimeout(() => { if (edition === EDITION_BIEN) fermerModaleBien(); }, 800);
   } catch (err) {
@@ -555,6 +628,6 @@ $('formulaire-bien').addEventListener('submit', async e => {
 $('bouton-supprimer-bien').addEventListener('click', () => { const id = $('bien-id').value; if (id) supprimerBien(Number(id), true); });
 
 // menus déroulants aux couleurs du site (layout.js)
-['filtre-categorie', 'filtre-statut', 'bien-categorie', 'bien-sous-categorie', 'bien-coherence', 'bien-vip'].forEach(id => ameliorerSelect($(id)));
+['filtre-categorie', 'filtre-statut', 'bien-sous-categorie', 'bien-coherence', 'bien-vip'].forEach(id => ameliorerSelect($(id)));
 
 gestion.coque('biens').then(chargerTableBiens);

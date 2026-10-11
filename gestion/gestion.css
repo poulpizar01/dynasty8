@@ -209,3 +209,127 @@ main.admin-contenu:focus { outline: none; }
 .carte-admin-bien-visuel img { position: absolute; inset: 0; }
 .carte-admin-bien-corps { flex: 1; }
 .carte-admin-bien-pied { margin-top: auto !important; }
+
+/* ---------- fenêtre d'annonce (biens.html) : parcours en étapes, sommaire qui coche, barre d'actions fixe ---------- */
+.modale.modale-annonce {
+  max-width: 940px; padding: 0; overflow: hidden; display: flex; flex-direction: column; height: min(880px, 92vh); max-height: none;
+}
+.annonce-entete { margin: 0; padding: 20px 28px 16px; border-bottom: 1px solid var(--border); }
+.annonce-entete h2 { margin: 0; font-size: 1.6rem; line-height: 1.15; }
+.annonce-formulaire { flex: 1; min-height: 0; display: grid; grid-template-columns: 200px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+
+/* sommaire : l'étape lue est en surbrillance, une étape remplie prend une coche dorée */
+.annonce-sommaire { display: flex; flex-direction: column; gap: 2px; padding: 20px 14px; border-right: 1px solid var(--border); background: rgba(6, 12, 26, 0.25); }
+.annonce-sommaire a {
+  display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius-sm);
+  color: var(--text-muted); font-size: 0.9rem; text-decoration: none; transition: background var(--d8-t), color var(--d8-t);
+}
+.annonce-sommaire a:hover { color: var(--text); background: rgba(201, 165, 92, 0.06); }
+.annonce-sommaire a.courant { color: var(--text); background: rgba(201, 165, 92, 0.12); }
+.annonce-sommaire small { margin-left: auto; font-size: 0.75rem; color: var(--text-faint); }
+.annonce-etat { position: relative; flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid rgba(201, 165, 92, 0.35); }
+.annonce-sommaire a.fait .annonce-etat { background: var(--d8-gold-400); border-color: var(--d8-gold-400); }
+.annonce-sommaire a.fait .annonce-etat::after {
+  content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px;
+  border: solid var(--or-contrast); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+
+/* corps : seul à défiler ; une étape = un titre, une phrase d'aide au besoin, ses champs */
+.annonce-corps { overflow-y: auto; padding: 0 28px 24px; scroll-padding-top: 8px; }
+.annonce-etape { padding: 22px 0 8px; border-bottom: 1px solid var(--border); }
+.annonce-etape:last-child { border-bottom: none; }
+.annonce-etape h3 { margin: 0 0 14px; font-family: var(--d8-font-display); font-size: 1.3rem; font-weight: 400; color: var(--text); }
+.annonce-etape h3 small { margin-left: 8px; font-family: var(--d8-font-ui); font-size: 0.75rem; color: var(--text-faint); }
+.annonce-etape-titre { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+#etape-prix h3, .annonce-etape-titre h3 { margin-bottom: 4px; }
+.annonce-etape-aide { margin: 0 0 14px; font-size: 0.85rem; color: var(--text-faint); }
+
+/* intitulés en casse normale : plus lisibles que les petites majuscules espacées du reste du site */
+.modale-annonce .champ label, .annonce-intitule {
+  display: block; margin-bottom: 6px; font-size: 0.875rem; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-muted);
+}
+.modale-annonce .champ { margin-bottom: 16px; }
+
+/* catégorie : deux choix côte à côte */
+.annonce-segments {
+  display: inline-grid; grid-template-columns: 1fr 1fr; gap: 4px; width: min(100%, 340px); padding: 4px;
+  border: 1px solid rgba(201, 165, 92, 0.28); border-radius: 999px; background: rgba(6, 12, 26, 0.55);
+}
+.annonce-segments button {
+  min-height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: none; color: var(--text-muted);
+  font: inherit; font-size: 0.92rem; cursor: pointer; transition: background var(--d8-t), color var(--d8-t);
+}
+.annonce-segments button:hover { color: var(--text); }
+.annonce-segments button.actif { background: var(--d8-grad-gold); color: var(--or-contrast); font-weight: 600; }
+.annonce-segments button:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 2px; }
+
+/* prix : une carte par transaction ; cochée, bordure dorée et montant dedans */
+.annonce-transactions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; margin-bottom: 14px; }
+.annonce-transaction {
+  padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(6, 12, 26, 0.35);
+  transition: border-color var(--d8-t), background var(--d8-t);
+}
+.annonce-transaction.actif { border-color: var(--d8-gold-400); background: rgba(201, 165, 92, 0.07); }
+.annonce-transaction-tete { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
+.annonce-transaction-tete input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--d8-gold-400); cursor: pointer; }
+.annonce-transaction-tete strong { display: block; color: var(--text); font-weight: 500; }
+.annonce-transaction-tete small { display: block; font-size: 0.82rem; color: var(--text-faint); }
+.annonce-transaction .champ { margin: 14px 0 0; }
+.annonce-montant { position: relative; }
+.annonce-montant input { padding-right: 44px; }
+.annonce-montant span { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-faint); pointer-events: none; }
+
+/* photos et description */
+.modale-annonce .bien-images-outils { margin: 12px 0 16px; }
+.modale-annonce .bien-images-grille:empty { display: none; }
+.annonce-apercu { margin-bottom: 16px; }
+.annonce-apercu summary { cursor: pointer; width: fit-content; font-size: 0.88rem; color: var(--gold-strong); }
+.annonce-apercu[open] summary { margin-bottom: 8px; }
+
+/* publication : des interrupteurs, chacun avec sa conséquence en une ligne */
+.annonce-interrupteur { display: flex; align-items: flex-start; gap: 14px; padding: 12px 0; cursor: pointer; }
+.annonce-interrupteur + .annonce-interrupteur { border-top: 1px solid var(--border); }
+.annonce-interrupteur input {
+  appearance: none; -webkit-appearance: none; position: relative; flex-shrink: 0; width: 40px; height: 22px; margin: 1px 0 0;
+  border-radius: 999px; background: rgba(154, 166, 190, 0.28); cursor: pointer; transition: background var(--d8-t);
+}
+.annonce-interrupteur input::before {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; transition: transform var(--d8-t);
+}
+.annonce-interrupteur input:checked { background: var(--d8-gold-400); }
+.annonce-interrupteur input:checked::before { transform: translateX(18px); }
+.annonce-interrupteur input:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 2px; }
+.annonce-interrupteur-texte strong { display: block; color: var(--text); font-weight: 500; }
+.annonce-interrupteur-texte small { display: block; margin-top: 2px; font-size: 0.82rem; color: var(--text-faint); }
+#ligne-bien-meuble { padding-top: 0; }
+
+/* barre d'actions : toujours visible ; supprimer à l'écart, à gauche */
+.annonce-pied {
+  grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  padding: 14px 28px; border-top: 1px solid var(--border); background: var(--bg-card);
+}
+.annonce-pied .annonce-supprimer { margin-right: auto; color: var(--danger-strong); border-color: rgba(232, 83, 74, 0.35); }
+.annonce-pied .annonce-supprimer:hover { background: rgba(232, 83, 74, 0.12); }
+
+/* téléphone : plein écran, sans sommaire, une colonne */
+@media (max-width: 760px) {
+  #modale-bien { padding: 0; }
+  .modale.modale-annonce { height: 100dvh; max-width: none; border-radius: 0; border: 0; }
+  .annonce-formulaire { grid-template-columns: minmax(0, 1fr); }
+  .annonce-sommaire { display: none; }
+  .annonce-entete, .annonce-corps, .annonce-pied { padding-left: 18px; padding-right: 18px; }
+  .modale-annonce .champ-deux { grid-template-columns: 1fr; gap: 0; }
+  .annonce-pied { flex-wrap: wrap; }
+  .annonce-pied { padding-top: 12px; padding-bottom: 12px; }
+  .annonce-pied .btn-or { order: -1; flex-basis: 100%; }   /* l action principale d abord, sur toute la largeur */
+  .annonce-pied .btn { min-height: 44px; }
+}
+/* la règle générale « label » du site (petites majuscules espacées) ne s'applique pas aux cartes ni aux interrupteurs */
+.modale-annonce label { font-size: inherit; text-transform: none; letter-spacing: 0; color: inherit; }
+.modale-annonce .annonce-transaction-tete strong, .modale-annonce .annonce-interrupteur-texte strong { font-size: 0.95rem; }
+.annonce-message { flex: 1; min-width: 0; }
+.annonce-message .message { margin: 0; padding: 8px 12px; font-size: 0.88rem; }
+.annonce-pied .annonce-supprimer:not(.cache) + .annonce-message { margin-left: 0; }
+.annonce-pied .annonce-supprimer { margin-right: 0 !important; }
+@media (max-width: 760px) { .annonce-message { flex-basis: 100%; order: -2; } .annonce-message:empty { display: none; } }
