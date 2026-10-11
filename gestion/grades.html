@@ -50,7 +50,8 @@
           <label for="role-liste" id="libelle-role">Rôle Discord <small>facultatif</small></label>
           <select id="role-liste" class="cache"></select>
           <input type="text" id="role" inputmode="numeric" pattern="\d{5,32}" placeholder="Identifiant du rôle">
-          <p class="champ-aide" id="role-aide">Qui porte ce rôle reçoit ce grade à sa connexion, et est validé d’office. Discord : Paramètres du serveur → Rôles → clic droit sur le rôle → « Copier l’identifiant ».</p>
+          <p class="champ-aide" id="role-aide-bot"></p>
+          <p class="champ-aide" id="role-aide">Qui porte ce rôle reçoit ce grade à sa connexion, et est validé d’office.<span class="role-aide-identifiant"> Identifiant : Discord → Paramètres du serveur → Rôles → clic droit sur le rôle → « Copier l’identifiant ».</span></p>
         </div>
         <fieldset class="grade-permissions">
           <legend>Ce que ce grade peut faire</legend>
@@ -179,6 +180,12 @@
       let r;
       [grades, permissions, r] = await Promise.all([socle.api('/api/grades'), socle.api('/api/permissions'), socle.api('/api/grades/roles-discord').catch(() => ({ roles: [] }))]);
       roles = r.roles || [];
+      // sans bot relié au site, pas de liste : on dit pourquoi, et comment saisir l’identifiant en attendant
+      $('role-aide-bot').textContent = roles.length ? '' : r.configure === false
+        ? 'La liste des rôles s’affiche ici quand le bot Discord est relié au site (DISCORD_BOT_TOKEN, voir le guide d’installation). En attendant, collez l’identifiant du rôle.'
+        : `Liste des rôles indisponible${r.erreur ? ` : ${r.erreur}` : ''}. Collez l’identifiant du rôle en attendant.`;
+      $('role-aide-bot').classList.toggle('cache', !!roles.length);
+      document.querySelector('.role-aide-identifiant').classList.toggle('cache', !!roles.length);   // choix par le nom : plus besoin
       if (r.erreur) gestion.message('zone-message', r.erreur);
       // nombre de comptes par grade, si l'on voit les comptes
       if (socle.peut(moi, 'comptes')) {
