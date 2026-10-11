@@ -451,7 +451,7 @@ function ameliorerSelect(select, pastille, portee) {
 
   function rendreOptions() {
     flottant.innerHTML = Array.from(select.options).map((o) => `
-      <div class="d8-select-option ${o.value === select.value ? "selectionnee" : ""}" data-valeur="${echapper(o.value)}">
+      <div class="d8-select-option ${o.value === select.value ? "selectionnee" : ""}${o.disabled ? " desactivee" : ""}" data-valeur="${echapper(o.value)}"${o.disabled ? ' aria-disabled="true"' : ""}>
         ${pastille ? `<span class="d8-select-pastille" style="background:${pastille(o.value)};"></span>` : ""}
         <span>${echapper(o.textContent)}</span>
       </div>`).join("");
@@ -459,6 +459,7 @@ function ameliorerSelect(select, pastille, portee) {
       el.addEventListener("mousedown", (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
+        if (el.classList.contains("desactivee")) return;   // option désactivée (ex. un grade qu’on ne peut pas donner)
         if (select.value !== el.dataset.valeur) {
           select.value = el.dataset.valeur;
           select.dispatchEvent(new Event("change", { bubbles: true }));
@@ -530,9 +531,43 @@ function nettoyerSelectsPortee(portee) {
 // =============================================================================
 const VALEUR_INPUT = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
 
+// Saisie invalide : message sous le champ dès qu'on le quitte, et le formulaire refuse de s'envoyer (sinon .value vide
+// partait sans rien dire et la date était perdue). L'écouteur est posé en capture sur le formulaire : il passe avant
+// celui de la page et l'arrête.
+function erreurChampFr(input, message) {
+  const brut = () => VALEUR_INPUT.get.call(input).trim();
+  const invalide = () => brut() !== "" && input.value === "";
+  let p = null;
+  const montrer = (afficher) => {
+    if (afficher && !p) {
+      p = document.createElement("p");
+      p.className = "champ-erreur";
+      p.id = (input.id || "champ") + "-erreur-format";
+      p.textContent = message;
+      input.insertAdjacentElement("afterend", p);
+      input.setAttribute("aria-describedby", p.id);
+    }
+    if (p) p.classList.toggle("cache", !afficher);
+    input.toggleAttribute("aria-invalid", afficher);
+    input.classList.toggle("champ-invalide", afficher);
+  };
+  input.addEventListener("blur", () => montrer(invalide()));
+  input.addEventListener("input", () => { if (!invalide()) montrer(false); });
+  input.form?.addEventListener("submit", (ev) => {
+    if (!invalide()) return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    montrer(true);
+    input.focus();
+  }, true);
+  // une valeur remise par le script (ouverture d'une fiche) efface l'erreur précédente
+  input.effacerErreurFr = () => montrer(false);
+}
+
 function champDateFr(input) {
   if (!input || input.dataset.fr) return;
   input.dataset.fr = "1";
+  erreurChampFr(input, "Date invalide : écrivez-la jj/mm/aaaa, par exemple 06/10/2026.");
   input.type = "text";
   Object.assign(input, { inputMode: "numeric", placeholder: "jj/mm/aaaa", maxLength: 10, autocomplete: "off" });
   input.pattern = "\\d{2}/\\d{2}/\\d{4}";
@@ -548,7 +583,7 @@ function champDateFr(input) {
   Object.defineProperty(input, "value", {
     configurable: true,
     get() { return versIso(VALEUR_INPUT.get.call(this)); },
-    set(v) { VALEUR_INPUT.set.call(this, versFr(v)); },
+    set(v) { VALEUR_INPUT.set.call(this, versFr(v)); this.effacerErreurFr?.(); },
   });
   // les barres s'ajoutent d'elles-mêmes : « 06102026 » devient « 06/10/2026 »
   input.addEventListener("input", (ev) => {
@@ -565,6 +600,7 @@ function champHeureFr(input, pasMinutes = 15) {
   Object.assign(input, { inputMode: "numeric", placeholder: "hh:mm", maxLength: 5, autocomplete: "off" });
   input.pattern = "\\d{2}:\\d{2}";
   input.title = "Heure au format 24 h, par exemple 14:30";
+  erreurChampFr(input, "Heure invalide : écrivez-la sur 24 h, par exemple 14:30.");
   const normaliser = (t) => {
     const m = /^(\d{1,2})[:hH]?(\d{2})?$/.exec(String(t).trim());
     if (!m || +m[1] > 23 || +(m[2] || 0) > 59) return "";
@@ -573,7 +609,7 @@ function champHeureFr(input, pasMinutes = 15) {
   Object.defineProperty(input, "value", {
     configurable: true,
     get() { return normaliser(VALEUR_INPUT.get.call(this)); },
-    set(v) { VALEUR_INPUT.set.call(this, normaliser(v) || ""); },
+    set(v) { VALEUR_INPUT.set.call(this, normaliser(v) || ""); this.effacerErreurFr?.(); },
   });
   // « 1430 » devient « 14:30 » ; en quittant le champ, « 9 » devient « 09:00 »
   input.addEventListener("input", (ev) => {

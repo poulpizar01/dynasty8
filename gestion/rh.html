@@ -78,7 +78,6 @@
         <details class="rh-reglages cache" id="rh-bot-details">
           <summary>Réglages de lecture des candidatures</summary>
           <form id="rh-bot-reglages">
-            <datalist id="rh-bot-questions-vues"></datalist>
             <ol class="rh-etapes">
               <li>
                 <h3>Grade donné à l’arrivée</h3>
@@ -88,38 +87,32 @@
                 </div>
               </li>
               <li>
-                <h3>Questions du formulaire de candidature</h3>
-                <p class="comptes-aide">Le libellé exact de chaque question, tel que réglé dans le bot (panneau « Recrutement »). Les questions déjà reçues sont proposées en tapant. Une question vide n’est pas lue.</p>
-                <div class="champ-deux">
-                  <div class="champ">
-                    <label for="rh-bot-q-identite">Prénom et nom, en une question</label>
-                    <input type="text" id="rh-bot-q-identite" maxlength="200" list="rh-bot-questions-vues" placeholder="Ex. Nom RP">
-                    <p class="champ-aide">Le premier mot devient le prénom, le reste le nom.</p>
+                <h3>Où lire chaque information dans la candidature</h3>
+                <p class="comptes-aide">Le bot envoie les réponses du formulaire de candidature Discord, question par question. Pour chaque information, choisissez la question qui la contient : la liste propose les questions déjà reçues. « Autre libellé » permet d’en saisir une qui n’est pas encore arrivée (libellé exact, tel que réglé dans le panneau « Recrutement » du bot).</p>
+                <div class="rh-correspondances">
+                  <div class="rh-correspondance">
+                    <div class="rh-correspondance-texte"><label for="rh-bot-q-identite-choix">Prénom et nom</label><small>Une seule question : le premier mot devient le prénom, le reste le nom.</small></div>
+                    <div class="rh-correspondance-choix"><input type="text" id="rh-bot-q-identite" maxlength="200" class="cache" aria-label="Libellé exact de la question : Prénom et nom" placeholder="Libellé exact de la question"></div>
                   </div>
-                  <div class="champ">
-                    <label for="rh-bot-q-id-employe">ID employé <small>facultatif</small></label>
-                    <input type="text" id="rh-bot-q-id-employe" maxlength="200" list="rh-bot-questions-vues">
-                    <p class="champ-aide">Vide : un ID provisoire PROV-B…, à remplacer ensuite.</p>
+                  <div class="rh-correspondance">
+                    <div class="rh-correspondance-texte"><label for="rh-bot-q-prenom-choix">Prénom seul <small>facultatif</small></label><small>Si le formulaire pose le prénom et le nom séparément.</small></div>
+                    <div class="rh-correspondance-choix"><input type="text" id="rh-bot-q-prenom" maxlength="200" class="cache" aria-label="Libellé exact de la question : Prénom seul" placeholder="Libellé exact de la question"></div>
                   </div>
-                </div>
-                <div class="champ-deux">
-                  <div class="champ">
-                    <label for="rh-bot-q-prenom">Ou prénom, en question séparée</label>
-                    <input type="text" id="rh-bot-q-prenom" maxlength="200" list="rh-bot-questions-vues">
+                  <div class="rh-correspondance">
+                    <div class="rh-correspondance-texte"><label for="rh-bot-q-nom-choix">Nom seul <small>facultatif</small></label><small>À régler avec le prénom seul.</small></div>
+                    <div class="rh-correspondance-choix"><input type="text" id="rh-bot-q-nom" maxlength="200" class="cache" aria-label="Libellé exact de la question : Nom seul" placeholder="Libellé exact de la question"></div>
                   </div>
-                  <div class="champ">
-                    <label for="rh-bot-q-nom">et nom, en question séparée</label>
-                    <input type="text" id="rh-bot-q-nom" maxlength="200" list="rh-bot-questions-vues">
+                  <div class="rh-correspondance">
+                    <div class="rh-correspondance-texte"><label for="rh-bot-q-id-employe-choix">ID employé <small>facultatif</small></label><small>Sans question : un ID provisoire PROV-B…, à remplacer ensuite.</small></div>
+                    <div class="rh-correspondance-choix"><input type="text" id="rh-bot-q-id-employe" maxlength="200" class="cache" aria-label="Libellé exact de la question : ID employé" placeholder="Libellé exact de la question"></div>
                   </div>
-                </div>
-                <div class="champ-deux">
-                  <div class="champ">
-                    <label for="rh-bot-q-telephone">Téléphone <small>facultatif</small></label>
-                    <input type="text" id="rh-bot-q-telephone" maxlength="200" list="rh-bot-questions-vues">
+                  <div class="rh-correspondance">
+                    <div class="rh-correspondance-texte"><label for="rh-bot-q-telephone-choix">Téléphone <small>facultatif</small></label><small></small></div>
+                    <div class="rh-correspondance-choix"><input type="text" id="rh-bot-q-telephone" maxlength="200" class="cache" aria-label="Libellé exact de la question : Téléphone" placeholder="Libellé exact de la question"></div>
                   </div>
-                  <div class="champ">
-                    <label for="rh-bot-q-rib">RIB <small>facultatif</small></label>
-                    <input type="text" id="rh-bot-q-rib" maxlength="200" list="rh-bot-questions-vues">
+                  <div class="rh-correspondance">
+                    <div class="rh-correspondance-texte"><label for="rh-bot-q-rib-choix">RIB <small>facultatif</small></label><small></small></div>
+                    <div class="rh-correspondance-choix"><input type="text" id="rh-bot-q-rib" maxlength="200" class="cache" aria-label="Libellé exact de la question : RIB" placeholder="Libellé exact de la question"></div>
                   </div>
                 </div>
               </li>

@@ -2968,3 +2968,5 @@ tr:hover .compta-supprimer-ligne, .compta-supprimer-ligne:focus-visible { opacit
 .dot-copie-outils { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .dot-copie-libelle { font-family: var(--d8-font-ui); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
 .dot-copie-ligne { width: 72px; text-align: center; }
+/* menus habillés : le texte s'arrête avant le chevron (à 16 px du bord) au lieu de passer dessous */
+.d8-select-enveloppe select { padding-right: 44px !important; text-overflow: ellipsis; }

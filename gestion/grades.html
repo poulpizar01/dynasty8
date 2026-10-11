@@ -105,6 +105,7 @@
         const absent = id && !nomRole(id) ? `<option value="${echapper(id)}">Rôle supprimé sur Discord (${echapper(id)})</option>` : '';
         $('role-liste').innerHTML = '<option value="">Aucun rôle</option>' + absent + roles.map(r => `<option value="${echapper(r.id)}">@${echapper(r.nom)}</option>`).join('');
         $('role-liste').value = id;
+        ameliorerSelect($('role-liste'));
       }
       // seulement les permissions que l'on détient (le serveur refuserait les autres)
       $('cases').innerHTML = permissions.map(p => `
@@ -122,7 +123,8 @@
       roles = r.roles || [];
       if (r.erreur) gestion.message('zone-message', r.erreur);
       // liste lue sur Discord : choix par le nom ; sinon, saisie de l'identifiant
-      $('role-liste').classList.toggle('cache', !roles.length);
+      // habillé (ameliorerSelect) : c’est son enveloppe qu’on affiche ou masque
+      ($('role-liste').closest('.d8-select-enveloppe') || $('role-liste')).classList.toggle('cache', !roles.length);
       $('role').classList.toggle('cache', !!roles.length);
       $('role-aide').classList.toggle('cache', !!roles.length);
       afficher();

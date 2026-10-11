@@ -30,6 +30,7 @@ async function chargerRh() {
     DROITS_RH = new Set(r.droits || []);
     const options = GRADES_EMPLOYES.map(g => `<option value="${echapper(g.cle)}">${echapper(g.libelle)}</option>`).join('');
     $rh('employe-grade').innerHTML = options;
+    ameliorerSelect($rh('employe-grade'));   // les grades qu’on ne peut pas donner y restent grisés
     const filtre = $rh('filtre-rh-grade'), valeur = filtre.value;
     filtre.innerHTML = `<option value="">Tous les grades</option>${options}`;
     filtre.value = valeur;
@@ -309,6 +310,32 @@ const CHAMPS_REGLAGES_BOT = {
   questionNom: 'rh-bot-q-nom', questionTelephone: 'rh-bot-q-telephone', questionRib: 'rh-bot-q-rib',
 };
 
+// Correspondance « information → question du formulaire » : un menu des questions déjà reçues plutôt qu'un libellé à
+// recopier (une faute de frappe envoyait la candidature en « à traiter ») ; « Autre libellé » ouvre la saisie libre,
+// pour une question pas encore reçue. Le champ texte (caché sauf pour « Autre ») reste ce que lit l'enregistrement.
+const AUTRE_LIBELLE = '\u0000autre';
+function brancherQuestion(input, questions) {
+  let choix = $rh(`${input.id}-choix`);
+  if (!choix) {
+    choix = document.createElement('select');
+    choix.id = `${input.id}-choix`;
+    input.before(choix);
+    choix.addEventListener('change', () => {
+      const autre = choix.value === AUTRE_LIBELLE;
+      input.classList.toggle('cache', !autre);
+      if (autre) { input.value = ''; input.focus(); } else input.value = choix.value;
+    });
+  }
+  const valeur = input.value.trim();
+  const connue = !valeur || questions.includes(valeur);
+  choix.innerHTML = '<option value="">Aucune question</option>'
+    + questions.map(q => `<option value="${echapper(q)}">« ${echapper(q)} »</option>`).join('')
+    + `<option value="${AUTRE_LIBELLE}">Autre libellé…</option>`;
+  choix.value = connue ? valeur : AUTRE_LIBELLE;
+  input.classList.toggle('cache', connue);
+  ameliorerSelect(choix);
+}
+
 async function chargerArriveesBot() {
   const bloc = $rh('rh-bot');
   try {
@@ -323,7 +350,7 @@ async function chargerArriveesBot() {
       select.value = r.reglages.gradeArrivee || '';
       ameliorerSelect(select);
       for (const [champ, id] of Object.entries(CHAMPS_REGLAGES_BOT)) $rh(id).value = r.reglages[champ] || '';
-      $rh('rh-bot-questions-vues').innerHTML = r.questionsVues.map(q => `<option value="${echapper(q)}"></option>`).join('');
+      for (const id of Object.values(CHAMPS_REGLAGES_BOT)) brancherQuestion($rh(id), r.questionsVues);
       // un réglage manquant bloque les candidatures : on ouvre les réglages d'office
       if (!r.reglages.gradeArrivee || (!r.reglages.questionIdentite && !(r.reglages.questionPrenom && r.reglages.questionNom))) $rh('rh-bot-details').open = true;
     }
