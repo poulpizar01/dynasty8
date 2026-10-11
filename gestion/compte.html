@@ -76,7 +76,6 @@
 
       // aperçu de la carte de la page équipe : mêmes classes que la vitrine (equipe.html), mêmes règles que le serveur
       // (poste vide → grade ; sans nom RP, pas de carte)
-      const initiales = t => String(t || '?').trim().split(/s+/).slice(0, 2).map(m => m[0]?.toUpperCase()).join('') || '?';
       const apercu = e => {
         const cadre = document.getElementById('apercu-photo');
         cadre.className = 'carte-membre-photo-cadre' + (e.photo ? '' : ' sans-photo');

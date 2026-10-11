@@ -395,3 +395,99 @@ main.admin-contenu:focus { outline: none; }
   .profil-pied { flex-wrap: wrap; }
   .profil-pied .btn-or { flex-basis: 100%; min-height: 44px; }
 }
+
+/* tableau en cartes : les cases gardaient le fond des cellules du tableau, comme un surlignage ; la carte seule a un fond */
+.table-admin.en-cartes td { background: transparent !important; box-shadow: none !important; }
+
+/* ---------- Comptes & accès (comptes.html) : demandes à valider, puis membres ---------- */
+.comptes-section { margin-bottom: 34px; }
+.comptes-section-titre { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.comptes-section-titre h2 { margin: 0; font-family: var(--d8-font-display); font-weight: 400; font-size: 1.35rem; color: var(--text); }
+.comptes-badge { padding: 2px 10px; border-radius: 999px; background: var(--d8-grad-gold); color: var(--or-contrast); font-size: 0.8rem; font-weight: 600; }
+.comptes-badge:empty { display: none; }
+.comptes-aide { margin: 0 0 14px; font-size: 0.85rem; color: var(--text-faint); }
+.comptes-aide a { color: var(--gold-strong); }
+.comptes-discret { margin: 0; font-size: 0.85rem; color: var(--text-faint); }
+.comptes-note { margin: 14px 0 0; }
+
+/* identité : avatar, nom, étiquettes, @pseudo */
+.comptes-identite { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.comptes-identite > div { min-width: 0; }
+.comptes-nom { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.comptes-nom strong { font-weight: 500; color: var(--text); }
+.comptes-pseudo { display: block; font-size: 0.82rem; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comptes-alerte { display: block; font-size: 0.8rem; color: var(--danger-strong); }
+.comptes-identite .puce { height: 20px; padding: 0 8px; }
+
+/* demandes à valider : des cartes dorées, une action principale chacune */
+.comptes-demandes { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; }
+.comptes-demande {
+  display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: var(--radius);
+  border: 1px solid var(--d8-gold-400); background: linear-gradient(135deg, rgba(201, 165, 92, 0.12), rgba(14, 26, 50, 0.7) 60%);
+}
+.comptes-demande-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.comptes-demande-grade { flex: 1 1 160px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.comptes-demande-grade > span { font-size: 0.82rem; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+.comptes-demande .btn { min-height: 44px; }
+
+/* membres : filtres, recherche, liste */
+.comptes-outils { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0 14px; }
+.comptes-filtres { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid rgba(201, 165, 92, 0.25); border-radius: 999px; background: rgba(6, 12, 26, 0.5); }
+.comptes-filtre { min-height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: none; color: var(--text-muted); font: inherit; font-size: 0.88rem; cursor: pointer; }
+.comptes-filtre span { margin-left: 4px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.comptes-filtre.actif { background: var(--d8-grad-gold); color: var(--or-contrast); font-weight: 600; }
+.comptes-filtre.actif span { color: inherit; opacity: 0.75; }
+.comptes-filtre:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 1px; }
+.comptes-recherche { position: relative; flex: 0 1 280px; }
+.comptes-recherche .ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-faint); }
+.comptes-recherche input {
+  width: 100%; min-height: 40px; padding: 8px 12px 8px 36px; border: 1px solid rgba(201, 165, 92, 0.25); border-radius: 999px;
+  background: rgba(6, 12, 26, 0.5); color: var(--text); font: inherit; font-size: 0.9rem;
+}
+.comptes-recherche input:focus { outline: none; border-color: var(--d8-gold-400); }
+
+.comptes-liste { border: 1px solid var(--border); border-radius: var(--radius); background: rgba(14, 26, 50, 0.55); }
+.comptes-entete, .comptes-ligne { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(160px, 1fr) minmax(130px, 0.8fr) 44px; align-items: center; gap: 16px; padding: 12px 16px; }
+.comptes-entete { padding-top: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--text-faint); }
+.comptes-ligne { border-bottom: 1px solid var(--border); }
+.comptes-ligne:last-child { border-bottom: 0; }
+.comptes-ligne.refuse .comptes-identite { opacity: 0.7; }
+.comptes-grade select { width: 100%; min-height: 40px; }
+.comptes-grade-fixe { display: inline-flex; align-items: center; gap: 8px; color: var(--text-muted); }
+.comptes-connexion { font-size: 0.88rem; color: var(--text-muted); }
+.comptes-etiquette-mobile { display: none; }
+.comptes-vide { margin: 0; padding: 22px 16px; text-align: center; color: var(--text-faint); }
+
+/* menu « ⋯ » */
+.comptes-menu { position: relative; justify-self: end; }
+.comptes-menu-bouton {
+  width: 36px; height: 36px; border: 1px solid transparent; border-radius: 999px; background: none;
+  color: var(--text-muted); font-size: 1.3rem; line-height: 1; cursor: pointer;
+}
+.comptes-menu-bouton:hover, .comptes-menu-bouton[aria-expanded="true"] { border-color: var(--border); background: rgba(201, 165, 92, 0.1); color: var(--text); }
+.comptes-menu-bouton:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 1px; }
+.comptes-menu-liste {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 260px; padding: 6px;
+  border: 1px solid var(--d8-gold-400); border-radius: var(--radius-sm); background: var(--bg-card); box-shadow: var(--shadow);
+}
+.comptes-menu-liste.vers-le-haut { top: auto; bottom: calc(100% + 6px); }
+.comptes-menu-liste [role="menuitem"] {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: 6px;
+  background: none; color: var(--text); font: inherit; font-size: 0.9rem; text-align: left; cursor: pointer;
+}
+.comptes-menu-liste [role="menuitem"] .ico { width: 16px; height: 16px; color: var(--text-faint); }
+.comptes-menu-liste [role="menuitem"]:hover, .comptes-menu-liste [role="menuitem"]:focus-visible { background: rgba(201, 165, 92, 0.12); outline: none; }
+.comptes-menu-liste [role="menuitem"].danger, .comptes-menu-liste [role="menuitem"].danger .ico { color: var(--danger-strong); }
+
+/* téléphone : chaque membre sur deux lignes (identité et menu, puis grade et connexion) */
+@media (max-width: 760px) {
+  .comptes-entete { display: none; }
+  .comptes-ligne { grid-template-columns: minmax(0, 1fr) 44px; grid-template-areas: "id menu" "grade grade" "co co"; gap: 10px; }
+  .comptes-ligne > .comptes-identite { grid-area: id; }
+  .comptes-ligne > .comptes-menu, .comptes-ligne > .comptes-menu-vide { grid-area: menu; }
+  .comptes-ligne > .comptes-grade { grid-area: grade; }
+  .comptes-ligne > .comptes-connexion { grid-area: co; font-size: 0.82rem; color: var(--text-faint); }
+  .comptes-etiquette-mobile { display: inline; }
+  .comptes-etiquette-ecran { display: none; }
+  .comptes-recherche { flex-basis: 100%; }
+}

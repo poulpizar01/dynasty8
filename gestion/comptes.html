@@ -16,76 +16,138 @@
   <title>Comptes & accès — {{nom}}</title>
 </head>
 <body class="page-agents">
-  <!-- GESTION — comptes et accès (permission « comptes », serveur : socle/routes/comptes.ts). -->
+  <!-- GESTION — comptes et accès (permission « comptes », serveur : socle/routes/comptes.ts). Deux temps : les demandes
+       à valider (en tête, seulement s'il y en a), puis les membres ; les actions rares sont dans le menu « ⋯ » de
+       chaque ligne, avec des libellés explicites. -->
   <main class="admin-contenu">
     <div class="entete-admin">
       <div>
         <h1 style="margin-bottom:2px;">Comptes &amp; accès</h1>
-        <p style="margin:0;font-size:0.88rem;">Validez les demandes de connexion Discord et gérez le grade de chacun. Un agent qui porte sur Discord un rôle lié à un grade est validé d'office à sa connexion.</p>
+        <p style="margin:0;font-size:0.88rem;">Qui accède à l’espace agents, et avec quel grade.</p>
       </div>
     </div>
-    <div id="zone-message"></div>
+    <div id="zone-message" role="status"></div>
 
-    <div id="bloc-attente" class="cache">
-      <h3 class="comptes-sous-titre">Demandes en attente <span class="champ-compteur" id="compteur-attente"></span></h3>
-      <p class="champ-aide">Ces personnes se sont connectées avec Discord sans rôle lié à un grade. Validez-les pour leur donner accès.</p>
-      <div class="carte-table" style="overflow-x:auto;">
-        <table class="table-admin table-cartes"><thead><tr><th>Compte</th><th>Grade</th><th>Demande</th><th></th></tr></thead><tbody id="corps-attente"></tbody></table>
+    <section class="comptes-section cache" id="bloc-attente" aria-labelledby="titre-attente">
+      <div class="comptes-section-titre">
+        <h2 id="titre-attente">À valider</h2>
+        <span class="comptes-badge" id="compteur-attente"></span>
       </div>
-    </div>
+      <p class="comptes-aide">Connectés avec Discord sans rôle lié à un grade. Choisissez un grade, puis validez.</p>
+      <div class="comptes-demandes" id="liste-attente"></div>
+    </section>
 
-    <h3 class="comptes-sous-titre">Comptes</h3>
-    <div class="carte-table" style="overflow-x:auto;">
-      <table class="table-admin table-cartes">
-        <thead><tr><th>Compte</th><th>Grade</th><th>Statut</th><th>Dernière connexion</th><th></th></tr></thead>
-        <tbody id="corps-comptes"><tr><td colspan="5">Chargement…</td></tr></tbody>
-      </table>
-    </div>
+    <section class="comptes-section" aria-labelledby="titre-membres">
+      <div class="comptes-section-titre">
+        <h2 id="titre-membres">Membres</h2>
+      </div>
+      <div class="comptes-outils">
+        <div class="comptes-filtres" role="group" aria-label="Afficher">
+          <button type="button" class="comptes-filtre actif" data-filtre="tous" aria-pressed="true">Tous <span data-nb="tous"></span></button>
+          <button type="button" class="comptes-filtre" data-filtre="valide" aria-pressed="false">Validés <span data-nb="valide"></span></button>
+          <button type="button" class="comptes-filtre" data-filtre="refuse" aria-pressed="false">Refusés <span data-nb="refuse"></span></button>
+        </div>
+        <div class="comptes-recherche">
+          <svg class="ico" aria-hidden="true"><use href="#ico-search"></use></svg>
+          <input type="search" id="recherche-comptes" placeholder="Nom ou pseudo Discord" aria-label="Rechercher un membre">
+        </div>
+      </div>
+      <div class="comptes-liste" id="liste-membres" aria-live="polite"></div>
+      <p class="comptes-aide comptes-note">Un agent dont le rôle Discord est lié à un grade est validé d’office à sa connexion. <a href="grades.html">Lier les grades aux rôles</a></p>
+    </section>
   </main>
 
   <div class="modale-fond cache" id="modale-profil">
-    <div class="modale" style="max-width:760px;">
-      <div class="modale-entete"><h3 id="titre-modale-profil">Profil public</h3><button type="button" id="fermer-profil" aria-label="Fermer">✕</button></div>
+    <div class="modale" style="max-width:760px;" role="dialog" aria-modal="true" aria-labelledby="titre-modale-profil">
+      <div class="modale-entete">
+        <div><h2 id="titre-modale-profil" class="modale-titre">Fiche</h2><p class="comptes-aide" style="margin:2px 0 0;">Affichée sur la page « Notre équipe » du site.</p></div>
+        <button type="button" id="fermer-profil" aria-label="Fermer">✕</button>
+      </div>
       <div id="editeur-profil"></div>
     </div>
   </div>
   <script>
-    let moi, comptes = [], grades = [];
+    let moi, comptes = [], grades = [], filtre = 'tous', recherche = '';
     // rang d'un grade (0 = sommet), sans grade = tout en bas ; même règle que le serveur (socle/droits.ts)
     const rang = cle => { const i = grades.findIndex(g => g.cle === cle); return i < 0 ? grades.length : i; };
     const gerable = c => moi.proprietaire || (!!moi.grade && rang(c.grade?.cle) > rang(moi.grade.cle) && c.id !== moi.id && !c.proprietaire);
     const gradesPossibles = () => grades.filter(g => moi.proprietaire || (moi.grade && rang(g.cle) > rang(moi.grade.cle)));
-    const dateCourte = d => (d ? new Date(d).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' }) : '—');
-    const STATUTS = { valide: '<span class="puce puce-ok">Validé</span>', attente: '<span class="puce puce-or">En attente</span>', refuse: '<span class="puce puce-off">Refusé</span>' };
+    const PARIS = { timeZone: 'Europe/Paris' };
+    const dateHeure = d => new Date(d).toLocaleString('fr-FR', { ...PARIS, dateStyle: 'short', timeStyle: 'short' });
+    // « il y a 2 h », « hier », « le 16/09/2026 » : plus parlant qu'une date complète pour juger d'une activité
+    function ilYA(d) {
+      if (!d) return 'Jamais';
+      const min = Math.round((Date.now() - new Date(d)) / 60000);
+      if (min < 2) return 'À l’instant';
+      if (min < 60) return `Il y a ${min} min`;
+      if (min < 24 * 60) return `Il y a ${Math.round(min / 60)} h`;
+      const jours = Math.round(min / 1440);
+      if (jours === 1) return 'Hier';
+      if (jours < 7) return `Il y a ${jours} jours`;
+      return `Le ${new Date(d).toLocaleDateString('fr-FR', PARIS)}`;
+    }
 
-    function celluleCompte(c) {
+    function identite(c) {
       const nom = c.nom || c.pseudo;
-      const avatar = c.avatar ? `<img class="admin-avatar" src="${echapper(c.avatar)}" alt="">` : `<span class="admin-avatar">${echapper(nom.slice(0, 2).toUpperCase())}</span>`;
-      return `<div class="cellule-compte">${avatar}<div><strong>${echapper(nom)}</strong>${c.proprietaire ? ' <span class="puce puce-or">Propriétaire</span>' : ''}<div class="table-biens-sous">@${echapper(c.pseudo)}${c.quitteLe ? ` · a quitté le serveur Discord le ${new Date(c.quitteLe).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })}` : ''}</div></div></div>`;
+      const avatar = c.avatar ? `<img class="admin-avatar" src="${echapper(c.avatar)}" alt="">` : `<span class="admin-avatar" aria-hidden="true">${echapper(initiales(nom))}</span>`;
+      const etiquettes = [
+        c.proprietaire ? '<span class="puce puce-or">Propriétaire</span>' : '',
+        c.id === moi.id ? '<span class="puce puce-masquee">Vous</span>' : '',
+        c.statut === 'refuse' ? '<span class="puce puce-off">Refusé</span>' : '',
+      ].join('');
+      const quitte = c.quitteLe ? `<span class="comptes-alerte">A quitté le serveur Discord le ${new Date(c.quitteLe).toLocaleDateString('fr-FR', PARIS)}</span>` : '';
+      return `<div class="comptes-identite">${avatar}<div><div class="comptes-nom"><strong>${echapper(nom)}</strong>${etiquettes}</div>
+        <span class="comptes-pseudo">@${echapper(c.pseudo)}</span>${quitte}</div></div>`;
     }
-    function celluleGrade(c) {
-      if (!gerable(c)) return c.grade ? `<span class="pastille-grade" style="background:${echapper(c.grade.couleur || '#8a93b8')}"></span>${echapper(c.grade.libelle)}` : '<span class="table-biens-sous">Sans grade</span>';
-      return `<select data-grade aria-label="Grade de ${echapper(c.nom || c.pseudo)}"><option value="">Sans grade</option>${gradesPossibles().map(g => `<option value="${echapper(g.cle)}"${g.cle === c.grade?.cle ? ' selected' : ''}>${echapper(g.libelle)}</option>`).join('')}</select>`;
+    function choixGrade(c, enregistrerAuChangement) {
+      if (!gerable(c)) return c.grade ? `<span class="comptes-grade-fixe"><span class="pastille-grade" style="background:${echapper(c.grade.couleur || '#8a93b8')}"></span>${echapper(c.grade.libelle)}</span>` : '<span class="comptes-grade-fixe comptes-discret">Sans grade</span>';
+      return `<select ${enregistrerAuChangement ? 'data-grade' : 'data-grade-demande'} aria-label="Grade de ${echapper(c.nom || c.pseudo)}"><option value="">Sans grade</option>${gradesPossibles().map(g => `<option value="${echapper(g.cle)}"${g.cle === c.grade?.cle ? ' selected' : ''}>${echapper(g.libelle)}</option>`).join('')}</select>`;
     }
-    function boutons(c) {
-      if (!gerable(c)) return '';
-      return `<div class="actions-ligne">
-        ${c.statut !== 'valide' ? '<button type="button" class="btn btn-or btn-petit" data-action="valide">Valider</button>' : ''}
-        ${c.statut === 'valide' && c.id !== moi.id ? '<button type="button" class="btn btn-fantome btn-petit" data-action="refuse" title="Retire l’accès sans supprimer le compte">Suspendre</button>' : ''}
-        ${c.statut === 'attente' ? '<button type="button" class="btn btn-fantome btn-petit" data-action="refuse">Refuser</button>' : ''}
-        ${c.statut === 'valide' ? `<button type="button" class="actions-icone" data-action="profil" title="Profil public" aria-label="Profil public">${gestion.ico('user')}</button>` : ''}
-        ${c.id !== moi.id ? `<button type="button" class="actions-icone actions-icone--danger" data-action="supprimer" title="Supprimer" aria-label="Supprimer">${gestion.ico('trash')}</button>` : ''}
+    // actions rares, rangées dans un menu aux libellés explicites
+    function menu(c) {
+      if (!gerable(c)) return '<span class="comptes-menu-vide"></span>';
+      const items = [
+        c.statut === 'valide' ? `<button type="button" role="menuitem" data-action="profil">${gestion.ico('user')} Modifier sa fiche (page équipe)</button>` : '',
+        c.statut === 'valide' && c.id !== moi.id ? `<button type="button" role="menuitem" data-action="refuse">${gestion.ico('lock')} Suspendre l’accès</button>` : '',
+        c.statut === 'refuse' ? `<button type="button" role="menuitem" data-action="valide">${gestion.ico('lock')} Rétablir l’accès</button>` : '',
+        c.id !== moi.id ? `<button type="button" role="menuitem" class="danger" data-action="supprimer">${gestion.ico('trash')} Supprimer le compte</button>` : '',
+      ].filter(Boolean).join('');
+      if (!items) return '<span class="comptes-menu-vide"></span>';
+      return `<div class="comptes-menu">
+        <button type="button" class="comptes-menu-bouton" aria-haspopup="menu" aria-expanded="false" aria-label="Actions pour ${echapper(c.nom || c.pseudo)}">⋯</button>
+        <div class="comptes-menu-liste cache" role="menu">${items}</div>
       </div>`;
     }
 
     function afficher() {
-      const attente = comptes.filter(c => c.statut === 'attente'), autres = comptes.filter(c => c.statut !== 'attente');
+      const attente = comptes.filter(c => c.statut === 'attente');
       document.getElementById('bloc-attente').classList.toggle('cache', !attente.length);
-      document.getElementById('compteur-attente').textContent = attente.length || '';
-      document.getElementById('corps-attente').innerHTML = attente.map(c => `<tr data-id="${c.id}"><td>${celluleCompte(c)}</td><td data-libelle="Grade" class="table-cartes-large">${celluleGrade(c)}</td><td data-libelle="Demande">${dateCourte(c.creeLe)}</td><td class="table-cartes-actions">${boutons(c)}</td></tr>`).join('');
-      document.getElementById('corps-comptes').innerHTML = autres.length ? autres.map(c => `<tr data-id="${c.id}"><td>${celluleCompte(c)}</td><td data-libelle="Grade" class="table-cartes-large">${celluleGrade(c)}</td><td data-libelle="Statut">${STATUTS[c.statut]}</td><td data-libelle="Dernière connexion">${dateCourte(c.connecteLe)}</td><td class="table-cartes-actions">${boutons(c)}</td></tr>`).join('')
-        : '<tr><td colspan="5">Aucun compte validé pour le moment.</td></tr>';
-      document.querySelectorAll('select[data-grade]').forEach(s => ameliorerSelect(s, cle => grades.find(g => g.cle === cle)?.couleur || '#8a93b8', 'comptes'));
+      document.getElementById('compteur-attente').textContent = attente.length ? `${attente.length} demande${attente.length > 1 ? 's' : ''}` : '';
+      document.getElementById('liste-attente').innerHTML = attente.map(c => `
+        <article class="comptes-demande" data-id="${c.id}">
+          ${identite(c)}
+          <p class="comptes-discret">Demande du ${dateHeure(c.creeLe)}</p>
+          ${gerable(c) ? `<div class="comptes-demande-actions">
+            <label class="comptes-demande-grade"><span>Grade</span>${choixGrade(c, false)}</label>
+            <button type="button" class="btn btn-or" data-action="valide">Valider</button>
+            <button type="button" class="btn btn-fantome" data-action="refuse">Refuser</button>
+          </div>` : '<p class="comptes-discret">Son grade dépasse le vôtre : un responsable plus haut gradé doit valider.</p>'}
+        </article>`).join('');
+
+      const membres = comptes.filter(c => c.statut !== 'attente');
+      for (const f of ['tous', 'valide', 'refuse']) document.querySelector(`[data-nb="${f}"]`).textContent = membres.filter(c => f === 'tous' || c.statut === f).length;
+      const r = recherche.toLowerCase();
+      const visibles = membres.filter(c => (filtre === 'tous' || c.statut === filtre) && (!r || `${c.nom || ''} ${c.pseudo}`.toLowerCase().includes(r)));
+      document.getElementById('liste-membres').innerHTML = visibles.length
+        ? `<div class="comptes-entete" aria-hidden="true"><span>Membre</span><span>Grade</span><span>Dernière connexion</span><span></span></div>` + visibles.map(c => `
+          <div class="comptes-ligne${c.statut === 'refuse' ? ' refuse' : ''}" data-id="${c.id}">
+            ${identite(c)}
+            <div class="comptes-grade">${choixGrade(c, true)}</div>
+            <span class="comptes-connexion" title="${c.connecteLe ? dateHeure(c.connecteLe) : ''}"><span class="comptes-etiquette-ecran">${ilYA(c.connecteLe)}</span><span class="comptes-etiquette-mobile">Dernière connexion : ${ilYA(c.connecteLe).replace(/^./, l => l.toLowerCase())}</span></span>
+            ${menu(c)}
+          </div>`).join('')
+        : `<p class="comptes-vide">${membres.length ? 'Aucun membre ne correspond.' : 'Aucun membre pour le moment.'}</p>`;
+      document.querySelectorAll('select[data-grade], select[data-grade-demande]').forEach(s => ameliorerSelect(s, cle => grades.find(g => g.cle === cle)?.couleur || '#8a93b8', 'comptes'));
     }
 
     async function charger() {
@@ -94,41 +156,92 @@
       afficher();
     }
 
+    // menus « ⋯ » : un seul ouvert, fermé par Échap ou un clic ailleurs ; s'ouvre vers le haut près du bas de l'écran
+    let menuOuvert = null;
+    function fermerMenu(rendreFocus) {
+      if (!menuOuvert) return;
+      menuOuvert.querySelector('.comptes-menu-liste').classList.add('cache');
+      const bouton = menuOuvert.querySelector('.comptes-menu-bouton');
+      bouton.setAttribute('aria-expanded', 'false');
+      if (rendreFocus) bouton.focus();
+      menuOuvert = null;
+    }
+    function ouvrirMenu(conteneur) {
+      fermerMenu(false);
+      const liste = conteneur.querySelector('.comptes-menu-liste'), bouton = conteneur.querySelector('.comptes-menu-bouton');
+      liste.classList.remove('cache');
+      liste.classList.toggle('vers-le-haut', bouton.getBoundingClientRect().bottom + liste.offsetHeight + 16 > innerHeight);
+      bouton.setAttribute('aria-expanded', 'true');
+      liste.querySelector('[role=menuitem]').focus();
+      menuOuvert = conteneur;
+    }
+    document.addEventListener('click', e => { if (menuOuvert && !menuOuvert.contains(e.target)) fermerMenu(false); });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && menuOuvert) { e.preventDefault(); fermerMenu(true); }
+      if (menuOuvert && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault();
+        const items = [...menuOuvert.querySelectorAll('[role=menuitem]')], i = items.indexOf(document.activeElement);
+        items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
+      }
+    });
+
     document.querySelector('main').addEventListener('click', async e => {
-      const b = e.target.closest('[data-action]'), id = e.target.closest('tr')?.dataset.id;
+      const ouvreur = e.target.closest('.comptes-menu-bouton');
+      if (ouvreur) { const m = ouvreur.closest('.comptes-menu'); return menuOuvert === m ? fermerMenu(true) : ouvrirMenu(m); }
+      const b = e.target.closest('[data-action]'), id = e.target.closest('[data-id]')?.dataset.id;
       if (!b || !id) return;
-      const c = comptes.find(x => String(x.id) === id);
+      fermerMenu(false);
+      const c = comptes.find(x => String(x.id) === id), nom = c.nom || c.pseudo;
       if (b.dataset.action === 'profil') return ouvrirProfil(c);
       try {
         if (b.dataset.action === 'supprimer') {
-          if (!await gestion.confirmer(`Le compte de ${c.nom || c.pseudo} sera supprimé du site. Il pourra refaire une demande en se reconnectant.`, 'Supprimer ce compte ?', 'Supprimer le compte')) return;
+          if (!await gestion.confirmer(`Le compte de ${nom} sera supprimé du site. Il pourra refaire une demande en se reconnectant.`, 'Supprimer ce compte ?', 'Supprimer le compte')) return;
           await socle.api(`/api/comptes/${id}`, { method: 'DELETE' });
-        } else await socle.api(`/api/comptes/${id}`, { method: 'PATCH', body: { statut: b.dataset.action } });
-        gestion.message('zone-message', '');
+          gestion.message('zone-message', `Compte de ${nom} supprimé.`, 'succes');
+        } else if (b.dataset.action === 'refuse' && c.statut === 'valide') {
+          if (!await gestion.confirmer(`${nom} n’aura plus accès à l’espace agents. Son compte et sa fiche sont conservés : vous pourrez rétablir l’accès.`, 'Suspendre l’accès ?', 'Suspendre l’accès')) return;
+          await socle.api(`/api/comptes/${id}`, { method: 'PATCH', body: { statut: 'refuse' } });
+          gestion.message('zone-message', `Accès de ${nom} suspendu.`, 'succes');
+        } else {
+          // une demande se valide avec le grade choisi sur sa carte, en un seul envoi
+          const corps = { statut: b.dataset.action };
+          const grade = e.target.closest('.comptes-demande')?.querySelector('[data-grade-demande]');
+          if (grade && b.dataset.action === 'valide') corps.grade = grade.value || null;
+          await socle.api(`/api/comptes/${id}`, { method: 'PATCH', body: corps });
+          gestion.message('zone-message', b.dataset.action === 'valide' ? `${nom} a désormais accès à l’espace agents.` : `Demande de ${nom} refusée.`, 'succes');
+        }
         await charger();
       } catch (err) { gestion.message('zone-message', err.message); }
     });
     document.querySelector('main').addEventListener('change', async e => {
-      const id = e.target.closest('tr')?.dataset.id;
+      const id = e.target.closest('[data-id]')?.dataset.id;
       if (!e.target.matches('[data-grade]') || !id) return;
       try { await socle.api(`/api/comptes/${id}`, { method: 'PATCH', body: { grade: e.target.value || null } }); gestion.message('zone-message', 'Grade enregistré.', 'succes'); }
       catch (err) { gestion.message('zone-message', err.message); }
       await charger();
     });
+    document.querySelectorAll('.comptes-filtre').forEach(b => b.addEventListener('click', () => {
+      filtre = b.dataset.filtre;
+      document.querySelectorAll('.comptes-filtre').forEach(x => { x.classList.toggle('actif', x === b); x.setAttribute('aria-pressed', String(x === b)); });
+      afficher();
+    }));
+    document.getElementById('recherche-comptes').addEventListener('input', e => { recherche = e.target.value.trim(); afficher(); });
 
-    // profil public d'un agent (page équipe) : même éditeur que « Mon profil »
-    let editeur = null;
+    // fiche d'un agent (page équipe) : même éditeur que « Mon profil »
+    let editeur = null, ouvreurProfil = null;
     const modaleProfil = document.getElementById('modale-profil');
     function ouvrirProfil(c) {
-      document.getElementById('titre-modale-profil').textContent = `Profil public — ${c.nom || c.pseudo}`;
+      ouvreurProfil = document.activeElement;
+      document.getElementById('titre-modale-profil').textContent = `Fiche de ${c.nom || c.pseudo}`;
       editeur = profilEditeur(document.getElementById('editeur-profil'), { adresse: `/api/profils/${c.id}`, nom: () => c.nom || c.pseudo });
       editeur.charger();
       modaleProfil.classList.remove('cache');
+      modaleProfil.querySelector('input:not([type=file])')?.focus();
     }
-    const fermerProfil = () => { editeur?.fermer(); modaleProfil.classList.add('cache'); };
+    const fermerProfil = () => { editeur?.fermer(); modaleProfil.classList.add('cache'); ouvreurProfil?.focus?.(); };
     document.getElementById('fermer-profil').addEventListener('click', fermerProfil);
     modaleProfil.addEventListener('click', e => { if (e.target === modaleProfil) fermerProfil(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modaleProfil.classList.contains('cache')) fermerProfil(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modaleProfil.classList.contains('cache') && !document.querySelector('[role=alertdialog]')) fermerProfil(); });
 
     gestion.coque('comptes').then(m => { moi = m; return charger(); }).catch(e => gestion.message('zone-message', e.message));
   </script>
