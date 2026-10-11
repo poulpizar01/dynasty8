@@ -2464,11 +2464,15 @@ section.section.serre {
 /* ---------- menu déroulant personnalisé (habille les <select>, voir layout.js) ---------- */
 
 .d8-select-enveloppe { position: relative; display: block; width: 100%; }
+/* chevron dessiné (deux bordures d'un carré tourné) : un caractère « ⌄ » se pose en bas de sa ligne et paraît
+   décentré ; décalé de 25 % vers le haut fermé, vers le bas ouvert, pour que la pointe reste au milieu */
 .d8-select-enveloppe::after {
-  content: "⌄"; position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-  color: var(--text-faint); pointer-events: none; font-size: 0.95rem; transition: transform var(--d8-t), color var(--d8-t);
+  content: ""; position: absolute; right: 16px; top: 50%; width: 7px; height: 7px;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: translateY(-75%) rotate(45deg);
+  color: var(--text-faint); pointer-events: none; transition: transform var(--d8-t), color var(--d8-t);
 }
-.d8-select-enveloppe.ouvert::after { transform: translateY(-50%) rotate(180deg); color: var(--gold-strong); }
+.d8-select-enveloppe.ouvert::after { transform: translateY(-25%) rotate(225deg); color: var(--gold-strong); }
 .d8-select-enveloppe select {
   appearance: none; -webkit-appearance: none; -moz-appearance: none;
   padding-right: 34px; cursor: pointer;
