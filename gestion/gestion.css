@@ -622,16 +622,12 @@ main.admin-contenu:focus { outline: none; }
   background: rgba(6, 12, 26, 0.55); color: var(--text); font: inherit; font-size: 0.92rem;
 }
 @media (max-width: 640px) { .rh-correspondance { grid-template-columns: minmax(0, 1fr); } }
-/* « Comment la fiche est remplie » : en-tête, lignes automatiques, ligne obligatoire, choix une ou deux questions */
+/* « Comment la fiche est remplie » : en-tête, lignes automatiques */
 .rh-reglages-intro { margin: 0 0 14px; max-width: 75ch; }
 .rh-correspondance-entete { padding: 8px 0; font-size: 0.8rem; color: var(--text-faint); }
 .rh-correspondance-texte strong { font-size: 0.92rem; font-weight: 500; color: var(--text); }
 .rh-automatique { display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; color: var(--text-muted); }
 .rh-automatique::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #5fd39a; flex-shrink: 0; }
-.rh-correspondance-requise .rh-correspondance-texte > strong::after { content: " *"; color: var(--gold-strong); }
-.rh-mode-nom { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; }
-.rh-mode-nom label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.86rem; color: var(--text-muted); text-transform: none; letter-spacing: 0; cursor: pointer; }
-.rh-mode-nom input { accent-color: var(--d8-gold-400); width: 16px; height: 16px; }
-.rh-sous-libelle { display: block; margin: 0 0 4px; font-size: 0.8rem; color: var(--text-faint); text-transform: none; letter-spacing: 0; }
-[data-mode-nom="deux"] .rh-sous-libelle:not(:first-child) { margin-top: 10px; }
 .rh-precision { display: block; margin-top: 6px; font-size: 0.8rem; color: var(--text-faint); }
+/* étiquette « Obligatoire » (plutôt qu'un astérisque que rien n'explique) */
+.rh-obligatoire { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: rgba(201, 165, 92, 0.16); color: var(--gold-strong); font-size: 0.72rem; font-weight: 600; vertical-align: 1px; }

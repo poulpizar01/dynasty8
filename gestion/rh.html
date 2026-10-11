@@ -81,7 +81,7 @@
                d'où vient une information de la fiche : automatique, le grade réglé ici, ou la réponse à une question du
                formulaire de candidature du bot. Les questions proposées sont celles reçues avec les candidatures. -->
           <form id="rh-bot-reglages">
-            <p class="comptes-aide rh-reglages-intro">Quand une candidature est acceptée sur Discord, le site crée la fiche de la personne. Voici d’où vient chaque information. Les questions proposées sont celles de votre formulaire de candidature (panneau « Recrutement » du bot), reçues avec les candidatures précédentes. Ce que le formulaire ne demande pas reste vide : vous le complétez ensuite dans la fiche.</p>
+            <p class="comptes-aide rh-reglages-intro">Quand une candidature est acceptée sur Discord, le site crée la fiche de la personne. Voici d’où vient chaque information. Le prénom et le nom sont obligatoires : sans eux, la candidature attend dans « À traiter ». Les questions proposées sont celles de votre formulaire de candidature (panneau « Recrutement » du bot), reçues avec les candidatures précédentes. Ce que le formulaire ne demande pas reste vide : vous le complétez ensuite dans la fiche.</p>
             <div class="rh-correspondances" role="table" aria-label="D’où vient chaque information de la fiche">
               <div class="rh-correspondance rh-correspondance-entete" role="row"><span role="columnheader">Sur la fiche</span><span role="columnheader">Rempli avec</span></div>
 
@@ -98,40 +98,28 @@
                 <div class="rh-correspondance-choix" role="cell"><select id="rh-bot-grade"></select></div>
               </div>
 
-              <div class="rh-correspondance rh-correspondance-requise" role="row">
-                <div class="rh-correspondance-texte" role="cell">
-                  <strong>Prénom et nom</strong><small>Obligatoire : sans eux, la candidature attend dans « À traiter ».</small>
-                  <div class="rh-mode-nom" role="radiogroup" aria-label="Le formulaire demande le prénom et le nom">
-                    <label><input type="radio" name="rh-mode-nom" value="une" checked> En une question</label>
-                    <label><input type="radio" name="rh-mode-nom" value="deux"> En deux questions</label>
-                  </div>
-                </div>
-                <div class="rh-correspondance-choix" role="cell">
-                  <div data-mode-nom="une">
-                    <label for="rh-bot-q-identite-choix" class="visuellement-cache">Question qui donne le prénom et le nom</label>
-                    <input type="text" id="rh-bot-q-identite" maxlength="200" class="cache" data-vide="À choisir" aria-label="Libellé exact de la question du prénom et du nom">
-                    <small class="rh-precision">Le premier mot devient le prénom, le reste le nom.</small>
-                  </div>
-                  <div data-mode-nom="deux" class="cache">
-                    <label for="rh-bot-q-prenom-choix" class="rh-sous-libelle">Prénom</label>
-                    <input type="text" id="rh-bot-q-prenom" maxlength="200" class="cache" data-vide="À choisir" aria-label="Libellé exact de la question du prénom">
-                    <label for="rh-bot-q-nom-choix" class="rh-sous-libelle">Nom</label>
-                    <input type="text" id="rh-bot-q-nom" maxlength="200" class="cache" data-vide="À choisir" aria-label="Libellé exact de la question du nom">
-                  </div>
-                </div>
+              <!-- prénom et nom : une question chacun ; la même pour les deux, le site coupe la réponse (rh.js, enregistrement) -->
+              <input type="text" id="rh-bot-q-identite" class="cache" tabindex="-1" aria-hidden="true">
+              <div class="rh-correspondance" role="row">
+                <div class="rh-correspondance-texte" role="cell"><label for="rh-bot-q-prenom-choix">Prénom <span class="rh-obligatoire">Obligatoire</span></label></div>
+                <div class="rh-correspondance-choix" role="cell"><input type="text" id="rh-bot-q-prenom" maxlength="200" class="cache" data-vide="Choisir la question…" aria-label="Libellé exact de la question : Prénom"></div>
+              </div>
+              <div class="rh-correspondance" role="row">
+                <div class="rh-correspondance-texte" role="cell"><label for="rh-bot-q-nom-choix">Nom <span class="rh-obligatoire">Obligatoire</span></label></div>
+                <div class="rh-correspondance-choix" role="cell"><input type="text" id="rh-bot-q-nom" maxlength="200" class="cache" data-vide="Choisir la question…" aria-label="Libellé exact de la question : Nom"><small class="rh-precision cache" id="rh-nom-meme-question">Même question que le prénom : le premier mot devient le prénom, le reste le nom.</small></div>
               </div>
 
               <div class="rh-correspondance" role="row">
                 <div class="rh-correspondance-texte" role="cell"><label for="rh-bot-q-id-employe-choix">ID employé</label></div>
-                <div class="rh-correspondance-choix" role="cell"><input type="text" id="rh-bot-q-id-employe" maxlength="200" class="cache" data-vide="Pas demandé : ID provisoire PROV-B…, à remplacer" aria-label="Libellé exact de la question de l’ID employé"></div>
+                <div class="rh-correspondance-choix" role="cell"><input type="text" id="rh-bot-q-id-employe" maxlength="200" class="cache" data-vide="Aucune question : ID provisoire à remplacer" aria-label="Libellé exact de la question de l’ID employé"></div>
               </div>
               <div class="rh-correspondance" role="row">
                 <div class="rh-correspondance-texte" role="cell"><label for="rh-bot-q-telephone-choix">Téléphone</label></div>
-                <div class="rh-correspondance-choix" role="cell"><input type="text" id="rh-bot-q-telephone" maxlength="200" class="cache" data-vide="Pas demandé : laissé vide" aria-label="Libellé exact de la question du téléphone"></div>
+                <div class="rh-correspondance-choix" role="cell"><input type="text" id="rh-bot-q-telephone" maxlength="200" class="cache" data-vide="Aucune question : à compléter dans la fiche" aria-label="Libellé exact de la question du téléphone"></div>
               </div>
               <div class="rh-correspondance" role="row">
                 <div class="rh-correspondance-texte" role="cell"><label for="rh-bot-q-rib-choix">RIB</label></div>
-                <div class="rh-correspondance-choix" role="cell"><input type="text" id="rh-bot-q-rib" maxlength="200" class="cache" data-vide="Pas demandé : laissé vide" aria-label="Libellé exact de la question du RIB"></div>
+                <div class="rh-correspondance-choix" role="cell"><input type="text" id="rh-bot-q-rib" maxlength="200" class="cache" data-vide="Aucune question : à compléter dans la fiche" aria-label="Libellé exact de la question du RIB"></div>
               </div>
             </div>
             <div class="rh-reglages-pied">

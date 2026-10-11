@@ -359,9 +359,10 @@ async function chargerArriveesBot() {
       select.value = r.reglages.gradeArrivee || '';
       ameliorerSelect(select);
       for (const [champ, id] of Object.entries(CHAMPS_REGLAGES_BOT)) $rh(id).value = r.reglages[champ] || '';
-      for (const id of Object.values(CHAMPS_REGLAGES_BOT)) brancherQuestion($rh(id), r.questionsVues);
-      // prénom et nom : en deux questions si elles sont réglées (et pas celle en une seule)
-      choisirModeNom(r.reglages.questionPrenom && r.reglages.questionNom && !r.reglages.questionIdentite ? 'deux' : 'une');
+      // prénom et nom en une seule question (réglage « identité ») : la même question dans les deux menus
+      if (r.reglages.questionIdentite) { $rh('rh-bot-q-prenom').value = r.reglages.questionIdentite; $rh('rh-bot-q-nom').value = r.reglages.questionIdentite; }
+      for (const id of Object.values(CHAMPS_REGLAGES_BOT)) if (id !== 'rh-bot-q-identite') brancherQuestion($rh(id), r.questionsVues);
+      majMemeQuestion();
       // un réglage manquant bloque les candidatures : on ouvre les réglages d'office
       if (!r.reglages.gradeArrivee || (!r.reglages.questionIdentite && !(r.reglages.questionPrenom && r.reglages.questionNom))) $rh('rh-bot-details').open = true;
     }
@@ -404,19 +405,19 @@ async function chargerArriveesBot() {
   } catch { bloc.classList.add('cache'); }
 }
 
-// le formulaire demande le prénom et le nom en une question ou en deux : on n’affiche (et n’enregistre) que le mode choisi
-function choisirModeNom(mode) {
-  document.querySelectorAll('[name="rh-mode-nom"]').forEach(r => { r.checked = r.value === mode; });
-  document.querySelectorAll('[data-mode-nom]').forEach(b => b.classList.toggle('cache', b.dataset.modeNom !== mode));
-}
-document.querySelectorAll('[name="rh-mode-nom"]').forEach(r => r.addEventListener('change', () => choisirModeNom(r.value)));
+// Prénom et nom : une question chacun. Si le formulaire les demande ensemble, on choisit la même dans les deux menus et
+// le site coupe la réponse (réglage « identité » côté serveur : premier mot = prénom, le reste = nom).
+const memeQuestionNom = () => { const p = $rh('rh-bot-q-prenom').value.trim(); return p && p === $rh('rh-bot-q-nom').value.trim(); };
+function majMemeQuestion() { $rh('rh-nom-meme-question').classList.toggle('cache', !memeQuestionNom()); }
+$rh('rh-bot-reglages').addEventListener('change', majMemeQuestion);
+$rh('rh-bot-reglages').addEventListener('input', majMemeQuestion);
 
 $rh('rh-bot-reglages').addEventListener('submit', async e => {
   e.preventDefault();
   const corps = { gradeArrivee: $rh('rh-bot-grade').value };
   for (const [champ, id] of Object.entries(CHAMPS_REGLAGES_BOT)) corps[champ] = $rh(id).value.trim();
-  if (document.querySelector('[name="rh-mode-nom"]:checked')?.value === 'deux') corps.questionIdentite = '';
-  else { corps.questionPrenom = ''; corps.questionNom = ''; }
+  if (memeQuestionNom()) { corps.questionIdentite = corps.questionPrenom; corps.questionPrenom = ''; corps.questionNom = ''; }
+  else corps.questionIdentite = '';
   try {
     await socle.api('/api/rh/bot/reglages', { method: 'PUT', body: corps });
     gestion.message('zone-message-rh-bot', 'Réglages enregistrés ✓ Les candidatures « à traiter » peuvent être retraitées.', 'succes');
