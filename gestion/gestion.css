@@ -75,12 +75,24 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-
 .message{padding:10px 14px;border-radius:8px;margin:0 0 16px;background:color-mix(in srgb,var(--erreur) 10%,transparent);color:var(--erreur)}
 .message--ok{background:color-mix(in srgb,var(--ok) 10%,transparent);color:var(--ok)}
 
-/* ---------- tableaux (défilent dans leur carte sur téléphone, jamais la page) ---------- */
+/* ---------- tableaux : trop larges, ils deviennent des cartes (gestion.js, tablesAdaptatives) ---------- */
 .table-defile{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:15px}
 th{text-align:left;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);font-weight:600}
 th,td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 td select{min-width:140px}
+.contient-cartes{overflow:visible}
+.carte.contient-cartes{background:none;border:0;box-shadow:none;padding:0}
+table.en-cartes thead{display:none}
+table.en-cartes,table.en-cartes tbody,table.en-cartes td{display:block;width:100%}
+table.en-cartes tbody{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:12px}
+table.en-cartes tr{display:grid;grid-template-columns:1fr 1fr;align-content:start;gap:10px 14px;padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg2)}
+table.en-cartes td{padding:0;border:0;min-width:0;text-align:left!important;white-space:normal!important}
+table.en-cartes td:not([data-libelle]),table.en-cartes td[colspan]{grid-column:1/-1}
+table.en-cartes .cellule-titre{order:-1;font-weight:600}
+table.en-cartes td[data-libelle]::before{content:attr(data-libelle);display:block;margin-bottom:3px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
+table.en-cartes td:empty{display:none}
+table.en-cartes td select{width:100%;min-width:0}
 
 /* ---------- lien d'évitement, fenêtre de confirmation (gestion.js) ---------- */
 .evitement{position:absolute;left:12px;top:-60px;z-index:100;padding:10px 16px;border-radius:8px;background:var(--accent);color:var(--on-accent);font-weight:600}

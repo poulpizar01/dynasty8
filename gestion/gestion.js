@@ -57,6 +57,7 @@ window.gestion = {
     evitement.href = `#${main.id}`;
     evitement.textContent = 'Aller au contenu';
     document.body.prepend(evitement);
+    tablesAdaptatives(main);
     return moi;
   },
 
@@ -101,3 +102,48 @@ window.gestion = {
     el.classList.toggle('message--ok', ok);
   },
 };
+
+// Tableaux adaptatifs : un tableau qui ne tient plus dans sa largeur devient une grille de cartes (classe en-cartes,
+// gestion.css) au lieu de défiler de côté, ce qui cachait des colonnes, souvent les actions. Chaque cellule reçoit
+// l'intitulé de sa colonne (data-libelle, tiré de l'en-tête) ; la colonne titre (th[data-titre], sinon la première
+// nommée) ouvre la carte ; une colonne sans nom (actions) prend toute la largeur. Un tableau sous [data-tableau-fixe]
+// n'est pas touché. Recalculé quand la largeur change ou que le tableau est redessiné.
+function tablesAdaptatives(racine) {
+  const etiqueter = table => {
+    const ths = [...(table.tHead?.rows[0]?.cells || [])];
+    const noms = ths.map(th => (/^(actions?)?$/i.test(th.textContent.trim()) ? '' : th.textContent.trim()));
+    let titre = ths.findIndex(th => th.hasAttribute('data-titre'));
+    if (titre < 0) titre = noms.findIndex(Boolean);
+    for (const tbody of table.tBodies) for (const tr of tbody.rows) {
+      if (tr.cells.length !== ths.length) continue;   // ligne d'état (« Aucun… », colspan) : pleine largeur telle quelle
+      [...tr.cells].forEach((td, i) => {
+        if (i === titre) td.classList.add('cellule-titre');
+        else if (noms[i] && !td.hasAttribute('data-libelle')) td.dataset.libelle = noms[i];
+      });
+    }
+  };
+  // mesure en mode tableau (synchrone : rien n'est affiché entre les deux), cartes si la largeur dépasse
+  const ajuster = table => {
+    const boite = table.parentElement;
+    table.classList.remove('en-cartes');
+    boite.classList.remove('contient-cartes');
+    const trop = table.offsetWidth > boite.clientWidth + 1;
+    table.classList.toggle('en-cartes', trop);
+    boite.classList.toggle('contient-cartes', trop);
+  };
+  const suivies = new WeakSet();
+  const suivre = table => {
+    if (suivies.has(table) || table.closest('[data-tableau-fixe]')) return;
+    suivies.add(table);
+    etiqueter(table);
+    ajuster(table);
+    let largeur = table.parentElement.clientWidth;
+    new ResizeObserver(() => {
+      const l = table.parentElement.clientWidth;
+      if (l !== largeur) { largeur = l; ajuster(table); }   // la hauteur change avec les cartes : seule la largeur compte
+    }).observe(table.parentElement);
+    new MutationObserver(() => { etiqueter(table); ajuster(table); }).observe(table, { childList: true, subtree: true });
+  };
+  racine.querySelectorAll('table').forEach(suivre);
+  new MutationObserver(() => racine.querySelectorAll('table').forEach(suivre)).observe(racine, { childList: true, subtree: true });
+}

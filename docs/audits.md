@@ -124,7 +124,7 @@ Cherche :
 Audite l'ergonomie, l'accessibilité et le responsive des pages : gestion/*.html et leurs scripts, la vitrine (pages de la racine, assets/js, assets/css, theme.css). Lis le code ; si le site tourne en dev (docker compose up, connexion de dev par /auth/discord), vérifie aussi dans un navigateur à 375, 768, 1 024 et 1 280 px de large, et à 800 px de haut.
 Cherche :
 - une rubrique du menu, le compte connecté ou la déconnexion inatteignables à une largeur ou une hauteur d'écran (zone en display:none, barre de 100vh sans défilement, menu horizontal qui défile sans indice) ;
-- un débordement horizontal de la page, un tableau dont les actions sont coupées ou hors de vue sur téléphone, un élément flottant (bulle, bouton fixe) qui masque du contenu ou une action ;
+- un débordement horizontal de la page, un tableau qui défile de côté ou dont les actions sont coupées ou hors de vue, un élément flottant (bulle, bouton fixe) qui masque du contenu ou une action ;
 - une fenêtre (confirmation, modale, tiroir) sans focus initial, dont Tab sort, que Échap ne ferme pas, qui ne rend pas le focus, ou dont le titre n'est pas relié (aria-labelledby) ; un confirm(), alert() ou prompt() (invisibles en jeu, docs/folkos.md) ;
 - un champ sans nom accessible (placeholder seul), un bouton à icône seule sans aria-label, une page sans <h1>, une image porteuse de sens sans alt, un focus clavier invisible, une information donnée par la seule couleur ;
 - un texte sous 12 px, un contraste sous 4,5:1 (3:1 pour un gros titre, un contour de champ, une icône utile), une cible cliquable sous 24 px ;
