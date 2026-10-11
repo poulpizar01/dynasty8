@@ -48,7 +48,11 @@ export function simulerBotsDiscord(): void {
       if (!liste.length) return;
       if (premier && /^\d{15,21}$/.test(parametre('services_salon_id'))) {
         premier = false;
-        liste.slice(0, Math.ceil(liste.length / 2)).forEach((e, i) => annoncer(e, new Date(), new Date(Date.now() - (90 - i * 15) * 60_000)));
+        // pas pour qui est déjà en service en base (lancement précédent) : un début antidaté ne fermerait pas le sien,
+        // plus récent, et la personne apparaîtrait deux fois
+        const ouverts = new Set((await prisma.service.findMany({ where: { fin: null }, select: { discordId: true } })).map(x => x.discordId));
+        liste.filter(e => !ouverts.has(e.discordId)).slice(0, Math.ceil(liste.length / 2))
+          .forEach((e, i) => annoncer(e, new Date(), new Date(Date.now() - (90 - i * 15) * 60_000)));
         return;
       }
       annoncer(liste[Math.floor(Math.random() * liste.length)], new Date());
