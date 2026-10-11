@@ -2,6 +2,7 @@
 // Tout src/entreprise/ est libre : ajouter des routes (routes/), des modules métier, des tâches planifiées.
 import type { Entreprise } from '../socle/contrat.js';
 import { carte, relaisCarte } from './carte.js';
+import { simulerBotsDiscord } from './discord-simulation.js';
 import { PARAMETRES } from './parametres.js';
 import { planifierNettoyagePhotos } from './photos.js';
 import { planifierPurge } from './purge.js';
@@ -79,5 +80,6 @@ export const entreprise: Entreprise = {
     planifierTableur();
     planifierPurge();
     planifierServices();
+    simulerBotsDiscord();   // développement seulement (DISCORD_BOT_TOKEN=simulation)
   },
 };
