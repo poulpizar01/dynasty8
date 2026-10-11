@@ -207,6 +207,9 @@ async function ouvrirFicheEmploye(id, preremplissage) {
     'employe-arrivee': f.dateArrivee, 'employe-depart': f.dateDepart,
   };
   for (const [idChamp, valeur] of Object.entries(champs)) { const c = $rh(idChamp); c.value = valeur || ''; c.disabled = !peutEcrire; }
+  $rh('erreur-employe-id').classList.add('cache');
+  $rh('aide-employe-id').classList.remove('cache');
+  $rh('employe-id').classList.remove('champ-invalide');
   const grade = $rh('employe-grade');
   for (const o of grade.options) o.disabled = !GRADES_ATTRIBUABLES.includes(o.value) && o.value !== f.grade;
   grade.value = GRADES_EMPLOYES.some(g => g.cle === f.grade) ? f.grade : (GRADES_EMPLOYES.at(-1)?.cle || '');
@@ -247,6 +250,12 @@ $rh('formulaire-employe').addEventListener('submit', async e => {
     dateArrivee: val('employe-arrivee'), dateDepart: val('employe-depart'),
   };
   if (aDroitRh('sensible')) { corps.telephone = val('employe-telephone'); corps.rib = val('employe-rib'); }
+  // l’ID employé est un numéro ; un ID provisoire (PROV-…) reste accepté tant qu’on ne l’a pas remplacé
+  const idValide = /^d{1,12}$/.test(corps.idEmploye) || /^PROV-/.test(corps.idEmploye);
+  $rh('erreur-employe-id').classList.toggle('cache', idValide);
+  $rh('aide-employe-id').classList.toggle('cache', !idValide);   // l’erreur dit déjà la règle
+  $rh('employe-id').classList.toggle('champ-invalide', !idValide);
+  if (!idValide) { $rh('employe-id').focus(); return; }
   const creation = !FICHE_OUVERTE;
   try {
     if (creation) await socle.api('/api/rh/employes', { method: 'POST', body: corps });

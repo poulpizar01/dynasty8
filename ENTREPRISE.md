@@ -57,6 +57,7 @@ Tests du site (convention dans CLAUDE.md, `npm test`) : moteur de calcul des pri
 
 ## Pièges propres à ce site
 
+- ID employé : un numéro, chiffres uniquement (`lireChamps`, `rh.ts`, et la fiche dans `rh.js`). Seul l’ID provisoire que le site crée pour une candidature sans ID (`PROV-…`) porte des lettres, jusqu’à ce qu’on le remplace.
 - Candidatures du bot (`recruitment.updated`, `rh.ts`) : forme du bot officiel (docs/webhooks.md). Une candidature passée « Acceptée » dans Discord crée la fiche ; l'ID Discord est celui du candidat qui a ouvert le ticket. Le dernier événement appliqué à un ticket est daté (`evenement_le`) : un renvoi plus ancien du bot est ignoré.
 
 - Déploiement : guide d'installation propre à Dynasty 8 dans `deploy/INSTALLATION.md` (VPS FlashbackFA, port 3010, sous-domaine de la carte) ; le guide générique du modèle reste `server/README.md`.

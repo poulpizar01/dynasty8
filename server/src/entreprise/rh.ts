@@ -59,7 +59,9 @@ export function lireChamps(b: Record<string, unknown>, existante: Employe | null
   if (!existante || pris('idEmploye')) {
     const id = texte(b.idEmploye, 40);
     if (!id) throw new Refus('L’ID employé est obligatoire.');
-    if (!/^[\p{L}\p{N}_.\- ]+$/u.test(id)) throw new Refus('L’ID employé ne peut contenir que des lettres, chiffres, espaces, points, tirets et soulignés.');
+    // l'ID employé de l'entreprise est un numéro ; seul l'ID provisoire que le site crée lui-même (PROV-…, candidature
+    // sans ID) porte des lettres, en attendant d'être remplacé
+    if (!/^\d{1,12}$/.test(id) && !/^PROV-[\w-]+$/.test(id)) throw new Refus('L’ID employé ne contient que des chiffres, par exemple 42.');
     c.idEmploye = id;
     c.idEmployeNormalise = id.toLowerCase();
   }

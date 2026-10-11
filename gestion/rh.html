@@ -157,12 +157,12 @@
         <div class="champ"><label for="employe-nom">Nom</label><input type="text" id="employe-nom" required maxlength="60"></div>
       </div>
       <div class="champ-deux">
-        <div class="champ"><label for="employe-id">ID employé</label><input type="text" id="employe-id" required maxlength="40" placeholder="ex : D8-0042"></div>
+        <div class="champ"><label for="employe-id">ID employé</label><input type="text" id="employe-id" required maxlength="12" inputmode="numeric" placeholder="Ex. 42" aria-describedby="aide-employe-id"><p class="champ-aide" id="aide-employe-id">Chiffres uniquement.</p><p class="champ-erreur cache" id="erreur-employe-id">L’ID employé ne contient que des chiffres, par exemple 42.</p></div>
         <div class="champ"><label for="employe-grade">Grade</label><select id="employe-grade"></select></div>
       </div>
       <div class="champ-deux">
-        <div class="champ"><label for="employe-discord-id">ID Discord</label><input type="text" id="employe-discord-id" inputmode="numeric" maxlength="22" placeholder="ex : 302050872383242240"></div>
-        <div class="champ"><label for="employe-discord-pseudo">Pseudo Discord</label><input type="text" id="employe-discord-pseudo" maxlength="100" placeholder="celui que le bot envoie avec les ventes"></div>
+        <div class="champ"><label for="employe-discord-id">ID Discord</label><input type="text" id="employe-discord-id" inputmode="numeric" maxlength="22" placeholder="18 chiffres environ" aria-describedby="aide-discord-id"><p class="champ-aide" id="aide-discord-id">Clic droit sur le membre dans Discord, « Copier l’identifiant ».</p></div>
+        <div class="champ"><label for="employe-discord-pseudo">Pseudo Discord</label><input type="text" id="employe-discord-pseudo" maxlength="100" placeholder="Ex. lucas_p" aria-describedby="aide-discord-pseudo"><p class="champ-aide" id="aide-discord-pseudo">Celui que le bot envoie avec les ventes.</p></div>
       </div>
       <div class="champ-deux" id="employe-bloc-sensible">
         <div class="champ"><label for="employe-telephone">Téléphone</label><input type="text" id="employe-telephone" maxlength="30"></div>
