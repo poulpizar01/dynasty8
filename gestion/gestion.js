@@ -62,7 +62,7 @@ window.gestion = {
   },
 
   // Confirmation dans la page : l'ordinateur en jeu n'affiche ni confirm() ni alert() (docs/folkos.md).
-  // libelle : le bouton dit l'action (« Supprimer le grade »), jamais « OK » ; danger : bouton rouge (action destructive).
+  // libelle : le bouton dit l'action (« Supprimer le grade »), jamais « OK » ; danger : bouton rouge (action destructive).
   // Le focus reste dans la fenêtre (Tab boucle), Échap annule, et il revient ensuite où il était.
   confirmer(texte, { titre = 'Confirmer', libelle = 'Confirmer', danger = true } = {}) {
     return new Promise(resolve => {

@@ -20,7 +20,7 @@ const lireRole = (v: unknown): string | null | undefined =>
 // gérer les comptes. Hors propriétaire, il faut donc les deux permissions (« grades » seule ne suffit pas).
 const roleRefuse = (moi: Request['compte'], res: Response): boolean => {
   if (peut(moi, 'comptes')) return false;
-  res.status(403).json({ error: 'Tu ne peux pas lier ce grade à un rôle Discord : ce lien valide des comptes, il faut donc aussi la permission « Gérer les comptes ».' });
+  res.status(403).json({ error: 'Tu ne peux pas lier ce grade à un rôle Discord : ce lien valide des comptes, il faut donc aussi la permission « Gérer les comptes ».' });
   return true;
 };
 
