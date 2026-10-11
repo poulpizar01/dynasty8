@@ -1,7 +1,7 @@
 // ENTREPRISE — Paramètres → Apparence : images de la marque (logo, emblème, lettrage, icônes, image de partage).
-// Les images d'origine restent dans assets/, livrées avec le code. La Direction (permission « parametres ») peut en
+// Les images d'origine restent dans assets/, livrées avec le code. La Direction (permission « parametres ») peut en
 // remplacer une : le fichier passe par le traitement d'images du socle (contrôle, réencodage WebP, transparence
-// gardée) puis part sur le stockage ; seule son adresse est enregistrée (table apparence_images). « Rétablir » efface
+// gardée) puis part sur le stockage ; seule son adresse est enregistrée (table apparence_images). « Rétablir » efface
 // la ligne : l'image livrée revient aussitôt.
 // Les pages ne changent pas d'adresse (/assets/logo-full.png reste celle du logo partout) : une image réglée est
 // relayée depuis le stockage sur cette même adresse — même origine que le site, donc ni souci de CORS pour les textures
@@ -76,7 +76,7 @@ for (const d of IMAGES_MARQUE) {
       const octets = await lireImage(reglee.url);
       res.set({ 'Content-Type': 'image/webp', 'Cache-Control': CACHE_COURT, ETag: `"apparence-${d.cle}-${reglee.majLe.getTime()}"` }).send(octets);
     } catch (e) {
-      console.error(`[apparence] « ${d.libelle} » illisible sur le stockage (${(e as Error).message}) : image d’origine servie`);
+      console.error(`[apparence] « ${d.libelle} » illisible sur le stockage (${(e as Error).message}) : image d’origine servie`);
       livre();
     }
   });

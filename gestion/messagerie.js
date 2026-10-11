@@ -1,4 +1,4 @@
-/* GESTION — messagerie interne (widget « façon MSN »), présente sur toutes les pages de l'espace agents : démarrée par
+/* GESTION — messagerie interne (widget « façon MSN »), présente sur toutes les pages de l'espace agents : démarrée par
    gestion.coque(). Serveur : server/src/entreprise/routes/messagerie.ts. Pas de temps réel : le widget interroge le
    serveur toutes les 4 secondes (seulement dans un onglet visible), largement assez réactif pour une messagerie d'équipe.
    Les conversations ouvertes sont retenues pour la session de l'onglet (sessionStorage) : changer de page de la
@@ -28,7 +28,7 @@ function fenetresMemorisees() {
   try { const v = JSON.parse(sessionStorage.getItem('d8-messagerie') || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
 }
 
-// petit « ding » synthétisé : deux notes pour un message, quatre pour un clin d'œil
+// petit « ding » synthétisé : deux notes pour un message, quatre pour un clin d'œil
 function jouerSon(type) {
   try {
     MESSAGERIE.audio ??= new (window.AudioContext || window.webkitAudioContext)();

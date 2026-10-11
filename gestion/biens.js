@@ -91,7 +91,7 @@ function rendreTableBiens(liste) {
 function rendreGrilleBiens(liste) {
   const conteneur = $('vue-grille-biens');
   conteneur.innerHTML = liste.map(b => {
-    // sous-catégorie, catégorie, cohérence : souvent identiques (« Garage · Garage »), affichées une seule fois
+    // sous-catégorie, catégorie, cohérence : souvent identiques (« Garage · Garage »), affichées une seule fois
     const meta = [...new Set([b.sous_categorie, ETIQUETTES_CATEGORIE[b.categorie] || b.categorie, b.coherence].filter(Boolean))].map(echapper).join(' · ');
     const prix = b.dispo_vente ? formaterPrix(b.prix) : b.dispo_location ? `${formaterPrix(b.prix_location)} /sem.` : '—';
     const loc = b.dispo_vente && b.dispo_location ? `<span class="carte-admin-bien-loc">· ${formaterPrix(b.prix_location)} /sem.</span>` : '';
@@ -141,7 +141,7 @@ function actualiserVueAnnonces() {
   $('bouton-reinitialiser-filtres').classList.toggle('cache', !(FILTRE_RECHERCHE || FILTRE_CATEGORIE || FILTRE_STATUT));
   const corps = $('corps-table-biens');
   if (!CACHE_BIENS.length) {
-    corps.innerHTML = '<tr><td colspan="7">Aucune annonce pour le moment. Cliquez sur « Nouvelle annonce » pour commencer.</td></tr>';
+    corps.innerHTML = '<tr><td colspan="7">Aucune annonce pour le moment. Cliquez sur « Nouvelle annonce » pour commencer.</td></tr>';
     $('vue-grille-biens').innerHTML = '';
     $('annonces-pagination').innerHTML = '';
     return;
@@ -406,7 +406,7 @@ async function traiterFileBien() {
         if (edition !== EDITION_BIEN || t.controleur.signal.aborted) continue;
         if (IMAGES_BIEN.length < MAX_PHOTOS_BIEN) IMAGES_BIEN.push(url);
       } catch (e) {
-        if (edition === EDITION_BIEN && e.name !== 'AbortError') ajouterErreurImagesBien(`« ${t.nom} » : ${e.message}`);
+        if (edition === EDITION_BIEN && e.name !== 'AbortError') ajouterErreurImagesBien(`« ${t.nom} » : ${e.message}`);
       } finally {
         if (edition === EDITION_BIEN) { TRANSFERTS_BIEN = TRANSFERTS_BIEN.filter(x => x !== t); redessinerImagesBien(); }
       }
@@ -428,7 +428,7 @@ $('bien-image-fichier').addEventListener('change', e => {
   if (place <= 0) { afficherErreursImagesBien(); return; }
   if (fichiers.length > place) ajouterErreurImagesBien(`Seules les ${place} premières photos sélectionnées ont été retenues (limite de ${MAX_PHOTOS_BIEN}).`);
   for (const fichier of fichiers.slice(0, place)) {
-    if (fichier.size > 15 * 1024 * 1024) { ajouterErreurImagesBien(`« ${fichier.name} » dépasse 15 Mo.`); continue; }
+    if (fichier.size > 15 * 1024 * 1024) { ajouterErreurImagesBien(`« ${fichier.name} » dépasse 15 Mo.`); continue; }
     TRANSFERTS_BIEN.push({ nom: fichier.name, fichier, controleur: new AbortController(), enCours: false });
   }
   redessinerImagesBien();

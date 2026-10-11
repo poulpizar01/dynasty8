@@ -12,7 +12,7 @@ const COLONNES = ['numeroVente', 'dateVente', 'identite', 'formateur', 'identite
 export type LigneVente = LigneClassee & { id: number; employeId: number | null; cleAgent: string; cleFormateur: string };
 
 // Toutes les ventes classées par le moteur, avec leur id et leurs clés de regroupement : la fiche RH quand la vente y
-// est rattachée (« e:12 »), sinon le texte reçu (« t:pseudo »). pourCalculs : sans les doublons marqués (paie, totaux) —
+// est rattachée (« e:12 »), sinon le texte reçu (« t:pseudo »). pourCalculs : sans les doublons marqués (paie, totaux) —
 // l'historique brut, lui, montre tout. semaine : seulement ses ventes (le récapitulatif d'une semaine ne relit pas toute la
 // table pour chaque employé).
 export async function lireLignes(pourCalculs: boolean, semaine?: string) {
@@ -55,8 +55,8 @@ const texte = (v: unknown) => String(v ?? '').trim();
 // vente reçue (bot : compteId null, eventId obligatoire ; site : compte qui la saisit)
 export async function enregistrerVente(b: Record<string, unknown>, compteId: number | null): Promise<{ deja: boolean }> {
   if (!texte(b.identite)) throw new Refus('L’agent (Identité) est obligatoire.');
-  if (b.type !== 'Vente' && b.type !== 'Location') throw new Refus('Le type doit être « Vente » ou « Location ».');
-  if (!/^S\d{1,2}-\d{2}$/i.test(texte(b.semaine))) throw new Refus('La semaine doit être au format « S36-26 ».');
+  if (b.type !== 'Vente' && b.type !== 'Location') throw new Refus('Le type doit être « Vente » ou « Location ».');
+  if (!/^S\d{1,2}-\d{2}$/i.test(texte(b.semaine))) throw new Refus('La semaine doit être au format « S36-26 ».');
   if (b.dateVente && !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(texte(b.dateVente))) throw new Refus('La date doit être au format JJ/MM/AAAA.');
   if (b.achat != null && b.achat !== '' && !Number.isFinite(Number(b.achat))) throw new Refus('Le montant (Achat) doit être un nombre.');
   if (b.type === 'Location' && b.loc != null && b.loc !== '' && !Number.isFinite(Number(b.loc))) throw new Refus('La quantité (Loc) doit être un nombre.');
@@ -88,8 +88,8 @@ export async function enregistrerVente(b: Record<string, unknown>, compteId: num
     if (existante) { if (identique(existante)) return { deja: true }; throw new Refus('Cet eventId a déjà été utilisé avec des données différentes.', 409); }
   }
 
-  // rattachement à la fiche RH dès l'arrivée ; une vente d'un vendeur inconnu est gardée, sans employé (RH → « À
-  // rattacher »). Le bot rapporte des ventes faites en jeu : jamais refusées ; une saisie du site ne vise pas un inactif.
+  // rattachement à la fiche RH dès l'arrivée ; une vente d'un vendeur inconnu est gardée, sans employé (RH → « À
+  // rattacher »). Le bot rapporte des ventes faites en jeu : jamais refusées ; une saisie du site ne vise pas un inactif.
   const [employe, formateur] = await Promise.all([trouverEmploye(b.discordId, v.identite), v.formateur ? trouverEmploye(b.formateurDiscordId, v.formateur) : null]);
   if (compteId !== null && employe && employe.statut !== 'actif') throw new Refus(`${employe.prenom} ${employe.nom} est inactif dans RH : impossible de lui attribuer une nouvelle vente.`, 409);
   try {
@@ -110,7 +110,7 @@ const ordreSemaine = (code: string) => { const a = analyserCodeSemaine(code); re
 const bornes = (lundi: Date) => { const dimanche = new Date(lundi); dimanche.setUTCDate(lundi.getUTCDate() + 6); return { debut: lundi.toISOString().slice(0, 10), fin: dimanche.toISOString().slice(0, 10) }; };
 
 // Totaux agence et liste des semaines SANS TROU, de la plus ancienne ayant des données à la semaine en cours (une
-// semaine sans vente apparaît à zéro : on peut préparer sa DOT à zéro, et elle ne « disparaît » pas du sélecteur).
+// semaine sans vente apparaît à zéro : on peut préparer sa DOT à zéro, et elle ne « disparaît » pas du sélecteur).
 export async function semaines() {
   const { lignes } = await lireLignes(true);
   const parSemaine = new Map<string, { lignes: number; ventes: number; locations: number }>();

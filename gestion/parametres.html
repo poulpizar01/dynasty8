@@ -15,7 +15,7 @@
   <title>Paramètres — {{nom}}</title>
 </head>
 <body class="page-agents">
-  <!-- GESTION — paramètres du site (permission « parametres », serveur : entreprise/parametres.ts). Les champs sont
+  <!-- GESTION — paramètres du site (permission « parametres », serveur : entreprise/parametres.ts). Les champs sont
        construits à partir de GET /api/parametres : la liste des réglages n'est écrite qu'une fois, côté serveur. -->
   <main class="admin-contenu">
     <div class="entete-admin">
@@ -33,7 +33,7 @@
     <!-- Apparence : images de la marque (serveur : entreprise/apparence.ts). Remplacer envoie l'image sur le stockage ;
          Rétablir remet l'image livrée avec le site. -->
     <h3 class="comptes-sous-titre" style="margin-top:40px;">🎨 Apparence</h3>
-    <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">Les images de la marque, sur les pages publiques comme dans l'espace agents. Une image remplacée s'affiche partout dès l'enregistrement (quelques minutes pour les visiteurs déjà venus) ; « Rétablir » remet l'image d'origine. Gardez les proportions de l'image d'origine pour qu'elle ne soit pas déformée.</p>
+    <p class="champ-aide" style="margin:0 0 16px;max-width:760px;">Les images de la marque, sur les pages publiques comme dans l'espace agents. Une image remplacée s'affiche partout dès l'enregistrement (quelques minutes pour les visiteurs déjà venus) ; « Rétablir » remet l'image d'origine. Gardez les proportions de l'image d'origine pour qu'elle ne soit pas déformée.</p>
     <div id="zone-message-apparence"></div>
     <div class="apparence-grille" id="apparence"></div>
     <input type="file" id="apparence-fichier" accept="image/png,image/jpeg,image/webp" class="cache">
@@ -72,7 +72,7 @@
       try {
         const r = await socle.api('/api/services/etat'), lignes = [];
         if (!r.jetonPresent) lignes.push('⚠️ Membres en service : DISCORD_BOT_TOKEN absent du .env du serveur — le salon ne peut pas être lu.');
-        else if (!r.salonRegle) lignes.push('Membres en service : réglez l’ID du salon ci-dessus pour activer l’encadré « En service ».');
+        else if (!r.salonRegle) lignes.push('Membres en service : réglez l’ID du salon ci-dessus pour activer l’encadré « En service ».');
         else if (!r.etat?.derniereLecture) lignes.push('Membres en service : première lecture du salon dans moins d’une minute.');
         else if (r.etat.statut === 'erreur') lignes.push(`⚠️ Lecture du salon des services : ${echapper(r.etat.erreur)} (${echapper(quand(r.etat.derniereLecture))}).`);
         else lignes.push(`✓ Salon des services lu le ${echapper(quand(r.etat.derniereLecture))} : ${r.etat.nbLus} nouveau(x) message(s), ${r.etat.nbReconnus} prise(s) ou fin(s) de service reconnue(s). ${r.enService} personne(s) en service. Clôture automatique après ${r.clotureHeures} h.`);

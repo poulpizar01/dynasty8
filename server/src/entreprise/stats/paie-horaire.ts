@@ -1,8 +1,8 @@
 // ENTREPRISE — paie à l'heure (Comptabilité → Tablettes) : un grade dont le taux horaire est réglé (> 0) dans
-// Comptabilité → Rémunération — les stagiaires — est payé selon ses heures de service de la semaine : colonne « Heures
-// de service » du relevé Tablettes × taux. Ce montant s'ajoute aux paliers de primes, il ne les remplace pas.
-// Le grade d'une ligne du relevé est celui de la fiche RH de même « Prénom Nom » (RH fait foi) ; sans fiche, celui de la
-// colonne « Rang ». Une durée illisible n'est jamais devinée : la ligne est signalée, à 0 $. Fonctions pures, testées
+// Comptabilité → Rémunération — les stagiaires — est payé selon ses heures de service de la semaine : colonne « Heures
+// de service » du relevé Tablettes × taux. Ce montant s'ajoute aux paliers de primes, il ne les remplace pas.
+// Le grade d'une ligne du relevé est celui de la fiche RH de même « Prénom Nom » (RH fait foi) ; sans fiche, celui de la
+// colonne « Rang ». Une durée illisible n'est jamais devinée : la ligne est signalée, à 0 $. Fonctions pures, testées
 // par test/paie-horaire.test.ts.
 
 export const ALIAS_HEURES = ['heures de service', 'heure de service', 'heures', 'temps de service', 'durée de service', 'duree de service'];
@@ -18,7 +18,7 @@ function indexColonne(colonnes: string[], alias: string[]): number {
   return -1;
 }
 
-// « 0h52min », « 1h », « 12h05 », « 45min », « 1:05 » → minutes ; null si illisible
+// « 0h52min », « 1h », « 12h05 », « 45min », « 1:05 » → minutes ; null si illisible
 export function dureeEnMinutes(texte: unknown): number | null {
   const t = String(texte ?? '').trim().toLowerCase().replace(/\s+/g, '');
   if (!t || t === '-') return null;

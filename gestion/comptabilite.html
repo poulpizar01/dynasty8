@@ -15,7 +15,7 @@
   <title>Comptabilité — {{nom}}</title>
 </head>
 <body class="page-agents">
-  <!-- GESTION — comptabilité (permission « compta ») : relevé Tablettes, déclaration DOT, rémunération. Serveur :
+  <!-- GESTION — comptabilité (permission « compta ») : relevé Tablettes, déclaration DOT, rémunération. Serveur :
        entreprise/routes/compta.ts et routes/stats.ts. -->
   <main class="admin-contenu">
     <section id="panneau-comptabilite">
@@ -48,7 +48,7 @@
         </div>
         <div id="zone-message-tablette"></div>
         <div id="compta-tablette-vide" class="etat-vide">
-          <p>Aucune donnée importée pour le moment. Cliquez sur « Importer » pour coller votre premier relevé.</p>
+          <p>Aucune donnée importée pour le moment. Cliquez sur « Importer » pour coller votre premier relevé.</p>
         </div>
         <div id="compta-tablette-resultat" class="cache">
           <!-- les chiffres qui comptent pour la suite (CA brut de la DOT, paie à l'heure), avant le détail -->
@@ -79,7 +79,7 @@
         <div class="entete-admin" style="margin-top:20px;">
           <div>
             <h2 class="compta-titre">Rémunération</h2>
-            <p class="compta-aide">Ce que touche chaque grade : un salaire fixe, des paliers selon les ventes et les locations, un taux horaire. Repris partout : « Mon profil », « Ventes &amp; statistiques », déclaration DOT. Chaque modification s’enregistre aussitôt.</p>
+            <p class="compta-aide">Ce que touche chaque grade : un salaire fixe, des paliers selon les ventes et les locations, un taux horaire. Repris partout : « Mon profil », « Ventes &amp; statistiques », déclaration DOT. Chaque modification s’enregistre aussitôt.</p>
           </div>
         </div>
         <div id="zone-message-parametres"></div>
@@ -137,14 +137,14 @@
       </div>
 
       <!-- Sous-onglet : DOT — la déclaration hebdomadaire versée à la DOT (organisme fiscal du serveur RP), calculée à
-           partir du CA Brut (colonne « Total entreprise » du relevé Tablettes), des dépenses et retraits saisis
-           ci-dessous, et des primes : les mêmes montants que « Mon profil » (tableur de la Direction + barèmes du
+           partir du CA Brut (colonne « Total entreprise » du relevé Tablettes), des dépenses et retraits saisis
+           ci-dessous, et des primes : les mêmes montants que « Mon profil » (tableur de la Direction + barèmes du
            site, recapAvecPrimesTableur dans stats/recap.ts). -->
       <div id="compta-panneau-dot" class="cache">
         <div class="entete-admin" style="margin-top:20px;">
           <div>
             <h2 class="compta-titre">Déclaration DOT</h2>
-            <p class="compta-aide">À partir du relevé Tablettes, des dépenses et des retraits ci-dessous ; les salaires sont ceux de « Mon profil ».</p>
+            <p class="compta-aide">À partir du relevé Tablettes, des dépenses et des retraits ci-dessous ; les salaires sont ceux de « Mon profil ».</p>
           </div>
           <div class="dot-semaine"><label for="select-semaine-dot">Semaine</label><select id="select-semaine-dot"></select></div>
         </div>
@@ -211,7 +211,7 @@
             <p class="compta-aide">À coller dans le document de la DOT. Run, facture et vente viennent du relevé (0 si la personne n’y figure pas) ; le salaire est le fixe du grade plus son palier ; la prime se saisit à la main dans le document.</p>
             <ol class="dot-etapes">
               <li>Indiquez la ligne du document où commence la première personne.</li>
-              <li>Copiez le tableau : sans les titres, en nombres, la colonne « CA total réalisé » en formule.</li>
+              <li>Copiez le tableau : sans les titres, en nombres, la colonne « CA total réalisé » en formule.</li>
               <li>Collez en colonne A de cette ligne.</li>
             </ol>
           </div>
@@ -244,7 +244,7 @@
       <label for="import-tablette-texte">Collez vos données ici</label>
       <p class="champ-aide" style="margin-top:-4px;">
         Le plus fiable : copiez les cellules directement depuis Excel, Google Sheets ou un tableau similaire, puis collez-les ici (Ctrl+V) — la première ligne doit contenir les titres des colonnes.
-        Si vous tapez ou collez un texte à espaces (par exemple depuis Discord) et qu'une ligne comme « TOTAL » n'a pas de valeur pour une colonne, mettez un tiret « - » à cet endroit avant de coller, sinon les colonnes suivantes risquent de se décaler — vérifiez toujours l'aperçu ci-dessous avant d'enregistrer.
+        Si vous tapez ou collez un texte à espaces (par exemple depuis Discord) et qu'une ligne comme « TOTAL » n'a pas de valeur pour une colonne, mettez un tiret « - » à cet endroit avant de coller, sinon les colonnes suivantes risquent de se décaler — vérifiez toujours l'aperçu ci-dessous avant d'enregistrer.
       </p>
       <textarea id="import-tablette-texte" rows="18" wrap="off" style="font-family:monospace;font-size:0.82rem;white-space:pre;overflow-x:auto;" placeholder="Nom    Rang    Factures    Runs    Ventes    Total entreprise    Part employé    Heures de service
 Javier Silva    Co-patron    0    0    0    0    0    0h52min

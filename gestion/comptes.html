@@ -16,8 +16,8 @@
   <title>Comptes & accès — {{nom}}</title>
 </head>
 <body class="page-agents">
-  <!-- GESTION — comptes et accès (permission « comptes », serveur : socle/routes/comptes.ts). Deux temps : les demandes
-       à valider (en tête, seulement s'il y en a), puis les membres ; les actions rares sont dans le menu « ⋯ » de
+  <!-- GESTION — comptes et accès (permission « comptes », serveur : socle/routes/comptes.ts). Deux temps : les demandes
+       à valider (en tête, seulement s'il y en a), puis les membres ; les actions rares sont dans le menu « ⋯ » de
        chaque ligne, avec des libellés explicites. -->
   <main class="admin-contenu">
     <div class="entete-admin">
@@ -60,7 +60,7 @@
   <div class="modale-fond cache" id="modale-profil">
     <div class="modale" style="max-width:760px;" role="dialog" aria-modal="true" aria-labelledby="titre-modale-profil">
       <div class="modale-entete">
-        <div><h2 id="titre-modale-profil" class="modale-titre">Fiche</h2><p class="comptes-aide" style="margin:2px 0 0;">Affichée sur la page « Notre équipe » du site.</p></div>
+        <div><h2 id="titre-modale-profil" class="modale-titre">Fiche</h2><p class="comptes-aide" style="margin:2px 0 0;">Affichée sur la page « Notre équipe » du site.</p></div>
         <button type="button" id="fermer-profil" aria-label="Fermer">✕</button>
       </div>
       <div id="editeur-profil"></div>
@@ -74,7 +74,7 @@
     const gradesPossibles = () => grades.filter(g => moi.proprietaire || (moi.grade && rang(g.cle) > rang(moi.grade.cle)));
     const PARIS = { timeZone: 'Europe/Paris' };
     const dateHeure = d => new Date(d).toLocaleString('fr-FR', { ...PARIS, dateStyle: 'short', timeStyle: 'short' });
-    // « il y a 2 h », « hier », « le 16/09/2026 » : plus parlant qu'une date complète pour juger d'une activité
+    // « il y a 2 h », « hier », « le 16/09/2026 » : plus parlant qu'une date complète pour juger d'une activité
     function ilYA(d) {
       if (!d) return 'Jamais';
       const min = Math.round((Date.now() - new Date(d)) / 60000);
@@ -156,7 +156,7 @@
       afficher();
     }
 
-    // menus « ⋯ » : un seul ouvert, fermé par Échap ou un clic ailleurs ; s'ouvre vers le haut près du bas de l'écran
+    // menus « ⋯ » : un seul ouvert, fermé par Échap ou un clic ailleurs ; s'ouvre vers le haut près du bas de l'écran
     let menuOuvert = null;
     function fermerMenu(rendreFocus) {
       if (!menuOuvert) return;
@@ -227,7 +227,7 @@
     }));
     document.getElementById('recherche-comptes').addEventListener('input', e => { recherche = e.target.value.trim(); afficher(); });
 
-    // fiche d'un agent (page équipe) : même éditeur que « Mon profil »
+    // fiche d'un agent (page équipe) : même éditeur que « Mon profil »
     let editeur = null, ouvreurProfil = null;
     const modaleProfil = document.getElementById('modale-profil');
     function ouvrirProfil(c) {

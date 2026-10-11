@@ -1,7 +1,7 @@
-// ENTREPRISE — messagerie interne (widget « façon MSN » de la gestion, gestion/messagerie.js) : conversations privées
+// ENTREPRISE — messagerie interne (widget « façon MSN » de la gestion, gestion/messagerie.js) : conversations privées
 // entre deux agents validés, quel que soit leur grade. L'expéditeur est toujours le compte de la session, jamais une
-// valeur envoyée par le navigateur. Le widget interroge le serveur toutes les 4 s : la présence (« vu il y a moins de
-// 25 s ») et l'indicateur « en train d'écrire » sont éphémères et restent en mémoire — un seul processus sert le site.
+// valeur envoyée par le navigateur. Le widget interroge le serveur toutes les 4 s : la présence (« vu il y a moins de
+// 25 s ») et l'indicateur « en train d'écrire » sont éphémères et restent en mémoire — un seul processus sert le site.
 import { Router } from 'express';
 import { prisma } from '../../socle/db.js';
 import { body, entier, text, valide } from '../../socle/http.js';
@@ -11,7 +11,7 @@ export const messagerie = Router();
 const STATUTS = ['disponible', 'absent', 'occupe', 'invisible'];
 const EN_LIGNE_MS = 25_000, FRAPPE_MS = 4_000;
 const vuLe = new Map<number, number>();             // compte → dernier signe de vie
-const frappe = new Map<string, number>();           // « expéditeur:destinataire » → jusqu'à quand
+const frappe = new Map<string, number>();           // « expéditeur:destinataire » → jusqu'à quand
 const signeDeVie = (id: number) => vuLe.set(id, Date.now());
 // purge des entrées périmées (un compte supprimé ne reste pas en mémoire)
 setInterval(() => {
@@ -20,7 +20,7 @@ setInterval(() => {
   for (const [cle, v] of frappe) if (v < t) frappe.delete(cle);
 }, 60_000).unref();
 
-// statut vu par les autres : « invisible » et absence de signe de vie récent → hors ligne
+// statut vu par les autres : « invisible » et absence de signe de vie récent → hors ligne
 const statutVisible = (id: number, choisi: string | undefined) =>
   choisi === 'invisible' || Date.now() - (vuLe.get(id) ?? 0) > EN_LIGNE_MS ? 'hors_ligne' : choisi ?? 'disponible';
 
@@ -73,7 +73,7 @@ messagerie.post('/api/messagerie/frappe', ...valide, (req, res) => {
   res.json({ ok: true });
 });
 
-// messages d'une conversation après un identifiant donné (lecture seule : le marquage « lu » passe par POST, qu'un
+// messages d'une conversation après un identifiant donné (lecture seule : le marquage « lu » passe par POST, qu'un
 // autre site ne peut pas déclencher — une simple image vers un GET le pourrait, avec le cookie de l'ordinateur en jeu)
 messagerie.get('/api/messagerie/messages', ...valide, async (req, res) => {
   const moi = req.compte.id, avec = entier(req.query.avec), apres = entier(req.query.apres_id) ?? 0;
@@ -93,7 +93,7 @@ messagerie.get('/api/messagerie/messages', ...valide, async (req, res) => {
   });
 });
 
-// conversation lue : ce qu'on a reçu de « avec » passe à lu
+// conversation lue : ce qu'on a reçu de « avec » passe à lu
 messagerie.post('/api/messagerie/lus', ...valide, async (req, res) => {
   const avec = entier(body(req).avec);
   if (!avec) { res.status(400).json({ error: 'Destinataire manquant.' }); return; }

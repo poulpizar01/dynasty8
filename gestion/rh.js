@@ -1,8 +1,8 @@
 /* GESTION — ressources humaines : fiches employés, source de vérité de l'identité, du grade et du statut de chacun.
    Les droits viennent du serveur et y sont revérifiés à chaque appel
    (server/src/entreprise/routes/rh.ts) : l'interface ne fait que masquer ce qui serait de toute façon refusé.
-   Les droits RH se règlent par grade dans la page Grades (permissions « RH : … »).
-   Mise en page : ce qui demande une action en tête (« À traiter »), puis la liste triable par colonne, puis les données
+   Les droits RH se règlent par grade dans la page Grades (permissions « RH : … »).
+   Mise en page : ce qui demande une action en tête (« À traiter »), puis la liste triable par colonne, puis les données
    à rattacher et le recrutement (candidatures du bot, réglages repliés). */
 
 let CACHE_EMPLOYES = [];
@@ -49,7 +49,7 @@ async function chargerRh() {
   }
 }
 
-// ---- « À traiter » : des raccourcis vers ce qui demande une action, rien quand tout est en ordre ----
+// ---- « À traiter » : des raccourcis vers ce qui demande une action, rien quand tout est en ordre ----
 function afficherAFaire() {
   const items = [
     A_FAIRE.completer && `<button type="button" class="rh-a-faire-item" data-aller="completer"><strong>${A_FAIRE.completer}</strong> ${A_FAIRE.completer > 1 ? 'fiches à compléter' : 'fiche à compléter'}<small>ID provisoire ou nom manquant</small></button>`,
@@ -137,7 +137,7 @@ $rh('recherche-employes').addEventListener('input', afficherEmployes);
 $rh('filtre-rh-grade').addEventListener('change', afficherEmployes);
 document.querySelectorAll('[data-statut]').forEach(b => b.addEventListener('click', () => choisirStatut(b.dataset.statut)));
 
-// clics de la liste : tri, fiche, menu « ⋯ » et ses actions (un seul écouteur : la liste est redessinée à chaque fois)
+// clics de la liste : tri, fiche, menu « ⋯ » et ses actions (un seul écouteur : la liste est redessinée à chaque fois)
 let MENU_OUVERT = null;
 function fermerMenuRh(rendreFocus) {
   if (!MENU_OUVERT) return;
@@ -281,7 +281,7 @@ async function changerStatutEmploye(id, action) {
   } catch (err) { gestion.message('zone-message-rh', err.message); }
 }
 
-// ---- « À rattacher » : vendeurs des ventes et lignes du tableur sans fiche RH ----
+// ---- « À rattacher » : vendeurs des ventes et lignes du tableur sans fiche RH ----
 async function chargerARattacher() {
   const bloc = $rh('rh-a-rattacher'), contenu = $rh('rh-a-rattacher-contenu');
   try {
@@ -291,7 +291,7 @@ async function chargerARattacher() {
     const parties = [];
     if (r.vendeurs.length) parties.push(`<h3 class="rh-sous-titre">Ventes du bot sans fiche</h3><p class="comptes-aide">Le pseudo reçu ne correspond au pseudo Discord d’aucune fiche.</p>
       <div class="rh-cartes">${r.vendeurs.map(v => ligne(echapper(v.pseudo), `${pluriel(v.ventes, 'vente', 'ventes')}${v.derniereSemaine ? ` · semaine ${echapper(v.derniereSemaine)}` : ''}`, bouton(`data-rh-creer-pseudo="${echapper(v.pseudo)}"`))).join('')}</div>`);
-    if (r.tableur.length) parties.push(`<h3 class="rh-sous-titre">Lignes du tableur sans fiche</h3><p class="comptes-aide">Le nom écrit ne correspond au « Prénom Nom » d’aucune fiche.</p>
+    if (r.tableur.length) parties.push(`<h3 class="rh-sous-titre">Lignes du tableur sans fiche</h3><p class="comptes-aide">Le nom écrit ne correspond au « Prénom Nom » d’aucune fiche.</p>
       <div class="rh-cartes">${r.tableur.map(l => ligne(echapper(l.nom), `${echapper(l.grade || 'Sans grade')} · ${pluriel(l.ventes, 'vente', 'ventes')}, ${pluriel(l.locations, 'location', 'locations')}`, bouton(`data-rh-creer-nom="${echapper(l.nom)}" data-rh-creer-grade="${echapper(l.grade || '')}"`))).join('')}</div>`);
     A_FAIRE.rattacher = r.vendeurs.length + r.tableur.length;
     afficherAFaire();
@@ -319,9 +319,9 @@ const CHAMPS_REGLAGES_BOT = {
   questionNom: 'rh-bot-q-nom', questionTelephone: 'rh-bot-q-telephone', questionRib: 'rh-bot-q-rib',
 };
 
-// Correspondance « information → question du formulaire » : un menu des questions déjà reçues plutôt qu'un libellé à
-// recopier (une faute de frappe envoyait la candidature en « à traiter ») ; « Autre libellé » ouvre la saisie libre,
-// pour une question pas encore reçue. Le champ texte (caché sauf pour « Autre ») reste ce que lit l'enregistrement.
+// Correspondance « information → question du formulaire » : un menu des questions déjà reçues plutôt qu'un libellé à
+// recopier (une faute de frappe envoyait la candidature en « à traiter ») ; « Autre libellé » ouvre la saisie libre,
+// pour une question pas encore reçue. Le champ texte (caché sauf pour « Autre ») reste ce que lit l'enregistrement.
 const AUTRE_LIBELLE = '__autre-libelle__';   // valeur réservée (un caractère nul était remplacé par le navigateur)
 function brancherQuestion(input, questions) {
   let choix = $rh(`${input.id}-choix`);
@@ -338,7 +338,7 @@ function brancherQuestion(input, questions) {
   const valeur = input.value.trim();
   const connue = !valeur || questions.includes(valeur);
   choix.innerHTML = `<option value="">${echapper(input.dataset.vide || 'Pas demandé')}</option>`
-    + questions.map(q => `<option value="${echapper(q)}">« ${echapper(q)} »</option>`).join('')
+    + questions.map(q => `<option value="${echapper(q)}">« ${echapper(q)} »</option>`).join('')
     + `<option value="${AUTRE_LIBELLE}">Autre libellé…</option>`;
   choix.value = connue ? valeur : AUTRE_LIBELLE;
   input.classList.toggle('cache', connue);
@@ -352,14 +352,14 @@ async function chargerArriveesBot() {
     const reglable = aDroitRh('parametrer');
     bloc.classList.toggle('cache', !r.arrivees.length && !reglable);
     $rh('rh-bot-details').classList.toggle('cache', !reglable);
-    $rh('rh-bot-etat').textContent = 'Le bot envoie ses candidatures à l’adresse /webhooks/bot du site (abonnement « Candidatures » de son panneau Monitoring).';
+    $rh('rh-bot-etat').textContent = 'Le bot envoie ses candidatures à l’adresse /webhooks/bot du site (abonnement « Candidatures » de son panneau Monitoring).';
     if (reglable) {
       const select = $rh('rh-bot-grade');
       select.innerHTML = '<option value="">À choisir</option>' + r.grades.map(g => `<option value="${echapper(g.cle)}">${echapper(g.libelle)}</option>`).join('');
       select.value = r.reglages.gradeArrivee || '';
       ameliorerSelect(select);
       for (const [champ, id] of Object.entries(CHAMPS_REGLAGES_BOT)) $rh(id).value = r.reglages[champ] || '';
-      // prénom et nom en une seule question (réglage « identité ») : la même question dans les deux menus
+      // prénom et nom en une seule question (réglage « identité ») : la même question dans les deux menus
       if (r.reglages.questionIdentite) { $rh('rh-bot-q-prenom').value = r.reglages.questionIdentite; $rh('rh-bot-q-nom').value = r.reglages.questionIdentite; }
       for (const id of Object.values(CHAMPS_REGLAGES_BOT)) if (id !== 'rh-bot-q-identite') brancherQuestion($rh(id), r.questionsVues);
       majMemeQuestion();
@@ -406,7 +406,7 @@ async function chargerArriveesBot() {
 }
 
 // Prénom et nom : une question chacun. Si le formulaire les demande ensemble, on choisit la même dans les deux menus et
-// le site coupe la réponse (réglage « identité » côté serveur : premier mot = prénom, le reste = nom).
+// le site coupe la réponse (réglage « identité » côté serveur : premier mot = prénom, le reste = nom).
 const memeQuestionNom = () => { const p = $rh('rh-bot-q-prenom').value.trim(); return p && p === $rh('rh-bot-q-nom').value.trim(); };
 function majMemeQuestion() { $rh('rh-nom-meme-question').classList.toggle('cache', !memeQuestionNom()); }
 $rh('rh-bot-reglages').addEventListener('change', majMemeQuestion);
@@ -420,7 +420,7 @@ $rh('rh-bot-reglages').addEventListener('submit', async e => {
   else corps.questionIdentite = '';
   try {
     await socle.api('/api/rh/bot/reglages', { method: 'PUT', body: corps });
-    gestion.message('zone-message-rh-bot', 'Réglages enregistrés ✓ Les candidatures « à traiter » peuvent être retraitées.', 'succes');
+    gestion.message('zone-message-rh-bot', 'Réglages enregistrés ✓ Les candidatures « à traiter » peuvent être retraitées.', 'succes');
     chargerArriveesBot();
   } catch (err) { gestion.message('zone-message-rh-bot', err.message); }
 });

@@ -64,7 +64,7 @@ export const relaisCarte: RequestHandler = (req, res, next) => limite(req, res, 
 async function relayer(req: Request, res: Response): Promise<void> {
   res.set({ 'Content-Security-Policy': `frame-ancestors ${ancetres.join(' ')}`, 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' });
   // Cible : un chemin de la carte, rien d'autre. Concaténée telle quelle, une cible de requête en forme absolue
-  // (« GET pany://x/y ») rallongerait le nom d'hôte de la carte et ferait aller ce serveur vers un autre domaine.
+  // (« GET pany://x/y ») rallongerait le nom d'hôte de la carte et ferait aller ce serveur vers un autre domaine.
   if (!req.originalUrl.startsWith('/') || req.originalUrl.startsWith('//')) { res.status(400).type('text').send('Adresse refusée.'); return; }
   const origineCarte = webmapOrigine();
   if (!origineCarte) { res.status(503).type('text').send('La WebMap n’est pas encore réglée : la Direction la renseigne dans Paramètres.'); return; }

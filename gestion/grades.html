@@ -15,7 +15,7 @@
   <title>Grades — {{nom}}</title>
 </head>
 <body class="page-agents">
-  <!-- GESTION — grades et permissions (permission « grades », serveur : socle/routes/grades.ts). -->
+  <!-- GESTION — grades et permissions (permission « grades », serveur : socle/routes/grades.ts). -->
   <main class="admin-contenu">
     <div class="entete-admin">
       <div>
@@ -46,8 +46,8 @@
           <label for="role">Rôle Discord lié (facultatif)</label>
           <select id="role-liste" class="cache"></select>
           <input type="text" id="role" inputmode="numeric" pattern="\d{5,32}" placeholder="identifiant du rôle">
-          <p class="champ-aide" id="role-aide">Discord → Paramètres du serveur → Rôles → clic droit sur le rôle → « Copier l'identifiant » (mode développeur activé).</p>
-          <p class="champ-aide">Lier un rôle demande aussi la permission « Gérer les comptes » : qui porte ce rôle est validé d'office à sa connexion.</p>
+          <p class="champ-aide" id="role-aide">Discord → Paramètres du serveur → Rôles → clic droit sur le rôle → « Copier l'identifiant » (mode développeur activé).</p>
+          <p class="champ-aide">Lier un rôle demande aussi la permission « Gérer les comptes » : qui porte ce rôle est validé d'office à sa connexion.</p>
         </div>
         <div class="champ">
           <label>Permissions</label>
@@ -94,7 +94,7 @@
 
     function ouvrir(g) {
       edition = g?.cle ?? null;
-      $('titre-modale').textContent = g ? `Modifier « ${g.libelle} »` : 'Nouveau grade';
+      $('titre-modale').textContent = g ? `Modifier « ${g.libelle} »` : 'Nouveau grade';
       $('enregistrer').textContent = g ? 'Enregistrer' : 'Créer le grade';
       $('libelle').value = g?.libelle ?? '';
       $('couleur').value = g?.couleur ?? '#c9a55c';
@@ -143,7 +143,7 @@
       try {
         if (b.dataset.action === 'modifier') return ouvrir(g);
         if (b.dataset.action === 'supprimer') {
-          if (!await gestion.confirmer(`Le grade « ${g.libelle} » sera supprimé.`, 'Supprimer ce grade ?', 'Supprimer le grade')) return;
+          if (!await gestion.confirmer(`Le grade « ${g.libelle} » sera supprimé.`, 'Supprimer ce grade ?', 'Supprimer le grade')) return;
           grades = await socle.api(`/api/grades/${encodeURIComponent(cle)}`, { method: 'DELETE' });
         } else {
           const ordre = grades.map(x => x.cle), j = b.dataset.action === 'monter' ? i - 1 : i + 1;

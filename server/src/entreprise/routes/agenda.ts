@@ -1,8 +1,8 @@
 // ENTREPRISE — Agenda de l'espace agents (gestion/agenda.html). Règles de visibilité dans agenda-regles.ts : chacun
-// voit ses propres événements, ceux qu'on a créés pour lui (« Perso » pour quelqu'un d'autre) et les événements
+// voit ses propres événements, ceux qu'on a créés pour lui (« Perso » pour quelqu'un d'autre) et les événements
 // partagés que ses rôles Discord lui ouvrent. L'identité vient toujours de la session ; un événement qu'on ne voit pas
 // répond 404, comme un événement inexistant.
-// « Perso » pour quelqu'un d'autre : son ID Discord est lu dans sa fiche RH, son ticket (Ticket Tool, catégories
+// « Perso » pour quelqu'un d'autre : son ID Discord est lu dans sa fiche RH, son ticket (Ticket Tool, catégories
 // réglées dans Paramètres) est retrouvé et le bot y poste l'événement en le mentionnant. Sans ticket, sans ID Discord
 // ou si Discord refuse : rien n'est créé, et le créateur sait pourquoi.
 import { Router, type Request } from 'express';
@@ -27,7 +27,7 @@ const dateValide = (jour: unknown): jour is string => typeof jour === 'string' &
 const droitsDe = (req: Request): DroitsAgenda => droitsAgenda(req.compte.rolesDiscord ?? [], peut(req.compte, 'parametres'), idsRegles);
 
 // modifiable par son auteur (dans la limite de ce qu'il peut créer) ; un événement partagé aussi par qui a la
-// permission « parametres ». Le « Perso » d'un autre ne se modifie jamais : seul son auteur le gère.
+// permission « parametres ». Le « Perso » d'un autre ne se modifie jamais : seul son auteur le gère.
 function modifiable(e: EvenementAgenda, req: Request, droits: DroitsAgenda): boolean {
   const vis = e.visibilite as Visibilite;
   if (e.compteId === req.compte.id) return vis === 'perso' || droits.cree.has(vis);
@@ -61,7 +61,7 @@ async function discord<T>(appel: () => Promise<T>): Promise<T> {
     if (!(e instanceof ErreurDiscord)) throw e;
     const cause = e.statut === 0 ? 'Discord ne répond pas'
       : e.statut === 401 ? 'Le jeton du bot Discord (DISCORD_BOT_TOKEN) est refusé — prévenez la personne qui gère le serveur du site'
-      : e.statut === 403 ? 'Le bot n’a pas le droit de voir les salons ou d’écrire dans ce ticket (« Voir le salon », « Envoyer des messages », « Intégrer des liens »)'
+      : e.statut === 403 ? 'Le bot n’a pas le droit de voir les salons ou d’écrire dans ce ticket (« Voir le salon », « Envoyer des messages », « Intégrer des liens »)'
       : e.statut === 429 ? 'Discord demande de ralentir' : `Discord a refusé la demande (HTTP ${e.statut})`;
     const reessayer = e.statut === 0 || e.statut === 429 ? ' Réessayez dans un instant.' : '';
     throw new Refus(`${cause} : l’événement n’a pas été créé.${reessayer}`, e.statut === 401 || e.statut === 429 ? 503 : 502);
@@ -106,7 +106,7 @@ agenda.get('/api/agenda', ...valide, async (req, res) => {
   });
 });
 
-// fiches RH proposées pour un « Perso » destiné à quelqu'un d'autre
+// fiches RH proposées pour un « Perso » destiné à quelqu'un d'autre
 agenda.get('/api/agenda/personnes', ...valide, async (req, res) => {
   if (!droitsDe(req).persoAutrui) { res.status(403).json({ error: 'Votre rôle ne permet pas de créer un événement pour quelqu’un d’autre.' }); return; }
   const fiches = await prisma.employe.findMany({ where: { statut: 'actif' }, orderBy: [{ prenom: 'asc' }, { nom: 'asc' }], select: { id: true, prenom: true, nom: true, discordPseudo: true, idEmploye: true, discordId: true } });
@@ -117,7 +117,7 @@ agenda.post('/api/agenda', ...valide, traiter(async (req, res) => {
   const b = body(req), d = lire(b);
   if (typeof d === 'string') throw new Refus(d);
   const droits = droitsDe(req), visibilite: Visibilite = estVisibilite(b.visibilite) ? b.visibilite : 'perso';
-  if (!droits.cree.has(visibilite)) throw new Refus(`Votre rôle ne permet pas de créer un événement « ${LIBELLES[visibilite]} ».`, 403);
+  if (!droits.cree.has(visibilite)) throw new Refus(`Votre rôle ne permet pas de créer un événement « ${LIBELLES[visibilite]} ».`, 403);
   const auteur = req.compte.nom || req.compte.pseudo;
 
   const cible = { cibleEmployeId: null as number | null, cibleDiscordId: null as string | null, cibleNom: '', discordSalonId: null as string | null, discordMessageId: null as string | null };
@@ -158,11 +158,11 @@ agenda.put('/api/agenda/:id', ...valide, traiter(async (req, res) => {
   const { e, droits } = await modifiableOuRefus(req);
   const b = body(req), d = lire(b);
   if (typeof d === 'string') throw new Refus(d);
-  // la personne d'un « Perso » pour quelqu'un d'autre ne change pas (le message est déjà dans son ticket) ;
+  // la personne d'un « Perso » pour quelqu'un d'autre ne change pas (le message est déjà dans son ticket) ;
   // la visibilité, seulement vers ce qu'on peut créer
   let visibilite = (estVisibilite(b.visibilite) ? b.visibilite : e.visibilite) as Visibilite;
   if (e.cibleEmployeId !== null || e.cibleDiscordId) visibilite = 'perso';
-  if (visibilite !== e.visibilite && !droits.cree.has(visibilite)) throw new Refus(`Votre rôle ne permet pas de créer un événement « ${LIBELLES[visibilite]} ».`, 403);
+  if (visibilite !== e.visibilite && !droits.cree.has(visibilite)) throw new Refus(`Votre rôle ne permet pas de créer un événement « ${LIBELLES[visibilite]} ».`, 403);
   await prisma.evenementAgenda.update({ where: { id: e.id }, data: { ...d, visibilite } });
   res.json({ ok: true });
 }));

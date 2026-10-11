@@ -1,6 +1,6 @@
-// ENTREPRISE — Google Sheets de la Direction (« Chiffres du tableur », primes de « Mon profil » et de la DOT).
-// Lecture de l'export CSV public de l'onglet (classeur partagé « toute personne disposant
-// du lien — lecteur ») : ni compte de service ni clé côté serveur. Colonne D = nom, E = grade, L = ventes, M = locations.
+// ENTREPRISE — Google Sheets de la Direction (« Chiffres du tableur », primes de « Mon profil » et de la DOT).
+// Lecture de l'export CSV public de l'onglet (classeur partagé « toute personne disposant
+// du lien — lecteur ») : ni compte de service ni clé côté serveur. Colonne D = nom, E = grade, L = ventes, M = locations.
 // Les MONTANTS de primes ne sont jamais lus dans le Sheet (colonnes N/O) : recalculés avec les barèmes du site
 // (baremes_primes, réglables dans Comptabilité), le seul endroit où changer un montant.
 import { prisma } from '../../socle/db.js';
@@ -39,7 +39,7 @@ async function lireCSV(sheet: { id: string; gid: string }): Promise<string[][]> 
   const r = await fetch(`https://docs.google.com/spreadsheets/d/${sheet.id}/export?format=csv&gid=${sheet.gid}`, { signal: AbortSignal.timeout(DELAI_MS) });
   const texte = await r.text();
   // un classeur non partagé renvoie la page de connexion Google (HTML, statut 200 après redirection)
-  if (!r.ok || /^\s*<(!doctype|html)/i.test(texte)) throw new Error('Impossible de lire le Google Sheets. Vérifiez que son partage est réglé sur « Tous les utilisateurs disposant du lien — Lecteur ».');
+  if (!r.ok || /^\s*<(!doctype|html)/i.test(texte)) throw new Error('Impossible de lire le Google Sheets. Vérifiez que son partage est réglé sur « Tous les utilisateurs disposant du lien — Lecteur ».');
   return analyserCSV(texte);
 }
 
@@ -62,9 +62,9 @@ export function analyserLignesSheet(brutes: string[][], libelles: string[] = tou
 }
 
 // Synchronisation complète : relit tout le Sheet et REMPLACE le contenu de tableur_lignes. RH fait foi : chaque ligne est
-// rattachée à la fiche dont le « Prénom Nom » est EXACTEMENT le nom écrit (sans casse ni accents, jamais de
-// ressemblance ; deux fiches au même nom : aucune). Une ligne sans fiche est signalée dans RH « À rattacher ».
-// Compte du site relié (« Mon profil ») : celui de l'employé (même ID Discord que sa fiche, sinon même pseudo
+// rattachée à la fiche dont le « Prénom Nom » est EXACTEMENT le nom écrit (sans casse ni accents, jamais de
+// ressemblance ; deux fiches au même nom : aucune). Une ligne sans fiche est signalée dans RH « À rattacher ».
+// Compte du site relié (« Mon profil ») : celui de l'employé (même ID Discord que sa fiche, sinon même pseudo
 // Discord) ; à défaut, le compte dont le nom RP est exactement le nom écrit.
 // Deux synchronisations ne tournent jamais en même temps : la seconde attend la première.
 let enCours: Promise<Awaited<ReturnType<typeof synchroniserUneFois>>> | null = null;
@@ -125,7 +125,7 @@ export async function synchroniserSansErreur() {
   }
 }
 
-// ---------- « Chiffres du tableur » : vue actuelle et archives ----------
+// ---------- « Chiffres du tableur » : vue actuelle et archives ----------
 
 export const lireBaremes = async () => {
   const b = await prisma.baremePrime.findMany();

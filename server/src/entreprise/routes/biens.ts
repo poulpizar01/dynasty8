@@ -1,4 +1,4 @@
-// ENTREPRISE — gestion des biens du catalogue (permission « biens ») : création, modification, suppression, photos.
+// ENTREPRISE — gestion des biens du catalogue (permission « biens ») : création, modification, suppression, photos.
 // La lecture (publique) est dans vitrine.ts. Corps en snake_case, la forme qu'envoie la gestion (gestion/biens.js).
 import { Router } from 'express';
 import { prisma } from '../../socle/db.js';
@@ -50,7 +50,7 @@ function lireBien(b: Record<string, unknown>) {
     images: [...new Set(images as string[])],
     coupDeCoeur: b.coup_de_coeur === true,
     disponible: b.disponible !== false,
-    // un garage n'est jamais « meublé »
+    // un garage n'est jamais « meublé »
     meuble: categorie === 'habitation' && b.meuble !== false,
     vip: b.vip === true || b.vip === 'vip',
     standing: b.standing === true,
@@ -99,7 +99,7 @@ biens.delete('/api/biens/:id', ...gerer, async (req, res) => {
   res.json({ ok: true });
 });
 
-// photo envoyée depuis l'ordinateur (champ « image » du formulaire) : renvoie son adresse, à mettre dans l'annonce
+// photo envoyée depuis l'ordinateur (champ « image » du formulaire) : renvoie son adresse, à mettre dans l'annonce
 biens.post('/api/biens/photo', ...gerer, ...recevoirImage, envoiPhoto('bien'));
 
 

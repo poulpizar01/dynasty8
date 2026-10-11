@@ -1,5 +1,5 @@
-/* GESTION — éditeur du profil public d'un agent (page « Notre équipe » de la vitrine) : photo, poste, spécialité,
-   biographie. Utilisé par « Mon profil » (compte.html) et par la Direction (comptes.html).
+/* GESTION — éditeur du profil public d'un agent (page « Notre équipe » de la vitrine) : photo, poste, spécialité,
+   biographie. Utilisé par « Mon profil » (compte.html) et par la Direction (comptes.html).
    Serveur : server/src/entreprise/routes/profils.ts.
      const editeur = profilEditeur(conteneur, { adresse: '/api/profil', nom: () => 'Prénom Nom', apresEnregistrement,
                                                 champNom: 'Marc Delmas', surChangement: etat => … });
@@ -7,7 +7,7 @@
    champNom (Mon profil seulement) : ajoute le nom RP au même formulaire, enregistré avec le reste (PATCH /api/moi) ;
    surChangement : appelé à chaque modification ({ nom, poste, specialite, bio, photo }), pour un aperçu en direct.
    La photo est envoyée dès sa sélection (le serveur la contrôle et la convertit), puis enregistrée avec le reste du
-   profil : tant que « Enregistrer » n'a pas réussi, l'ancienne photo reste celle du site. */
+   profil : tant que « Enregistrer » n'a pas réussi, l'ancienne photo reste celle du site. */
 let PROFIL_EDITEURS = 0;
 function profilEditeur(conteneur, { adresse, nom, apresEnregistrement, champNom, surChangement }) {
   const n = ++PROFIL_EDITEURS, id = c => `profil-${n}-${c}`;

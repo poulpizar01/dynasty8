@@ -112,8 +112,8 @@ async function changerStatut(req: Request, res: Response, statut: 'actif' | 'ina
 rh.post('/api/rh/employes/:id/desactiver', ...voir, exiger('desactiver', 'Vous n’avez pas le droit de désactiver un employé.'), traiter((req, res) => changerStatut(req, res, 'inactif')));
 rh.post('/api/rh/employes/:id/reactiver', ...voir, exiger('reactiver', 'Vous n’avez pas le droit de réactiver un employé.'), traiter((req, res) => changerStatut(req, res, 'actif')));
 
-// « À rattacher » : ce que les autres modules ont reçu sans fiche correspondante — vendeurs des ventes du bot dont le
-// pseudo n'est sur aucune fiche, lignes du tableur dont le nom n'est le « Prénom Nom » d'aucune fiche. RH crée alors la
+// « À rattacher » : ce que les autres modules ont reçu sans fiche correspondante — vendeurs des ventes du bot dont le
+// pseudo n'est sur aucune fiche, lignes du tableur dont le nom n'est le « Prénom Nom » d'aucune fiche. RH crée alors la
 // fiche (ou complète le pseudo, ou le nom, d'une fiche existante) : elles s'y rattachent d'elles-mêmes.
 rh.get('/api/rh/a-rattacher', ...voir, async (_req, res) => {
   const [vendeurs, tableur] = await Promise.all([

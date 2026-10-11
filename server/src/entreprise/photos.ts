@@ -8,7 +8,7 @@ import { enregistrerImage, ImageRefusee, retirerImage, type ImageEnregistree } f
 export const MAX_PHOTOS_BIEN = 10;
 
 // ---------- enregistrement ----------
-// Après ...recevoirImage : enregistre la photo, encore « temporaire » tant
+// Après ...recevoirImage : enregistre la photo, encore « temporaire » tant
 // que l'annonce ou le profil ne l'a pas prise, et renvoie son adresse.
 export const envoiPhoto = (usage: 'bien' | 'profil') => async (req: Request, res: Response): Promise<void> => {
   const image = await enregistrerPhoto(usage, req.compte.id, req.file);
@@ -32,9 +32,9 @@ export async function rattacherPhotosBien(tx: Prisma.TransactionClient, bienId: 
     const p = parUrl.get(url);
     const libre = p && (p.statut === 'temporaire' || (p.statut === 'attachee' && p.bienId === bienId));
     if (libre) continue;
-    throw new ImageRefusee(p?.statut === 'attachee' ? 'Une photo est déjà utilisée par une autre annonce : ajoute-la à nouveau (« Parcourir »).'
+    throw new ImageRefusee(p?.statut === 'attachee' ? 'Une photo est déjà utilisée par une autre annonce : ajoute-la à nouveau (« Parcourir »).'
       : p ? 'Une photo a expiré avant l’enregistrement de l’annonce : ajoute-la à nouveau.'
-      : 'Une photo de l’annonce n’a pas été envoyée par ce site : ajoute-la avec « Parcourir ».');
+      : 'Une photo de l’annonce n’a pas été envoyée par ce site : ajoute-la avec « Parcourir ».');
   }
   await tx.photo.updateMany({ where: { url: { in: urls }, usage: 'bien' }, data: { statut: 'attachee', bienId } });
   await tx.photo.updateMany({ where: { bienId, usage: 'bien', url: { notIn: urls } }, data: { statut: 'a_supprimer', bienId: null } });
@@ -55,8 +55,8 @@ export async function rattacherPhotoProfil(tx: Prisma.TransactionClient, compteI
 }
 
 // ---------- nettoyage ----------
-// Une photo envoyée mais jamais enregistrée dans une annonce reste « temporaire » : gardée 24 h (l'agent peut encore
-// enregistrer son annonce), puis effacée. Une photo « a_supprimer » est effacée au passage suivant. Un échec du
+// Une photo envoyée mais jamais enregistrée dans une annonce reste « temporaire » : gardée 24 h (l'agent peut encore
+// enregistrer son annonce), puis effacée. Une photo « a_supprimer » est effacée au passage suivant. Un échec du
 // stockage garde la ligne (réessai au passage suivant) : jamais un fichier en ligne sans trace en base.
 const GARDE_TEMPORAIRE_MS = 24 * 3600e3;
 // un passage peut durer (stockage lent : jusqu'à 30 s par fichier) : le suivant ne le chevauche pas
@@ -67,7 +67,7 @@ async function nettoyer(): Promise<void> {
   try { await nettoyerUneFois(); } finally { nettoyageEnCours = false; }
 }
 async function nettoyerUneFois(): Promise<void> {
-  // d'abord rendue impossible à rattacher (rattacherPhotosBien n'accepte que « temporaire »), ensuite seulement retirée
+  // d'abord rendue impossible à rattacher (rattacherPhotosBien n'accepte que « temporaire »), ensuite seulement retirée
   // du stockage : une annonce enregistrée au même instant ne peut pas garder une photo dont le fichier disparaît
   await prisma.photo.updateMany({ where: { statut: 'temporaire', creeLe: { lt: new Date(Date.now() - GARDE_TEMPORAIRE_MS) } }, data: { statut: 'a_supprimer' } });
   // les plus anciennes d'abord ; un échec enregistre l'erreur, ce qui renvoie la ligne en fin de file (majLe) : 50

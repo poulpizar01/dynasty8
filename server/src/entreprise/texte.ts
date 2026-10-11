@@ -2,7 +2,7 @@
 
 // pseudo Discord comparé sans casse ni espaces autour
 export const normaliserPseudo = (brut: unknown): string => String(brut ?? '').trim().toLowerCase();
-// nom comparé sans casse ni accents (« Élodie » = « elodie »)
+// nom comparé sans casse ni accents (« Élodie » = « elodie »)
 export const normaliserTexte = (brut: unknown): string =>
   String(brut ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 

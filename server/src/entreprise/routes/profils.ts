@@ -1,5 +1,5 @@
-// ENTREPRISE — profil public des agents (page « Notre équipe ») : chaque agent édite le sien ; la Direction (permission
-// « comptes ») peut éditer celui d'un agent dont le grade est sous le sien, comme pour le reste de son compte.
+// ENTREPRISE — profil public des agents (page « Notre équipe ») : chaque agent édite le sien ; la Direction (permission
+// « comptes ») peut éditer celui d'un agent dont le grade est sous le sien, comme pour le reste de son compte.
 import { Router, type Request, type Response } from 'express';
 import { prisma } from '../../socle/db.js';
 import { auDessusDe } from '../../socle/droits.js';

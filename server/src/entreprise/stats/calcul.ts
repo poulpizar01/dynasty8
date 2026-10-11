@@ -91,8 +91,8 @@ export function ecartSemaineEnJours(codeSemaineSaisie: unknown, dateJJMMAAAA: un
 }
 
 // ---- paliers de primes -----------------------------------------------------
-// « on retient le plus haut seuil inférieur ou égal à la valeur ; en dessous de
-// 20, prime = 0 ». bareme : [{ seuil, montant }, ...] pas nécessairement trié.
+// « on retient le plus haut seuil inférieur ou égal à la valeur ; en dessous de
+// 20, prime = 0 ». bareme : [{ seuil, montant }, ...] pas nécessairement trié.
 
 export function montantPalier(bareme: Palier[] | null | undefined, valeur: number): number {
   const tries = [...(bareme || [])].sort((a, b) => a.seuil - b.seuil);
@@ -235,8 +235,8 @@ export function compterLocations(lignes: any[], colonneCle: string, pseudoNormal
     .reduce((n, l) => n + (l.interieur !== "" ? l.quantiteLoc : 0) + (l.garage !== "" ? l.quantiteLoc : 0), 0);
 }
 
-// colonneCle : « identiteNormalisee » par défaut ; le serveur regroupe par
-// fiche RH (« cleAgent », voir lireLignes dans stats/ventes.ts).
+// colonneCle : « identiteNormalisee » par défaut ; le serveur regroupe par
+// fiche RH (« cleAgent », voir lireLignes dans stats/ventes.ts).
 export function sommeFacture(lignes: any[], pseudoNormalise: string, semaine: string, colonneCle = "identiteNormalisee"): number {
   return lignes
     .filter((l) => l[colonneCle] === pseudoNormalise && l.semaine === semaine)

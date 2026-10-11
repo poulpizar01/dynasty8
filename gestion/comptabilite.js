@@ -1,8 +1,8 @@
-/* GESTION — comptabilité (permission « compta ») : relevé Tablettes collé,
+/* GESTION — comptabilité (permission « compta ») : relevé Tablettes collé,
    rémunération (salaires par grade, paliers de primes) et préparation de la déclaration DOT hebdomadaire.
    Serveur : server/src/entreprise/routes/compta.ts et routes/stats.ts (rémunération). */
 
-// séparateur de milliers comme formaterPrix (layout.js), sans « HT »
+// séparateur de milliers comme formaterPrix (layout.js), sans « HT »
 function formaterArgentStats(valeur) {
   const n = Math.round(Number(valeur) || 0);
   return `${n < 0 ? '-' : ''}${Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} $`;
@@ -204,20 +204,20 @@ document.getElementById("select-semaine-dot").addEventListener("change", () => {
 });
 
 // Résultat d'une copie : notification en bas de l'écran (la zone de message en haut de l'onglet était hors de vue quand
-// on copiait en bas) et le bouton qui affiche « Copié ✓ » deux secondes.
+// on copiait en bas) et le bouton qui affiche « Copié ✓ » deux secondes.
 function signalerCopie(bouton, reussie, texte) {
   if (!reussie) { gestion.notifier("Copie impossible : sélectionnez le tableau à la main puis Ctrl+C.", "erreur"); return; }
   gestion.notifier(texte);
   if (!bouton || bouton.dataset.texteInitial) return;
   bouton.dataset.texteInitial = bouton.innerHTML;
-  // largeur figée : « Copié ✓ » est plus court, le bouton et ses voisins ne doivent pas bouger
+  // largeur figée : « Copié ✓ » est plus court, le bouton et ses voisins ne doivent pas bouger
   bouton.style.width = `${bouton.offsetWidth}px`;
   bouton.innerHTML = `${gestion.ico("copy")} Copié ✓`;
   bouton.classList.add("confirme");
   setTimeout(() => { bouton.innerHTML = bouton.dataset.texteInitial; delete bouton.dataset.texteInitial; bouton.style.width = ""; bouton.classList.remove("confirme"); }, 2000);
 }
 
-// Une carte de chiffre clé : libellé, montant, précision ; « accent » pour celui qui compte le plus.
+// Une carte de chiffre clé : libellé, montant, précision ; « accent » pour celui qui compte le plus.
 const carteChiffre = (libelle, valeur, precision, accent) => `<div class="compta-chiffre${accent ? " accent" : ""}">
   <span class="compta-chiffre-libelle">${libelle}</span><strong>${valeur}</strong>${precision ? `<small>${precision}</small>` : ""}</div>`;
 
@@ -296,7 +296,7 @@ async function supprimerEcritureDot(id) {
   }
 }
 
-// « Réinitialiser » un des deux tableaux (dépenses OU retraits) : supprime
+// « Réinitialiser » un des deux tableaux (dépenses OU retraits) : supprime
 // toutes ses lignes d'un coup (l'autre tableau n'est jamais touché), comme
 // le bouton équivalent de l'onglet Tablettes.
 async function reinitialiserEcrituresDot(type) {
@@ -313,7 +313,7 @@ async function reinitialiserEcrituresDot(type) {
 document.getElementById("bouton-reinitialiser-depenses").addEventListener("click", () => reinitialiserEcrituresDot("depense"));
 document.getElementById("bouton-reinitialiser-retraits").addEventListener("click", () => reinitialiserEcrituresDot("retrait"));
 
-// « Copier le tableau » (dépenses ou retraits) : même principe que pour le
+// « Copier le tableau » (dépenses ou retraits) : même principe que pour le
 // tableau des salariés — copie au format tableur (colonnes séparées par des
 // tabulations), prêt à coller dans Excel/Google Sheets.
 async function copierEcrituresDot(type, idCorps, bouton) {
@@ -321,7 +321,7 @@ async function copierEcrituresDot(type, idCorps, bouton) {
   const lignes = [entetes.join("\t")];
   document.querySelectorAll(`#${idCorps} tr`).forEach((tr) => {
     const cellules = Array.from(tr.querySelectorAll("td")).map((td) => td.textContent.trim());
-    // montant copié comme un vrai nombre (« 1 200 $ » -> 1200) pour que le tableur puisse calculer dessus
+    // montant copié comme un vrai nombre (« 1 200 $ » -> 1200) pour que le tableur puisse calculer dessus
     if (cellules.length === 4) lignes.push([cellules[0], cellules[1], cellules[2].replace(/[^\d-]/g, "")].join("\t"));
   });
   const n = lignes.length - 1;
@@ -394,9 +394,9 @@ async function chargerDotSalaries() {
   }
 }
 
-// « Copier le tableau » : copie au format tableur (colonnes séparées par des
+// « Copier le tableau » : copie au format tableur (colonnes séparées par des
 // tabulations) — se colle proprement dans Excel/Google Sheets :
-//   - les montants sont copiés comme de VRAIS nombres (pas « 74 970 $ » en
+//   - les montants sont copiés comme de VRAIS nombres (pas « 74 970 $ » en
 //     texte), pour que le document puisse calculer dessus ;
 //   - la colonne CA TOTAL REALISE est copiée sous forme de FORMULE (=RUN+FACTURE
 //     +VENTE, même colonnes que le document DOT : C, D, E) et non comme un
@@ -436,7 +436,7 @@ document.getElementById("bouton-copier-salaries").addEventListener("click", asyn
 // méthode la plus fiable. À défaut, on se rabat sur des blocs d'au moins 2
 // espaces comme séparateur (utile pour un texte tapé ou copié depuis
 // Discord), sachant que dans ce cas une cellule vide au milieu d'une ligne
-// (ex : « Rang » sur une ligne TOTAL) ne peut pas être détectée automatiquement
+// (ex : « Rang » sur une ligne TOTAL) ne peut pas être détectée automatiquement
 // — d'où le conseil, dans la modale, d'y mettre un tiret avant de coller.
 function analyserTexteTablette(texte) {
   const lignesBrutes = String(texte || "")
@@ -527,11 +527,11 @@ function rendreTableCompta(colonnes, lignes, avecSuppression) {
 }
 
 async function supprimerLigneTablette(index, nom) {
-  const ok = await gestion.confirmer(`« ${nom} » sera retiré du relevé Tablettes. Les totaux (CA brut, DOT) seront recalculés sans cette ligne.`, "Retirer ce membre du relevé ?", "Retirer du relevé");
+  const ok = await gestion.confirmer(`« ${nom} » sera retiré du relevé Tablettes. Les totaux (CA brut, DOT) seront recalculés sans cette ligne.`, "Retirer ce membre du relevé ?", "Retirer du relevé");
   if (!ok) return;
   try {
     await socle.api(`/api/compta/tablettes/lignes/${index}`, { method: "DELETE", body: { nom } });
-    gestion.message("zone-message-tablette", `« ${nom} » retiré du relevé ✓`, "succes");
+    gestion.message("zone-message-tablette", `« ${nom} » retiré du relevé ✓`, "succes");
     chargerTablette();
   } catch (e) {
     gestion.message("zone-message-tablette", "Impossible de retirer cette ligne : " + e.message);
@@ -556,8 +556,8 @@ function afficherPaieHoraire(p) {
   if (!p || !p.lignes || !p.lignes.length) { bloc.classList.add("cache"); return; }
   bloc.classList.remove("cache");
   document.getElementById("compta-paie-horaire-aide").textContent = p.colonneHeures
-    ? `Heures lues dans la colonne « ${p.colonneHeures} » du relevé, payées au taux horaire du grade (Rémunération), en plus des paliers. Incluses dans le salaire de la DOT.`
-    : "Le relevé n'a pas de colonne « Heures de service » : impossible de calculer la paie à l'heure.";
+    ? `Heures lues dans la colonne « ${p.colonneHeures} » du relevé, payées au taux horaire du grade (Rémunération), en plus des paliers. Incluses dans le salaire de la DOT.`
+    : "Le relevé n'a pas de colonne « Heures de service » : impossible de calculer la paie à l'heure.";
   const heures = (min) => `${Math.floor(min / 60)}h${String(min % 60).padStart(2, "0")}`;
   document.getElementById("corps-table-paie-horaire").innerHTML = p.lignes.map((l) => `<tr>
       <td>${echapper(l.nom)}</td>
@@ -569,7 +569,7 @@ function afficherPaieHoraire(p) {
     </tr>`).join("") + `<tr class="ligne-total"><td colspan="5">Total paie à l'heure</td><td style="text-align:right;"><strong>${formaterArgentStats(p.total)}</strong></td></tr>`;
 }
 
-// Chiffres clés du relevé : le total « entreprise » (CA brut de la DOT), le nombre de membres, la paie à l'heure.
+// Chiffres clés du relevé : le total « entreprise » (CA brut de la DOT), le nombre de membres, la paie à l'heure.
 let RELEVE_TABLETTE = null;
 function afficherSyntheseTablette(releve, paie) {
   const colonnes = releve.colonnes.map(c => String(c).toLowerCase());
@@ -682,8 +682,8 @@ document.getElementById("bouton-enregistrer-import-tablette").addEventListener("
 
 document.getElementById("bouton-reinitialiser-tablette").addEventListener("click", async () => {
   const ok = await gestion.confirmer(
-    "Le tableau affiché dans « Tablettes » sera vidé. Rien n'est perdu : cet ancien relevé reste conservé côté serveur, seul l'affichage redevient vide. Vous pourrez importer un nouveau relevé dès que vous le souhaitez.",
-    "Réinitialiser la feuille « Tablettes » ?",
+    "Le tableau affiché dans « Tablettes » sera vidé. Rien n'est perdu : cet ancien relevé reste conservé côté serveur, seul l'affichage redevient vide. Vous pourrez importer un nouveau relevé dès que vous le souhaitez.",
+    "Réinitialiser la feuille « Tablettes » ?",
     "Vider l’affichage",
     { danger: false }   // rien n’est effacé côté serveur
   );

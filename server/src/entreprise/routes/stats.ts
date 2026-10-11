@@ -1,5 +1,5 @@
 // ENTREPRISE — ventes & statistiques, tableur de la Direction, rémunération (/api/stats/…, /api/tableur/…), et primes
-// de « Mon profil ». Logique : entreprise/stats/. Le bot de ventes s'authentifie par sa clé (pas de session).
+// de « Mon profil ». Logique : entreprise/stats/. Le bot de ventes s'authentifie par sa clé (pas de session).
 import crypto from 'node:crypto';
 import { Router, type Request } from 'express';
 import { prisma } from '../../socle/db.js';
@@ -37,7 +37,7 @@ stats.get('/api/stats/semaines', ...voir, async (_req, res) => { res.json(await 
 
 // ---------- tableur de la Direction ----------
 
-// « Chiffres du tableur » : la semaine en cours, ou ?semaine=S40-26 (archive figée le dimanche à 23:59)
+// « Chiffres du tableur » : la semaine en cours, ou ?semaine=S40-26 (archive figée le dimanche à 23:59)
 stats.get('/api/stats/tableur', ...voir, traiter(async (req, res) => {
   const archives = (await prisma.tableurArchive.findMany({ orderBy: { id: 'desc' }, select: { semaine: true, archiveLe: true } }));
   const demandee = String(req.query.semaine ?? '').trim().toUpperCase();
@@ -69,7 +69,7 @@ stats.post('/api/tableur/synchroniser', ...gerer, async (_req, res) => {
   res.json({ ok: true, etat });
 });
 
-// ---------- primes de « Mon profil » ----------
+// ---------- primes de « Mon profil » ----------
 // Ventes et locations de la ligne du tableur reliée à ce compte, primes recalculées avec les barèmes du site. Toujours
 // des zéros tant qu'aucune ligne n'est reliée.
 stats.get('/api/profil/primes', ...valide, async (req, res) => {
@@ -140,7 +140,7 @@ const conflitPalier = (e: unknown) => {
 
 stats.post('/api/stats/baremes', ...compta, traiter(async (req, res) => {
   const b = body(req);
-  if (b.type !== 'vente' && b.type !== 'location') throw new Refus('Le type doit être « vente » ou « location ».');
+  if (b.type !== 'vente' && b.type !== 'location') throw new Refus('Le type doit être « vente » ou « location ».');
   const p = await prisma.baremePrime.create({ data: { type: b.type, ...lirePalier(b, false) } as { type: string; seuil: number; montant: number } }).catch(conflitPalier);
   res.status(201).json({ id: p.id });
 }));

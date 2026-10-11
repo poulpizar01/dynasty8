@@ -2,8 +2,8 @@
 // Visible par :
 //   - perso     : le créateur, et la personne choisie quand il l'a créé pour quelqu'un d'autre (posté dans son ticket) ;
 //   - patrons / direction / tous : les comptes qui portent l'un des rôles Discord réglés dans Paramètres → Agenda.
-// Crée chaque visibilité partagée : les rôles « créateurs » réglés, et toujours qui a la permission « parametres »
-// (ceux qui règlent ces rôles : personne n'est bloqué tant qu'ils ne sont pas saisis). « Perso » pour soi : tout le monde.
+// Crée chaque visibilité partagée : les rôles « créateurs » réglés, et toujours qui a la permission « parametres »
+// (ceux qui règlent ces rôles : personne n'est bloqué tant qu'ils ne sont pas saisis). « Perso » pour soi : tout le monde.
 
 export const VISIBILITES = ['perso', 'patrons', 'direction', 'tous'] as const;
 export type Visibilite = (typeof VISIBILITES)[number];
@@ -15,7 +15,7 @@ const CLES_VOIT: Record<Exclude<Visibilite, 'perso'>, string> = { patrons: 'agen
 
 export type DroitsAgenda = { voit: Set<Visibilite>; cree: Set<Visibilite>; persoAutrui: boolean };
 
-// roles : rôles Discord du compte (relus à chaque connexion et toutes les 10 minutes par le bot) ; admin : permission « parametres » ;
+// roles : rôles Discord du compte (relus à chaque connexion et toutes les 10 minutes par le bot) ; admin : permission « parametres » ;
 // ids(cle) : IDs réglés pour cette clé de Paramètres
 export function droitsAgenda(roles: readonly string[], admin: boolean, ids: (cle: string) => readonly string[]): DroitsAgenda {
   const porte = new Set(roles);
@@ -28,7 +28,7 @@ export function droitsAgenda(roles: readonly string[], admin: boolean, ids: (cle
   return { voit, cree, persoAutrui: admin || aUnRole('agenda_createurs_perso') };
 }
 
-// « 2026-10-08 », « 14:30 », heure de Paris (celle de l'agence, heure d'été comprise) → instant réel
+// « 2026-10-08 », « 14:30 », heure de Paris (celle de l'agence, heure d'été comprise) → instant réel
 export function parisVersDate(jour: string, heure: string): Date {
   const [a, mo, j] = jour.split('-').map(Number), [h, mi] = heure.split(':').map(Number);
   const naif = Date.UTC(a, mo - 1, j, h, mi);

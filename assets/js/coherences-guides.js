@@ -1,7 +1,7 @@
 // ============================================================================
 // Dynasty 8 — guides de cohérence (contenu unique, écrit ici une fois)
 // ----------------------------------------------------------------------------
-// Chargé par la page publique /coherence-zone.html ET par l'onglet « Cohérences »
+// Chargé par la page publique /coherence-zone.html ET par l'onglet « Cohérences »
 // de l'espace agents : les deux affichent donc exactement le même règlement.
 // Le contenu est volontairement écrit dans ce fichier, pas réglable depuis le
 // site : il se modifie ici. Dépend de echapper() (layout.js).
@@ -70,7 +70,7 @@ const GUIDES_COHERENCE = {
         titre: "Maisons",
         type: "biens",
         items: [
-          { nom: "Maison 1 non meublée", achat: "43 750$ HT", location: "5 250$ HT", coffre: "250 kg", note: "Logement « passe-partout » autour de la place des Cubes, utilisé quand aucun autre bien ne correspond." },
+          { nom: "Maison 1 non meublée", achat: "43 750$ HT", location: "5 250$ HT", coffre: "250 kg", note: "Logement « passe-partout » autour de la place des Cubes, utilisé quand aucun autre bien ne correspond." },
           { nom: "Maison 2", achat: "61 250$ HT", location: "8 750$ HT", coffre: "350 kg", note: "Mirror Park, Sandy Shore, Île de Paleto, Roxwood. Garage 2 places minimum obligatoire si une porte est disponible ; garage 6 places possible sous porche dans le nord." },
           { nom: "Maison 2 non meublée", achat: "61 250$ HT", location: "8 750$ HT", coffre: "350 kg" },
           { nom: "Maisons 3 à 5", achat: "262 500$ HT", location: "13 125$ HT", coffre: "400 kg" },
@@ -308,7 +308,7 @@ function rendreResumeCoherence(zone) {
 }
 
 // Diaporama du guide officiel : chaque diapositive a été convertie en image
-// (Google bloque l'affichage direct de ses présentations « Slides » dans une
+// (Google bloque l'affichage direct de ses présentations « Slides » dans une
 // page tierce tant qu'elles ne sont pas explicitement publiées sur le web).
 // Ce visualiseur maison les affiche donc comme des images classiques : ça
 // fonctionne pour tout le monde, sans dépendre de Google ni ouvrir une autre

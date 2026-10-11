@@ -5,7 +5,7 @@
    rendez-vous du jour choisi), une grille de 7 colonnes n'y étant pas lisible. */
 
 let AGENDA_VUE_CHOISIE = "semaine"; // "jour" | "semaine" | "mois" : le choix de la personne sur écran large
-// Le site vit à l’heure de Paris (serveur RP français) : « aujourd’hui » et la ligne de l’heure actuelle en dépendent,
+// Le site vit à l’heure de Paris (serveur RP français) : « aujourd’hui » et la ligne de l’heure actuelle en dépendent,
 // quel que soit le fuseau réglé sur l’ordinateur de la personne.
 const PARIS = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 function maintenantParis() {
@@ -297,13 +297,13 @@ document.getElementById("agenda-nouvel-evenement").addEventListener("click", () 
   ouvrirModaleEvenement({ jour: formaterDateISO(jour) });
 });
 
-// ---- fenêtre « ajouter / modifier un événement » ----
+// ---- fenêtre « ajouter / modifier un événement » ----
 
-// droits renvoyés par GET /api/agenda ; fiches RH proposées pour un « Perso » destiné à quelqu'un d'autre (lues une fois)
+// droits renvoyés par GET /api/agenda ; fiches RH proposées pour un « Perso » destiné à quelqu'un d'autre (lues une fois)
 let AGENDA_DROITS = { cree: ["perso"], perso_autrui: false };
 let AGENDA_PERSONNES = null;
 const LIBELLES_VISIBILITE = { perso: "Perso", patrons: "Patrons", direction: "Direction", tous: "Tous" };
-// mêmes couleurs que la grille (agenda.css), pour la pastille de chaque choix du menu « Visible par »
+// mêmes couleurs que la grille (agenda.css), pour la pastille de chaque choix du menu « Visible par »
 const COULEURS_VISIBILITE = { perso: "#d4b26a", patrons: "#ef7f73", direction: "#a99cf5", tous: "#5fd39a" };
 // valeur venue du serveur, réduite aux visibilités connues avant d'entrer dans une classe ou un texte
 const visibiliteDe = e => (Object.hasOwn(LIBELLES_VISIBILITE, e.visibilite) ? e.visibilite : "perso");

@@ -21,7 +21,7 @@ export const bienPublic = (b: Bien) => ({
   prix_location: b.prixLocation,
   dispo_vente: b.dispoVente,
   dispo_location: b.dispoLocation,
-  // déduit : un bien seulement à louer est une « location », tout le reste une « vente »
+  // déduit : un bien seulement à louer est une « location », tout le reste une « vente »
   transaction_type: b.dispoLocation && !b.dispoVente ? 'location' : 'vente',
   places: b.places,
   description: b.description,

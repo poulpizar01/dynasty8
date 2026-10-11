@@ -1,4 +1,4 @@
-// ENTREPRISE — comptabilité (permission « compta ») : relevé Tablettes collé, écritures et déclaration DOT
+// ENTREPRISE — comptabilité (permission « compta ») : relevé Tablettes collé, écritures et déclaration DOT
 // hebdomadaire. La rémunération (salaires, paliers de primes)
 // est dans routes/stats.ts.
 import { Router } from 'express';
@@ -26,8 +26,8 @@ const minuscules = (c: unknown[]) => c.map(x => String(x).trim().toLowerCase());
 const indexColonne = (colonnes: string[], alias: string[]) => { for (const a of alias) { const i = colonnes.indexOf(a); if (i !== -1) return i; } return -1; };
 const estTotal = (l: unknown[]) => String(l[0] ?? '').trim().toLowerCase() === 'total';
 
-// La ligne récap « TOTAL » collée depuis la tablette saute la case « Rang » (un grade ne se totalise pas), ce qui décale
-// le reste de la ligne : on y remet un « - », seulement pour cette ligne et si elle est trop courte. Appliqué à la
+// La ligne récap « TOTAL » collée depuis la tablette saute la case « Rang » (un grade ne se totalise pas), ce qui décale
+// le reste de la ligne : on y remet un « - », seulement pour cette ligne et si elle est trop courte. Appliqué à la
 // lecture : corrige aussi les relevés importés avant ce correctif.
 function corrigerLigneTotale(colonnes: string[], lignes: string[][]) {
   const iRang = indexColonne(minuscules(colonnes), ['rang', 'grade']);
@@ -38,7 +38,7 @@ function corrigerLigneTotale(colonnes: string[], lignes: string[][]) {
 async function dernierReleve() {
   const r = await prisma.importCompta.findFirst({ where: { type: 'tablettes' }, orderBy: [{ importeLe: 'desc' }, { id: 'desc' }] });
   const colonnes = (r?.colonnes as string[] | undefined) ?? [];
-  // une réinitialisation enregistre un import sans colonnes : comme « aucun relevé »
+  // une réinitialisation enregistre un import sans colonnes : comme « aucun relevé »
   if (!r || !colonnes.length) return null;
   const auteur = r.compteId ? await prisma.compte.findUnique({ where: { id: r.compteId }, select: { nom: true, pseudo: true } }) : null;
   // nom RP (modifiable par chacun) suivi du pseudo Discord (non modifiable sur le site) : on sait qui a importé
@@ -112,7 +112,7 @@ compta.get('/api/compta/dot/ecritures', ...gerer, async (_req, res) => {
 
 compta.post('/api/compta/dot/ecritures', ...gerer, traiter(async (req, res) => {
   const b = body(req);
-  if (!TYPES_ECRITURE.includes(String(b.type))) throw new Refus('Le type doit être « depense » ou « retrait ».');
+  if (!TYPES_ECRITURE.includes(String(b.type))) throw new Refus('Le type doit être « depense » ou « retrait ».');
   const justificatif = String(b.justificatif ?? '').trim();
   if (!justificatif) throw new Refus('Le justificatif est obligatoire.');
   if (justificatif.length > 200) throw new Refus('Le justificatif est trop long (200 caractères max).');
@@ -133,7 +133,7 @@ compta.delete('/api/compta/dot/ecritures/:id', ...gerer, async (req, res) => {
 // réinitialiser UN des deux tableaux (dépenses OU retraits), jamais l'autre
 compta.delete('/api/compta/dot/ecritures', ...gerer, traiter(async (req, res) => {
   const type = String(req.query.type ?? '').trim();
-  if (!TYPES_ECRITURE.includes(type)) throw new Refus('Le paramètre « type » doit être « depense » ou « retrait ».');
+  if (!TYPES_ECRITURE.includes(type)) throw new Refus('Le paramètre « type » doit être « depense » ou « retrait ».');
   await prisma.ecritureDot.deleteMany({ where: { type } });
   res.json({ ok: true });
 }));
@@ -141,19 +141,19 @@ compta.delete('/api/compta/dot/ecritures', ...gerer, traiter(async (req, res) =>
 // ---------- déclaration DOT ----------
 const ALIAS_NOM = ['nom', 'nom de l\'employé', 'nom du salarié', 'employé', 'employe'];
 const ALIAS = { run: ['run', 'runs'], facture: ['facture', 'factures'], vente: ['vente', 'ventes'], rang: ['rang', 'grade', 'poste', 'rôle', 'role'] };
-// CA brut : colonne « Total entreprise » du relevé (« total » en repli), additionnée ligne par ligne — jamais la ligne
-// récap « TOTAL » (comptée deux fois) ni le total calculé par la tablette
+// CA brut : colonne « Total entreprise » du relevé (« total » en repli), additionnée ligne par ligne — jamais la ligne
+// récap « TOTAL » (comptée deux fois) ni le total calculé par la tablette
 const caBrut = (colonnes: string[], lignes: string[][]) => {
   const i = indexColonne(minuscules(colonnes), ['total entreprise', 'total']);
   return i === -1 ? null : Math.round(lignes.filter(l => !estTotal(l)).reduce((s, l) => s + nombre(l[i]), 0));
 };
 const semaineDemandee = (v: unknown) => String(v ?? '').trim().toUpperCase();
 
-// tableau des salariés « prêt à copier-coller » : RUN / FACTURE / VENTE viennent du relevé Tablettes (retrouvé par nom
+// tableau des salariés « prêt à copier-coller » : RUN / FACTURE / VENTE viennent du relevé Tablettes (retrouvé par nom
 // RP), jamais des ventes du bot ; salaire = fixe du grade + primes du tableur
 compta.get('/api/compta/dot/salaries', ...gerer, traiter(async (req, res) => {
   const semaine = semaineDemandee(req.query.semaine);
-  if (!semaine) throw new Refus('Le paramètre « semaine » est obligatoire (ex : S36-26).');
+  if (!semaine) throw new Refus('Le paramètre « semaine » est obligatoire (ex : S36-26).');
   const [agents, releve, primePour, remu] = await Promise.all([recapAvecPrimesTableur(semaine), dernierReleve(), primesTableur(), remunerations()]);
   // paie à l'heure (stagiaires), par nom du relevé : ajoutée au salaire déclaré
   const paieParNom = new Map(releve ? (await paieHoraire(releve.colonnes, releve.lignes)).lignes.map(p => [normaliserNom(p.nom), p.montant]) : []);
@@ -175,7 +175,7 @@ compta.get('/api/compta/dot/salaries', ...gerer, traiter(async (req, res) => {
     };
   });
   // Toute personne du relevé sans fiche RH active est ajoutée : si elle a facturé, elle doit figurer dans la
-  // déclaration (signalée « hors RH »). Grade : le rang du relevé ; salaire fixe : celui de ce grade du site s'il existe.
+  // déclaration (signalée « hors RH »). Grade : le rang du relevé ; salaire fixe : celui de ce grade du site s'il existe.
   if (iNom !== -1) {
     const gradeParLibelle = new Map(tousLesGrades().map(g => [normaliserTexte(g.libelle), g.cle]));
     for (const ligne of lignes) {
@@ -214,7 +214,7 @@ compta.get('/api/compta/dot/resume', ...gerer, async (req, res) => {
     depenseDeductible: depenses, beneficeImposable: imposable, tauxImposition: tranche?.taux ?? null, montantImpots: impots,
     beneficeApresImpots: apresImpots, montantTotalPrimes: primes,
     beneficeApresPrimes: apresImpots === null || primes === null ? null : apresImpots - primes,
-    // « bénéfice net » tel que décrit par la Direction : après impôts, moins les retraits (les primes sont une ligne à part)
+    // « bénéfice net » tel que décrit par la Direction : après impôts, moins les retraits (les primes sont une ligne à part)
     retraits, beneficeNet: apresImpots === null ? null : apresImpots - retraits,
     plafonds: tranche ? { salaireMaxEmploye: tranche.salaireMaxEmploye, salaireMaxPatron: tranche.salaireMaxPatron, primeMaxEmploye: tranche.primeMaxEmploye, primeMaxPatron: tranche.primeMaxPatron } : null,
   });

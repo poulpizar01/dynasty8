@@ -293,7 +293,7 @@ function formaterPrix(valeur) {
   // Espace bien visible tous les 3 chiffres (milliers, millions...) : on ne
   // laisse pas le navigateur choisir l'espacement (toLocaleString utilise une
   // espace fine à peine visible en gras) — on l'écrit nous-même.
-  const chiffres = Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");   // espace insécable classique (l'ancienne « demi-cadratine » était trop large avec Raleway)
+  const chiffres = Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");   // espace insécable classique (l'ancienne « demi-cadratine » était trop large avec Raleway)
   // "HT" (hors taxe) : les prix du catalogue Dynasty 8 sont donnés hors taxe,
   // comme dans le règlement officiel des cohérences.
   return (n < 0 ? "-" : "") + chiffres + " $ HT";
@@ -333,9 +333,9 @@ function texteSansMarquage(texte) {
 }
 
 // Copie un texte dans le presse-papiers. navigator.clipboard n'existe qu'en
-// HTTPS (« contexte sécurisé ») : sur le VPS en HTTP simple ou dans le
+// HTTPS (« contexte sécurisé ») : sur le VPS en HTTP simple ou dans le
 // navigateur du jeu, il est absent — on se rabat alors sur l'ancienne méthode
-// (zone de texte invisible + commande « copy »), qui marche partout.
+// (zone de texte invisible + commande « copy »), qui marche partout.
 async function copierTexte(texte) {
   if (navigator.clipboard && window.isSecureContext) {
     try { await navigator.clipboard.writeText(texte); return true; } catch (e) { /* on tente le repli */ }
@@ -408,7 +408,7 @@ function fermerSelectOuvert() {
     D8_SELECT_OUVERT = null;
   }
   // Filet de sécurité : aucune liste flottante ne doit rester affichée sans
-  // être « le menu ouvert » (sinon elle reste plantée au milieu de la page).
+  // être « le menu ouvert » (sinon elle reste plantée au milieu de la page).
   document.querySelectorAll(".d8-select-flottant:not(.cache)").forEach((el) => el.classList.add("cache"));
   document.querySelectorAll(".d8-select-enveloppe.ouvert").forEach((el) => el.classList.remove("ouvert"));
 }
@@ -524,9 +524,9 @@ function nettoyerSelectsPortee(portee) {
 // =============================================================================
 // Dates et heures à la française. Les champs natifs <input type="date|time">
 // suivent la langue du navigateur, pas celle de la page : un Chrome en anglais
-// affiche mm/dd/yyyy et « 02:00 PM ». Ces deux aides en font des champs texte
+// affiche mm/dd/yyyy et « 02:00 PM ». Ces deux aides en font des champs texte
 // jj/mm/aaaa et 24 h, mais .value garde le format que lisent les scripts et le
-// serveur (« 2026-10-06 », « 14:30 ») : aucun autre code n'a à changer.
+// serveur (« 2026-10-06 », « 14:30 ») : aucun autre code n'a à changer.
 // Saisie invalide → .value vaut "" (au script de la signaler).
 // =============================================================================
 const VALEUR_INPUT = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
@@ -585,7 +585,7 @@ function champDateFr(input) {
     get() { return versIso(VALEUR_INPUT.get.call(this)); },
     set(v) { VALEUR_INPUT.set.call(this, versFr(v)); this.effacerErreurFr?.(); },
   });
-  // les barres s'ajoutent d'elles-mêmes : « 06102026 » devient « 06/10/2026 »
+  // les barres s'ajoutent d'elles-mêmes : « 06102026 » devient « 06/10/2026 »
   input.addEventListener("input", (ev) => {
     if (ev.inputType && !ev.inputType.startsWith("insert")) return;   // effacement : on laisse faire
     const chiffres = VALEUR_INPUT.get.call(input).replace(/\D/g, "").slice(0, 8);
@@ -611,7 +611,7 @@ function champHeureFr(input, pasMinutes = 15) {
     get() { return normaliser(VALEUR_INPUT.get.call(this)); },
     set(v) { VALEUR_INPUT.set.call(this, normaliser(v) || ""); this.effacerErreurFr?.(); },
   });
-  // « 1430 » devient « 14:30 » ; en quittant le champ, « 9 » devient « 09:00 »
+  // « 1430 » devient « 14:30 » ; en quittant le champ, « 9 » devient « 09:00 »
   input.addEventListener("input", (ev) => {
     if (ev.inputType && !ev.inputType.startsWith("insert")) return;
     const chiffres = VALEUR_INPUT.get.call(input).replace(/\D/g, "").slice(0, 4);
@@ -631,7 +631,7 @@ function champHeureFr(input, pasMinutes = 15) {
 }
 
 // =============================================================================
-// Cartes « hub » en 3D + poussière d'or de fond (toutes les pages publiques).
+// Cartes « hub » en 3D + poussière d'or de fond (toutes les pages publiques).
 // - habillerCartesHub() : bascule vers la souris, reflet qui suit le curseur,
 //   apparition en cascade, et remplacement des emojis par des icônes dorées au
 //   trait (mêmes formes que dans l'espace agents). Aucune modification de HTML

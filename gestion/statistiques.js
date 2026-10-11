@@ -1,10 +1,10 @@
 /* GESTION — ventes & statistiques : totaux des ventes reçues du bot,
-   « Chiffres du tableur » (semaine en cours ou archive du dimanche) et synchronisation du tableur de la Direction.
+   « Chiffres du tableur » (semaine en cours ou archive du dimanche) et synchronisation du tableur de la Direction.
    Serveur : server/src/entreprise/routes/stats.ts. */
 
 const $st = id => document.getElementById(id);
 const dateHeureStats = d => (d ? new Date(d).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' }) : '—');
-// séparateur de milliers comme formaterPrix (layout.js), sans « HT » : les primes ne sont pas des prix du catalogue
+// séparateur de milliers comme formaterPrix (layout.js), sans « HT » : les primes ne sont pas des prix du catalogue
 function formaterArgentStats(valeur) {
   const n = Math.round(Number(valeur) || 0);
   return `${n < 0 ? '-' : ''}${Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} $`;
@@ -29,7 +29,7 @@ async function chargerStatistiques() {
   }
 }
 
-// « Chiffres du tableur » : semaine en cours (chiffres actuels) ou semaine archivée (figée le dimanche à 23:59)
+// « Chiffres du tableur » : semaine en cours (chiffres actuels) ou semaine archivée (figée le dimanche à 23:59)
 async function chargerTableur(semaine) {
   gestion.message('zone-message-tableur', '');
   const etatLigne = $st('tableur-etat'), select = $st('select-semaine-tableur');
@@ -74,7 +74,7 @@ async function chargerTableur(semaine) {
 }
 $st('select-semaine-tableur').addEventListener('change', e => chargerTableur(e.target.value));
 
-// synchronisation : état, lignes lues, bouton (permission « ventes-gerer »)
+// synchronisation : état, lignes lues, bouton (permission « ventes-gerer »)
 async function chargerSynchro() {
   const corps = $st('corps-table-sync-sheet'), etatLigne = $st('sync-sheet-etat');
   try {
@@ -87,7 +87,7 @@ async function chargerSynchro() {
       : !e || e.statut === 'desactive' ? 'Pas encore synchronisé.'
         : e.statut === 'erreur' ? `Dernière tentative en échec (${dateHeureStats(e.derniereSync)}) : ${e.erreur}`
           // lecture réussie sans aucun agent : presque toujours le mauvais onglet du classeur
-          : !e.nbLignes ? `Dernière synchro : ${dateHeureStats(e.derniereSync)} — le classeur a été lu, mais aucune ligne d’agent n’y a été trouvée. Le lien réglé pointe sans doute sur le mauvais onglet : ouvrez l’onglet du récapitulatif des ventes dans Google Sheets, copiez l’adresse de la barre du navigateur (elle se termine par « gid=… ») et collez-la dans Paramètres.`
+          : !e.nbLignes ? `Dernière synchro : ${dateHeureStats(e.derniereSync)} — le classeur a été lu, mais aucune ligne d’agent n’y a été trouvée. Le lien réglé pointe sans doute sur le mauvais onglet : ouvrez l’onglet du récapitulatif des ventes dans Google Sheets, copiez l’adresse de la barre du navigateur (elle se termine par « gid=… ») et collez-la dans Paramètres.`
           : `Dernière synchro : ${dateHeureStats(e.derniereSync)} — ${e.nbLignes} ligne(s) lue(s), ${e.nbApparies} reliée(s) à un compte du site.`;
     if (!r.configure) lienReglage(etatLigne);
     corps.innerHTML = r.lignes.length ? r.lignes.map(l => `<tr>

@@ -4,7 +4,7 @@
 export const normaliser = (v: unknown): string =>
   String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
-// « <t:1791477420:f> » → Date ; null sans horodatage Discord
+// « <t:1791477420:f> » → Date ; null sans horodatage Discord
 export function lireHorodatageDiscord(valeur: unknown): Date | null {
   const m = String(valeur ?? '').match(/<t:(\d{9,11})(?::[a-zA-Z])?>/);
   return m ? new Date(Number(m[1]) * 1000) : null;
