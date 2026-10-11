@@ -12,6 +12,7 @@
 import { Router } from 'express';
 import type { DefinitionParametre, GroupeParametres } from './contrat.js';
 import { hoteInterdit } from './adresses.js';
+import { config } from './config.js';
 import { body, permission } from './http.js';
 import { botDiscordConfigure } from './discord.js';
 import { rolesDiscord, RolesIndisponibles } from './roles-discord.js';
@@ -110,7 +111,7 @@ parametres.get('/api/parametres/discord', ...gerer, async (_req, res) => {
   if (!botDiscordConfigure()) { res.json({ configure: false, roles: [], salons: [], categories: [] }); return; }
   try {
     const [roles, { salons, categories }] = await Promise.all([rolesDiscord(), salonsDiscord()]);
-    res.json({ configure: true, roles: roles.map(({ id, nom, couleur }) => ({ id, nom, couleur })), salons, categories });
+    res.json({ configure: true, simulation: config.discord.simulation, roles: roles.map(({ id, nom, couleur }) => ({ id, nom, couleur })), salons, categories });
   } catch (e) {
     res.json({ configure: true, roles: [], salons: [], categories: [], erreur: e instanceof RolesIndisponibles ? e.message : 'Discord ne répond pas pour le moment.' });
   }

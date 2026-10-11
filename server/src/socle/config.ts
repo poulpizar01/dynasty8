@@ -30,6 +30,10 @@ const devLogin = env.DEV_LOGIN === '1';
 if (devLogin && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(baseUrl)) fail('DEV_LOGIN=1 refusé : BASE_URL doit être http://localhost');
 if (devLogin && env.NODE_ENV === 'production') fail('DEV_LOGIN=1 refusé : connexion de dev impossible dans l’image de production (NODE_ENV=production)');
 
+// faux bot Discord (discord-simulation.ts) : mêmes verrous que la connexion de dev, dont il dépend
+const botSimule = (env.DISCORD_BOT_TOKEN || '').trim() === 'simulation';
+if (botSimule && !devLogin) fail('DISCORD_BOT_TOKEN=simulation refusé : le faux bot Discord n’existe qu’en développement (DEV_LOGIN=1)');
+
 const required = (name: string): string => env[name] || (devLogin ? '' : fail(`Variable manquante dans .env : ${name}`));
 
 // le secret signe les cookies de session : un secret court se devine (en dev, la valeur fixe de compose.override.yaml suffit)
@@ -82,6 +86,8 @@ export const config = {
     guildId: required('DISCORD_GUILD_ID'),
     // facultatif : jeton du bot qui lit la liste des rôles du serveur (page Grades, roles-discord.ts)
     botToken: (env.DISCORD_BOT_TOKEN || '').trim(),
+    // « simulation » : aucun appel à Discord, réponses fictives (discord-simulation.ts), développement seulement
+    simulation: botSimule,
   },
   root,
   storage: {
