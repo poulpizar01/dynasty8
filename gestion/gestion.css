@@ -127,24 +127,34 @@ main.admin-contenu:focus { outline: none; }
 /* titre de la page : un <h1> par page (lecteurs d'écran), à la taille des anciens titres de section */
 .admin-contenu h1 { font-size: clamp(1.9rem, 3vw, 2.75rem); line-height: 1.15; }
 
-/* Tableau en cartes sur téléphone (<table class="table-admin table-cartes">) : chaque ligne devient une carte, une
-   cellule porte son intitulé dans data-libelle ; les actions restent visibles sans défilement horizontal. */
+/* Tableau en cartes (gestion.js, tablesAdaptatives) : un .table-admin trop large pour sa place devient une grille de
+   cartes, plusieurs par rangée sur écran large, une sur téléphone ; chaque cellule montre l’intitulé de sa colonne. */
 .table-admin td select { min-width: 150px; }
-@media (max-width: 640px) {
-  .table-cartes thead { display: none; }
-  .table-cartes, .table-cartes tbody, .table-cartes tr, .table-cartes td { display: block; width: 100%; }
-  .table-cartes tr { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; padding: 16px; border-bottom: 1px solid var(--border); }
-  .table-cartes td { padding: 0; border: none; min-width: 0; }
-  .table-cartes td:first-child, .table-cartes td[colspan], .table-cartes .table-cartes-actions { grid-column: 1 / -1; }
-  .table-cartes td[data-libelle]::before {
-    content: attr(data-libelle); display: block; margin-bottom: 4px; font-size: 0.75rem; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--text-faint);
-  }
-  .table-cartes td select { width: 100%; min-width: 0; }
-  .table-cartes .table-cartes-large { grid-column: 1 / -1; }   /* ex. un menu déroulant, lisible sur toute la largeur */
-  .table-cartes .table-cartes-actions:empty { display: none; }
-  .table-cartes .table-cartes-actions > * { display: flex; flex-wrap: wrap; gap: 8px; }
+.contient-cartes { overflow: visible !important; background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+.table-admin.en-cartes thead { display: none; }
+.table-admin.en-cartes, .table-admin.en-cartes tbody, .table-admin.en-cartes td { display: block; width: 100%; }
+.table-admin.en-cartes tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 14px; }
+.table-admin.en-cartes tr {
+  display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 12px 16px; padding: 16px; min-width: 0;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
 }
+.table-admin.en-cartes td { padding: 0; border: none; min-width: 0; text-align: left !important; white-space: normal !important; }
+.table-admin.en-cartes td:not([data-libelle]), .table-admin.en-cartes td[colspan], .table-admin.en-cartes .table-cartes-large { grid-column: 1 / -1; }
+.table-admin.en-cartes .cellule-titre { font-size: 1rem; order: -1; }
+.table-admin.en-cartes .cellule-vignette { order: -2; }
+.table-admin.en-cartes td[data-libelle]::before {
+  content: attr(data-libelle); display: block; margin-bottom: 4px; font-size: 0.75rem; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-faint);
+}
+.table-admin.en-cartes td select { width: 100%; min-width: 0; }
+.table-admin.en-cartes td:empty { display: none; }
+.table-admin.en-cartes .actions-ligne { flex-wrap: wrap; }
+/* dernière case : les actions, séparées du contenu par un filet */
+.table-admin.en-cartes td:last-child:not([data-libelle]):not(.cellule-titre) { padding-top: 12px; border-top: 1px solid var(--border); }
+/* annonces : la vignette devient la couverture de la carte */
+.table-admin.en-cartes .cellule-vignette { margin: -16px -16px 0; width: auto; }
+.table-admin.en-cartes .table-biens-vignette { width: 100%; height: 150px; border-radius: var(--radius) var(--radius) 0 0; overflow: hidden; }
+.table-admin.en-cartes .table-biens-vignette img { width: 100%; height: 100%; object-fit: cover; }
 .rh-id-discord { font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 
 /* Lisibilité dans l'espace agents (aussi affiché dans l'ordinateur en jeu) : rien sous 12 px ; les majuscules espacées
@@ -187,3 +197,13 @@ main.admin-contenu:focus { outline: none; }
 .accueil-liste .accueil-vide { display: block; color: var(--text-faint); font-size: 0.9rem; }
 .accueil-vide a { color: var(--gold-strong); }
 .page-agents .agenda-heure-label { font-size: 0.75rem; }
+
+/* cartes de chiffres : autant par rangée que la place le permet (quatre fixes devenaient illisibles vers 1 024 px) */
+.page-agents .admin-stats:not([style*="grid-template-columns"]) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr)); }
+@media (max-width: 520px) { .page-agents .admin-stats:not([style*="grid-template-columns"]) { grid-template-columns: 1fr 1fr; } }
+
+/* un montant ou une quantité (colonne alignée à droite) ne se coupe jamais : « 1 240 / 000 » se lit mal ; si la
+   colonne n'a plus la place, le tableau passe en cartes */
+.page-agents .table-admin td[style*="text-align:right"], .page-agents .table-admin th[style*="text-align:right"] { white-space: nowrap; }
+.table-admin.en-cartes tr.ligne-total { border-color: var(--d8-gold-400); background: rgba(201, 165, 92, 0.1); }
+.table-admin.en-cartes tr.ligne-total td { border: none !important; }

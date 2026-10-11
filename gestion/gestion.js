@@ -175,6 +175,7 @@ window.gestion = {
     document.body.classList.add('page-agents', 'admin-connecte');
     fondAnime();
     enService(barre);
+    tablesAdaptatives(main);
     // messagerie interne, sur toutes les pages (chargée ici plutôt qu'inscrite dans chaque page)
     const script = document.createElement('script');
     script.src = '/gestion/messagerie.js';
@@ -232,6 +233,52 @@ window.gestion = {
     });
   },
 };
+
+// Tableaux adaptatifs : un tableau (.table-admin) qui ne tient plus dans sa largeur devient une grille de cartes
+// (classe en-cartes, styles dans gestion.css) au lieu de défiler de côté. Chaque cellule reçoit l'intitulé de sa
+// colonne (data-libelle, tiré de l'en-tête) ; la colonne titre (th[data-titre], sinon la première nommée) ouvre la
+// carte, sans intitulé ; une colonne sans nom (actions, vignette) prend toute la largeur. Recalculé quand la largeur
+// change ou que le tableau est redessiné.
+const SANS_LIBELLE = /^(actions?)?$/i;
+function tablesAdaptatives(racine) {
+  const etiqueter = table => {
+    const ths = [...(table.tHead?.rows[0]?.cells || [])];
+    const noms = ths.map(th => (SANS_LIBELLE.test(th.textContent.trim()) ? '' : th.textContent.trim()));
+    let titre = ths.findIndex(th => th.hasAttribute('data-titre'));
+    if (titre < 0) titre = noms.findIndex(Boolean);
+    for (const tbody of table.tBodies) for (const tr of tbody.rows) {
+      if (tr.cells.length !== ths.length) continue;   // ligne d'état (« Aucun… », colspan) : pleine largeur telle quelle
+      [...tr.cells].forEach((td, i) => {
+        if (i === titre) td.classList.add('cellule-titre');
+        else if (noms[i] && !td.hasAttribute('data-libelle')) td.dataset.libelle = noms[i];
+      });
+    }
+  };
+  // mesure en mode tableau (synchrone : rien n'est affiché entre les deux), cartes si la largeur dépasse
+  const ajuster = table => {
+    table.classList.remove('en-cartes');
+    table.parentElement.classList.remove('contient-cartes');
+    const trop = table.offsetWidth > table.parentElement.clientWidth + 1;
+    table.classList.toggle('en-cartes', trop);
+    table.parentElement.classList.toggle('contient-cartes', trop);   // la carte qui l'entoure s'efface derrière les cartes
+  };
+  const suivies = new WeakSet();
+  const suivre = table => {
+    if (suivies.has(table) || table.closest('[data-tableau-fixe]')) return;
+    suivies.add(table);
+    etiqueter(table);
+    ajuster(table);
+    let largeur = table.parentElement.clientWidth;
+    new ResizeObserver(() => {
+      const l = table.parentElement.clientWidth;
+      if (l !== largeur) { largeur = l; ajuster(table); }   // la hauteur change avec les cartes : seule la largeur compte
+    }).observe(table.parentElement);
+    new MutationObserver(() => { etiqueter(table); ajuster(table); }).observe(table, { childList: true, subtree: true });
+  };
+  racine.querySelectorAll('table.table-admin').forEach(suivre);
+  // tableaux ajoutés plus tard par les scripts de la page (onglets, fenêtres)
+  new MutationObserver(() => racine.querySelectorAll('table.table-admin').forEach(suivre)).observe(racine, { childList: true, subtree: true });
+}
 
 // Compte illisible (serveur arrêté, trop de requêtes, coupure) : la page dit pourquoi et propose de réessayer, au lieu
 // de rester vide. Une session expirée est déjà renvoyée vers la connexion par socle.api().
