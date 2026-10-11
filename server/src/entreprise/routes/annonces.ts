@@ -1,4 +1,4 @@
-// ENTREPRISE (exemple) — annonces internes : lues par tout compte validé, publiées par la permission « annonces ».
+// ENTREPRISE (exemple) — annonces internes : lues par tout compte validé, publiées par la permission « annonces ».
 // Montre la forme attendue d'une route : une garde du socle en tête, champs nettoyés, 404 sur un identifiant inconnu.
 import { Router } from 'express';
 import { prisma } from '../../socle/db.js';

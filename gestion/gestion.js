@@ -62,7 +62,7 @@ window.gestion = {
   },
 
   // Confirmation dans la page : l'ordinateur en jeu n'affiche ni confirm() ni alert() (docs/folkos.md).
-  // libelle : le bouton dit l'action (« Supprimer le grade »), jamais « OK » ; danger : bouton rouge (action destructive).
+  // libelle : le bouton dit l'action (« Supprimer le grade »), jamais « OK » ; danger : bouton rouge (action destructive).
   // Le focus reste dans la fenêtre (Tab boucle), Échap annule, et il revient ensuite où il était.
   confirmer(texte, { titre = 'Confirmer', libelle = 'Confirmer', danger = true } = {}) {
     return new Promise(resolve => {
@@ -115,7 +115,7 @@ function tablesAdaptatives(racine) {
     let titre = ths.findIndex(th => th.hasAttribute('data-titre'));
     if (titre < 0) titre = noms.findIndex(Boolean);
     for (const tbody of table.tBodies) for (const tr of tbody.rows) {
-      if (tr.cells.length !== ths.length) continue;   // ligne d'état (« Aucun… », colspan) : pleine largeur telle quelle
+      if (tr.cells.length !== ths.length) continue;   // ligne d'état (« Aucun… », colspan) : pleine largeur telle quelle
       [...tr.cells].forEach((td, i) => {
         if (i === titre) td.classList.add('cellule-titre');
         else if (noms[i] && !td.hasAttribute('data-libelle')) td.dataset.libelle = noms[i];

@@ -6,7 +6,7 @@
 //   - nouveau rôle lié à un grade : grade donné (et compte en attente validé) ;
 //   - membre parti du serveur : ses sessions sont fermées et il est marqué parti (quitteLe) : la connexion Discord le
 //     refuse déjà (pas membre), la connexion en jeu aussi. Il redevient normal à sa prochaine connexion Discord.
-// Un appel par compte (« Get Guild Member », sans intention privilégiée à activer), espacés : quelques centaines de
+// Un appel par compte (« Get Guild Member », sans intention privilégiée à activer), espacés : quelques centaines de
 // comptes au plus. Une erreur du bot (jeton refusé, Discord coupé) interrompt la passe sans rien changer : la suivante
 // reprend. Sans jeton : rien ne tourne, les rôles restent relus à chaque connexion.
 import { config } from './config.js';

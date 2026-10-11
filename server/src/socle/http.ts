@@ -44,7 +44,7 @@ export function permission(cle: string): RequestHandler[] {
 // corps JSON d'une requête (absent = objet vide) et champ texte nettoyé
 export const body = (req: Request): Record<string, unknown> => (req.body && typeof req.body === 'object' ? req.body : {});
 export const text = (v: unknown, max: number): string => String(v ?? '').trim().slice(0, max);
-// entier strictement positif tenant dans une colonne INTEGER de la base, sinon null (« abc », 1.5, nombre trop grand…)
+// entier strictement positif tenant dans une colonne INTEGER de la base, sinon null (« abc », 1.5, nombre trop grand…)
 export const entier = (v: unknown): number | null => {
   const n = typeof v === 'number' ? v : /^\d{1,10}$/.test(String(v ?? '')) ? Number(v) : NaN;
   return Number.isInteger(n) && n > 0 && n <= 2147483647 ? n : null;

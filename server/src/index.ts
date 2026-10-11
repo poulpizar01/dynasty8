@@ -38,7 +38,7 @@ app.disable('x-powered-by');                   // ne pas annoncer Express, même
 // vient de X-Forwarded-Host (nginx) : un hôte non déclaré suit le chemin ordinaire du site.
 const hotes = new Map(Object.entries(entreprise.hotes ?? {}).map(([h, f]) => [h.toLowerCase(), f]));
 for (const h of hotes.keys()) {
-  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(h) || h === new URL(config.baseUrl).hostname) throw new Error(`entreprise.hotes : nom d'hôte invalide « ${h} »`);
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(h) || h === new URL(config.baseUrl).hostname) throw new Error(`entreprise.hotes : nom d'hôte invalide « ${h} »`);
 }
 if (hotes.size) app.use((req, res, next) => { const f = hotes.get(req.hostname); if (f) return f(req, res, next); next(); });
 
@@ -99,7 +99,7 @@ const statics: Parameters<typeof express.static>[1] = { index: false, dotfiles: 
 // Niveaux : ceux du socle ci-dessous, puis ceux que déclare l'entreprise ; une page non déclarée exige un compte validé.
 const NIVEAU_PAGE: Record<string, NiveauPage> = { parametres: 'parametres', ...entreprise.pages, index: 'public', refuse: 'public', attente: 'connecte' };
 for (const [page, niveau] of Object.entries(NIVEAU_PAGE)) {
-  if (!['public', 'connecte', 'valide'].includes(niveau) && !CLES_PERMISSIONS.has(niveau)) throw new Error(`entreprise.pages : niveau inconnu « ${niveau} » pour la page ${page}`);
+  if (!['public', 'connecte', 'valide'].includes(niveau) && !CLES_PERMISSIONS.has(niveau)) throw new Error(`entreprise.pages : niveau inconnu « ${niveau} » pour la page ${page}`);
 }
 // La page est déduite du chemin tel que le serveur de fichiers le lira : décodé, normalisé, sans casse (compt%65s.html,
 // //comptes.html, Comptes.html sur un disque Windows désignent tous comptes.html).

@@ -27,7 +27,7 @@ async function cdn(method: 'PUT' | 'DELETE', key: string, body?: Buffer, mimeTyp
 }
 
 // verrou : seules des images WebP (réencodées par le serveur, images.ts) sont stockées — signature RIFF….WEBP et
-// extension .webp ; clé faite de segments simples (jamais de « .. » ni de chemin absolu)
+// extension .webp ; clé faite de segments simples (jamais de « .. » ni de chemin absolu)
 const isWebp = (key: string, data: Buffer) =>
   /^[\w-]+(\/[\w-]+)*\.webp$/.test(key) && data.length > 12 && data.toString('ascii', 0, 4) === 'RIFF' && data.toString('ascii', 8, 12) === 'WEBP';
 

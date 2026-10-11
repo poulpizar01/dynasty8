@@ -1,7 +1,7 @@
 // SOCLE — Paramètres : les liens et réglages propres au site (lien d'une boutique, adresse d'un service relayé, salon
-// Discord, seuil…) se règlent dans la gestion (permission « parametres »), jamais dans le code ni dans le .env. Un
+// Discord, seuil…) se règlent dans la gestion (permission « parametres »), jamais dans le code ni dans le .env. Un
 // changement s'applique aussitôt, sans redémarrage. L'entreprise déclare ses réglages dans entreprise.parametres
-// (contrat.ts), par groupes ; le socle les valide, les range dans ses réglages (clés « site.<cle> ») et sert :
+// (contrat.ts), par groupes ; le socle les valide, les range dans ses réglages (clés « site.<cle> ») et sert :
 //   - GET /api/liens : les liens publics (déclarés `public`), pour les pages publiques : `data-lien="<cle>"`, rempli par
 //     socle.js ; un lien vide masque l'élément ;
 //   - GET / PUT /api/parametres : la page Paramètres de la gestion (construite d'après les déclarations).
@@ -22,17 +22,17 @@ export function declarerParametres(liste: GroupeParametres[] = []): void {
   groupes = liste;
   definitions.clear();
   for (const g of liste) for (const d of g.reglages) {
-    if (!/^[a-z0-9_]{2,34}$/.test(d.cle)) throw new Error(`entreprise.parametres : clé invalide « ${d.cle} » (minuscules, chiffres, _ ; 34 caractères au plus)`);
-    if (definitions.has(d.cle)) throw new Error(`entreprise.parametres : « ${d.cle} » déclaré deux fois`);
-    if (d.public && d.type !== 'lien') throw new Error(`entreprise.parametres : « ${d.cle} » : seul un lien peut être public`);
-    if (d.type === 'entier' && !(Number.isInteger(d.min) && Number.isInteger(d.max) && Number.isInteger(d.defaut))) throw new Error(`entreprise.parametres : « ${d.cle} » : min, max et defaut entiers attendus`);
+    if (!/^[a-z0-9_]{2,34}$/.test(d.cle)) throw new Error(`entreprise.parametres : clé invalide « ${d.cle} » (minuscules, chiffres, _ ; 34 caractères au plus)`);
+    if (definitions.has(d.cle)) throw new Error(`entreprise.parametres : « ${d.cle} » déclaré deux fois`);
+    if (d.public && d.type !== 'lien') throw new Error(`entreprise.parametres : « ${d.cle} » : seul un lien peut être public`);
+    if (d.type === 'entier' && !(Number.isInteger(d.min) && Number.isInteger(d.max) && Number.isInteger(d.defaut))) throw new Error(`entreprise.parametres : « ${d.cle} » : min, max et defaut entiers attendus`);
     definitions.set(d.cle, d);
   }
 }
 
 const definition = (cle: string): DefinitionParametre => {
   const d = definitions.get(cle);
-  if (!d) throw new Error(`paramètre « ${cle} » non déclaré dans entreprise.parametres`);
+  if (!d) throw new Error(`paramètre « ${cle} » non déclaré dans entreprise.parametres`);
   return d;
 };
 
@@ -62,7 +62,7 @@ export function validerParametre(d: DefinitionParametre, saisie: unknown): { val
     case 'id-discord': return /^\d{15,21}$/.test(v) ? { valeur: v } : { erreur: `${d.libelle} : un identifiant Discord est un nombre de 15 à 21 chiffres.` };
     case 'ids-discord': {
       const ids = v.split(/[\s,;]+/).filter(Boolean), faux = ids.find(x => !/^\d{15,21}$/.test(x));
-      return faux ? { erreur: `${d.libelle} : « ${faux.slice(0, 30)} » n’est pas un identifiant Discord (15 à 21 chiffres).` } : { valeur: [...new Set(ids)].slice(0, 50).join(' ') };
+      return faux ? { erreur: `${d.libelle} : « ${faux.slice(0, 30)} » n’est pas un identifiant Discord (15 à 21 chiffres).` } : { valeur: [...new Set(ids)].slice(0, 50).join(' ') };
     }
     case 'lien': case 'origine': {
       const u = https(v);

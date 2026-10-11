@@ -1,5 +1,5 @@
 // SOCLE — configuration lue dans l'environnement (.env en prod, compose.override.yaml en dev).
-// Une valeur vide (« NOM= », comme dans .env.example) compte comme absente : le serveur s'arrête ici avec un message
+// Une valeur vide (« NOM= », comme dans .env.example) compte comme absente : le serveur s'arrête ici avec un message
 // clair, plutôt que de démarrer et d'échouer à la première requête. Les variables propres à l'entreprise se lisent
 // dans src/entreprise/ avec les mêmes aides (adresse, fail), exportées ci-dessous.
 import { dirname, join } from 'node:path';
@@ -11,7 +11,7 @@ export function fail(message: string): never {
 }
 
 const env = process.env;
-// adresse http(s) valide, sans slash final (collé à un chemin, il donnerait « //… ») ; vide si absente
+// adresse http(s) valide, sans slash final (collé à un chemin, il donnerait « //… ») ; vide si absente
 export function adresse(name: string): string {
   const v = (env[name] || '').trim();
   if (!v) return '';
@@ -36,12 +36,12 @@ const required = (name: string): string => env[name] || (devLogin ? '' : fail(`V
 const sessionSecret = env.SESSION_SECRET || fail('Variable manquante dans .env : SESSION_SECRET');
 if (!devLogin && sessionSecret.length < 32) fail('SESSION_SECRET trop court dans .env (32 caractères au moins) : openssl rand -hex 32');
 
-// dossier du site sur le stockage partagé : sans « / » final, les fichiers iraient dans « monsiteimages/… » ;
+// dossier du site sur le stockage partagé : sans « / » final, les fichiers iraient dans « monsiteimages/… » ;
 // vide, à la racine commune à tous les sites
 const storageUrl = adresse('STORAGE_URL');
 const storagePrefix = env.STORAGE_PREFIX ?? 'site/';
 if (!!storageUrl !== !!env.STORAGE_TOKEN) fail('STORAGE_URL et STORAGE_TOKEN vont ensemble dans .env : remplir les deux, ou aucun');
-if (storageUrl && !/^[\w.-]+(\/[\w.-]+)*\/$/.test(storagePrefix)) fail(`STORAGE_PREFIX dans .env doit être un dossier terminé par « / » (ex. monsite/) : « ${storagePrefix} »`);
+if (storageUrl && !/^[\w.-]+(\/[\w.-]+)*\/$/.test(storagePrefix)) fail(`STORAGE_PREFIX dans .env doit être un dossier terminé par « / » (ex. monsite/) : « ${storagePrefix} »`);
 
 // Secrets des abonnements webhook du bot Discord entreprise (un par abonnement, affiché une seule fois par le bot),
 // séparés par des virgules. Un secret court se devine : refusé.
@@ -50,12 +50,12 @@ if (webhookSecrets.some(s => s.length < 16)) fail('BOT_WEBHOOK_SECRETS dans .env
 
 // Ordinateur en jeu (FolkOS, navigateur FiveM) : facultatif, désactivé sans FOLKOS_HOTE. Le site s'affiche alors dans
 // l'iframe de FolkOS (origine FOLKOS_HOTE, plus les cadres FiveM et ceux de FOLKOS_CADRES), et charge le SDK de
-// l'opérateur depuis cette origine. FOLKOS_ID_BASE + identifiants : connexion « IG » par le SSO FolkOS (routes/auth.ts).
+// l'opérateur depuis cette origine. FOLKOS_ID_BASE + identifiants : connexion « IG » par le SSO FolkOS (routes/auth.ts).
 const folkosHote = adresse('FOLKOS_HOTE');
 if (folkosHote && (!folkosHote.startsWith('https://') || new URL(folkosHote).origin !== folkosHote)) fail(`FOLKOS_HOTE dans .env : une origine https:// sans chemin est attendue (ex. https://computer.exemple.fr) : ${folkosHote}`);
-// cadres supplémentaires : origine https (joker de sous-domaine admis) ou schéma seul (nui:) ; jamais « * » ni guillemets
+// cadres supplémentaires : origine https (joker de sous-domaine admis) ou schéma seul (nui:) ; jamais « * » ni guillemets
 const folkosCadres = (env.FOLKOS_CADRES || '').split(/[\s,]+/).filter(Boolean);
-for (const c of folkosCadres) if (!/^(https:\/\/(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?|[a-z][a-z0-9+.-]*:(\/\/[a-z0-9.-]+)?)$/.test(c)) fail(`FOLKOS_CADRES dans .env : « ${c} » n'est ni une origine https:// ni un schéma (nui:)`);
+for (const c of folkosCadres) if (!/^(https:\/\/(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?|[a-z][a-z0-9+.-]*:(\/\/[a-z0-9.-]+)?)$/.test(c)) fail(`FOLKOS_CADRES dans .env : « ${c} » n'est ni une origine https:// ni un schéma (nui:)`);
 if (folkosCadres.length && !folkosHote) fail('FOLKOS_CADRES dans .env exige FOLKOS_HOTE');
 const folkosSso = [env.FOLKOS_ID_BASE, env.FOLKOS_CLIENT_ID, env.FOLKOS_CLIENT_SECRET];
 if (folkosSso.some(Boolean) && !folkosSso.every(Boolean)) fail('FOLKOS_ID_BASE, FOLKOS_CLIENT_ID et FOLKOS_CLIENT_SECRET vont ensemble dans .env : remplir les trois, ou aucun');

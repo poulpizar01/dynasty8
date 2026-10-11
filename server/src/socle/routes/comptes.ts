@@ -1,4 +1,4 @@
-// SOCLE — compte courant (/api/moi), annuaire, gestion des comptes (permission « comptes »).
+// SOCLE — compte courant (/api/moi), annuaire, gestion des comptes (permission « comptes »).
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import type { Compte } from '../../generated/prisma/client.js';

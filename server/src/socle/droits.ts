@@ -19,12 +19,12 @@ export const PERMISSIONS_SOCLE: Permission[] = [
 
 // permissions de l'entreprise contrôlées au démarrage : une faute de frappe se voit tout de suite, pas à la première requête
 for (const p of permissionsEntreprise) {
-  if (!/^[a-z0-9-]{2,40}$/.test(p.cle)) fail(`entreprise/permissions.ts : clé de permission invalide « ${p.cle} » (minuscules, chiffres, tirets)`);
+  if (!/^[a-z0-9-]{2,40}$/.test(p.cle)) fail(`entreprise/permissions.ts : clé de permission invalide « ${p.cle} » (minuscules, chiffres, tirets)`);
 }
 export const permissions: readonly Permission[] = [...PERMISSIONS_SOCLE, ...permissionsEntreprise];
 const cles = permissions.map(p => p.cle);
 const doublon = cles.find((c, i) => cles.indexOf(c) !== i);
-if (doublon) fail(`entreprise/permissions.ts : permission « ${doublon} » déclarée deux fois (ou réservée au socle)`);
+if (doublon) fail(`entreprise/permissions.ts : permission « ${doublon} » déclarée deux fois (ou réservée au socle)`);
 export const CLES_PERMISSIONS = new Set(cles);
 
 let grades: Grade[] = [];   // du sommet à la base

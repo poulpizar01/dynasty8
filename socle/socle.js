@@ -11,7 +11,7 @@
 
   // Appel à l'API du site. Corps : objet → JSON ; FormData → formulaire (envoi d'image). Réponse JSON renvoyée telle
   // quelle ; erreur → exception avec le message du serveur (err.status, err.data). Session perdue (401) ou compte plus
-  // validé (403 « attente ») sur une page de gestion : retour à la connexion ou à l'attente.
+  // validé (403 « attente ») sur une page de gestion : retour à la connexion ou à l'attente.
   async function api(chemin, { method = 'GET', body } = {}) {
     const init = { method, headers: { Accept: 'application/json' }, credentials: 'same-origin' };
     if (body instanceof FormData) init.body = body;
@@ -47,7 +47,7 @@
     timeZone: 'Europe/Paris', day: 'numeric', month: 'short', year: 'numeric', ...(avecHeure && { hour: '2-digit', minute: '2-digit' }),
   });
 
-  // Liens réglés dans la gestion (Paramètres, déclarés « public » : GET /api/liens). Tout élément <a data-lien="cle">
+  // Liens réglés dans la gestion (Paramètres, déclarés « public » : GET /api/liens). Tout élément <a data-lien="cle">
   // de la page reçoit son adresse au chargement ; un lien non réglé masque l'élément (l'écrire avec l'attribut hidden
   // pour qu'il n'apparaisse pas avant). Contenu ajouté plus tard : socle.appliquerLiens(conteneur).
   let liensP = null;

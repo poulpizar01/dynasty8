@@ -1,4 +1,4 @@
-// SOCLE — réception des webhooks du bot Discord entreprise (roxwood-network-entreprise, panneau « Monitoring »).
+// SOCLE — réception des webhooks du bot Discord entreprise (roxwood-network-entreprise, panneau « Monitoring »).
 // Le bot signe chaque envoi : en-tête X-Signature-256 = HMAC-SHA256 du corps brut (hex), avec le secret propre à
 // l'abonnement. Ici : signature vérifiée en temps constant contre chaque secret de BOT_WEBHOOK_SECRETS, serveur Discord
 // contrôlé, événement enregistré une seule fois (empreinte du corps : une nouvelle tentative du bot n'est pas traitée deux

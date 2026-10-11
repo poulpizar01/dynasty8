@@ -18,7 +18,7 @@
   <main class="contenu">
     <p class="surtitre">Gestion</p>
     <h1 class="page-titre">Grades</h1>
-    <p class="intro">Du sommet à la base de l'entreprise. Un grade lié à un rôle Discord est donné à la connexion à qui porte ce rôle, et retiré à qui ne le porte plus. Lier un rôle demande aussi la permission « Gérer les comptes ».</p>
+    <p class="intro">Du sommet à la base de l'entreprise. Un grade lié à un rôle Discord est donné à la connexion à qui porte ce rôle, et retiré à qui ne le porte plus. Lier un rôle demande aussi la permission « Gérer les comptes ».</p>
     <p class="message" id="msg" hidden></p>
     <div id="liste"></div>
     <section class="carte">
@@ -70,7 +70,7 @@
 
     function formulaire(g) {
       edition = g?.cle ?? null;
-      $('formTitre').textContent = g ? `Modifier « ${g.libelle} »` : 'Nouveau grade';
+      $('formTitre').textContent = g ? `Modifier « ${g.libelle} »` : 'Nouveau grade';
       $('enregistrer').textContent = g ? 'Enregistrer' : 'Créer le grade';
       $('annuler').hidden = !g;
       $('libelle').value = g?.libelle ?? '';
@@ -105,7 +105,7 @@
       try {
         if (b.dataset.action === 'modifier') return formulaire(g);
         if (b.dataset.action === 'supprimer') {
-          if (!await gestion.confirmer('Les comptes qui le portent n’auront plus de grade.', { titre: `Supprimer le grade « ${g.libelle} » ?`, libelle: 'Supprimer le grade' })) return;
+          if (!await gestion.confirmer('Les comptes qui le portent n’auront plus de grade.', { titre: `Supprimer le grade « ${g.libelle} » ?`, libelle: 'Supprimer le grade' })) return;
           grades = await socle.api(`/api/grades/${encodeURIComponent(cle)}`, { method: 'DELETE' });
         } else {
           const ordre = grades.map(x => x.cle), j = b.dataset.action === 'monter' ? i - 1 : i + 1;

@@ -3,7 +3,7 @@
    Hors iframe (navigateur normal), ne fait rien. Dans l'iframe :
    - charge le SDK de l'opérateur (fbfa-game.js : clavier rendu au site dès qu'un champ a le focus, touche Échap laissée
      à la page ; fbfa-bridge.js : la barre d'adresse de FolkOS suit la page) ;
-   - pose la classe « en-jeu » sur <html> : à tester par les pages pour couper ce qui coûte au GPU (WebGL, grosses
+   - pose la classe « en-jeu » sur <html> : à tester par les pages pour couper ce qui coûte au GPU (WebGL, grosses
      animations), partagé avec le jeu ;
    - ouvre les liens target="_blank" et window.open() dans le cadre (en jeu, un nouvel onglet n'ouvre rien). */
 (() => {
