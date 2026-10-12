@@ -18,11 +18,14 @@ const viaFolkos = folkos ? [folkos] : [];
 // Un script injecté (contenu d'un utilisateur mal échappé, par exemple) n'a pas le jeton et reste inerte.
 export const cspNonce: RequestHandler = (_req, res, next) => { res.locals.cspNonce = crypto.randomBytes(16).toString('base64'); next(); };
 
-// origines supplémentaires déclarées par l'entreprise : https uniquement, origine seule (ni joker ni chemin)
+// origines supplémentaires déclarées par l'entreprise : https uniquement, origine seule (ni joker ni chemin). Seule
+// exception, en développement (DEV_LOGIN, donc BASE_URL sur localhost) : un sous-domaine de localhost en http, pour
+// voir en local ce qui s'affiche en cadre en production (ex. une carte servie sur son sous-domaine, entreprise.hotes)
+const localDev = (u: URL) => config.devLogin && u.protocol === 'http:' && /(^|\.)localhost$/.test(u.hostname);
 const origines = (liste: string[] | undefined): string[] => (liste ?? []).map(o => {
   let u: URL | null = null;
   try { u = new URL(o); } catch { /* signalé ci-dessous */ }
-  if (!u || u.protocol !== 'https:' || u.origin !== o.replace(/\/$/, '')) fail(`entreprise.csp : une origine https:// sans chemin est attendue, pas « ${o} »`);
+  if (!u || (u.protocol !== 'https:' && !localDev(u)) || u.origin !== o.replace(/\/$/, '')) fail(`entreprise.csp : une origine https:// sans chemin est attendue, pas « ${o} »`);
   return u.origin;
 });
 
