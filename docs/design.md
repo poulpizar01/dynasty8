@@ -33,6 +33,8 @@ Base de connaissance pour quiconque crée ou modifie une page, un composant ou u
   - une transition de page ne passe jamais par une page vide.
 - **Transition entre pages : un seul mouvement, sur le contenu seulement**, en réponse au clic (la rubrique cliquée s'allume aussitôt, le contenu s'estompe, la page suivante le fait reprendre) ; menu et en-tête immobiles ; rien pour `prefers-reduced-motion`.
   À ne pas faire : les transitions natives entre documents (`@view-transition`) — en test elles ont été sautées par le navigateur et ont figé l'affichage. Ni des entrées « fondu-glissement » section par section (effet de page générée).
+- **Une coque en grille sur toute la hauteur (`min-height: 100vh`) fixe ses rangées à leur contenu** (`grid-template-rows: auto 1fr`) : sinon, sur une page courte, la hauteur en trop se répartit et la barre du haut grandit.
+  Vu : une barre du haut de 176 px sur téléphone pour un logo et un bouton, sur les pages courtes seulement.
 - **Pas de cadre décoratif fixé au bord de l'écran** sur une page qui défile : le contenu passe dessous en permanence.
 
 ## 3. Défilement et éléments flottants
