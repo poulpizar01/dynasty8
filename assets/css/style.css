@@ -1659,16 +1659,22 @@ section.section.serre {
 }
 /* ---------- pages de cohérence : présentation Google Slides (coherences-guides.js) ---------- */
 
+.guide-presentation { max-width: 1000px; margin: 0 auto; }
+/* La diapositive exposée comme une pièce : cadre exactement à sa proportion (16:9 + les 37 px de la barre du lecteur
+   de Google, qui donne les flèches), donc sans bandes ; angles adoucis, filet doré, ombre portée profonde. Pas de
+   bordure de boîte autour. */
 .guide-presentation-cadre {
-  position: relative; width: 100%; padding-bottom: calc(56.25% + 29px); /* 16:9 + barre du lecteur de Google */
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  position: relative; width: 100%; padding-bottom: calc(56.25% + 37px); border-radius: 14px; overflow: hidden;
+  background: #0b1226;
+  box-shadow: 0 0 0 1px rgba(201, 165, 92, 0.38), 0 34px 80px -24px rgba(0, 0, 0, 0.8), 0 0 70px -18px rgba(201, 165, 92, 0.22);
 }
 .guide-presentation-cadre iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+.guide-presentation-cadre:fullscreen { padding-bottom: 0; border-radius: 0; box-shadow: none; background: #000; }
 .guide-presentation--vide {
   padding: 28px 24px; border: 1px dashed var(--border); border-radius: var(--radius); color: var(--text-muted); text-align: center;
 }
 .guide-presentation--vide p { margin: 0; }
-.guide-presentation-actions { display: flex; justify-content: center; margin: 18px 0 8px; }
+.guide-presentation-actions { display: flex; justify-content: flex-end; margin: 14px 0 0; }
 
 /* Bloc "WebMap" intégré à la page (accueil, cohérence, cohérences) : la
    carte externe s'affiche directement ici au clic, sans nouvel onglet et

@@ -51,11 +51,12 @@ async function monterPresentationCoherence(conteneur, zone, absente) {
     conteneur.innerHTML = `<div class="guide-presentation guide-presentation--vide"><p>${echapper(absente)}</p></div>`;
     return;
   }
+  // pas de lien vers Google Slides : la présentation se lit ici (plein écran compris), comme la WebMap
   conteneur.innerHTML = `
     <div class="guide-presentation">
       <div class="guide-presentation-cadre"></div>
       <div class="guide-presentation-actions">
-        <a class="btn btn-fantome btn-petit" href="https://docs.google.com/presentation/d/${id}/edit" target="_blank" rel="noopener">Ouvrir sur Google Slides ↗</a>
+        <button type="button" class="btn btn-fantome btn-petit cache" data-plein-ecran>Plein écran</button>
       </div>
     </div>`;
   const cadre = document.createElement("iframe");
@@ -65,4 +66,5 @@ async function monterPresentationCoherence(conteneur, zone, absente) {
   cadre.allowFullscreen = true;
   cadre.referrerPolicy = "no-referrer";
   conteneur.querySelector(".guide-presentation-cadre").append(cadre);
+  pleinEcran(conteneur.querySelector("[data-plein-ecran]"), conteneur.querySelector(".guide-presentation-cadre"));
 }
