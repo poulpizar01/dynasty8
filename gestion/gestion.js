@@ -446,5 +446,7 @@ async function fondAnime() {
     const THREE = await import('/assets/vendor/three.module.min.js');
     const { mountAurora } = await import('/assets/js/aurora.js');
     window.__aurora = mountAurora(THREE, { canvas: toile, intensity: 0.5, stars: 0.7, ridge: false, parallax: true, pixelRatio: 0.6 });
+    // le fond animé arrive en fondu (il remplaçait le fond uni d'un coup à chaque page)
+    requestAnimationFrame(() => toile.classList.add('pret'));
   } catch { toile.remove(); }
 }
