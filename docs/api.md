@@ -31,7 +31,7 @@ Pages de `gestion/` : mêmes niveaux, contrôlés par le serveur avant tout envo
 | `GET /api/moi` | connecté | Mon compte : `id, discordId, pseudo, nom, avatar, statut, proprietaire, grade { cle, libelle, couleur }, permissions[]` (vide tant que le compte n'est pas validé) |
 | `PATCH /api/moi` | validé | Changer son nom RP (`{ nom }`) |
 | `DELETE /api/moi` | connecté | Supprimer son propre compte (validé ou en attente ; `403` pour un compte refusé), après `avantSuppressionCompte`, puis fin de session |
-| `GET /api/permissions` | validé | Toutes les permissions : `[{ cle, libelle, description }]` |
+| `GET /api/permissions` | validé | Toutes les permissions : `[{ cle, libelle, description, domaine }]` (domaine : titre de rangement dans la page Grades, facultatif) |
 | `GET /api/annuaire` | validé | Comptes validés, du sommet à la base : `[{ id, nom, avatar, grade }]` |
 | `GET /api/comptes` | `comptes` | Tous les comptes (en attente, validés, refusés), les plus récents d'abord |
 | `PATCH /api/comptes/:id` | `comptes` | `{ statut?: "valide"\|"refuse"\|"attente", nom?, grade?: cle\|null }` — compte sous son grade, vers un grade sous le sien ; ni son propre compte, ni celui du propriétaire (sauf par lui) |
