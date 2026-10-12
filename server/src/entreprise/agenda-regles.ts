@@ -2,10 +2,9 @@
 // Un événement est destiné à :
 //   - perso : son auteur, et la personne choisie quand il l'a créé pour quelqu'un d'autre (prévenue sur Discord) ;
 //   - tous  : tout compte validé ;
-//   - grade : ce grade et ceux au-dessus.
-// Chaque grade a trois plafonds, réglés dans sa fiche (page Grades) : il consulte, crée et modifie les événements
-// destinés aux grades jusqu'à celui-là (lui compris, et tous ceux en dessous). Par défaut : son propre grade ; « aucun »
-// possible. « Tout le monde » se consulte toujours, se crée et se modifie dès que le plafond n'est pas « aucun ».
+//   - grade : événements explicitement accessibles à ce grade.
+// Chaque grade a trois listes explicites, réglées dans sa fiche (page Grades), sans héritage implicite.
+// Les événements pour toute l'équipe ont des droits de consultation et de modification séparés.
 // Le propriétaire du serveur Discord a tout. Ses propres événements, chacun les voit et les gère toujours ; le « Perso »
 // d'un autre ne se gère que par son auteur.
 
@@ -13,65 +12,76 @@ export const DESTINATIONS = ['perso', 'tous', 'grade'] as const;
 export type Destination = (typeof DESTINATIONS)[number];
 export const estDestination = (v: unknown): v is Destination => typeof v === 'string' && (DESTINATIONS as readonly string[]).includes(v);
 
-// plafond : rang du grade le plus haut atteint (0 = sommet), null = aucun
-export type Plafond = number | null;
-export type DroitsAgenda = { tout: boolean; consulter: Plafond; creer: Plafond; modifier: Plafond };
-export type PlafondsEnregistres = { consulter: string; creer: string; modifier: string } | null;
+export type DroitsAgenda = {
+  tout: boolean;
+  consulter: string[];
+  creer: string[];
+  modifier: string[];
+  consulterTous: boolean;
+  gererTous: boolean;
+};
+export type DroitsEnregistres = {
+  consulter: string[];
+  creer: string[];
+  modifier: string[];
+  consulterTous?: boolean;
+  modifierTous?: boolean;
+} | null;
 
-// droits d'un compte : grades du sommet à la base (clés), son grade, ses plafonds enregistrés (null : par défaut)
-export function droitsAgenda(grades: readonly string[], gradeCle: string | null, proprietaire: boolean, enregistres: PlafondsEnregistres): DroitsAgenda {
-  if (proprietaire) return { tout: true, consulter: 0, creer: 0, modifier: 0 };
-  const propre = gradeCle ? grades.indexOf(gradeCle) : -1;
-  if (propre < 0) return { tout: false, consulter: null, creer: null, modifier: null };   // sans grade : « Tout le monde » en lecture
-  // '' : aucun ; un grade disparu depuis : retour à son propre grade
-  const lire = (v: string | undefined): Plafond => v === undefined ? propre : v === '' ? null : grades.includes(v) ? grades.indexOf(v) : propre;
-  return { tout: false, consulter: lire(enregistres?.consulter), creer: lire(enregistres?.creer), modifier: lire(enregistres?.modifier) };
+// droits d'un compte ; une clé de grade supprimée est ignorée jusqu'au nettoyage de sa ligne
+export function droitsAgenda(grades: readonly string[], gradeCle: string | null, proprietaire: boolean, enregistres: DroitsEnregistres): DroitsAgenda {
+  if (proprietaire) return { tout: true, consulter: [...grades], creer: [...grades], modifier: [...grades], consulterTous: true, gererTous: true };
+  const lire = (v: string[] | undefined): string[] => Array.isArray(v) ? [...new Set(v.filter(cle => grades.includes(cle)))] : [];
+  if (!gradeCle || !grades.includes(gradeCle)) return { tout: false, consulter: [], creer: [], modifier: [], consulterTous: true, gererTous: false };
+  return {
+    tout: false,
+    consulter: lire(enregistres?.consulter),
+    creer: lire(enregistres?.creer),
+    modifier: lire(enregistres?.modifier),
+    consulterTous: enregistres?.consulterTous ?? false,
+    gererTous: enregistres?.modifierTous ?? false,
+  };
 }
 
-// le plafond atteint-il cette destination ? Un grade disparu compte comme le sommet (personne ne le voit plus par erreur).
-export function atteint(plafond: Plafond, destination: string, destinationGrade: string | null, grades: readonly string[]): boolean {
-  if (plafond === null) return false;
-  if (destination === 'tous') return true;
-  if (destination !== 'grade') return false;
-  const r = destinationGrade ? grades.indexOf(destinationGrade) : -1;
-  return Math.max(r, 0) >= plafond;
-}
+const droitSurGrade = (autorisations: readonly string[], destination: string, destinationGrade: string | null): boolean =>
+  destination === 'grade' && !!destinationGrade && autorisations.includes(destinationGrade);
 
 export type EvenementVu = { compteId: number | null; destination: string; destinationGrade: string | null; cibleDiscordId: string | null };
 export type Lecteur = { id: number; discordId: string | null };
 
-export function voit(e: EvenementVu, moi: Lecteur, d: DroitsAgenda, grades: readonly string[]): boolean {
+export function voit(e: EvenementVu, moi: Lecteur, d: DroitsAgenda, _grades: readonly string[]): boolean {
   if (e.compteId === moi.id) return true;
   if (e.destination === 'perso') return !!moi.discordId && e.cibleDiscordId === moi.discordId;
-  if (e.destination === 'tous') return true;
-  return d.tout || atteint(d.consulter, e.destination, e.destinationGrade, grades);
+  if (e.destination === 'tous') return d.tout || d.consulterTous;
+  return d.tout || droitSurGrade(d.consulter, e.destination, e.destinationGrade);
 }
 
-export function modifiable(e: EvenementVu, moi: Lecteur, d: DroitsAgenda, grades: readonly string[]): boolean {
+export function modifiable(e: EvenementVu, moi: Lecteur, d: DroitsAgenda, _grades: readonly string[]): boolean {
   if (e.compteId === moi.id) return true;
   if (e.destination === 'perso') return false;
-  return d.tout || atteint(d.modifier, e.destination, e.destinationGrade, grades);
+  if (e.destination === 'tous') return d.tout || (d.consulterTous && d.gererTous);
+  return d.tout || droitSurGrade(d.modifier, e.destination, e.destinationGrade);
 }
 
 // créer (ou déplacer un événement vers) cette destination ; « perso » pour soi : toujours
-export const peutCreer = (d: DroitsAgenda, destination: Destination, destinationGrade: string | null, grades: readonly string[]): boolean =>
-  destination === 'perso' || d.tout || atteint(d.creer, destination, destinationGrade, grades);
+export const peutCreer = (d: DroitsAgenda, destination: Destination, destinationGrade: string | null, _grades: readonly string[]): boolean =>
+  destination === 'perso' || d.tout || (destination === 'tous' ? d.consulterTous && d.gererTous : droitSurGrade(d.creer, destination, destinationGrade));
 
-// « Perso » pour quelqu'un d'autre : sa personne doit être dans ce qu'on peut créer (grade inconnu : le bas de l'échelle)
+// « Perso » pour quelqu'un d'autre : son grade exact doit être autorisé à la création.
 export function peutCreerPour(d: DroitsAgenda, gradeCible: string | null, grades: readonly string[]): boolean {
   if (d.tout) return true;
-  if (d.creer === null) return false;
-  const r = gradeCible ? grades.indexOf(gradeCible) : -1;
-  return (r < 0 ? grades.length : r) >= d.creer;
+  return !!gradeCible && grades.includes(gradeCible) && d.creer.includes(gradeCible);
 }
 
-// plafond qu'un acteur peut donner à un grade : jamais au-dessus de son propre grade (anti-escalade, comme les permissions)
-export function plafondAccordable(cle: string, grades: readonly string[], gradeActeur: string | null, proprietaire: boolean): boolean {
-  if (cle === '') return true;
+// Un acteur ne peut accorder des droits qu'à son propre grade ou à un grade inférieur.
+export function gradeAccordable(cle: string, grades: readonly string[], gradeActeur: string | null, proprietaire: boolean): boolean {
   if (!grades.includes(cle)) return false;
   if (proprietaire) return true;
   return !!gradeActeur && grades.includes(gradeActeur) && grades.indexOf(cle) >= grades.indexOf(gradeActeur);
 }
+
+export const droitsInclusDansConsultation = (consulter: readonly string[], droits: readonly string[]): boolean =>
+  droits.every(cle => consulter.includes(cle));
 
 // « 2026-10-08 », « 14:30 », heure de Paris (celle de l'agence, heure d'été comprise) → instant réel
 export function parisVersDate(jour: string, heure: string): Date {

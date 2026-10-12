@@ -38,6 +38,7 @@
     <div class="modale modale-grade" role="dialog" aria-modal="true" aria-labelledby="titre-modale">
       <div class="modale-entete"><h2 id="titre-modale" class="modale-titre">Nouveau grade</h2><button type="button" id="fermer" aria-label="Fermer">✕</button></div>
       <form id="form" novalidate>
+        <div class="grade-corps">
         <div class="grade-identite">
           <div class="champ">
             <label for="libelle">Nom du grade</label>
@@ -56,27 +57,43 @@
           <p class="champ-aide" id="role-aide-bot"></p>
           <p class="champ-aide" id="role-aide">Qui porte ce rôle reçoit ce grade à sa connexion, et est validé d’office.<span class="role-aide-identifiant"> Identifiant : Discord → Paramètres du serveur → Rôles → clic droit sur le rôle → « Copier l’identifiant ».</span></p>
         </div>
-        <fieldset class="grade-permissions cache" id="agenda-droits">
-          <legend>Agenda</legend>
-          <p class="champ-aide" style="margin:0 0 6px;">Choisissez jusqu’où ce grade peut consulter, créer et modifier les événements. « Aucun » ferme cet accès, y compris aux événements « Tout le monde ».</p>
-          <div class="champ">
-            <label for="agenda-consulter">Consulter jusqu’au grade</label>
-            <select id="agenda-consulter"></select>
-          </div>
-          <div class="champ">
-            <label for="agenda-creer">Créer jusqu’au grade</label>
-            <select id="agenda-creer"></select>
-          </div>
-          <div class="champ">
-            <label for="agenda-modifier">Modifier jusqu’au grade</label>
-            <select id="agenda-modifier"></select>
-          </div>
-        </fieldset>
         <fieldset class="grade-permissions">
           <legend>Ce que ce grade peut faire</legend>
           <p class="champ-aide" style="margin:0 0 6px;">Vous ne pouvez accorder que ce que vous pouvez faire vous-même.</p>
           <div id="cases"></div>
         </fieldset>
+        <template id="agenda-droits-modele">
+          <section class="grade-agenda-reglages cache" id="agenda-droits" aria-label="Droits sur les événements de l’agenda">
+            <p class="champ-aide grade-agenda-intro">Les événements personnels restent visibles uniquement à leur auteur et à la personne concernée.</p>
+            <section class="grade-agenda-partage" aria-labelledby="titre-agenda-tous">
+              <h4 id="titre-agenda-tous">Événements pour toute l’équipe</h4>
+              <div class="grade-agenda-choix">
+                <label class="grade-permission">
+                  <input type="checkbox" id="agenda-consulter-tous">
+                  <span><strong>Consulter</strong><small>Voir les événements partagés avec toute l’équipe.</small></span>
+                </label>
+                <label class="grade-permission">
+                  <input type="checkbox" id="agenda-gerer-tous">
+                  <span><strong>Créer et modifier</strong><small>Créer, modifier ou supprimer les événements partagés avec toute l’équipe.</small></span>
+                </label>
+              </div>
+            </section>
+            <section class="grade-agenda-partage" aria-labelledby="titre-agenda-grade">
+              <h4 id="titre-agenda-grade">Événements adressés à un grade</h4>
+              <p class="champ-aide">Chaque case concerne uniquement les événements destinés au grade indiqué. Modifier et créer nécessitent aussi l’accès en consultation.</p>
+              <div class="grade-agenda-matrice">
+                <div class="grade-agenda-entete">
+                  <strong>Grade destinataire</strong>
+                  <div><strong>Consulter</strong><label><input type="checkbox" data-agenda-tous="consulter" aria-label="Consulter les événements de tous les grades"><span>Tous</span></label></div>
+                  <div><strong>Modifier</strong><label><input type="checkbox" data-agenda-tous="modifier" aria-label="Modifier les événements de tous les grades"><span>Tous</span></label></div>
+                  <div><strong>Créer</strong><label><input type="checkbox" data-agenda-tous="creer" aria-label="Créer des événements pour tous les grades"><span>Tous</span></label></div>
+                </div>
+                <div id="agenda-grades"></div>
+              </div>
+            </section>
+          </section>
+        </template>
+        </div>
         <div id="zone-message-modale" role="status"></div>
         <div class="grade-pied">
           <button type="button" class="btn btn-fantome grade-supprimer cache" id="supprimer">Supprimer le grade</button>
@@ -88,7 +105,7 @@
   </div>
   <script src="/gestion/vendor/Sortable.min.js"></script>
   <script>
-    let moi, grades = [], permissions = [], droitsAgenda = [], edition = null, effectifs = null, ouvreur = null;
+    let moi, grades = [], permissions = [], droitsAgenda = [], edition = null, nouveauCleMatrice = null, gradeCreeEnCours = false, effectifs = null, ouvreur = null;
     // rôles du serveur Discord, lus sur Discord (vide sans DISCORD_BOT_TOKEN : l'identifiant se saisit à la main)
     let roles = [];
     const nomRole = id => roles.find(r => r.id === id)?.nom;
@@ -132,21 +149,89 @@
       }).join('') : '<li class="grades-vide">Aucun grade pour le moment : créez le premier, le plus haut, avec « + Nouveau grade ».</li>';
     }
 
+    function actualiserDroitsEquipe() {
+      const propres = droitsAgenda.find(d => d.grade === moi.grade?.cle);
+      const peutConsulter = moi.proprietaire || !!propres?.consulter_tous;
+      const peutGerer = moi.proprietaire || !!propres?.gerer_tous;
+      $('agenda-consulter-tous').disabled = !peutConsulter && !$('agenda-consulter-tous').checked;
+      $('agenda-gerer-tous').disabled = !peutGerer && !$('agenda-gerer-tous').checked;
+    }
+
     function afficherDroitsAgenda(g) {
       const boite = $('agenda-droits');
-      boite.classList.toggle('cache', !g || !gerable(g));
-      if (!g || !gerable(g)) return;
-      const enregistres = droitsAgenda.find(d => d.grade === g.cle);
-      const options = grades
-        .filter(x => moi.proprietaire || rang(x.cle) >= rang(moi.grade?.cle))
-        .map(x => `<option value="${echapper(x.cle)}">${echapper(x.libelle)}</option>`)
-        .join('');
-      for (const cle of ['consulter', 'creer', 'modifier']) {
-        const select = $(`agenda-${cle}`);
-        select.innerHTML = `<option value="">Aucun</option>${options}`;
-        select.value = enregistres?.[cle] ?? g.cle;
-      }
+      boite.classList.toggle('cache', !!g && !gerable(g));
+      if (g && !gerable(g)) return;
+      const enregistres = g ? droitsAgenda.find(d => d.grade === g.cle) : null;
+      $('agenda-consulter-tous').checked = enregistres?.consulter_tous ?? false;
+      $('agenda-gerer-tous').checked = enregistres?.gerer_tous ?? false;
+      const gradesAccordables = grades.filter(x => moi.proprietaire || rang(x.cle) >= rang(moi.grade?.cle));
+      if (!g) gradesAccordables.push({ cle: '__nouveau_grade__', libelle: 'Ce nouveau grade' });
+      const droits = { consulter: enregistres?.consulter ?? [], modifier: enregistres?.modifier ?? [], creer: enregistres?.creer ?? [] };
+      $('agenda-grades').innerHTML = gradesAccordables.map(x => `<div class="grade-agenda-ligne" role="group" aria-label="Droits pour les événements du grade ${echapper(x.libelle)}" data-grade="${echapper(x.cle)}">
+        <strong>${echapper(x.libelle)}</strong>
+        ${['consulter', 'modifier', 'creer'].map(action => `<label><input type="checkbox" data-agenda-action="${action}" data-grade="${echapper(x.cle)}" aria-label="${action === 'consulter' ? 'Consulter' : action === 'modifier' ? 'Modifier' : 'Créer'} les événements du grade ${echapper(x.libelle)}" ${droits[action].includes(x.cle) ? 'checked' : ''}><span>${action === 'consulter' ? 'Consulter' : action === 'modifier' ? 'Modifier' : 'Créer'}</span></label>`).join('')}
+      </div>`).join('');
+      actualiserMatriceAgenda();
+      actualiserDroitsEquipe();
     }
+
+    function actualiserMatriceAgenda() {
+      for (const action of ['consulter', 'modifier', 'creer']) {
+        const cases = [...$('agenda-grades').querySelectorAll(`[data-agenda-action="${action}"]`)];
+        const tout = $(`agenda-droits`).querySelector(`[data-agenda-tous="${action}"]`);
+        const coches = cases.filter(c => c.checked).length;
+        tout.checked = cases.length > 0 && coches === cases.length;
+        tout.indeterminate = coches > 0 && coches < cases.length;
+      }
+      $('agenda-grades').querySelectorAll('[data-agenda-action="modifier"], [data-agenda-action="creer"]').forEach(input => {
+        input.disabled = !$('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(input.dataset.grade)}"]`).checked;
+        input.closest('label').classList.toggle('is-disabled', input.disabled);
+      });
+    }
+
+    $('form').addEventListener('change', async e => {
+      if (e.target.id === 'agenda-consulter-tous') {
+        if (!$('agenda-consulter-tous').checked) $('agenda-gerer-tous').checked = false;
+        actualiserDroitsEquipe();
+      }
+      if (e.target.id === 'agenda-gerer-tous') {
+        if ($('agenda-gerer-tous').checked) $('agenda-consulter-tous').checked = true;
+        actualiserDroitsEquipe();
+      }
+      const input = e.target.closest('[data-agenda-action], [data-agenda-tous]');
+      if (!input) return;
+      const action = input.dataset.agendaAction || input.dataset.agendaTous;
+      const cle = input.dataset.grade;
+      if (action === 'consulter' && !input.checked && cle) {
+        const dependantes = [...$('agenda-grades').querySelectorAll(`[data-grade="${CSS.escape(cle)}"][data-agenda-action="modifier"], [data-grade="${CSS.escape(cle)}"][data-agenda-action="creer"]`)];
+        if (dependantes.some(c => c.checked)) {
+          const confirmer = await gestion.confirmer('Retirer la consultation supprimera aussi les droits de modification et de création pour ce grade.', 'Retirer l’accès à l’agenda ?', 'Retirer ces droits');
+          if (!confirmer) input.checked = true;
+          else dependantes.forEach(c => { c.checked = false; });
+        }
+      }
+      if ((action === 'modifier' || action === 'creer') && input.checked && cle) {
+        $('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(cle)}"]`).checked = true;
+      }
+      if (input.matches('[data-agenda-tous]')) {
+        const coches = [...$('agenda-grades').querySelectorAll(`[data-agenda-action="${action}"]`)];
+        if (action === 'consulter' && !input.checked) {
+          const dependantes = [...$('agenda-grades').querySelectorAll('[data-agenda-action="modifier"]:checked, [data-agenda-action="creer"]:checked')];
+          if (dependantes.length && !await gestion.confirmer('Retirer la consultation supprimera aussi les droits de modification et de création associés.', 'Retirer l’accès à l’agenda ?', 'Retirer ces droits')) input.checked = true;
+          else dependantes.forEach(c => { c.checked = false; });
+        }
+        coches.forEach(c => { c.checked = input.checked; });
+        if (action === 'modifier' || action === 'creer') {
+          coches.filter(c => c.checked).forEach(c => {
+            $('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(c.dataset.grade)}"]`).checked = true;
+          });
+        }
+      }
+      $('agenda-grades').querySelectorAll('[data-agenda-action="modifier"], [data-agenda-action="creer"]').forEach(c => {
+        c.disabled = !$('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(c.dataset.grade)}"]`).checked;
+      });
+      actualiserMatriceAgenda();
+    });
 
     // ordre : glisser-déposer (Sortable) ou flèches sur la poignée ; le serveur refuse un ordre qui toucherait un grade
     // au-dessus du sien, la liste revient alors à l'ordre enregistré
@@ -179,6 +264,8 @@
     function ouvrir(g) {
       ouvreur = document.activeElement;
       edition = g?.cle ?? null;
+      nouveauCleMatrice = null;
+      gradeCreeEnCours = false;
       $('titre-modale').textContent = g ? g.libelle : 'Nouveau grade';
       $('enregistrer').textContent = g ? 'Enregistrer' : 'Créer le grade';
       $('supprimer').classList.toggle('cache', !g);
@@ -200,13 +287,14 @@
       $('cases').innerHTML = groupes.map(([nom, cles]) => {
         const liste = cles.map(c => permissions.find(p => p.cle === c)).filter(Boolean);
         if (!liste.length) return '';
+        const reglageAgenda = nom === 'Agenda' ? $('agenda-droits-modele').innerHTML : '';
         return `<div class="grade-domaine"><h3>${echapper(nom)}</h3>${liste.map(p => {
           const detenue = socle.peut(moi, p.cle);
           return `<label class="grade-permission${detenue ? '' : ' interdite'}">
             <input type="checkbox" value="${echapper(p.cle)}" ${detenue ? '' : 'disabled'} ${g?.permissions.includes(p.cle) ? 'checked' : ''}>
             <span><strong>${echapper(p.libelle)}</strong><small>${echapper(p.description || '')}${detenue ? '' : ' (vous ne l’avez pas)'}</small></span>
           </label>`;
-        }).join('')}</div>`;
+        }).join('')}${reglageAgenda}</div>`;
       }).join('');
       afficherDroitsAgenda(g);
       gestion.message('zone-message-modale', '');
@@ -250,7 +338,18 @@
     $('fermer').addEventListener('click', fermer);
     $('annuler').addEventListener('click', fermer);
     $('modale-grade').addEventListener('click', e => { if (e.target.id === 'modale-grade') fermer(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modale-grade').classList.contains('cache') && !document.querySelector('[role="alertdialog"]')) fermer(); });
+    document.addEventListener('keydown', e => {
+      const modale = $('modale-grade');
+      if (modale.classList.contains('cache') || document.querySelector('[role="alertdialog"]')) return;
+      if (e.key === 'Escape') { fermer(); return; }
+      if (e.key !== 'Tab') return;
+      const focusables = [...modale.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+        .filter(el => !el.disabled && el.offsetParent !== null);
+      if (!focusables.length) return;
+      const premier = focusables[0], dernier = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === premier) { e.preventDefault(); dernier.focus(); }
+      else if (!e.shiftKey && document.activeElement === dernier) { e.preventDefault(); premier.focus(); }
+    });
 
     $('supprimer').addEventListener('click', async () => {
       const g = grades.find(x => x.cle === edition);
@@ -271,19 +370,38 @@
       if (!$('libelle').value.trim()) { $('erreur-libelle').classList.remove('cache'); $('libelle').focus(); return; }
       const corps = {
         libelle: $('libelle').value.trim(), couleur: $('couleur').value, roleDiscordId: roles.length ? $('role-liste').value : $('role').value.trim(),
-        permissions: [...document.querySelectorAll('#cases input:checked')].map(c => c.value),
+        permissions: [...document.querySelectorAll('#cases input[type="checkbox"][value]:checked')].map(c => c.value),
       };
       try {
-        const cleModifiee = edition;
-        grades = edition
-          ? await socle.api(`/api/grades/${encodeURIComponent(edition)}`, { method: 'PATCH', body: corps })
-          : await socle.api('/api/grades', { method: 'POST', body: corps });
-        if (cleModifiee) {
-          const droits = Object.fromEntries(['consulter', 'creer', 'modifier'].map(cle => [cle, $(`agenda-${cle}`).value]));
-          await socle.api(`/api/agenda/droits-grades/${encodeURIComponent(cleModifiee)}`, { method: 'PUT', body: droits });
+        const creation = !edition;
+        const clesAvant = new Set(grades.map(g => g.cle));
+        grades = creation
+          ? await socle.api('/api/grades', { method: 'POST', body: corps })
+          : await socle.api(`/api/grades/${encodeURIComponent(edition)}`, { method: 'PATCH', body: corps });
+        if (creation) {
+          const cree = grades.find(g => !clesAvant.has(g.cle));
+          if (!cree) throw new Error('Le grade a été créé, mais ses droits d’agenda n’ont pas pu être associés. Actualisez la page puis modifiez ce grade.');
+          edition = nouveauCleMatrice = cree.cle;
+          gradeCreeEnCours = true;
+          $('titre-modale').textContent = cree.libelle;
+          $('enregistrer').textContent = 'Enregistrer';
+          $('supprimer').classList.remove('cache');
         }
+        const selection = action => [...$('agenda-grades').querySelectorAll(`[data-agenda-action="${action}"]:checked`)]
+          .map(c => c.dataset.grade === '__nouveau_grade__' ? nouveauCleMatrice : c.dataset.grade).filter(Boolean);
+        const droits = {
+          consulter: selection('consulter'),
+          modifier: selection('modifier'),
+          creer: selection('creer'),
+          consulter_tous: $('agenda-consulter-tous').checked,
+          gerer_tous: $('agenda-gerer-tous').checked,
+        };
+        await socle.api(`/api/agenda/droits-grades/${encodeURIComponent(edition)}`, { method: 'PUT', body: droits });
+        const libelle = grades.find(g => g.cle === edition)?.libelle ?? corps.libelle;
         fermer();
-        gestion.notifier(edition ? `Grade « ${corps.libelle} » enregistré ✓` : `Grade « ${corps.libelle} » créé ✓`);
+        gestion.notifier(gradeCreeEnCours ? `Grade « ${libelle} » créé ✓` : `Grade « ${libelle} » enregistré ✓`);
+        gradeCreeEnCours = false;
+        nouveauCleMatrice = null;
         charger();
       } catch (err) { gestion.message('zone-message-modale', err.message); }
     });

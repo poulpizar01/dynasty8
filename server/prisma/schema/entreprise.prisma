@@ -142,13 +142,15 @@ model TypeAgenda {
   @@map("agenda_types")
 }
 
-// Plafonds d'agenda d'un grade (page Grades) : jusqu'à quel grade il consulte, crée et modifie les événements destinés
-// à un grade. Valeur : clé d'un grade, '' = aucun ; pas de ligne ou grade disparu = son propre grade.
+// Accès à l'agenda par grade (page Grades). Chaque liste contient les grades destinataires exacts autorisés.
+// Pour l'équipe, la consultation est distincte du droit combiné de créer, modifier et supprimer.
 model AgendaDroitsGrade {
-  gradeCle  String @id @map("grade") @db.VarChar(20)
-  consulter String @default("") @db.VarChar(20)
-  creer     String @default("") @db.VarChar(20)
-  modifier  String @default("") @db.VarChar(20)
+  gradeCle      String   @id @map("grade") @db.VarChar(20)
+  consulter     String[] @default([])
+  creer         String[] @default([])
+  modifier      String[] @default([])
+  consulterTous Boolean  @default(true) @map("consulter_tous")
+  modifierTous  Boolean  @default(true) @map("modifier_tous")
 
   @@map("agenda_droits_grades")
 }

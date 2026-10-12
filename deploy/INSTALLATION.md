@@ -204,7 +204,7 @@ Dans `/opt/dynasty8` :
 - [ ] redirection Discord ajoutée ; bot invité avec ses droits
 - [ ] propriétaire connecté en premier ; grades créés et liés à leurs rôles
 - [ ] Paramètres : quatre onglets renseignés (dont les quatre présentations, le Google Sheets partagé, la WebMap, la clôture automatique des services et les catégories de tickets)
-- [ ] Droits de l'agenda réglés pour chaque grade dans **Grades**
+- [ ] Droits de l'agenda réglés pour chaque grade dans **Grades** : événements d'équipe, puis événements adressés à un grade
 - [ ] Comptabilité → Rémunération et paliers de primes ; Ressources humaines → recrutement réglé
 - [ ] webhooks « Candidatures » et « Prises et fins de service » créés ; leurs secrets sont dans `BOT_WEBHOOK_SECRETS`
 - [ ] `STATS_BOT_SECRET` transmis en privé au bot de ventes

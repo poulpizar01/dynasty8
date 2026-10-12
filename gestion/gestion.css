@@ -429,6 +429,7 @@ main.admin-contenu:focus { outline: none; }
   .annonce-pied { flex-wrap: wrap; }
   .annonce-pied { padding-top: 12px; padding-bottom: 12px; }
   .annonce-pied .btn-or { order: -1; flex-basis: 100%; }   /* l action principale d abord, sur toute la largeur */
+  .annonce-pied .annonce-supprimer:not(.cache) { margin-right: auto !important; }
   .annonce-pied .btn { min-height: 44px; }
 }
 /* la règle générale « label » du site (petites majuscules espacées) ne s'applique pas aux cartes ni aux interrupteurs */
@@ -906,7 +907,21 @@ button.grades-poignee:focus-visible { outline: 2px solid var(--d8-gold-300); out
 .grades-vide { padding: 22px 16px; border: 1px dashed var(--border); border-radius: var(--radius); text-align: center; color: var(--text-faint); }
 .grades-note { margin-top: 14px; }
 
-.modale.modale-grade { max-width: 640px; }
+.modale.modale-grade {
+  display: flex; flex-direction: column; max-width: 920px; height: min(88vh, 900px); max-height: calc(100dvh - 40px);
+  overflow: hidden; padding: 0;
+}
+.modale-grade > .modale-entete { flex: 0 0 auto; margin: 0; padding: 22px 32px 14px; border-bottom: 1px solid var(--border); }
+.modale-grade > form { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; }
+.grade-corps {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 18px 32px 14px; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(201, 165, 92, 0.36) transparent;
+}
+.grade-corps::-webkit-scrollbar { width: 7px; }
+.grade-corps::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(201, 165, 92, 0.36); }
+.modale-grade > #form > #zone-message-modale { flex: 0 0 auto; margin: 0 32px; }
+.modale-grade > #form > #zone-message-modale:empty { display: none; }
+.modale-grade > #form > .grade-pied { flex: 0 0 auto; margin: 0 32px; padding: 12px 0 20px; background: var(--bg-card); }
 .modale-grade label, .modale-grade legend { text-transform: none; letter-spacing: 0; }
 .modale-grade .champ label { display: block; margin-bottom: 6px; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
 .modale-grade .champ label small { font-weight: 400; color: var(--text-faint); }
@@ -914,7 +929,7 @@ button.grades-poignee:focus-visible { outline: 2px solid var(--d8-gold-300); out
 .grade-couleur input { width: 100%; height: 48px; padding: 4px; }
 .grade-permissions { margin: 4px 0 14px; padding: 0; border: 0; }
 .grade-permissions legend { margin-bottom: 4px; font-size: 1rem; font-weight: 500; color: var(--text); }
-.grade-domaine { margin-top: 12px; }
+.grade-domaine { margin-top: 16px; }
 .grade-domaine h3 { margin: 0 0 4px; font-family: var(--d8-font-ui); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.04em; color: var(--gold-strong); }
 .grade-permission { display: flex; align-items: flex-start; gap: 12px; padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; }
 .grade-permission:hover { background: rgba(201, 165, 92, 0.06); }
@@ -922,9 +937,42 @@ button.grades-poignee:focus-visible { outline: 2px solid var(--d8-gold-300); out
 .grade-permission strong { display: block; font-weight: 500; color: var(--text); font-size: 0.92rem; }
 .grade-permission small { display: block; font-size: 0.8rem; color: var(--text-faint); }
 .grade-permission.interdite { opacity: 0.5; cursor: not-allowed; }
+.grade-agenda-reglages { margin: 8px 10px 4px; padding: 10px 0 0; border-top: 1px solid var(--border); }
+.grade-agenda-intro { margin: 0 0 8px; }
+.grade-agenda-partage { margin: 10px 0 12px; }
+.grade-agenda-partage h4 { margin: 0 0 4px; font-family: var(--d8-font-ui); font-size: 0.82rem; font-weight: 600; color: var(--gold-strong); }
+.grade-agenda-partage > .champ-aide { margin: 0 0 6px; }
+.grade-agenda-choix { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.grade-agenda-choix .grade-permission { padding: 8px 4px; }
+.grade-agenda-matrice { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.grade-agenda-entete, .grade-agenda-ligne { display: grid; grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(120px, 1fr)); align-items: center; gap: 4px; padding: 6px 10px; }
+.grade-agenda-entete { background: rgba(201, 165, 92, 0.07); border-bottom: 1px solid var(--border); }
+.grade-agenda-entete > div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.grade-agenda-entete > strong { align-self: start; padding-top: 6px; }
+.grade-agenda-entete strong, .grade-agenda-ligne > strong { min-width: 0; overflow-wrap: anywhere; color: var(--text); font-size: 0.82rem; font-weight: 600; }
+.grade-agenda-entete label, .grade-agenda-ligne label { display: flex; min-height: 44px; align-items: center; justify-content: center; gap: 6px; padding: 4px; border-radius: var(--radius-sm); color: var(--text-faint); font-size: 0.75rem; text-align: center; cursor: pointer; }
+.grade-agenda-entete label:hover, .grade-agenda-ligne label:hover { background: rgba(201, 165, 92, 0.07); }
+.grade-agenda-entete input, .grade-agenda-ligne input { width: 18px; height: 18px; margin: 0; flex: 0 0 auto; accent-color: var(--d8-gold-400); }
+.grade-agenda-entete label { flex-direction: column; gap: 0; }
+.grade-agenda-ligne label { position: relative; }
+.grade-agenda-ligne label span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.grade-agenda-ligne { border-bottom: 1px solid var(--border); }
+.grade-agenda-ligne:last-child { border-bottom: 0; }
+.grade-agenda-ligne > strong { font-weight: 500; }
+.grade-agenda-ligne label.is-disabled { opacity: 0.45; cursor: not-allowed; }
 .grade-pied { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; padding-top: 14px; border-top: 1px solid var(--border); }
 .grade-pied .grade-supprimer { margin-right: auto; color: var(--danger-strong); border-color: rgba(232, 83, 74, 0.35); }
-@media (max-width: 640px) {
+@media (max-width: 760px) {
+  .modale-fond#modale-grade { padding: 0; }
+  .modale.modale-grade { height: 100vh; height: 100dvh; max-height: none; max-width: none; border: 0; border-radius: 0; }
+  .modale-grade > .modale-entete { padding: 16px 18px 12px; }
+  .grade-corps { padding: 14px 18px 10px; }
+  .modale-grade > #form > #zone-message-modale { margin: 0 18px; }
+  .modale-grade > #form > .grade-pied { gap: 8px; margin: 0 18px; padding: 10px 0 14px; }
+  .grade-agenda-entete, .grade-agenda-ligne { grid-template-columns: minmax(75px, 1fr) repeat(3, minmax(68px, 1fr)); gap: 2px; padding: 5px 4px; }
+  .grade-agenda-entete label, .grade-agenda-ligne label { flex-direction: column; gap: 2px; padding: 4px 2px; font-size: 0.75rem; }
+  .grade-agenda-entete strong { font-size: 0.75rem; }
+  .grade-agenda-ligne label span { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }
   /* téléphone : le nom et la flèche, puis les étiquettes, puis l’effectif */
   .grades-principal { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 10px; }
   .grades-nom { min-width: 0; }

@@ -2,32 +2,59 @@
 // Une erreur ici ouvrirait un événement de direction à tout le monde sans rien d'anormal à l'écran.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { choisirTicket, droitsAgenda, modifiable, parisVersDate, peutCreer, peutCreerPour, plafondAccordable, voit } from '../src/entreprise/agenda-regles.js';
+import { choisirTicket, droitsAgenda, droitsInclusDansConsultation, gradeAccordable, modifiable, parisVersDate, peutCreer, peutCreerPour, voit } from '../src/entreprise/agenda-regles.js';
 
 const GRADES = ['patron', 'directeur', 'manager', 'agent'];   // du sommet à la base
 const ev = (destination: string, destinationGrade: string | null = null, compteId: number | null = 99, cibleDiscordId: string | null = null) =>
   ({ compteId, destination, destinationGrade, cibleDiscordId });
 const MOI = { id: 1, discordId: '411111111111111111' };
 
-test('par défaut : son grade et ceux en dessous', () => {
+test('les nouvelles règles n’accordent aucun droit de grade par défaut', () => {
   const d = droitsAgenda(GRADES, 'manager', false, null);
-  assert.equal(voit(ev('grade', 'manager'), MOI, d, GRADES), true);
-  assert.equal(voit(ev('grade', 'agent'), MOI, d, GRADES), true);
-  assert.equal(voit(ev('grade', 'directeur'), MOI, d, GRADES), false, 'un événement de direction reste fermé');
-  assert.equal(voit(ev('tous'), MOI, d, GRADES), true);
-  assert.equal(modifiable(ev('grade', 'agent'), MOI, d, GRADES), true);
+  assert.equal(voit(ev('grade', 'manager'), MOI, d, GRADES), false);
+  assert.equal(voit(ev('grade', 'agent'), MOI, d, GRADES), false);
+  assert.equal(voit(ev('tous'), MOI, d, GRADES), false);
+  assert.equal(modifiable(ev('grade', 'agent'), MOI, d, GRADES), false);
   assert.equal(peutCreer(d, 'grade', 'directeur', GRADES), false);
-  assert.equal(peutCreer(d, 'tous', null, GRADES), true);
+  assert.equal(peutCreer(d, 'tous', null, GRADES), false);
 });
 
-test('plafonds réglés : plus haut, plus bas, aucun', () => {
-  const d = droitsAgenda(GRADES, 'agent', false, { consulter: 'directeur', creer: '', modifier: 'agent' });
+test('les droits par grade ne s’étendent pas aux grades voisins', () => {
+  const d = droitsAgenda(GRADES, 'agent', false, { consulter: ['directeur', 'agent'], creer: ['agent'], modifier: ['agent'] });
   assert.equal(voit(ev('grade', 'directeur'), MOI, d, GRADES), true);
+  assert.equal(voit(ev('grade', 'manager'), MOI, d, GRADES), false);
   assert.equal(voit(ev('grade', 'patron'), MOI, d, GRADES), false);
-  assert.equal(peutCreer(d, 'tous', null, GRADES), false, '« aucun » : pas même « Tout le monde »');
+  assert.equal(peutCreer(d, 'tous', null, GRADES), false, 'les droits ciblés par grade ne débloquent pas l’équipe entière');
   assert.equal(peutCreer(d, 'perso', null, GRADES), true, 'son agenda personnel reste à soi');
   assert.equal(modifiable(ev('grade', 'manager'), MOI, d, GRADES), false);
   assert.equal(modifiable(ev('grade', 'agent'), MOI, d, GRADES), true);
+});
+
+test('événements pour toute l’équipe : consultation distincte du droit de gestion', () => {
+  const partage = ev('tous');
+  const parDefaut = droitsAgenda(GRADES, 'manager', false, null);
+  assert.equal(voit(partage, MOI, parDefaut, GRADES), false);
+  assert.equal(modifiable(partage, MOI, parDefaut, GRADES), false);
+  const equipe = droitsAgenda(GRADES, 'manager', false, {
+    consulter: [], creer: [], modifier: [], consulterTous: true, modifierTous: true,
+  });
+  assert.equal(voit(partage, MOI, equipe, GRADES), true);
+  assert.equal(modifiable(partage, MOI, equipe, GRADES), true);
+  assert.equal(peutCreer(equipe, 'tous', null, GRADES), true);
+  assert.equal(peutCreer(droitsAgenda(GRADES, 'manager', false, { consulter: ['manager'], creer: ['manager'], modifier: ['manager'] }), 'tous', null, GRADES), false, 'créer pour toute l’équipe est un droit distinct');
+
+  const lectureSeule = droitsAgenda(GRADES, 'manager', false, {
+    consulter: ['manager'], creer: ['manager'], modifier: ['manager'], consulterTous: true, modifierTous: false,
+  });
+  assert.equal(voit(partage, MOI, lectureSeule, GRADES), true);
+  assert.equal(modifiable(partage, MOI, lectureSeule, GRADES), false);
+
+  const aucunAcces = droitsAgenda(GRADES, 'manager', false, {
+    consulter: ['manager'], creer: ['manager'], modifier: ['manager'], consulterTous: false, modifierTous: false,
+  });
+  assert.equal(voit(partage, MOI, aucunAcces, GRADES), false);
+  assert.equal(modifiable(partage, MOI, aucunAcces, GRADES), false);
+  assert.equal(voit(ev('grade', 'manager'), MOI, aucunAcces, GRADES), true, 'le réglage ne change pas les événements adressés à un grade');
 });
 
 test('perso, sans grade, grade disparu, propriétaire', () => {
@@ -35,36 +62,41 @@ test('perso, sans grade, grade disparu, propriétaire', () => {
   assert.equal(voit(ev('perso'), MOI, d, GRADES), false, 'le Perso d’un autre reste privé, même au sommet');
   assert.equal(voit(ev('perso', null, 99, MOI.discordId), MOI, d, GRADES), true, 'créé pour moi : je le vois');
   assert.equal(modifiable(ev('perso', null, 99, MOI.discordId), MOI, d, GRADES), false, 'seul son auteur le gère');
-  assert.equal(modifiable(ev('grade', 'patron', MOI.id), MOI, droitsAgenda(GRADES, 'agent', false, { consulter: '', creer: '', modifier: '' }), GRADES), true, 'ses propres événements : toujours');
+  assert.equal(modifiable(ev('grade', 'patron', MOI.id), MOI, droitsAgenda(GRADES, 'agent', false, { consulter: [], creer: [], modifier: [] }), GRADES), true, 'ses propres événements : toujours');
 
   const sans = droitsAgenda(GRADES, null, false, null);
   assert.equal(voit(ev('tous'), MOI, sans, GRADES), true);
   assert.equal(voit(ev('grade', 'agent'), MOI, sans, GRADES), false);
   assert.equal(peutCreer(sans, 'tous', null, GRADES), false);
 
-  assert.equal(voit(ev('grade', 'disparu'), MOI, droitsAgenda(GRADES, 'directeur', false, null), GRADES), false, 'grade supprimé : compté comme le sommet');
-  assert.equal(droitsAgenda(GRADES, 'agent', false, { consulter: 'disparu', creer: 'agent', modifier: 'agent' }).consulter, 3, 'plafond vers un grade disparu : son propre grade');
+  assert.equal(voit(ev('grade', 'disparu'), MOI, droitsAgenda(GRADES, 'directeur', false, null), GRADES), false, 'un grade supprimé ne donne aucun accès');
+  assert.deepEqual(droitsAgenda(GRADES, 'agent', false, { consulter: ['disparu', 'agent'], creer: ['agent'], modifier: ['agent'] }).consulter, ['agent'], 'les clés de grade supprimées sont ignorées');
 
   const proprio = droitsAgenda(GRADES, null, true, null);
   assert.equal(voit(ev('grade', 'patron'), MOI, proprio, GRADES), true);
   assert.equal(peutCreerPour(proprio, 'patron', GRADES), true);
 });
 
-test('Perso pour quelqu’un d’autre : dans la limite de ce qu’on crée', () => {
-  const d = droitsAgenda(GRADES, 'manager', false, null);
+test('Perso pour quelqu’un d’autre : le grade exact doit être autorisé à la création', () => {
+  const d = droitsAgenda(GRADES, 'manager', false, { consulter: ['agent', 'manager'], creer: ['agent'], modifier: ['manager'] });
   assert.equal(peutCreerPour(d, 'agent', GRADES), true);
+  assert.equal(peutCreerPour(d, 'manager', GRADES), false);
   assert.equal(peutCreerPour(d, 'directeur', GRADES), false);
-  assert.equal(peutCreerPour(d, null, GRADES), true, 'fiche sans grade connu : le bas de l’échelle');
-  assert.equal(peutCreerPour(droitsAgenda(GRADES, 'manager', false, { consulter: 'manager', creer: '', modifier: 'manager' }), 'agent', GRADES), false);
+  assert.equal(peutCreerPour(d, null, GRADES), false, 'fiche sans grade connu : refus par défaut');
 });
 
-test('anti-escalade : on ne donne pas un plafond au-dessus de son grade', () => {
-  assert.equal(plafondAccordable('manager', GRADES, 'manager', false), true);
-  assert.equal(plafondAccordable('agent', GRADES, 'manager', false), true);
-  assert.equal(plafondAccordable('directeur', GRADES, 'manager', false), false);
-  assert.equal(plafondAccordable('', GRADES, 'manager', false), true);
-  assert.equal(plafondAccordable('patron', GRADES, null, true), true);
-  assert.equal(plafondAccordable('inconnu', GRADES, null, true), false);
+test('anti-escalade : on ne donne accès qu’à son grade ou aux grades en dessous', () => {
+  assert.equal(gradeAccordable('manager', GRADES, 'manager', false), true);
+  assert.equal(gradeAccordable('agent', GRADES, 'manager', false), true);
+  assert.equal(gradeAccordable('directeur', GRADES, 'manager', false), false);
+  assert.equal(gradeAccordable('patron', GRADES, null, true), true);
+  assert.equal(gradeAccordable('inconnu', GRADES, null, true), false);
+});
+
+test('création et modification doivent être des sous-ensembles de la consultation', () => {
+  assert.equal(droitsInclusDansConsultation(['manager', 'agent'], ['agent']), true);
+  assert.equal(droitsInclusDansConsultation(['manager'], ['agent']), false);
+  assert.equal(droitsInclusDansConsultation([], []), true);
 });
 
 test('heure de Paris, été comme hiver et jours de changement d’heure', () => {

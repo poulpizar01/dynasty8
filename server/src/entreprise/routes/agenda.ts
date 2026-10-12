@@ -1,6 +1,6 @@
 // ENTREPRISE — Agenda de l'espace agents (gestion/agenda.html). Règles dans agenda-regles.ts : un événement est destiné
-// à une personne (« Perso »), à tout le monde, ou à un grade et ceux au-dessus ; chaque grade consulte, crée et modifie
-// jusqu'au grade réglé dans sa fiche (page Grades). Types d'événements : simple classement (nom, couleur), gérés avec la
+// à une personne (« Perso »), à toute l'équipe, ou à un grade précis ; les droits par grade sont réglés dans sa fiche
+// (page Grades). Types d'événements : simple classement (nom, couleur), gérés avec la
 // permission « agenda-types ». L'identité vient toujours de la session ; un événement qu'on ne voit pas répond 404,
 // comme un événement inexistant.
 // « Perso » pour quelqu'un d'autre : son ID Discord est lu dans sa fiche RH ; le bot poste l'événement dans son ticket
@@ -14,7 +14,7 @@ import { appelBot, ErreurDiscord, posterMessage } from '../../socle/discord.js';
 import { auDessusDe, gradeDe, tousLesGrades } from '../../socle/droits.js';
 import { body, couleur, entier, intParam, permission, text, valide } from '../../socle/http.js';
 import { site } from '../../socle/site.js';
-import { choisirTicket, droitsAgenda, estDestination, modifiable, parisVersDate, peutCreer, peutCreerPour, plafondAccordable, voit, type Destination, type DroitsAgenda } from '../agenda-regles.js';
+import { choisirTicket, droitsAgenda, droitsInclusDansConsultation, estDestination, gradeAccordable, modifiable, parisVersDate, peutCreer, peutCreerPour, voit, type Destination, type DroitsAgenda } from '../agenda-regles.js';
 import { idsRegles } from '../parametres.js';
 import { Refus, traiter } from '../refus.js';
 import { nomComplet } from '../rh.js';
@@ -36,9 +36,9 @@ const lecteur = (req: Request) => ({ id: req.compte.id, discordId: req.compte.di
 
 // libellé d'un destinataire, tel que la page l'affiche
 const libelleDestination = (e: Pick<EvenementAgenda, 'destination' | 'destinationGrade' | 'cibleNom'>): string =>
-  e.destination === 'tous' ? 'Tout le monde'
-    : e.destination === 'grade' ? `${gradeDe(e.destinationGrade)?.libelle ?? 'Grade supprimé'} et au-dessus`
-      : e.cibleNom ? e.cibleNom : 'Perso';
+  e.destination === 'tous' ? 'Toute l’équipe'
+    : e.destination === 'grade' ? gradeDe(e.destinationGrade)?.libelle ?? 'Grade supprimé'
+      : e.cibleNom ? `Personnel — ${e.cibleNom}` : 'Personnel — moi uniquement';
 
 const versClient = (e: EvenementAgenda, req: Request, droits: DroitsAgenda) => ({
   id: e.id, titre: e.titre, jour: e.jour.toISOString().slice(0, 10), heure_debut: e.heureDebut, heure_fin: e.heureFin, notes: e.notes,
@@ -157,28 +157,66 @@ agenda.delete('/api/agenda/types/:id', ...permission('agenda-types'), traiter(as
   res.json({ types: await listeTypes() });
 }));
 
-// ---- plafonds par grade (fiche du grade, page Grades) ----
-// effectifs : enregistrés, sinon le grade lui-même ; '' = aucun
+// ---- droits par grade (fiche du grade, page Grades) ----
+// Les événements partagés dans toute l'équipe ont des droits séparés des événements adressés à un grade.
 agenda.get('/api/agenda/droits-grades', ...permission('grades'), async (_req, res) => {
   const lignes = new Map((await prisma.agendaDroitsGrade.findMany()).map(l => [l.gradeCle, l]));
   const grades = clesGrades();
-  const effectif = (v: string | undefined, propre: string) => v === undefined ? propre : v === '' || grades.includes(v) ? v : propre;
   res.json({ droits: grades.map(cle => {
     const l = lignes.get(cle);
-    return { grade: cle, consulter: effectif(l?.consulter, cle), creer: effectif(l?.creer, cle), modifier: effectif(l?.modifier, cle) };
+    const d = droitsAgenda(grades, cle, false, l ?? null);
+    return {
+      grade: cle,
+      consulter: d.consulter, creer: d.creer, modifier: d.modifier,
+      consulter_tous: d.consulterTous, gerer_tous: d.gererTous,
+    };
   }) });
 });
 
-// mêmes règles que les permissions : un grade sous le sien, jamais un plafond au-dessus de son propre grade
+// mêmes règles que les permissions : on ne règle que les grades sous le sien et on ne leur donne pas accès au-dessus.
 agenda.put('/api/agenda/droits-grades/:cle', ...permission('grades'), traiter(async (req, res) => {
   const cle = String(req.params.cle), b = body(req), grades = clesGrades();
   if (!gradeDe(cle)) throw new Refus('Grade introuvable.', 404);
   if (!auDessusDe(req.compte, cle)) throw new Refus('Vous ne gérez que les grades sous le vôtre.', 403);
-  const valeurs = { consulter: String(b.consulter ?? ''), creer: String(b.creer ?? ''), modifier: String(b.modifier ?? '') };
-  for (const v of Object.values(valeurs)) {
-    if (!plafondAccordable(v, grades, req.compte.gradeCle, req.compte.proprietaire)) throw new Refus('Vous ne pouvez pas ouvrir l’agenda au-dessus de votre propre grade.', 403);
+  const lireListe = (valeur: unknown, champ: string): string[] => {
+    if (!Array.isArray(valeur) || valeur.some(cle => typeof cle !== 'string') || new Set(valeur).size !== valeur.length) {
+      throw new Refus(`La sélection « ${champ} » est invalide.`);
+    }
+    const liste = valeur as string[];
+    if (liste.some(cle => !gradeAccordable(cle, grades, req.compte.gradeCle, req.compte.proprietaire))) {
+      throw new Refus('Vous ne pouvez pas ouvrir l’agenda au-dessus de votre propre grade.', 403);
+    }
+    return liste;
+  };
+  const valeurs = {
+    consulter: lireListe(b.consulter, 'Consulter'),
+    creer: lireListe(b.creer, 'Créer'),
+    modifier: lireListe(b.modifier, 'Modifier'),
+  };
+  if (typeof b.consulter_tous !== 'boolean' || typeof b.gerer_tous !== 'boolean') {
+    throw new Refus('Choisissez les droits de consultation et de gestion pour toute l’équipe.');
   }
-  await prisma.agendaDroitsGrade.upsert({ where: { gradeCle: cle }, create: { gradeCle: cle, ...valeurs }, update: valeurs });
+  const consulterTous = b.consulter_tous, gererTous = b.gerer_tous;
+  if (gererTous && !consulterTous) throw new Refus('Pour gérer les événements de toute l’équipe, il faut aussi pouvoir les consulter.');
+  if (!droitsInclusDansConsultation(valeurs.consulter, valeurs.modifier)) {
+    throw new Refus('Le grade ne peut pas modifier des événements qu’il ne peut pas consulter.');
+  }
+  if (!droitsInclusDansConsultation(valeurs.consulter, valeurs.creer)) {
+    throw new Refus('Le grade ne peut pas créer des événements pour des grades qu’il ne peut pas consulter.');
+  }
+  const [droitsActeur, existant] = await Promise.all([
+    droitsDe(req),
+    prisma.agendaDroitsGrade.findUnique({ where: { gradeCle: cle } }),
+  ]);
+  const droitsExistants = droitsAgenda(grades, cle, false, existant);
+  if (!droitsActeur.tout && consulterTous && !droitsActeur.consulterTous && !droitsExistants.consulterTous) {
+    throw new Refus('Vous ne pouvez pas accorder un accès de consultation que vous n’avez pas.', 403);
+  }
+  if (!droitsActeur.tout && gererTous && !droitsActeur.gererTous && !droitsExistants.gererTous) {
+    throw new Refus('Vous ne pouvez pas accorder un droit de gestion que vous n’avez pas.', 403);
+  }
+  const tous = { consulterTous, modifierTous: gererTous };
+  await prisma.agendaDroitsGrade.upsert({ where: { gradeCle: cle }, create: { gradeCle: cle, ...valeurs, ...tous }, update: { ...valeurs, ...tous } });
   res.json({ ok: true });
 }));
 
@@ -196,20 +234,20 @@ agenda.get('/api/agenda', ...valide, async (req, res) => {
     take: 2000,
   });
   // destinations proposées à la création : soi, tout le monde, puis chaque grade atteint (du plus haut au plus bas)
-  const destinations = [{ valeur: 'perso', libelle: 'Moi seul' }];
-  if (peutCreer(droits, 'tous', null, grades)) destinations.push({ valeur: 'tous', libelle: 'Tout le monde' });
-  for (const g of tousLesGrades()) if (peutCreer(droits, 'grade', g.cle, grades)) destinations.push({ valeur: `grade:${g.cle}`, libelle: `${g.libelle} et au-dessus` });
+  const destinations = [{ valeur: 'perso', libelle: 'Moi uniquement' }];
+  if (peutCreer(droits, 'tous', null, grades)) destinations.push({ valeur: 'tous', libelle: 'Toute l’équipe' });
+  for (const g of tousLesGrades()) if (peutCreer(droits, 'grade', g.cle, grades)) destinations.push({ valeur: `grade:${g.cle}`, libelle: g.libelle });
   res.json({
     evenements: candidats.filter(e => voit(e, moi, droits, grades)).slice(0, 1000).map(e => versClient(e, req, droits)),
     types: await listeTypes(),
-    droits: { destinations, perso_autrui: droits.tout || droits.creer !== null },
+    droits: { destinations, perso_autrui: droits.tout || droits.creer.length > 0 },
   });
 });
 
 // fiches RH proposées pour un « Perso » destiné à quelqu'un d'autre : celles dans la limite de ce qu'on crée
 agenda.get('/api/agenda/personnes', ...valide, traiter(async (req, res) => {
   const droits = await droitsDe(req), grades = clesGrades();
-  if (!droits.tout && droits.creer === null) throw new Refus('Votre grade ne permet pas de créer un événement pour quelqu’un d’autre.', 403);
+  if (!droits.tout && droits.creer.length === 0) throw new Refus('Votre grade ne permet pas de créer un événement pour quelqu’un d’autre.', 403);
   const fiches = await prisma.employe.findMany({ where: { statut: 'actif' }, orderBy: [{ prenom: 'asc' }, { nom: 'asc' }], select: { id: true, prenom: true, nom: true, discordPseudo: true, idEmploye: true, discordId: true, gradeCle: true } });
   res.json({ personnes: fiches.filter(f => f.discordId !== req.compte.discordId && peutCreerPour(droits, f.gradeCle, grades)).map(f => ({ id: f.id, nom: nomComplet(f), discord: !!f.discordId })) });
 }));

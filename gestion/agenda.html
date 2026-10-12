@@ -19,8 +19,8 @@
   <title>Mon agenda — {{nom}}</title>
 </head>
 <body class="page-agents">
-  <!-- GESTION — agenda : événements personnels, pour tout le monde ou destinés à un grade, classés par types (serveur :
-       entreprise/routes/agenda.ts, règles dans entreprise/agenda-regles.ts ; plafonds de chaque grade : page Grades). -->
+  <!-- GESTION — agenda : événements personnels, partagés avec l’équipe ou adressés à un grade, classés par types
+       (serveur : entreprise/routes/agenda.ts et entreprise/agenda-regles.ts ; droits par grade : page Grades). -->
   <main class="admin-contenu admin-contenu--pleine">
     <section id="panneau-agenda" class="panneau-agenda">
       <header class="agenda-entete">
@@ -62,6 +62,10 @@
     </div>
     <form id="formulaire-evenement" novalidate>
       <input type="hidden" id="evenement-id">
+      <div class="champ cache" id="champ-evenement-type">
+        <label for="evenement-type">Type</label>
+        <select id="evenement-type"></select>
+      </div>
       <div class="champ">
         <label for="evenement-titre">Titre</label>
         <input type="text" id="evenement-titre" maxlength="80" placeholder="Ex. Visite, Eclipse Tower">
@@ -84,20 +88,16 @@
       </div>
       <p class="champ-erreur cache" id="erreur-evenement-heures">Heures au format 24 h (14:30) ; la fin doit être après le début.</p>
       <div class="evenement-classement">
-        <div class="champ cache" id="champ-evenement-type">
-          <label for="evenement-type">Type</label>
-          <select id="evenement-type"></select>
-        </div>
-        <!-- seuls les destinataires que le grade du compte peut créer sont proposés -->
         <div class="champ">
-          <label for="evenement-destination">Destiné à</label>
+          <label for="evenement-destination">Qui peut voir cet événement ?</label>
           <select id="evenement-destination"></select>
+          <p class="champ-aide">Choisissez un événement personnel, partagé avec toute l’équipe ou adressé à un grade.</p>
         </div>
       </div>
       <div class="champ cache" id="champ-evenement-pour">
-        <label for="evenement-pour">Pour qui</label>
+        <label for="evenement-pour">Personne concernée <small>facultatif</small></label>
         <select id="evenement-pour"></select>
-        <p class="champ-aide">Pour quelqu’un d’autre : l’événement apparaît dans son agenda et le bot le prévient sur Discord, dans son ticket ou sinon en message privé.</p>
+        <p class="champ-aide">La personne choisie verra l’événement dans son agenda et sera prévenue sur Discord.</p>
       </div>
       <div class="champ">
         <label for="evenement-notes">Notes <small>facultatif</small></label>
@@ -114,19 +114,32 @@
   </div>
 </div>
 
-<!-- types d'événements : simple classement (nom, couleur), permission « agenda-types » -->
+<!-- Types d'événements : classement visuel, permission « agenda-types ». -->
 <div class="modale-fond cache" id="modale-types">
   <div class="modale modale-types" role="dialog" aria-modal="true" aria-labelledby="titre-modale-types">
     <div class="modale-entete">
       <h2 id="titre-modale-types">Types d’événements</h2>
       <button id="fermer-modale-types" type="button" aria-label="Fermer">✕</button>
     </div>
-    <p class="champ-aide types-intro">Ils classent les événements par couleur ; ils ne changent pas qui les voit. Un nom ou une couleur modifiés sont enregistrés aussitôt.</p>
+    <p class="champ-aide types-intro">Les types servent à repérer les événements par couleur. Ils ne changent pas qui peut les voir.</p>
+    <div class="types-section-entete">
+      <h3 class="types-sous-titre">Types existants</h3>
+      <span class="types-compte" id="types-compte"></span>
+    </div>
     <ul class="types-liste" id="types-liste"></ul>
     <form class="types-ajout" id="form-type" novalidate>
-      <input type="color" id="type-couleur" aria-label="Couleur du nouveau type">
-      <input type="text" id="type-nom" maxlength="40" placeholder="Ex. Visite, Réunion, Formation" aria-label="Nom du nouveau type">
-      <button type="submit" class="btn btn-or">Ajouter</button>
+      <h3 class="types-sous-titre">Créer un type</h3>
+      <div class="types-ajout-champs">
+        <div class="champ">
+          <label for="type-nom">Nom</label>
+          <input type="text" id="type-nom" maxlength="40" placeholder="Ex. Visite, Réunion">
+        </div>
+        <div class="champ types-couleur">
+          <label for="type-couleur">Couleur</label>
+          <input type="color" id="type-couleur" aria-label="Couleur du nouveau type">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-or">Ajouter le type</button>
     </form>
     <div id="zone-message-types" role="status"></div>
   </div>
