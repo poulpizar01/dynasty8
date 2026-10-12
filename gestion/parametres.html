@@ -26,7 +26,7 @@
     <form id="form" novalidate>
       <div id="panneaux"></div>
       <div class="ligne param-pied">
-        <span class="muet" id="modifie" hidden>Modifications non enregistrées</span>
+        <span class="muet param-modifie" id="modifie" hidden><span class="param-modifie-long">Modifications non enregistrées</span><span class="param-modifie-court">Non enregistré</span></span>
         <button class="btn btn--accent" id="enregistrer">Enregistrer</button>
       </div>
     </form>
@@ -102,7 +102,7 @@
     $('onglets').addEventListener('click', async e => {
       const b = e.target.closest('[data-onglet]');
       if (!b || b.dataset.onglet === ongletCourant) return;
-      if (modifie && !await gestion.confirmer('Les modifications de cet onglet ne sont pas enregistrées.', 'Changer d’onglet ?', 'Abandonner les modifications')) return;
+      if (modifie && !await gestion.confirmer('Les modifications de cet onglet ne sont pas enregistrées.', { titre: 'Changer d’onglet ?', libelle: 'Abandonner les modifications' })) return;
       ongletCourant = b.dataset.onglet;
       afficher();
     });
@@ -138,7 +138,9 @@
       try {
         await socle.api('/api/parametres', { method: 'PUT', body: corps });
         await charger();
-        gestion.message(msg, 'Réglages enregistrés : ils s’appliquent dès maintenant.', true);
+        gestion.message(msg, '');
+        // notification en bas : le bouton est en bas de l'onglet, un message en haut passerait inaperçu
+        gestion.notifier('Réglages enregistrés : ils s’appliquent dès maintenant.');
       } catch (err) { gestion.message(msg, err.message); }
       finally { $('enregistrer').disabled = false; }
     });

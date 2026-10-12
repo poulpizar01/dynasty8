@@ -5,5 +5,5 @@ import type { Permission } from '../socle/contrat.js';
 
 export const permissions: Permission[] = [
   // exemple (annonces internes) : à remplacer par celles de l'entreprise (stocks, factures, recrutement…)
-  { cle: 'annonces', libelle: 'Publier des annonces', description: 'Publier, épingler et retirer les annonces internes' },
+  { cle: 'annonces', domaine: 'Annonces', libelle: 'Publier des annonces', description: 'Publier, épingler et retirer les annonces internes' },
 ];

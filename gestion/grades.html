@@ -13,125 +13,197 @@
   <script src="/gestion/gestion.js"></script>
 </head>
 <body>
-  <!-- Grades et permissions (API du socle : /api/grades, /api/permissions, docs/api.md). Apparence libre. Le serveur
-       applique les règles : on ne touche qu'aux grades sous le sien, et on n'accorde que des permissions qu'on détient. -->
+  <!-- Grades et permissions (API du socle : /api/grades, /api/permissions, docs/api.md). Apparence libre. Liste du plus
+       haut au plus bas, réordonnée par glisser-déposer (gestion/vendor/Sortable.min.js) ou au clavier (flèches sur la
+       poignée) ; un clic ouvre le grade dans une fenêtre. Les permissions sont rangées par domaine (Permission.domaine,
+       socle/contrat.ts). Le serveur applique les règles : on ne touche qu'aux grades sous le sien, et on n'accorde que des
+       permissions qu'on détient. -->
   <main class="contenu">
-    <p class="surtitre">Gestion</p>
-    <h1 class="page-titre">Grades</h1>
-    <p class="intro">Du sommet à la base de l'entreprise. Un grade lié à un rôle Discord est donné à la connexion à qui porte ce rôle, et retiré à qui ne le porte plus. Lier un rôle demande aussi la permission « Gérer les comptes ».</p>
+    <div class="ligne grades-entete">
+      <div>
+        <h1 class="page-titre">Grades</h1>
+        <p class="intro">Du plus haut au plus bas. Glissez la poignée pour changer l’ordre, cliquez sur un grade pour le modifier.</p>
+      </div>
+      <button class="btn btn--accent" type="button" id="nouveau">Nouveau grade</button>
+    </div>
     <p class="message" id="msg" hidden></p>
-    <div id="liste"></div>
-    <section class="carte">
-      <h2 id="formTitre">Nouveau grade</h2>
-      <form id="form">
-        <div class="grille">
-          <div class="champ"><label for="libelle">Libellé</label><input type="text" id="libelle" maxlength="40" required></div>
+    <ol class="grades-liste" id="liste" aria-label="Grades, du plus haut au plus bas"><li class="vide">Chargement…</li></ol>
+    <p class="muet grades-note">Un grade lié à un rôle Discord est donné à la connexion à qui porte ce rôle, et retiré à qui ne le porte plus. Vous ne gérez que les grades sous le vôtre.</p>
+  </main>
+
+  <div class="modale-fond" id="fenetre" hidden>
+    <div class="modale grades-fenetre" role="dialog" aria-modal="true" aria-labelledby="titre-fenetre">
+      <h2 id="titre-fenetre">Nouveau grade</h2>
+      <form id="form" novalidate>
+        <div class="grades-identite">
+          <div class="champ">
+            <label for="libelle">Nom du grade</label>
+            <input type="text" id="libelle" maxlength="40">
+            <p class="champ-erreur" id="erreur-libelle" hidden>Donnez un nom au grade.</p>
+          </div>
           <div class="champ"><label for="couleur">Couleur</label><input type="color" id="couleur" value="#888888"></div>
-          <div class="champ"><label for="role">Rôle Discord lié (facultatif)</label><select id="role-liste" hidden></select><input type="text" id="role" inputmode="numeric" pattern="\d{5,32}" placeholder="identifiant du rôle"></div>
         </div>
-        <label>Permissions</label>
-        <div class="cases" id="cases"></div>
-        <div class="ligne" style="margin-top:16px">
-          <button class="btn btn--accent" id="enregistrer">Créer le grade</button>
-          <button class="btn" type="button" id="annuler" hidden>Annuler</button>
+        <div class="champ">
+          <label for="role-liste" id="libelle-role">Rôle Discord <small>facultatif</small></label>
+          <select id="role-liste" hidden></select>
+          <input type="text" id="role" inputmode="numeric" pattern="\d{5,32}" placeholder="Identifiant du rôle" aria-labelledby="libelle-role">
+          <small id="role-aide">Qui porte ce rôle reçoit ce grade à sa connexion, et est validé d’office. Lier un rôle demande aussi la permission «&nbsp;Gérer&nbsp;les&nbsp;comptes&nbsp;».</small>
+        </div>
+        <fieldset class="grades-permissions">
+          <legend>Ce que ce grade peut faire</legend>
+          <small>Vous ne pouvez accorder que ce que vous pouvez faire vous-même.</small>
+          <div id="cases"></div>
+        </fieldset>
+        <p class="message" id="msg-fenetre" hidden></p>
+        <div class="ligne grades-pied">
+          <button type="button" class="btn btn--danger" id="supprimer" hidden>Supprimer le grade</button>
+          <button type="button" class="btn" id="annuler">Annuler</button>
+          <button type="submit" class="btn btn--accent" id="enregistrer">Créer le grade</button>
         </div>
       </form>
-    </section>
-  </main>
+    </div>
+  </div>
+  <script src="/gestion/vendor/Sortable.min.js"></script>
   <script>
-    let moi, grades = [], permissions = [], edition = null;
-    // rôles du serveur Discord, lus sur Discord (vide sans jeton de bot : l'identifiant se saisit à la main)
-    let roles = [];
+    const $ = id => document.getElementById(id), esc = socle.esc;
+    let moi, grades = [], permissions = [], roles = [], effectifs = null, edition = null, fermerFenetre = null;
     const nomRole = id => roles.find(r => r.id === id)?.nom;
-    const msg = document.getElementById('msg'), liste = document.getElementById('liste'), $ = id => document.getElementById(id);
+    // rang d'un grade (0 = sommet) ; même règle que le serveur (socle/droits.ts)
     const rang = cle => { const i = grades.findIndex(g => g.cle === cle); return i < 0 ? grades.length : i; };
     const gerable = g => moi.proprietaire || (!!moi.grade && rang(g.cle) > rang(moi.grade.cle));
-    const libellePerm = cle => permissions.find(p => p.cle === cle)?.libelle || cle;
-
-    function afficher() {
-      liste.innerHTML = grades.length ? grades.map((g, i) => `
-        <article class="carte" data-cle="${socle.esc(g.cle)}">
-          <div class="ligne">
-            <span class="badge" style="background:${g.couleur || 'var(--bg3)'};color:#fff">${i + 1}</span>
-            <strong style="flex:1">${socle.esc(g.libelle)}</strong>
-            ${gerable(g) ? `
-              <button class="btn btn--petit" data-action="monter" ${i === 0 || !gerable(grades[i - 1]) ? 'disabled' : ''} aria-label="Monter">${fleche('haut')}</button>
-              <button class="btn btn--petit" data-action="descendre" ${i === grades.length - 1 ? 'disabled' : ''} aria-label="Descendre">${fleche('bas')}</button>
-              <button class="btn btn--petit" data-action="modifier">Modifier</button>
-              <button class="btn btn--petit btn--danger" data-action="supprimer">Supprimer</button>` : ''}
-          </div>
-          <p class="muet" style="margin:8px 0 0">${g.permissions.length ? g.permissions.map(p => socle.esc(libellePerm(p))).join(' · ') : 'Aucune permission'}${g.roleDiscordId ? ` · rôle Discord ${socle.esc(nomRole(g.roleDiscordId) ? '@' + nomRole(g.roleDiscordId) : g.roleDiscordId)}` : ''}</p>
-        </article>`).join('') : '<p class="vide">Aucun grade : crée le premier ci-dessous.</p>';
-      // cases : seulement les permissions que l'on détient (le serveur refuserait les autres)
-      $('cases').innerHTML = permissions.map(p => `
-        <label class="case"><input type="checkbox" value="${socle.esc(p.cle)}" ${socle.peut(moi, p.cle) ? '' : 'disabled'}>
-          <span>${socle.esc(p.libelle)}${p.description ? `<small>${socle.esc(p.description)}</small>` : ''}</span></label>`).join('');
+    // domaines dans l'ordre de déclaration des permissions (socle d'abord) ; sans domaine : « Autres », en dernier
+    const domaines = () => {
+      const m = new Map();
+      for (const p of permissions) { const d = p.domaine || 'Autres'; if (!m.has(d)) m.set(d, []); m.get(d).push(p); }
+      if (m.has('Autres')) { const a = m.get('Autres'); m.delete('Autres'); m.set('Autres', a); }
+      return [...m];
+    };
+    function resumeDroits(g) {
+      if (permissions.length && permissions.every(p => g.permissions.includes(p.cle))) return '<span class="badge">Tous les droits</span>';
+      if (!g.permissions.length) return '<span class="badge">Aucun droit de gestion</span>';
+      return domaines().filter(([, l]) => l.some(p => g.permissions.includes(p.cle))).map(([d]) => `<span class="badge">${esc(d)}</span>`).join('');
     }
 
-    function formulaire(g) {
+    function afficher() {
+      $('liste').innerHTML = grades.length ? grades.map(g => {
+        const modifiable = gerable(g), n = effectifs?.get(g.cle) ?? null;
+        const role = !g.roleDiscordId ? '' : nomRole(g.roleDiscordId) ? `<span class="badge">@${esc(nomRole(g.roleDiscordId))}</span>`
+          : roles.length ? '<span class="badge badge--alerte">Rôle supprimé sur Discord</span>' : '<span class="badge">Rôle Discord lié</span>';
+        return `<li class="grades-ligne${modifiable ? '' : ' verrouille'}" data-cle="${esc(g.cle)}">
+          ${modifiable ? `<button type="button" class="grades-poignee" aria-label="Déplacer ${esc(g.libelle)} (flèches haut et bas)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"/></svg></button>` : '<span class="grades-poignee" aria-hidden="true"></span>'}
+          <button type="button" class="grades-principal" data-ouvrir ${modifiable ? '' : 'disabled'}>
+            <span class="grades-pastille" style="background:${esc(g.couleur || '#888888')}"></span>
+            <span class="grades-nom">${esc(g.libelle)}</span>
+            <span class="grades-tags">${role}${resumeDroits(g)}</span>
+            ${n === null ? '' : `<span class="muet grades-effectif">${n} membre${n > 1 ? 's' : ''}</span>`}
+            <span class="grades-suite">${modifiable ? fleche('suivant') : 'Au-dessus de vous'}</span>
+          </button>
+        </li>`;
+      }).join('') : '<li class="vide">Aucun grade pour le moment : créez le premier, le plus haut, avec «&nbsp;Nouveau&nbsp;grade&nbsp;».</li>';
+    }
+
+    // ordre : glisser-déposer ou flèches sur la poignée ; un ordre refusé par le serveur (grade au-dessus du sien) revient
+    async function enregistrerOrdre(ordre, focusCle) {
+      try { grades = await socle.api('/api/grades/ordre', { method: 'PUT', body: { ordre } }); gestion.notifier('Ordre des grades enregistré'); }
+      catch (e) { gestion.notifier(e.message, 'erreur'); }
+      afficher();
+      if (focusCle) document.querySelector(`[data-cle="${CSS.escape(focusCle)}"] .grades-poignee`)?.focus();
+    }
+    new Sortable($('liste'), {
+      handle: '.grades-poignee', draggable: '.grades-ligne:not(.verrouille)', animation: 150, ghostClass: 'grades-fantome',
+      onEnd: e => { if (e.oldIndex !== e.newIndex) enregistrerOrdre([...$('liste').children].map(li => li.dataset.cle)); },
+    });
+    $('liste').addEventListener('keydown', e => {
+      const p = e.target.closest('button.grades-poignee');
+      if (!p || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+      e.preventDefault();
+      const cle = p.closest('[data-cle]').dataset.cle, ordre = grades.map(g => g.cle), i = ordre.indexOf(cle), j = i + (e.key === 'ArrowUp' ? -1 : 1);
+      if (j < 0 || j >= ordre.length || !gerable(grades[j])) return;
+      [ordre[i], ordre[j]] = [ordre[j], ordre[i]];
+      enregistrerOrdre(ordre, cle);
+    });
+    $('liste').addEventListener('click', e => { const b = e.target.closest('[data-ouvrir]'); if (b) ouvrir(grades.find(g => g.cle === b.closest('[data-cle]').dataset.cle)); });
+
+    function ouvrir(g) {
       edition = g?.cle ?? null;
-      $('formTitre').textContent = g ? `Modifier « ${g.libelle} »` : 'Nouveau grade';
+      $('titre-fenetre').textContent = g ? g.libelle : 'Nouveau grade';
       $('enregistrer').textContent = g ? 'Enregistrer' : 'Créer le grade';
-      $('annuler').hidden = !g;
+      $('supprimer').hidden = !g;
       $('libelle').value = g?.libelle ?? '';
       $('couleur').value = g?.couleur ?? '#888888';
       $('role').value = g?.roleDiscordId ?? '';
+      $('erreur-libelle').hidden = true;
       if (roles.length) {
         const id = g?.roleDiscordId ?? '';
-        // rôle supprimé sur Discord depuis : gardé dans la liste, signalé
-        const absent = id && !nomRole(id) ? `<option value="${socle.esc(id)}">Rôle supprimé sur Discord (${socle.esc(id)})</option>` : '';
-        $('role-liste').innerHTML = '<option value="">Aucun rôle</option>' + absent + roles.map(r => `<option value="${socle.esc(r.id)}">@${socle.esc(r.nom)}</option>`).join('');
+        const absent = id && !nomRole(id) ? `<option value="${esc(id)}">Rôle supprimé sur Discord (${esc(id)})</option>` : '';
+        $('role-liste').innerHTML = '<option value="">Aucun rôle</option>' + absent + roles.map(r => `<option value="${esc(r.id)}">@${esc(r.nom)}</option>`).join('');
         $('role-liste').value = id;
       }
-      document.querySelectorAll('#cases input').forEach(c => { c.checked = !!g?.permissions.includes(c.value); });
-      if (g) $('form').scrollIntoView({ behavior: 'smooth' });
+      // seulement les permissions que l'on détient sont cochables (le serveur refuserait les autres)
+      $('cases').innerHTML = domaines().map(([nom, liste]) => `<div class="grades-domaine"><h3>${esc(nom)}</h3>${liste.map(p => {
+        const detenue = socle.peut(moi, p.cle);
+        return `<label class="grades-permission${detenue ? '' : ' interdite'}">
+          <input type="checkbox" value="${esc(p.cle)}" ${detenue ? '' : 'disabled'} ${g?.permissions.includes(p.cle) ? 'checked' : ''}>
+          <span><strong>${esc(p.libelle)}</strong><small>${esc(p.description || '')}${detenue ? '' : ' (vous ne l’avez pas)'}</small></span>
+        </label>`;
+      }).join('')}</div>`).join('');
+      gestion.message($('msg-fenetre'), '');
+      fermerFenetre = gestion.fenetre($('fenetre'), { focus: $('libelle') });
     }
 
     async function charger() {
       let r;
       [grades, permissions, r] = await Promise.all([socle.api('/api/grades'), socle.api('/api/permissions'), socle.api('/api/grades/roles-discord').catch(() => ({ roles: [] }))]);
       roles = r.roles || [];
-      if (r.erreur) gestion.message(msg, r.erreur);
+      // rôles lus sur Discord : choix par le nom ; sinon l'identifiant, avec une explication sans jargon
       $('role-liste').hidden = !roles.length;
       $('role').hidden = !!roles.length;
+      if (!roles.length) $('role-aide').textContent = r.configure === false
+        ? 'Pour choisir le rôle dans une liste, le bot Discord doit être relié au site : demandez-le à la personne qui s’occupe du site. En attendant, collez l’identifiant du rôle (Discord, mode développeur : clic droit sur le rôle, Copier l’identifiant).'
+        : 'La liste des rôles Discord n’a pas pu être chargée : réessayez plus tard, ou collez l’identifiant du rôle.';
+      if (r.erreur) gestion.message($('msg'), r.erreur);
+      if (socle.peut(moi, 'comptes')) {
+        try {
+          const comptes = await socle.api('/api/comptes');
+          effectifs = new Map(grades.map(g => [g.cle, comptes.filter(c => c.statut === 'valide' && c.grade?.cle === g.cle).length]));
+        } catch { effectifs = null; }
+      }
       afficher();
-      formulaire(null);
     }
 
-    liste.addEventListener('click', async e => {
-      const b = e.target.closest('[data-action]'), cle = e.target.closest('[data-cle]')?.dataset.cle;
-      if (!b || !cle) return;
-      const g = grades.find(x => x.cle === cle), i = grades.indexOf(g);
+    $('nouveau').addEventListener('click', () => ouvrir(null));
+    $('annuler').addEventListener('click', () => fermerFenetre?.());
+    $('supprimer').addEventListener('click', async () => {
+      const g = grades.find(x => x.cle === edition);
+      if (!g) return;
+      const n = effectifs?.get(g.cle) ?? 0;
+      const texte = n ? `${n} membre${n > 1 ? 's ont' : ' a'} ce grade : ${n > 1 ? 'ils se retrouveront' : 'il se retrouvera'} sans grade.` : 'Aucun membre n’a ce grade.';
+      if (!await gestion.confirmer(texte, { titre: `Supprimer ${g.libelle} ?`, libelle: 'Supprimer le grade' })) return;
       try {
-        if (b.dataset.action === 'modifier') return formulaire(g);
-        if (b.dataset.action === 'supprimer') {
-          if (!await gestion.confirmer('Les comptes qui le portent n’auront plus de grade.', { titre: `Supprimer le grade « ${g.libelle} » ?`, libelle: 'Supprimer le grade' })) return;
-          grades = await socle.api(`/api/grades/${encodeURIComponent(cle)}`, { method: 'DELETE' });
-        } else {
-          const ordre = grades.map(x => x.cle), j = b.dataset.action === 'monter' ? i - 1 : i + 1;
-          [ordre[i], ordre[j]] = [ordre[j], ordre[i]];
-          grades = await socle.api('/api/grades/ordre', { method: 'PUT', body: { ordre } });
-        }
-        gestion.message(msg, ''); afficher();
-      } catch (err) { gestion.message(msg, err.message); }
+        grades = await socle.api(`/api/grades/${encodeURIComponent(g.cle)}`, { method: 'DELETE' });
+        fermerFenetre?.();
+        gestion.notifier(`Grade ${g.libelle} supprimé`);
+        charger();
+      } catch (e) { gestion.message($('msg-fenetre'), e.message); }
     });
-
-    $('annuler').addEventListener('click', () => formulaire(null));
     $('form').addEventListener('submit', async e => {
       e.preventDefault();
+      if (!$('libelle').value.trim()) { $('erreur-libelle').hidden = false; $('libelle').focus(); return; }
       const corps = {
-        libelle: $('libelle').value, couleur: $('couleur').value, roleDiscordId: roles.length ? $('role-liste').value : $('role').value.trim(),
+        libelle: $('libelle').value.trim(), couleur: $('couleur').value, roleDiscordId: roles.length ? $('role-liste').value : $('role').value.trim(),
         permissions: [...document.querySelectorAll('#cases input:checked')].map(c => c.value),
       };
       try {
         grades = edition
           ? await socle.api(`/api/grades/${encodeURIComponent(edition)}`, { method: 'PATCH', body: corps })
           : await socle.api('/api/grades', { method: 'POST', body: corps });
-        afficher(); formulaire(null); gestion.message(msg, 'Grade enregistré.', true);
-      } catch (err) { gestion.message(msg, err.message); }
+        fermerFenetre?.();
+        gestion.notifier(edition ? `Grade ${corps.libelle} enregistré` : `Grade ${corps.libelle} créé`);
+        charger();
+      } catch (err) { gestion.message($('msg-fenetre'), err.message); }
     });
 
-    gestion.coque().then(m => { moi = m; return charger(); }).catch(e => gestion.message(msg, e.message));
+    gestion.coque().then(m => { moi = m; return charger(); }).catch(e => gestion.message($('msg'), e.message));
   </script>
 </body>
 </html>

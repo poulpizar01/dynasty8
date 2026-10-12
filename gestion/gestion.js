@@ -131,6 +131,28 @@ window.gestion = {
     setTimeout(() => { n.classList.add('sortie'); setTimeout(() => n.remove(), 300); }, type === 'erreur' ? 6000 : 3200);
   },
 
+  // Fenêtre de la page (édition, détail) : focus placé dedans, Tab qui y boucle, Échap et clic sur le fond qui ferment,
+  // focus rendu à l'élément d'origine (sinon le clavier agit sur la page cachée derrière). fond : l'élément qui couvre
+  // la page (masqué par hidden) ; il contient la fenêtre, dont le titre est relié par aria-labelledby. Renvoie fermer().
+  fenetre(fond, { focus } = {}) {
+    const avant = document.activeElement;
+    const focusables = () => [...fond.querySelectorAll('button, [href], input, select, textarea')].filter(e => !e.disabled && e.offsetParent !== null);
+    const clavier = e => {
+      if (e.key === 'Escape' && !document.querySelector('[role="alertdialog"]')) { e.preventDefault(); fermer(); }
+      else if (e.key === 'Tab') {
+        const f = focusables(), i = f.indexOf(document.activeElement);
+        if (e.shiftKey ? i <= 0 : i === f.length - 1) { e.preventDefault(); (e.shiftKey ? f.at(-1) : f[0])?.focus(); }
+      }
+    };
+    const clic = e => { if (e.target === fond) fermer(); };
+    const fermer = () => { fond.hidden = true; document.removeEventListener('keydown', clavier); fond.removeEventListener('click', clic); avant?.focus?.(); };
+    fond.hidden = false;
+    document.addEventListener('keydown', clavier);
+    fond.addEventListener('click', clic);
+    (focus || focusables()[0])?.focus();
+    return fermer;
+  },
+
   // message d'erreur ou de réussite dans un élément de la page (texte seulement, jamais de HTML)
   message(el, texte, ok = false) {
     el.hidden = !texte;

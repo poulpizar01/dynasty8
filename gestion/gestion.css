@@ -123,7 +123,9 @@ table.en-cartes td select{width:100%;min-width:0}
 .param-pied{position:sticky;bottom:16px;justify-content:flex-end;margin-top:12px;pointer-events:none}
 .param-pied>*{pointer-events:auto}
 .param-pied .btn{box-shadow:var(--shadow)}
-.param-pied .muet{padding:4px 10px;border-radius:999px;background:var(--bg2);border:1px solid var(--line)}
+.param-pied .muet{padding:4px 10px;border-radius:999px;background:var(--bg2);border:1px solid var(--line);white-space:nowrap}
+.param-modifie-court{display:none}
+@media (max-width:520px){.param-modifie-long{display:none}.param-modifie-court{display:inline}}
 
 /* ---------- outils de conception (docs/design.md) ---------- */
 /* flèche dessinée (gestion.js, fleche()) : centrée sur son texte, à sa taille et à sa couleur */
@@ -145,3 +147,32 @@ select{appearance:none;-webkit-appearance:none;padding-right:36px;background-ima
 .notification.sortie{opacity:0;transition:opacity .25s}
 @keyframes notification-entree{from{opacity:0;transform:translateY(8px)}}
 @media (prefers-reduced-motion:reduce){.squelette,.notification{animation:none}.notification.sortie{transition:none}}
+
+/* ---------- page Grades ---------- */
+.grades-entete{justify-content:space-between;align-items:flex-end;margin-bottom:8px}
+.grades-entete .intro{margin-bottom:8px}
+.grades-liste{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-direction:column;gap:8px}
+.grades-ligne{display:flex;align-items:stretch;background:var(--bg2);border:1px solid var(--line);border-radius:var(--radius);min-width:0}
+.grades-poignee{flex:none;width:36px;display:flex;align-items:center;justify-content:center;border:0;border-right:1px solid var(--line);background:none;color:var(--ink2);cursor:grab}
+.grades-poignee svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round}
+.grades-principal{flex:1;min-width:0;display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:12px 14px;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.grades-principal:disabled{cursor:default;color:var(--ink2)}
+.grades-principal:not(:disabled):hover{background:var(--bg3)}
+.grades-pastille{width:12px;height:12px;border-radius:50%;flex:none}
+.grades-nom{font-weight:600}
+.grades-tags{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
+.grades-suite{margin-left:auto;display:inline-flex;align-items:center;color:var(--ink2);font-size:13px}
+.grades-fantome{opacity:.4}
+.grades-note{font-size:14px}
+.grades-fenetre{max-width:620px;max-height:calc(100dvh - 32px);overflow-y:auto}
+.grades-identite{display:grid;grid-template-columns:1fr 110px;gap:12px}
+.grades-permissions{border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin:0 0 14px}
+.grades-permissions legend{font-weight:600;font-size:14px;padding:0 4px}
+.grades-domaine h3{margin:14px 0 6px;font-size:13px;color:var(--ink2)}
+.grades-permission{display:flex;align-items:flex-start;gap:10px;font-weight:400;margin:0 0 8px;cursor:pointer}
+.grades-permission input{margin-top:4px;flex:none}
+.grades-permission small{display:block;color:var(--ink2);font-size:13px}
+.grades-permission.interdite{opacity:.6;cursor:default}
+.grades-pied{justify-content:flex-end}
+.grades-pied #supprimer{margin-right:auto}
+@media (max-width:520px){.grades-identite{grid-template-columns:1fr}.grades-pied .btn{flex:1}}
