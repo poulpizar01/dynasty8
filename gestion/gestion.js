@@ -117,6 +117,20 @@ window.gestion = {
     });
   },
 
+  // Notification d'une action (« Grade enregistré ») en bas de l'écran, visible quel que soit le défilement : affichée en
+  // haut de page, elle passait inaperçue quand on avait cliqué en bas. Une seule à la fois ; lue par les lecteurs d'écran.
+  notifier(texte, type = 'succes') {
+    let zone = document.getElementById('gestion-notifications');
+    if (!zone) {
+      zone = Object.assign(document.createElement('div'), { id: 'gestion-notifications', className: 'notifications' });
+      zone.setAttribute('role', 'status');
+      document.body.append(zone);
+    }
+    const n = Object.assign(document.createElement('div'), { className: `notification${type === 'erreur' ? ' notification--erreur' : ''}`, textContent: texte });
+    zone.replaceChildren(n);
+    setTimeout(() => { n.classList.add('sortie'); setTimeout(() => n.remove(), 300); }, type === 'erreur' ? 6000 : 3200);
+  },
+
   // message d'erreur ou de réussite dans un élément de la page (texte seulement, jamais de HTML)
   message(el, texte, ok = false) {
     el.hidden = !texte;
@@ -168,4 +182,84 @@ function tablesAdaptatives(racine) {
   };
   racine.querySelectorAll('table').forEach(suivre);
   new MutationObserver(() => racine.querySelectorAll('table').forEach(suivre)).observe(racine, { childList: true, subtree: true });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Outils de conception (règles et erreurs déjà commises : docs/design.md). Point de départ : un site les habille à sa
+// façon, mais garde ce qu'ils garantissent.
+// ---------------------------------------------------------------------------------------------------------------------
+
+// Flèche dessinée, centrée sur le texte : un caractère (« ← », « › », « ⌄ ») se pose sur la ligne de base et paraît
+// trop bas. Dans une page statique, écrire le même SVG.
+const FLECHES = {
+  gauche: 'M19 12H5M11 6l-6 6 6 6', droite: 'M5 12h14M13 6l6 6-6 6', sortie: 'M7 17L17 7M9 7h8v8',
+  precedent: 'M15 6l-6 6 6 6', suivant: 'M9 6l6 6-6 6', haut: 'M12 19V5M6 11l6-6 6 6', bas: 'M12 5v14M6 13l6 6 6-6',
+};
+const fleche = sens => `<svg class="fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="${FLECHES[sens]}"/></svg>`;
+
+// Plein écran d'un contenu intégré (carte, présentation), sur place : le contenu principal ne s'ouvre jamais dans un
+// autre onglet. Bouton masqué si le navigateur ne le permet pas (certains navigateurs en jeu).
+function pleinEcran(bouton, boite) {
+  if (!bouton || !boite || !document.fullscreenEnabled) return;
+  bouton.hidden = false;
+  bouton.addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : boite.requestFullscreen()).catch(() => {}));
+  document.addEventListener('fullscreenchange', () => { bouton.textContent = document.fullscreenElement === boite ? 'Quitter le plein écran' : 'Plein écran'; });
+}
+
+// Dates et heures à la française. Un <input type="date|time"> suit la langue du navigateur (mm/dd/yyyy, « 02:00 PM ») :
+// ces aides en font des champs texte jj/mm/aaaa et 24 h, mais .value garde le format des scripts et du serveur
+// (« 2026-10-06 », « 14:30 »). Une saisie invalide affiche une erreur sous le champ et bloque l'envoi du formulaire
+// (sinon la valeur partait vide sans rien dire).
+const VALEUR_INPUT = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+function erreurChampFr(input, message) {
+  const invalide = () => VALEUR_INPUT.get.call(input).trim() !== '' && input.value === '';
+  let p = null;
+  const montrer = afficher => {
+    if (afficher && !p) {
+      p = Object.assign(document.createElement('p'), { className: 'champ-erreur', id: `${input.id || 'champ'}-erreur-format`, textContent: message });
+      input.insertAdjacentElement('afterend', p);
+      input.setAttribute('aria-describedby', p.id);
+    }
+    if (p) p.hidden = !afficher;
+    input.toggleAttribute('aria-invalid', afficher);
+  };
+  input.addEventListener('blur', () => montrer(invalide()));
+  input.addEventListener('input', () => { if (!invalide()) montrer(false); });
+  input.form?.addEventListener('submit', e => { if (!invalide()) return; e.preventDefault(); e.stopImmediatePropagation(); montrer(true); input.focus(); }, true);
+  input.effacerErreurFr = () => montrer(false);
+}
+function champDateFr(input) {
+  if (!input || input.dataset.fr) return;
+  input.dataset.fr = '1';
+  erreurChampFr(input, 'Date invalide : écrivez-la jj/mm/aaaa, par exemple 06/10/2026.');
+  input.type = 'text';
+  Object.assign(input, { inputMode: 'numeric', placeholder: 'jj/mm/aaaa', maxLength: 10, autocomplete: 'off' });
+  const versIso = t => {
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(t).trim());
+    if (!m) return '';
+    const d = new Date(+m[3], +m[2] - 1, +m[1]);
+    return d.getMonth() !== +m[2] - 1 || d.getDate() !== +m[1] ? '' : `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;   // 31/02 refusé
+  };
+  const versFr = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; };
+  Object.defineProperty(input, 'value', { configurable: true, get() { return versIso(VALEUR_INPUT.get.call(this)); }, set(v) { VALEUR_INPUT.set.call(this, versFr(v)); this.effacerErreurFr?.(); } });
+  input.addEventListener('input', e => {   // « 06102026 » devient « 06/10/2026 »
+    if (e.inputType && !e.inputType.startsWith('insert')) return;
+    const c = VALEUR_INPUT.get.call(input).replace(/\D/g, '').slice(0, 8);
+    VALEUR_INPUT.set.call(input, [c.slice(0, 2), c.slice(2, 4), c.slice(4)].filter(Boolean).join('/'));
+  });
+}
+function champHeureFr(input) {
+  if (!input || input.dataset.fr) return;
+  input.dataset.fr = '1';
+  erreurChampFr(input, 'Heure invalide : écrivez-la sur 24 h, par exemple 14:30.');
+  input.type = 'text';
+  Object.assign(input, { inputMode: 'numeric', placeholder: 'hh:mm', maxLength: 5, autocomplete: 'off' });
+  const normaliser = t => { const m = /^(\d{1,2})[:hH]?(\d{2})?$/.exec(String(t).trim()); return !m || +m[1] > 23 || +(m[2] || 0) > 59 ? '' : `${m[1].padStart(2, '0')}:${m[2] || '00'}`; };
+  Object.defineProperty(input, 'value', { configurable: true, get() { return normaliser(VALEUR_INPUT.get.call(this)); }, set(v) { VALEUR_INPUT.set.call(this, normaliser(v)); this.effacerErreurFr?.(); } });
+  input.addEventListener('input', e => {   // « 1430 » devient « 14:30 »
+    if (e.inputType && !e.inputType.startsWith('insert')) return;
+    const c = VALEUR_INPUT.get.call(input).replace(/\D/g, '').slice(0, 4);
+    VALEUR_INPUT.set.call(input, c.length > 2 ? `${c.slice(0, 2)}:${c.slice(2)}` : c);
+  });
+  input.addEventListener('blur', () => { const n = normaliser(VALEUR_INPUT.get.call(input)); if (n) VALEUR_INPUT.set.call(input, n); });
 }

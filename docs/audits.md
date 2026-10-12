@@ -59,6 +59,10 @@ Cherche :
 - les valeurs dérivées d'une donnée utilisateur (initiales, extrait, titre raccourci) insérées sans échappement, et les replis (`x || valeur`) qui insèrent la valeur brute ;
 - la CSP : nonce réutilisé entre réponses ou prévisible ;
 - confidentialite.html face à ce que la vitrine publie réellement (qui apparaît sur une page publique, sous quel nom) et aux origines d'images chargées (stockage, Discord).
+- les contenus d'un tiers (cadre, lecteur, carte, script) : chacun déclaré dans entreprise.csp et décrit dans confidentialite.html (ce que le tiers reçoit, et quand) ; une adresse qui doit rester cachée envoyée au navigateur au lieu de passer par un relais ;
+- les liens qui ouvrent un contenu principal du site dans un autre onglet (target=_blank, window.open) ou qui envoient le visiteur chez le tiers qui l'héberge (« Ouvrir sur … ») au lieu de l'afficher sur la page ;
+- le CSS ou les API que le navigateur de l'ordinateur en jeu ne connaît pas (:has(), color-mix(), plein écran, transitions entre documents) utilisés sans repli ;
+- un identifiant (id) posé par la coque de la gestion qui existe aussi dans une page (le script de la coque agirait sur l'élément de la page).
 ```
 
 ## 3. Webhooks et intégrations
@@ -116,12 +120,15 @@ Cherche :
 - les commentaires qui renvoient à du code, des tables ou des fichiers qui n'existent plus (ancienne version, renommage), et le code mort (constantes, fonctions jamais appelées) ;
 - les fichiers mutualisés hors des deux listes de CLAUDE.md (.gitignore, .gitattributes) qui diffèrent du modèle ;
 - les routes de l'entreprise absentes du tableau de ENTREPRISE.md.
+- un lien, un identifiant Discord ou une adresse de service écrit en dur dans une page ou un script au lieu d'être déclaré dans entreprise.parametres (Paramètres) ;
+- un contenu recopié dans le code depuis sa source (texte, images, tarifs d'un document tenu ailleurs) : deux versions qui finiront par se contredire ;
+- une règle de conception corrigée dans le code mais absente de docs/design.md (elle se reproduira ailleurs), ou une règle propre à un site écrite dans le modèle (elle va dans ENTREPRISE.md).
 ```
 
 ## 6. Ergonomie et accessibilité (gestion et vitrine)
 
 ```
-Audite l'ergonomie, l'accessibilité et le responsive des pages : gestion/*.html et leurs scripts, la vitrine (pages de la racine, assets/js, assets/css, theme.css). Lis le code ; si le site tourne en dev (docker compose up, connexion de dev par /auth/discord), vérifie aussi dans un navigateur à 375, 768, 1 024 et 1 280 px de large, et à 800 px de haut.
+Audite l'ergonomie, l'accessibilité et le responsive des pages : gestion/*.html et leurs scripts, la vitrine (pages de la racine, assets/js, assets/css, theme.css). Lis d'abord docs/design.md : c'est la grille de cet audit, et chaque règle y cite l'erreur qu'elle évite. Ces règles portent sur le comportement : ne signale pas une différence d'apparence avec le modèle ou un autre site (chaque site a sa direction artistique). Lis le code ; si le site tourne en dev (docker compose up, connexion de dev par /auth/discord), vérifie aussi dans un navigateur à 375, 768, 1 024 et 1 280 px de large, et à 800 px de haut, avec les barres de défilement visibles (un navigateur automatisé les masque par défaut) et de vraies données chargées (une page vide ou en erreur cache les débordements).
 Cherche :
 - une rubrique du menu, le compte connecté ou la déconnexion inatteignables à une largeur ou une hauteur d'écran (zone en display:none, barre de 100vh sans défilement, menu horizontal qui défile sans indice) ;
 - un débordement horizontal de la page, un tableau qui défile de côté ou dont les actions sont coupées ou hors de vue, un élément flottant (bulle, bouton fixe) qui masque du contenu ou une action ;
@@ -130,5 +137,13 @@ Cherche :
 - un texte sous 12 px, un contraste sous 4,5:1 (3:1 pour un gros titre, un contour de champ, une icône utile), une cible cliquable sous 24 px ;
 - les textes : bouton de confirmation qui ne nomme pas l'action (« Confirmer », « OK ») ou rouge pour une action non destructive, erreur qui affiche le message technique sans dire quoi faire, état vide sans piste pour commencer, même chose nommée différemment d'une page à l'autre ;
 - les incohérences entre pages : place du bouton principal, familles d'icônes (trait ou emoji), formats des dates, durées et montants.
+- ce qui saute ou clignote à l'affichage : page affichée sans menu puis décalée, bloc qui arrive et pousse un contenu déjà lu, libellé dont la longueur change et fait bouger ses voisins, titre qui s'allonge et fait passer la barre d'outils dessous, police qui se charge après le premier affichage, fond animé qui apparaît d'un coup, transition de page qui passe par une page vide ;
+- une flèche ou un chevron écrit en caractère (← → ↗ ‹ › ↑ ⌄) dans un bouton, un lien, un sélecteur ou un en-tête de tri, au lieu d'être dessiné ;
+- une page qui défile pour ne montrer que du vide (réserve de bas de page inutile), une zone qui défile dans une autre, un cadre ou un décor fixé au bord de l'écran ;
+- un tableau dont le passage en cartes dépend d'un seuil de largeur d'écran plutôt que de la place mesurée, une colonne d'actions élargie qui fait déborder le tableau à 1 280 px ;
+- un menu de gestion qui porte autre chose que la navigation et le compte, ou qui défile à 800 px de haut avec toutes les permissions ;
+- deux liens vers la même destination dans un même bloc, un lien qui ne fait pas ce qu'il annonce, un bouton « Afficher » pour un contenu attendu ;
+- un texte qui parle à un développeur (nom de variable, .env, fichier, « webhook »), un terme inventé, une période nommée en relatif (« hier », « semaine prochaine ») ;
+- une annonce automatique (aria-live) sur une information relue périodiquement, qui serait relue à chaque passage.
 Ici, le scénario de défaillance est : quelle largeur ou quel moyen (souris, clavier, lecteur d'écran, ordinateur en jeu) → ce que la personne ne peut pas faire ou pas voir.
 ```

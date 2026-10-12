@@ -25,13 +25,18 @@
   --line:rgba(22,24,29,.12);
   /* accent (site.json) et ses nuances ; --on-accent : texte posé sur l'accent (à assombrir si l'accent est clair) */
   --accent:{{couleur}};
-  --accent-dark:color-mix(in srgb,var(--accent) 70%,#000);
-  --accent-soft:color-mix(in srgb,var(--accent) 12%,transparent);
+  /* dérivées calculées par le site (site.ts) : pas de color-mix(), inconnu du navigateur en jeu */
+  --accent-dark:{{couleur_sombre}};
+  --accent-soft:rgba({{couleur_rvb}},.12);
   --on-accent:#fff;
   /* états (formulaires, badges, messages) */
   --ok:#1f8a4c;
   --alerte:#b26a00;
   --erreur:#c62828;
+  --ok-soft:rgba(31,138,76,.12);
+  --alerte-soft:rgba(178,106,0,.12);
+  --erreur-soft:rgba(198,40,40,.1);
+  --bg-voile:rgba(247,246,243,.88);   /* en-tête de la vitrine au-dessus du contenu qui défile */
   /* polices : titres, texte courant, petits libellés */
   --display:'Archivo','Arial Narrow',sans-serif;
   --body:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;

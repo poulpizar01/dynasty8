@@ -55,8 +55,8 @@
             <span class="badge" style="background:${g.couleur || 'var(--bg3)'};color:#fff">${i + 1}</span>
             <strong style="flex:1">${socle.esc(g.libelle)}</strong>
             ${gerable(g) ? `
-              <button class="btn btn--petit" data-action="monter" ${i === 0 || !gerable(grades[i - 1]) ? 'disabled' : ''} aria-label="Monter">↑</button>
-              <button class="btn btn--petit" data-action="descendre" ${i === grades.length - 1 ? 'disabled' : ''} aria-label="Descendre">↓</button>
+              <button class="btn btn--petit" data-action="monter" ${i === 0 || !gerable(grades[i - 1]) ? 'disabled' : ''} aria-label="Monter">${fleche('haut')}</button>
+              <button class="btn btn--petit" data-action="descendre" ${i === grades.length - 1 ? 'disabled' : ''} aria-label="Descendre">${fleche('bas')}</button>
               <button class="btn btn--petit" data-action="modifier">Modifier</button>
               <button class="btn btn--petit btn--danger" data-action="supprimer">Supprimer</button>` : ''}
           </div>
