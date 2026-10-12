@@ -47,8 +47,8 @@ export const entreprise: Entreprise = {
   // WebMap : relayée sur son sous-domaine, servi à part du site (carte.ts) ; le site l'affiche toujours dans un cadre
   // (page webmap.html, accueil, espace agents), jamais dans un autre onglet
   ...(carte && { hotes: { [carte.hote]: relaisCarte } }),
-  // cadres permis : la carte, et le lecteur Google Slides des guides de cohérence (coherences-guides.js : chargé au clic
-  // seulement ; seule source du règlement de chaque zone, tenu par la Direction ; annoncé dans confidentialite.html)
+  // cadres permis : la carte, et le lecteur Google Slides des guides de cohérence (coherences-guides.js : chargé quand
+  // il arrive à l'écran, sur la page d'une cohérence ; seule source du règlement de chaque zone, tenu par la Direction ; annoncé dans confidentialite.html)
   // (en dev, la carte est en http sur carte.localhost : le socle l'accepte avec DEV_LOGIN seulement)
   csp: { frame: ['https://docs.google.com', ...(carte ? [carte.url] : [])] },
 

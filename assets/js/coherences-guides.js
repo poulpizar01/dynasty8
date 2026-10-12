@@ -38,10 +38,11 @@ const ZONES_COHERENCE = Object.keys(GUIDES_COHERENCE);
 // des liens https://docs.google.com/presentation/d/<id>/edit ; revérifié ici)
 const idPresentation = (lien) => /^https:\/\/docs\.google\.com\/presentation\/d\/([A-Za-z0-9_-]{20,})\//.exec(lien || "")?.[1] || null;
 
-// Présentation d'une zone dans `conteneur`. Google n'est chargé qu'au clic sur
-// « Afficher la présentation » : rien n'est demandé à Google à la simple visite
-// de la page (voir confidentialite.html). `absente` : texte quand le lien de la
-// zone n'est pas réglé (le public et l'espace agents ne disent pas la même chose).
+// Présentation d'une zone dans `conteneur`, affichée directement (lecteur intégré
+// de Google). Chargée seulement quand elle approche de l'écran (loading="lazy") ;
+// Google reçoit alors l'adresse IP du visiteur (voir confidentialite.html).
+// `absente` : texte quand le lien de la zone n'est pas réglé (le public et
+// l'espace agents ne disent pas la même chose).
 async function monterPresentationCoherence(conteneur, zone, absente) {
   const guide = GUIDES_COHERENCE[zone];
   const liens = await D8_LIENS_PRETS;
@@ -50,27 +51,18 @@ async function monterPresentationCoherence(conteneur, zone, absente) {
     conteneur.innerHTML = `<div class="guide-presentation guide-presentation--vide"><p>${echapper(absente)}</p></div>`;
     return;
   }
-  const titre = `Présentation de la cohérence ${zone}`;
   conteneur.innerHTML = `
     <div class="guide-presentation">
-      <div class="guide-presentation-cadre">
-        <div class="guide-presentation-attente">
-          <p class="guide-presentation-titre">${echapper(guide.icone)} Guide officiel — ${echapper(zone)}</p>
-          <button type="button" class="btn btn-or">Afficher la présentation</button>
-          <p class="guide-presentation-note">Elle s’affiche depuis Google Slides, toujours dans sa dernière version.</p>
-        </div>
-      </div>
+      <div class="guide-presentation-cadre"></div>
       <div class="guide-presentation-actions">
         <a class="btn btn-fantome btn-petit" href="https://docs.google.com/presentation/d/${id}/edit" target="_blank" rel="noopener">Ouvrir sur Google Slides ↗</a>
       </div>
     </div>`;
-  conteneur.querySelector(".guide-presentation-attente button").addEventListener("click", () => {
-    const cadre = document.createElement("iframe");
-    cadre.src = `https://docs.google.com/presentation/d/${id}/embed?start=false&loop=false&delayms=60000`;
-    cadre.title = titre;
-    cadre.allowFullscreen = true;
-    cadre.referrerPolicy = "no-referrer";
-    conteneur.querySelector(".guide-presentation-cadre").replaceChildren(cadre);
-    cadre.focus();
-  });
+  const cadre = document.createElement("iframe");
+  cadre.src = `https://docs.google.com/presentation/d/${id}/embed?start=false&loop=false&delayms=60000`;
+  cadre.title = `Présentation de la cohérence ${zone}`;
+  cadre.loading = "lazy";
+  cadre.allowFullscreen = true;
+  cadre.referrerPolicy = "no-referrer";
+  conteneur.querySelector(".guide-presentation-cadre").append(cadre);
 }
