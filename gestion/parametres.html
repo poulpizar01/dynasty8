@@ -115,9 +115,10 @@
           : etat('ok', 'Bot Discord relié : rôles et salons proposés par leur nom.'));
         try {
           const s = await socle.api('/api/services/etat');
-          if (discord.configure && s.salonRegle) lignes.push(!s.etat?.derniereLecture ? etat('neutre', 'Salon des services : première lecture dans moins d’une minute.')
-            : s.etat.statut === 'erreur' ? etat('erreur', `Salon des services : ${echapper(s.etat.erreur)} (${echapper(quand(s.etat.derniereLecture))}).`)
-            : etat('ok', `Salon des services lu le ${echapper(quand(s.etat.derniereLecture))} : ${s.enService} personne${s.enService > 1 ? 's' : ''} en service.`));
+          // prises et fins de service : envoyées par le bot (événement monitoring.duty), plus aucun salon à lire
+          lignes.push(s.dernierRecu
+            ? etat('ok', `Prises et fins de service reçues du bot : la dernière le ${echapper(quand(s.dernierRecu))}. ${s.enService} personne${s.enService > 1 ? 's' : ''} en service.`)
+            : etat('neutre', 'Aucune prise de service reçue du bot pour le moment. Pour la recevoir, la personne qui s’occupe du site abonne le site à l’événement «&nbsp;Prise de service&nbsp;» (monitoring.duty) dans le panneau Monitoring du bot Discord de l’agence.'));
         } catch {}
       }
       if (onglet === 'Google Sheets et carte') {

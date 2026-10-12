@@ -55,9 +55,8 @@ export const PARAMETRES: GroupeParametres[] = [
     { cle: 'webmap_origine', type: 'origine', libelle: 'Adresse de la carte',
       aide: 'Par exemple https://carte.exemple.fr. Les visiteurs l’ouvrent par le site, sans voir cette adresse.' },
   ] },
-  { onglet: 'Discord', titre: 'Membres en service', intro: 'L’encadré « En service » du menu lit le salon où le bot des services annonce les prises et fins de service.', reglages: [
-    { cle: 'services_salon_id', type: 'id-discord', discord: 'salon', libelle: 'Salon des services',
-      aide: 'Vide : encadré désactivé. Le bot doit pouvoir lire ce salon et son historique.' },
+  // les prises et fins de service arrivent du bot (événement monitoring.duty, services.ts) : seule la clôture se règle
+  { onglet: 'Discord', titre: 'Membres en service', intro: 'Le bot Discord de l’agence envoie au site chaque prise et fin de service lue en jeu : rien d’autre à régler que la clôture automatique.', reglages: [
     { cle: 'services_cloture_heures', type: 'entier', min: 1, max: 72, defaut: 12, libelle: 'Clôture automatique, en heures',
       aide: 'Un service resté ouvert (fin jamais annoncée) est fermé après ce délai ; une vraie fin annoncée plus tard la remplace.' },
   ] },

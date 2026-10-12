@@ -7,7 +7,7 @@ import { PARAMETRES } from './parametres.js';
 import { planifierNettoyagePhotos } from './photos.js';
 import { planifierPurge } from './purge.js';
 import { recevoirCandidature } from './rh.js';
-import { planifierServices } from './services.js';
+import { planifierServices, recevoirDuty } from './services.js';
 import { accueil } from './routes/accueil.js';
 import { agenda } from './routes/agenda.js';
 import { apparence } from './routes/apparence.js';
@@ -55,6 +55,8 @@ export const entreprise: Entreprise = {
   // événements du bot Discord entreprise (docs/webhooks.md) : candidatures acceptées → fiches RH
   webhooks: {
     'recruitment.updated': recevoirCandidature,
+    // prises et fins de service (journaux FiveM lus par le bot) : indicateur « En service » et Accueil
+    'monitoring.duty': recevoirDuty,
   },
 
   // les biens d'un agent supprimé restent (son nom gardé aussi : c'est l'historique de l'agence) ; son profil public

@@ -7,7 +7,6 @@ import { peut } from '../../socle/droits.js';
 import { valide } from '../../socle/http.js';
 import { sheetRegle } from '../parametres.js';
 import { EN_SUSPENS } from '../rh.js';
-import { lectureReglee } from '../services.js';
 
 export const accueil = Router();
 
@@ -25,9 +24,7 @@ accueil.get('/api/accueil/a-traiter', ...valide, async (req, res) => {
     if (n) taches.push({ cle: 'candidatures', nombre: n, texte: `${pluriel(n, 'candidature')} à traiter`, lien: 'rh.html#rh-bot' });
   }
   if (peut(c, 'parametres')) {
-    const [services, tableur] = await Promise.all([prisma.serviceEtat.findUnique({ where: { id: 1 } }), prisma.tableurEtat.findUnique({ where: { id: 1 } })]);
-    if (lectureReglee() && services?.statut === 'erreur')
-      taches.push({ cle: 'services', nombre: 1, alerte: true, texte: 'La lecture du salon des services échoue : la liste des personnes en service n’est plus à jour', lien: 'parametres.html?onglet=Discord' });
+    const tableur = await prisma.tableurEtat.findUnique({ where: { id: 1 } });
     if (sheetRegle() && tableur?.statut === 'erreur')
       taches.push({ cle: 'tableur', nombre: 1, alerte: true, texte: 'La lecture du Google Sheets échoue : les primes ne sont plus à jour', lien: 'parametres.html?onglet=Google%20Sheets%20et%20carte' });
   }
