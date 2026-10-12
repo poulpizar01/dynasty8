@@ -3,7 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-process.env.DISCORD_BOT_TOKEN ||= 'jeton-de-test';
+// forcé, même en dev où le conteneur porte DISCORD_BOT_TOKEN=simulation : le faux bot répondrait à la place de fetch
+process.env.DISCORD_BOT_TOKEN = 'jeton-de-test';
 const { posterMessage, appelBot, ErreurDiscord } = await import('../src/socle/discord.js');
 
 const appels: { url: string; init: RequestInit }[] = [];
