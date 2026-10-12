@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 // forcé, même en dev où le conteneur porte DISCORD_BOT_TOKEN=simulation : le faux bot répondrait à la place de fetch
 process.env.DISCORD_BOT_TOKEN = 'jeton-de-test';
 const { posterMessage, appelBot, ErreurDiscord } = await import('../src/socle/discord.js');
+const { appelSimule } = await import('../src/socle/discord-simulation.js');
 
 const appels: { url: string; init: RequestInit }[] = [];
 let reponse = () => new Response(JSON.stringify({ id: '1300000000000000001' }), { status: 200 });
@@ -29,4 +30,16 @@ test('identifiant invalide : refusé avant tout appel', async () => {
 test('erreur de Discord : statut gardé', async () => {
   reponse = () => new Response('{}', { status: 403 });
   await assert.rejects(appelBot('GET', '/guilds/1200000000000000001/channels'), (e: unknown) => e instanceof ErreurDiscord && e.statut === 403);
+});
+
+test('faux bot : ouvre une conversation privée et garde le message', async () => {
+  const personne = '411111111111111111';
+  const canal = await appelSimule('POST', '/users/@me/channels', { recipient_id: personne }) as { id: string };
+  assert.match(canal.id, /^\d{15,22}$/);
+  const canalRetrouve = await appelSimule('POST', '/users/@me/channels', { recipient_id: personne }) as { id: string };
+  assert.equal(canalRetrouve.id, canal.id);
+  const message = await appelSimule('POST', `/channels/${canal.id}/messages`, { content: 'Rendez-vous demain' }) as { id: string };
+  assert.match(message.id, /^\d{15,22}$/);
+  const lus = await appelSimule('GET', `/channels/${canal.id}/messages?limit=10`) as { content: string }[];
+  assert.deepEqual(lus.map(m => m.content), ['Rendez-vous demain']);
 });

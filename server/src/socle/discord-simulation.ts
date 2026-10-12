@@ -1,7 +1,7 @@
 // SOCLE — faux bot Discord pour le développement (DISCORD_BOT_TOKEN=simulation, refusé sans DEV_LOGIN : config.ts).
 // appelBot (discord.ts) lui passe chaque appel au lieu de Discord : rôles, catégories et salons fictifs, un salon de
 // ticket par personne connue, membres qui gardent les rôles déjà enregistrés (la synchro ne retire rien), messages
-// postés gardés en mémoire et relus par GET …/messages. De quoi voir fonctionner sans vrai bot ce qui en dépend
+// de salons et privés gardés en mémoire et relus par GET …/messages. De quoi voir fonctionner sans vrai bot ce qui en dépend
 // (page Paramètres, Grades, tâches de l'entreprise). Rien n'est envoyé à Discord ; tout est perdu au redémarrage.
 // L'entreprise y ajoute ce que son propre bot ferait : personnes ayant un ticket (ajouterPersonnesSimulees), messages
 // publiés dans un salon (publierMessageSimule, ex. annonces d'un bot tiers).
@@ -56,6 +56,7 @@ async function tickets() {
 
 type Message = { id: string; timestamp: string; author: { id: string; username: string; bot: true }; content?: string; embeds?: unknown[] };
 const messages = new Map<string, Message[]>();   // par salon, du plus ancien au plus récent
+const conversationsPrivees = new Map<string, string>();   // identifiant Discord de la personne → salon privé simulé
 const AUTEUR = { id: '900000000000000999', username: 'Bot simulé', bot: true as const };
 
 // message déposé dans un salon comme s'il venait d'un bot (relu par GET /channels/:id/messages)
@@ -74,6 +75,13 @@ export async function appelSimule(methode: string, chemin: string, corps?: unkno
   const [route, requete = ''] = chemin.split('?');
   const p = new URLSearchParams(requete);
   let m: RegExpMatchArray | null;
+  if (methode === 'POST' && route === '/users/@me/channels') {
+    const destinataire = (corps as { recipient_id?: unknown } | null)?.recipient_id;
+    if (typeof destinataire !== 'string' || !ID_DISCORD.test(destinataire)) throw new ErreurDiscord(400, 'Identifiant Discord invalide (simulation).');
+    let id = conversationsPrivees.get(destinataire);
+    if (!id) { id = idSimule(); conversationsPrivees.set(destinataire, id); }
+    return { id };
+  }
   if (methode === 'GET' && /^\/guilds\/[^/]*\/roles$/.test(route)) return ROLES.map(r => ({ ...r, managed: false }));
   if (methode === 'GET' && /^\/guilds\/[^/]*\/channels$/.test(route)) return [...CATEGORIES.map(c => ({ ...c, type: 4 })), ...SALONS, ...await tickets()];
   if (methode === 'GET' && (m = route.match(/^\/guilds\/[^/]*\/members\/(\d+)$/))) {
@@ -84,7 +92,8 @@ export async function appelSimule(methode: string, chemin: string, corps?: unkno
   }
   if ((m = route.match(/^\/channels\/(\d+)\/messages$/))) {
     const salon = m[1];
-    const connu = SALONS.some(s => s.id === salon) || (await tickets()).some(t => t.id === salon) || messages.has(salon);
+    const connu = SALONS.some(s => s.id === salon) || [...conversationsPrivees.values()].includes(salon)
+      || messages.has(salon) || (await tickets()).some(t => t.id === salon);
     if (!connu) throw introuvable(10003);
     if (methode === 'POST') {
       const { content, embeds } = (corps ?? {}) as { content?: string; embeds?: unknown[] };
