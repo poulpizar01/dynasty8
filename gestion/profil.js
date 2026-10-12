@@ -24,6 +24,7 @@ function profilEditeur(conteneur, { adresse, nom, apresEnregistrement, champNom,
             <input type="file" accept="image/jpeg,image/png,image/webp" class="cache" data-fichier>
             <button type="button" class="btn btn-fantome btn-petit cache" data-retirer></button>
           </div>
+          <small class="seulement-en-jeu">En jeu, l’ordinateur ne permet pas toujours de choisir un fichier : si rien ne s’ouvre, ajoutez la photo depuis un navigateur, avec le même compte.</small>
           <p class="champ-erreur cache" data-erreur-photo></p>
         </div>
       </div>

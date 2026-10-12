@@ -1015,3 +1015,7 @@ button.grades-poignee:focus-visible { outline: 2px solid var(--d8-gold-300); out
 /* Annonces, vue tableau : le nom du bien mène à sa page publique */
 .table-biens-lien { color: inherit; text-decoration: none; }
 .table-biens-lien:hover, .table-biens-lien:focus-visible { color: var(--gold-light); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ordinateur en jeu (socle/folkos.js pose html.en-jeu) : le sélecteur de fichiers y est peu fiable, on le dit près de chaque envoi */
+.seulement-en-jeu { display: none !important; }
+html.en-jeu .seulement-en-jeu { display: block !important; }
