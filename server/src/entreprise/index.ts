@@ -44,12 +44,13 @@ export const entreprise: Entreprise = {
   // page Paramètres (socle) : liens et réglages de Dynasty 8, déclarés dans parametres.ts
   parametres: PARAMETRES,
 
-  // WebMap : relayée sur son sous-domaine, servi à part du site (carte.ts) ; la vitrine l'affiche dans une iframe (https
-  // seulement : en dev, l'iframe est refusée, la carte s'ouvre en pleine page)
+  // WebMap : relayée sur son sous-domaine, servi à part du site (carte.ts) ; le site l'affiche toujours dans un cadre
+  // (page webmap.html, accueil, espace agents), jamais dans un autre onglet
   ...(carte && { hotes: { [carte.hote]: relaisCarte } }),
   // cadres permis : la carte, et le lecteur Google Slides des guides de cohérence (coherences-guides.js : chargé au clic
   // seulement ; seule source du règlement de chaque zone, tenu par la Direction ; annoncé dans confidentialite.html)
-  csp: { frame: ['https://docs.google.com', ...(carte?.url.startsWith('https://') ? [carte.url] : [])] },
+  // (en dev, la carte est en http sur carte.localhost : le socle l'accepte avec DEV_LOGIN seulement)
+  csp: { frame: ['https://docs.google.com', ...(carte ? [carte.url] : [])] },
 
   // événements du bot Discord entreprise (docs/webhooks.md) : candidatures acceptées → fiches RH
   webhooks: {

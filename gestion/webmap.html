@@ -16,37 +16,31 @@
 </head>
 <body class="page-agents">
   <!-- GESTION — la carte interactive du serveur dans la page (cadre vers /api/carte/, qui renvoie à son sous-domaine :
-       entreprise/carte.ts), sans ouvrir d'autre onglet. Réservée à la permission « parametres », comme sur l'ancien
-       espace agents. Le cadre n'est permis qu'en https (csp.frame) : en http (dev), la carte s'ouvre en pleine page. -->
-  <main class="admin-contenu">
+       entreprise/carte.ts). Cahier des charges : la carte se lit sur le site, jamais dans un autre onglet ; le plein
+       écran se fait sur place (pleinEcran, layout.js). Réservée à la permission « parametres ». -->
+  <main class="admin-contenu admin-contenu--pleine">
     <div class="entete-admin">
       <div>
         <h1 style="margin-bottom:2px;">WebMap</h1>
-        <p style="margin:0;font-size:0.88rem;">La carte interactive du serveur.</p>
+        <p style="margin:0;font-size:0.88rem;">La carte interactive du serveur, la même que sur le site public.</p>
       </div>
-      <a class="btn btn-fantome btn-petit" href="/api/carte/" target="_blank" rel="noopener">Ouvrir en plein écran</a>
+      <button type="button" class="btn btn-fantome btn-petit cache" id="plein-ecran">Plein écran</button>
     </div>
-    <p class="champ-aide cache" id="non-reglee">La carte n'est pas encore réglée : son adresse se renseigne dans Paramètres.</p>
-    <div class="webmap-boite" id="boite"></div>
+    <p class="champ-aide cache" id="non-reglee">La carte n'est pas encore réglée : son adresse se renseigne dans Paramètres, onglet «&nbsp;Google&nbsp;Sheets et carte&nbsp;».</p>
+    <div class="webmap-boite webmap-boite--page" id="boite"></div>
   </main>
   <script>
     gestion.coque('webmap').then(async () => {
       const o = await socle.api('/api/outils');
       document.getElementById('non-reglee').classList.toggle('cache', o.webmap);
-      if (!o.webmap) return;
-      // en http (dev), la CSP bloquerait le cadre (boîte vide, erreur dans la console) : on le dit plutôt
-      if (location.protocol !== 'https:') {
-        const p = document.createElement('p');
-        p.className = 'champ-aide';
-        p.textContent = 'En local (http), la carte ne peut pas s’afficher dans la page : utilisez « Ouvrir en plein écran ». En ligne (https), elle s’affiche ici.';
-        document.getElementById('boite').replaceWith(p);
-        return;
-      }
+      if (!o.webmap) { document.getElementById('boite').remove(); return; }
       const cadre = document.createElement('iframe');
       cadre.src = '/api/carte/';
       cadre.title = 'Carte interactive du serveur';
       cadre.referrerPolicy = 'no-referrer';
+      cadre.allowFullscreen = true;
       document.getElementById('boite').append(cadre);
+      pleinEcran(document.getElementById('plein-ecran'), document.getElementById('boite'));
     }).catch(e => { const p = document.createElement('p'); p.textContent = e.message; document.querySelector('main').prepend(p); });
   </script>
 </body>

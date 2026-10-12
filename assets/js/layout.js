@@ -24,6 +24,8 @@ function appliquerLiens(racine) {
 // navigateur (ni ici, ni dans l'iframe intégrée en page, voir
 // data-webmap-toggle / data-webmap-boite ci-dessous).
 const LIEN_WEBMAP = "/api/carte/";
+// la page du site qui affiche la carte (cahier des charges : la WebMap se lit sur le site, jamais dans un autre onglet)
+const PAGE_WEBMAP = "/webmap.html";
 
 // Menu volontairement resserré à 6 entrées (contre 9 avant) pour rester lisible
 // d'un coup d'œil : "Catalogue" regroupe Intérieurs/Garages/Exclusifs, "Agence"
@@ -98,7 +100,7 @@ function injecterEntete(cleActive) {
       <nav class="nav-principale" id="nav-mobile">${liens}</nav>
       <div class="nav-cta">
         <button class="bouton-menu" id="bouton-menu" aria-label="Ouvrir le menu">☰</button>
-        <a href="${LIEN_WEBMAP}" class="btn btn-fantome btn-petit nav-webmap" id="nav-webmap" title="Carte interactive du serveur">
+        <a href="${PAGE_WEBMAP}" class="btn btn-fantome btn-petit nav-webmap" id="nav-webmap" title="Carte interactive du serveur">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>
           <span>WebMap</span>
         </a>
@@ -170,7 +172,7 @@ function injecterPied() {
           <h4>Nous contacter</h4>
           <ul>
             <li><a data-lien="discord_agence" id="lien-discord" class="cache">Discord du serveur</a></li>
-            <li><a href="${LIEN_WEBMAP}">WebMap</a></li>
+            <li><a href="${PAGE_WEBMAP}">WebMap</a></li>
             <li><a href="/gestion/">Espace agents</a></li>
           </ul>
         </div>
@@ -726,17 +728,13 @@ function demarrerPoussiereOr() {
 // Bouton "Voir la WebMap" (accueil, cohérence, cohérences) : au clic,
 // insère la carte dans un <iframe> juste en dessous du bouton (jamais de
 // nouvel onglet) et ne la charge qu'une seule fois, au premier clic, pour
-// ne pas imposer ce script tiers à tous les visiteurs de la page. Le cadre
-// n'est permis qu'en https (CSP du site, entreprise/index.ts) : en http (dev),
-// il serait bloqué et resterait vide, la carte s'ouvre donc dans un onglet.
-const CADRE_CARTE_PERMIS = location.protocol === "https:";
+// ne pas imposer ce script tiers à tous les visiteurs de la page.
 function initialiserWebmapInline() {
   const bouton = document.querySelector("[data-webmap-toggle]");
   const boite = document.querySelector("[data-webmap-boite]");
   if (!bouton || !boite) return;
   let chargee = false;
   bouton.addEventListener("click", () => {
-    if (!CADRE_CARTE_PERMIS) { window.open(LIEN_WEBMAP, "_blank", "noopener"); return; }
     const maintenantCachee = boite.classList.toggle("cache");
     if (maintenantCachee) { bouton.textContent = "Voir la WebMap"; return; }
     if (!chargee) {
@@ -745,12 +743,26 @@ function initialiserWebmapInline() {
       iframe.title = "Carte interactive du serveur";
       iframe.loading = "lazy";
       iframe.referrerPolicy = "no-referrer";
+      iframe.allowFullscreen = true;
       boite.appendChild(iframe);
       chargee = true;
     }
     bouton.textContent = "Masquer la carte";
     boite.scrollIntoView({ behavior: "smooth", block: "nearest" });
   });
+}
+
+// Plein écran d'une carte (page WebMap du site, rubrique WebMap de l'espace agents) : sur place, sans quitter la page.
+// Bouton masqué si le navigateur ne le permet pas (certains navigateurs en jeu) ; Échap ou le bouton en sortent.
+function pleinEcran(bouton, boite) {
+  if (!bouton || !boite || !document.fullscreenEnabled) return;
+  bouton.classList.remove("cache");
+  const maj = () => { bouton.textContent = document.fullscreenElement === boite ? "Quitter le plein écran" : "Plein écran"; };
+  bouton.addEventListener("click", () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else boite.requestFullscreen().catch(() => {});
+  });
+  document.addEventListener("fullscreenchange", maj);
 }
 
 if (document.readyState === "loading") {

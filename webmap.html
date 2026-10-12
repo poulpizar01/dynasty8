@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebMap — Dynasty 8</title>
+<meta name="description" content="La carte interactive du serveur, directement sur le site de Dynasty 8 : repérez un bien, une zone de cohérence ou l'agence.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dynasty 8">
+<meta property="og:title" content="WebMap — Dynasty 8">
+<meta property="og:description" content="La carte interactive du serveur, directement sur le site de Dynasty 8.">
+<meta property="og:image" content="{{url}}/assets/og-image.jpg">
+<meta property="og:url" content="{{url}}/webmap.html">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/socle/signature.css">
+<link rel="stylesheet" href="/assets/css/style.css">
+<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/favicon-180.png">
+</head>
+<body>
+
+<header class="entete" id="site-entete"></header>
+
+<!-- VITRINE — la carte interactive du serveur, affichée sur le site même (cahier des charges : jamais dans un nouvel
+     onglet). Le cadre charge /api/carte/, qui renvoie au sous-domaine de la carte (server/src/entreprise/carte.ts). -->
+<main class="webmap-page">
+  <div class="webmap-page-entete">
+    <div>
+      <h1>WebMap</h1>
+      <p>La carte interactive du serveur : repérez un bien, une zone de cohérence ou l'agence.</p>
+    </div>
+    <button type="button" class="btn btn-fantome btn-petit cache" data-plein-ecran>Plein écran</button>
+  </div>
+  <div class="webmap-boite webmap-boite--page" id="webmap">
+    <iframe src="/api/carte/" title="Carte interactive du serveur" referrerpolicy="no-referrer" allowfullscreen></iframe>
+  </div>
+</main>
+
+<footer class="pied-page" id="site-pied"></footer>
+
+<script src="/assets/js/layout.js"></script>
+<script>
+  initialiserLayout("webmap");
+  pleinEcran(document.querySelector("[data-plein-ecran]"), document.getElementById("webmap"));
+</script>
+</body>
+</html>

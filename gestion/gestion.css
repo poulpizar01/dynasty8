@@ -121,6 +121,10 @@ img.admin-avatar { object-fit: cover; padding: 0; }
 main.admin-contenu:focus { outline: none; }
 /* la bulle de messagerie (fixe, en bas à droite) ne recouvre jamais la dernière ligne ni ses actions */
 .admin-contenu:not(.admin-contenu--pleine) { padding-bottom: 104px; }
+/* WebMap de l'espace agents : la carte prend la hauteur restante, au-dessus de la bulle de messagerie */
+.admin-contenu--pleine > .webmap-boite { flex: 1; min-height: 360px; display: flex; margin: 0 0 80px; }
+.admin-contenu--pleine > .webmap-boite iframe { flex: 1; height: auto; }
+.admin-contenu--pleine > .webmap-boite:fullscreen { margin: 0; }
 .modale-titre { margin: 0; font-size: 1.3rem; }
 
 /* pages seules (connexion, attente, accès refusé) : carte centrée sur le fond de l'espace agents */
