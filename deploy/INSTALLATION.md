@@ -1,60 +1,101 @@
-# Dynasty 8 — installation sur le VPS FlashbackFA
+# Dynasty 8 — mise en production sur le VPS FlashbackFA
 
-Pour l'opérateur du VPS. Première mise en ligne de **https://dynasty8.fbfa.fr** : vitrine de l'agence immobilière et espace agents, aussi affiché dans l'ordinateur en jeu (FolkOS). Contact : la Direction de Dynasty 8.
+Guide pas à pas de la première mise en ligne de **https://dynasty8.fbfa.fr** : vitrine de l'agence immobilière et espace agents, aussi affiché dans l'ordinateur en jeu (FolkOS). À suivre **dans l'ordre** : chaque étape dit quoi faire, ce qu'on doit obtenir, et quoi faire si ce n'est pas le cas. La liste de contrôle finale (§ 11) sert à vérifier que rien n'a été oublié.
+
+Guide générique du modèle sur lequel repose le site (mises à jour, journaux, sauvegardes, restauration) : [server/README.md](../server/README.md). Rôle de chaque réglage nginx : [docs/nginx.md](../docs/nginx.md). Ordinateur en jeu : [docs/folkos.md](../docs/folkos.md).
 
 ## En deux mots
 
 | | |
 |---|---|
-| Exécution | **Docker Compose** : `dynasty8-app` (site Node), `dynasty8-db` (PostgreSQL 17), `dynasty8-backup` (sauvegarde quotidienne) |
-| Port local | `127.0.0.1:3010` (`HOST_PORT`) |
+| Exécution | **Docker Compose** : `dynasty8-app` (site Node), `dynasty8-db` (PostgreSQL 17), `dynasty8-backup` (sauvegarde quotidienne), `dynasty8-db-roles` (ne tourne qu'un instant à chaque démarrage) |
+| Port local | `127.0.0.1:3010` (`HOST_PORT`), jamais exposé directement : nginx le sert en HTTPS |
 | Domaines | `dynasty8.fbfa.fr` (site) et `carte.dynasty8.fbfa.fr` (WebMap du serveur, relayée par le site) |
 | nginx | deux fichiers prêts dans [`deploy/nginx/`](nginx/) |
-| Base | créée vide au premier démarrage (migrations appliquées par le site) |
+| Base | créée vide au premier démarrage (les migrations sont appliquées par le site) |
 | Images envoyées | stockage `storage.fbfa.fr`, jamais sur le disque du VPS |
 | Dépôt | https://github.com/poulpizar01/dynasty8, branche `main` |
 
-Guide générique du modèle sur lequel repose le site (mises à jour, journaux, sauvegardes, restauration) : [server/README.md](../server/README.md). Rôle de chaque réglage nginx : [docs/nginx.md](../docs/nginx.md).
+## 0. Qui fait quoi, et quoi rassembler avant de commencer
 
-## À confirmer avant de commencer
+| Qui | Rôle |
+|---|---|
+| **Opérateur du VPS** (vous) | serveur, DNS, nginx, certificats, fichier `.env`, bot Discord, mises à jour |
+| **Direction de Dynasty 8** | identifiants Discord de l'agence, première connexion, grades, réglages dans l'espace agents |
+| **Opérateur de l'ordinateur en jeu** (FolkOS) | hôte FolkOS, identifiants SSO, déclaration du site dans son broker |
+| **Qui programme le bot de ventes** | appelle le site avec une clé que vous lui donnez |
 
-1. **Docker** sur le VPS (`docker compose version`). Sinon : `curl -fsSL https://get.docker.com | sudo sh`. Le compte qui lance les commandes doit être dans le groupe `docker` (équivalent root : à réserver au compte d'administration).
-2. **DNS** : `dynasty8.fbfa.fr` et `carte.dynasty8.fbfa.fr` vers l'IP du VPS (`dig +short <domaine>`).
-3. **Port 3010 libre** : `ss -ltnp | grep 3010` ne doit rien afficher (sinon prendre un autre port, et le changer dans le `.env` et les deux fichiers nginx).
-4. **Hôte de l'ordinateur en jeu** (`FOLKOS_HOTE`) : `https://computer.game.fbfa.fr` ?
-5. **Services de la machine joignables depuis le conteneur** : le validateur SSO `id` (et la WebMap, si elle tourne sur ce VPS). Dans le conteneur, `127.0.0.1` désigne le conteneur lui-même. Deux possibilités :
-   - leur adresse publique en `https://`, s'ils en ont une ;
-   - `http://host.docker.internal:<port>` (nom déclaré dans `compose.yaml`), à condition que le service écoute aussi sur l'adresse du pont Docker (`ip -4 addr show docker0`, en général `172.17.0.1`) et que le pare-feu laisse passer `172.16.0.0/12` vers ce port.
-6. **`/etc/nginx/snippets/deny-hidden.conf`** : les fichiers nginx l'incluent. S'il n'existe pas sur la machine, le créer avec :
+À rassembler avant l'étape 3 (tout ce qui manque peut être ajouté plus tard, sauf les quatre premiers) :
+
+- [ ] `DISCORD_CLIENT_ID` et `DISCORD_CLIENT_SECRET` de l'application Discord RoxwoodLegal (`1546523997980852294`) — Direction
+- [ ] `DISCORD_GUILD_ID` : identifiant du serveur Discord de Dynasty 8 — Direction
+- [ ] le jeton du stockage `storage.fbfa.fr` (`STORAGE_TOKEN`) — vous
+- [ ] deux secrets générés : `openssl rand -hex 32` (une fois pour `SESSION_SECRET`, une fois pour `POSTGRES_PASSWORD`) — vous
+- [ ] le jeton du bot de l'application RoxwoodLegal (`DISCORD_BOT_TOKEN`, § 2) — vous
+- [ ] l'hôte FolkOS (`https://computer.game.fbfa.fr` à confirmer) et les identifiants SSO `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` — opérateur FolkOS
+- [ ] un troisième secret pour le bot de ventes : `openssl rand -hex 32` (`STATS_BOT_SECRET`) — vous
+
+## 1. Préparer le VPS
+
+1. **Docker** : `docker compose version` doit répondre. Sinon : `curl -fsSL https://get.docker.com | sudo sh`, puis `sudo usermod -aG docker $USER` et se reconnecter. Le groupe `docker` vaut des droits root : à réserver au compte d'administration.
+2. **nginx, certbot, git** : `sudo apt update && sudo apt install -y nginx certbot git`.
+3. **Pare-feu** : seuls SSH, 80 et 443 ouverts (`sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable`, ou dans le pare-feu de l'hébergeur). Le port 3010 ne doit **pas** être ouvert.
+4. **DNS** : `dynasty8.fbfa.fr` **et** `carte.dynasty8.fbfa.fr` pointent sur l'IP du VPS. Vérifier : `dig +short dynasty8.fbfa.fr` et `dig +short carte.dynasty8.fbfa.fr` affichent l'IP du VPS. Sinon certbot échouera.
+5. **Port libre** : `ss -ltnp | grep 3010` n'affiche rien. Sinon, prendre un autre port et le changer dans le `.env` et les deux fichiers nginx.
+6. **`/etc/nginx/snippets/deny-hidden.conf`** existe (les fichiers nginx l'incluent). Sinon, le créer avec :
    ```nginx
    location ~ /\.(?!well-known/) { return 404; }
    ```
+7. **Services de la machine joignables depuis le conteneur** : le validateur SSO `id` de FolkOS (et la WebMap, si elle tourne sur ce VPS). Dans le conteneur, `127.0.0.1` désigne le conteneur lui-même. Deux possibilités :
+   - leur adresse publique en `https://`, s'ils en ont une ;
+   - `http://host.docker.internal:<port>` (nom déclaré dans `compose.yaml`), à condition que le service écoute aussi sur l'adresse du pont Docker (`ip -4 addr show docker0`, en général `172.17.0.1`) et que le pare-feu laisse passer `172.16.0.0/12` vers ce port.
 
-## Le fichier `.env`
+   Le validateur `id` n'écoute qu'en local : **le site doit tourner sur la même machine que lui** (à confirmer à l'opérateur FolkOS).
 
-Modèle commenté : [`.env.example`](../.env.example), à copier en `.env`. Valeurs pour Dynasty 8 :
+## 2. Application et bot Discord
 
-| Variable | Valeur | Qui la fournit |
+Dans le portail développeur Discord (https://discord.com/developers/applications), application **RoxwoodLegal** :
+
+1. **OAuth2 → Redirects** : ajouter `https://dynasty8.fbfa.fr/auth/discord/callback`, à l'identique (sans barre finale). La connexion demande les autorisations `identify`, `guilds` et `guilds.members.read` : rien à cocher, le site les demande lui-même.
+2. **Bot → Reset Token** : copier le jeton (il ne s'affiche qu'une fois) ; c'est `DISCORD_BOT_TOKEN`. Aucune « intention privilégiée » n'est nécessaire (le site n'utilise que l'API, pas la passerelle).
+3. **Inviter le bot sur le serveur de Dynasty 8** : ouvrir l'adresse suivante, choisir le serveur, valider :
+   `https://discord.com/oauth2/authorize?client_id=1546523997980852294&scope=bot&permissions=84992`
+   (droits demandés : *Voir les salons*, *Envoyer des messages*, *Intégrer des liens*, *Voir les anciens messages*). Pour limiter les droits, les accorder plutôt salon par salon :
+   - salon des prises et fins de service : *Voir le salon* et *Voir les anciens messages* ;
+   - catégories des tickets (Ticket Tool) : *Voir le salon*, *Envoyer des messages*, *Intégrer des liens* (l'événement d'agenda est un message enrichi).
+
+   Le bot sert à quatre choses : proposer les rôles, salons et catégories par leur nom (Grades, Paramètres) ; relire les rôles de chaque agent toutes les 10 minutes (un rôle retiré ou un départ du serveur compte aussitôt) ; lire le salon des services (« En service ») ; poster les événements d'agenda dans les tickets. Sans lui, le site fonctionne, mais ces quatre fonctions restent inactives et un rôle retiré ne compte qu'à la connexion suivante (7 jours au plus).
+
+## 3. Le fichier `.env`
+
+Modèle commenté : [`.env.example`](../.env.example), à copier en `.env` (étape 4). Valeurs pour Dynasty 8 :
+
+| Variable | Valeur | Obligatoire |
 |---|---|---|
-| `COMPOSE_FILE`, `SITE_ID`, `HOST_PORT` | `compose.yaml`, `dynasty8`, `3010` | — |
-| `BASE_URL` | `https://dynasty8.fbfa.fr` | — |
-| `SESSION_SECRET`, `POSTGRES_PASSWORD` | `openssl rand -hex 32` chacun ; `POSTGRES_PASSWORD` ne se change plus une fois la base créée | vous |
-| `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | application Discord RoxwoodLegal (`1546523997980852294`) | Direction de Dynasty 8 |
-| `DISCORD_BOT_TOKEN` | jeton du bot de l'application RoxwoodLegal (onglet Bot → Reset Token), invité sur le serveur de Dynasty 8 avec les droits du point 5. Sert à quatre choses : rôles Discord proposés par leur nom dans Grades, rôles de chaque agent relus toutes les 10 minutes (un rôle retiré ou un départ du serveur compte aussitôt, sinon seulement à la connexion suivante), encadré « En service », événements d'agenda postés dans les tickets. Facultatif : sans lui, ces trois fonctions restent inactives | vous |
-| `DISCORD_GUILD_ID` | ID du serveur Discord de Dynasty 8 : seuls ses membres peuvent se connecter, son propriétaire a tous les droits sur le site | Direction de Dynasty 8 |
-| `STORAGE_URL`, `STORAGE_TOKEN`, `STORAGE_PREFIX` | `https://storage.fbfa.fr`, jeton du stockage, `dynasty8/` | vous (jeton) |
-| `BOT_WEBHOOK_SECRETS` | secret de l'abonnement « Candidatures » du bot Discord (étape 5) | Dynasty 8, depuis le bot |
-| `FOLKOS_HOTE` | hôte de l'ordinateur en jeu (point 4) | vous |
-| `FOLKOS_CADRES` | `https://*.fbfa.fr https://fbfa.fr` : autres pages FlashbackFA autorisées à afficher le site | — |
-| `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | validateur `id` **vu depuis le conteneur** (point 5), identifiants du site dans le broker `access` | vous |
-| `STATS_BOT_SECRET` | `openssl rand -hex 32` ; à transmettre en privé à qui programme le bot de ventes | vous |
-| `WEBMAP_HOTE` | `carte.dynasty8.fbfa.fr` (sous-domaine de la carte) | — |
+| `COMPOSE_FILE` | `compose.yaml` (tel que dans `.env.example` : écarte les réglages de développement) | oui |
+| `SITE_ID`, `HOST_PORT` | `dynasty8`, `3010` | oui |
+| `BASE_URL` | `https://dynasty8.fbfa.fr` (sans barre finale) | oui |
+| `SESSION_SECRET` | secret généré (32 caractères au moins) | oui |
+| `POSTGRES_PASSWORD` | secret généré ; **ne se change plus** une fois la base créée | oui |
+| `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | application RoxwoodLegal (§ 2) | oui |
+| `DISCORD_GUILD_ID` | serveur Discord de Dynasty 8 : seuls ses membres se connectent, son propriétaire a tous les droits sur le site | oui |
+| `DISCORD_BOT_TOKEN` | jeton du bot (§ 2) | conseillé |
+| `STORAGE_URL`, `STORAGE_TOKEN`, `STORAGE_PREFIX` | `https://storage.fbfa.fr`, jeton du stockage, `dynasty8/` | oui pour envoyer des photos |
+| `BOT_WEBHOOK_SECRETS` | secret de l'abonnement « Candidatures » du bot Discord (§ 8) | plus tard |
+| `STATS_BOT_SECRET` | secret généré, à transmettre **en privé** à qui programme le bot de ventes | plus tard |
+| `WEBMAP_HOTE` | `carte.dynasty8.fbfa.fr` | oui pour la WebMap |
+| `FOLKOS_HOTE` | hôte de l'ordinateur en jeu, ex. `https://computer.game.fbfa.fr` | oui pour l'affichage en jeu |
+| `FOLKOS_CADRES` | `https://*.fbfa.fr https://fbfa.fr` (autres pages FlashbackFA autorisées à afficher le site) | avec `FOLKOS_HOTE` |
+| `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | validateur `id` **vu depuis le conteneur** (§ 1.7), identifiants du site chez l'opérateur FolkOS | pour « Se connecter IG » |
+| `APP_MEMORY`, `APP_CPUS`, `APP_NODE_HEAP`, `DB_MEMORY`, `DB_CPUS` | à laisser commentés (512 Mo et 1 processeur pour le site, 256 Mo pour la base) ; à relever seulement si `docker stats` montre le site au plafond | non |
 
-Les **liens** ne se règlent pas dans le `.env` : adresse de la WebMap, Google Sheets du tableur, registre, Discord de l'agence, boutique VIP, partenaire décoration, présentations Google Slides des quatre cohérences, salon des services et réglages de l'agenda se renseignent après l'installation dans l'espace agents, onglet **Paramètres** (permission « Paramètres du site »). L'adresse de la WebMap doit être publique, en https : le site refuse une adresse du serveur lui-même ou d'un réseau privé.
+**À ne jamais mettre dans le `.env` de production** : `DEV_LOGIN` (connexion sans Discord, réservée au poste de développement : le site refuse de démarrer avec), `DISCORD_BOT_TOKEN=simulation` (faux bot de développement, refusé aussi), ni un fichier `compose.local.yaml` (réglages d'un poste de développement).
 
-Le site **refuse de démarrer** sur un réglage incomplet ou mal formé, et dit lequel dans `docker logs dynasty8-app`. Les réglages facultatifs (FolkOS, bots, Google Sheets, WebMap) peuvent rester vides au premier démarrage et être remplis ensuite (`docker compose up -d` après chaque modification du `.env`).
+Les **liens et réglages de l'agence ne vont pas dans le `.env`** : ils se règlent dans l'espace agents (§ 7).
 
-## 1. Installer
+Le site **refuse de démarrer** sur un réglage incomplet ou mal formé, et dit lequel dans `docker logs dynasty8-app`. Après toute modification du `.env` : `docker compose up -d` (le site redémarre avec les nouvelles valeurs).
+
+## 4. Installer et démarrer
 
 ```bash
 sudo install -d -o $USER -g $USER /opt/dynasty8
@@ -62,75 +103,109 @@ git clone -b main https://github.com/poulpizar01/dynasty8 /opt/dynasty8
 cd /opt/dynasty8
 cp .env.example .env && chmod 600 .env
 mkdir -m 700 backups
-nano .env
+nano .env                       # remplir selon le § 3
 docker compose up -d --build
 ```
 
-Vérifier :
+On doit obtenir :
 ```bash
-docker compose ps               # app, db et backup « Up », db « healthy », puis app « healthy » (1 à 2 min)
+docker compose ps               # app, db et backup « Up » ; db « healthy », puis app « healthy » (1 à 2 min)
 docker logs dynasty8-app        # se termine par « Dynasty 8 en écoute sur le port 3000 (https://dynasty8.fbfa.fr) »
 curl -s http://127.0.0.1:3010/healthz
 ```
+Si `app` redémarre en boucle : `docker logs dynasty8-app` nomme le réglage refusé ; le corriger dans `.env`, puis `docker compose up -d`.
 
-## 2. nginx et certificats
+## 5. nginx et certificats
 
-Pour chacun des deux fichiers de [`deploy/nginx/`](nginx/) (`dynasty8.fbfa.fr.conf`, puis `carte.dynasty8.fbfa.fr.conf`). nginx refuse un bloc HTTPS dont le certificat n'existe pas : il est ajouté après le certificat.
+Pour **chacun des deux** fichiers de [`deploy/nginx/`](nginx/) : d'abord `dynasty8.fbfa.fr.conf`, puis `carte.dynasty8.fbfa.fr.conf`. nginx refuse un bloc HTTPS dont le certificat n'existe pas encore : on l'ajoute après avoir obtenu le certificat.
 
 ```bash
-D=dynasty8.fbfa.fr              # puis D=carte.dynasty8.fbfa.fr
+D=dynasty8.fbfa.fr              # puis recommencer avec D=carte.dynasty8.fbfa.fr
 sudo cp deploy/nginx/$D.conf /etc/nginx/sites-available/
-sudo nano /etc/nginx/sites-available/$D.conf     # retirer tout ce qui suit « # --- bloc HTTPS » (le garder de côté)
+sudo nano /etc/nginx/sites-available/$D.conf     # couper tout ce qui suit « # --- bloc HTTPS » (le garder de côté)
 sudo ln -s /etc/nginx/sites-available/$D.conf /etc/nginx/sites-enabled/
 sudo mkdir -p /var/www/certbot
 sudo nginx -t && sudo systemctl reload nginx
 sudo certbot certonly --webroot -w /var/www/certbot -d $D
-sudo nano /etc/nginx/sites-available/$D.conf     # remettre le bloc HTTPS
+sudo nano /etc/nginx/sites-available/$D.conf     # recoller le bloc HTTPS
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-Le certificat se renouvelle seul (`sudo certbot renew --dry-run` pour vérifier). **Ne pas tester la connexion avant le certificat** : le cookie de session n'est envoyé qu'en HTTPS.
+On doit obtenir : `curl -sI https://dynasty8.fbfa.fr` répond `200`. Le certificat se renouvelle seul ; `sudo certbot renew --dry-run` le vérifie.
 
-Dans les fichiers, ne jamais ajouter `X-Frame-Options` ni `Content-Security-Policy` : le site pose lui-même ceux qui permettent son affichage dans l'ordinateur en jeu, et un en-tête ajouté par nginx donnerait une page blanche en jeu.
+- **Ne pas tester la connexion avant le certificat** : le cookie de session n'est envoyé qu'en HTTPS.
+- Dans les fichiers nginx, **ne jamais ajouter** `X-Frame-Options` ni `Content-Security-Policy` : le site pose lui-même ceux qui permettent son affichage dans l'ordinateur en jeu, et un en-tête ajouté par nginx donnerait une page blanche en jeu.
 
-## 3. Application Discord
+## 6. Première connexion (avec la Direction de Dynasty 8)
 
-Dans l'application RoxwoodLegal (portail développeur → OAuth2 → Redirects), ajouter `https://dynasty8.fbfa.fr/auth/discord/callback`, à l'identique.
+Dans cet ordre :
 
-## 4. Première connexion (avec la Direction de Dynasty 8)
+1. Le **propriétaire du serveur Discord** de Dynasty 8 se connecte le premier : https://dynasty8.fbfa.fr/gestion/ → « Se connecter avec Discord ». Il a tous les droits.
+2. **Gestion → Grades** : créer les grades de l'agence, **du plus haut au plus bas** (glisser pour réordonner), et lier chacun à son **rôle Discord**, choisi par son nom dans la liste (bot relié). Cocher pour chaque grade ce qu'il peut faire.
+3. Les agents se connectent par Discord : qui porte un rôle lié à un grade entre directement ; les autres attendent d'être validés dans **Gestion → Comptes & accès** (signalé dans « À traiter » sur l'accueil).
+4. La connexion « IG » dans l'ordinateur en jeu marche pour tout agent qui s'est connecté par Discord depuis moins de 30 jours (règle voulue : un agent parti du serveur Discord perd aussi l'accès en jeu).
 
-1. Le **propriétaire du serveur Discord** de Dynasty 8 se connecte le premier : https://dynasty8.fbfa.fr/gestion/. Il a tous les droits.
-2. Dans **Gestion → Grades**, il crée les grades de l'agence et lie chacun à son **rôle Discord**.
-3. Les agents se connectent par Discord : ceux qui portent un rôle lié à un grade entrent directement, les autres attendent d'être validés (Gestion → Comptes).
-4. La connexion « IG » dans l'ordinateur en jeu fonctionne pour tout agent qui s'est connecté par Discord depuis moins de 30 jours (règle voulue : un agent parti du serveur Discord perd aussi l'accès en jeu).
-5. Dans **Paramètres**, la Direction renseigne les liens, puis, si `DISCORD_BOT_TOKEN` est en place :
-   - **Membres en service** : ID du salon où le bot des services publie « Service démarré » / « Service terminé », et la clôture automatique (12 h si vide). L'état de la lecture s'affiche sous ces champs dans la minute.
-   - **Agenda partagé** : rôles qui voient et qui créent les événements « Patrons », « Direction », « Tous », rôles qui créent un « Perso » pour quelqu'un d'autre, catégories où Ticket Tool crée les tickets. Qui a la permission « Paramètres du site » crée toujours.
+## 7. Réglages de l'agence (espace agents, avec la Direction)
 
-   Les ID se copient dans Discord par clic droit → *Copier l'identifiant* (mode développeur activé : Paramètres Discord → Avancés). Les rôles de chacun sont relus toutes les 10 minutes par le bot : un changement de rôle sur Discord compte sans que la personne ait à se reconnecter.
-6. Dans **Comptabilité → Paramètres**, le **taux horaire** des grades payés à l'heure (stagiaires). Le relevé Tablettes collé doit contenir la colonne « Heures de service » (format `2h30min`).
+Tout se règle depuis l'espace agents, sans toucher au serveur. **Paramètres** (permission « Paramètres du site »), onglet par onglet, bouton « Enregistrer » de chaque onglet :
 
-## 5. Bots et ordinateur en jeu
+- **Liens** : registre (intranet), Discord de l'agence, boutique VIP, Discord du partenaire décoration, **présentations Google Slides des quatre cohérences** (Habitation, Garage, Cayo Perico, Roxwood : coller le lien de partage de chaque présentation, partagée à « Tous les utilisateurs disposant du lien »). Un lien vide masque son bouton.
+- **Google Sheets et carte** :
+  - **Google Sheets de la Direction** : ouvrir l'onglet du récapitulatif, coller l'adresse de la barre du navigateur (elle finit par `gid=…`). Le classeur doit être partagé à « Tous les utilisateurs disposant du lien », en lecture. L'état de la lecture s'affiche en tête de l'onglet (lu toutes les 20 minutes).
+  - **WebMap** : adresse publique en `https://` de la carte (ex. `https://webmap.dynasty8.fbfa.fr`). Le site refuse une adresse du serveur lui-même ou d'un réseau privé. Cette adresse n'est jamais montrée aux visiteurs.
+- **Discord** (bot relié) :
+  - **Membres en service** : choisir le salon où le bot des services publie « Service démarré » / « Service terminé », et la clôture automatique (12 h par défaut). L'état de la lecture s'affiche en tête de l'onglet dans la minute.
+  - **Agenda partagé** : pour « Patrons », « Direction », « Tous » et « Perso », qui voit et qui crée (rôles Discord choisis par leur nom), et les catégories où Ticket Tool crée les tickets.
+- **Apparence** (facultatif) : remplacer logos, icônes et image de partage.
 
-- **Bot Discord, candidatures** : dans le salon panneau du bot, Monitoring → Ajouter un webhook, type **Candidatures** (`recruitment.updated`), URL `https://dynasty8.fbfa.fr/webhooks/bot`. Le secret, affiché une seule fois, va dans `BOT_WEBHOOK_SECRETS`, puis `docker compose up -d`.
-- **Bot de ventes** : `POST https://dynasty8.fbfa.fr/api/stats/ventes`, avec l'en-tête `Authorization: Bearer <STATS_BOT_SECRET>`.
-- **Bot de l'application RoxwoodLegal** (`DISCORD_BOT_TOKEN`), droits sur le serveur de Dynasty 8, rien de plus :
-  - salon des prises et fins de service : *Voir le salon* et *Voir les anciens messages* ;
-  - catégories des tickets Ticket Tool : *Voir le salon*, *Envoyer des messages* et *Intégrer des liens* (l'événement est un message enrichi).
-- **Broker `access` (FolkOS)** : adresse du SSO à déclarer, `https://dynasty8.fbfa.fr/auth/folkos` (slug suggéré : `dynasty8`).
+Puis :
+- **Comptabilité → Rémunération** (permission « Gérer la comptabilité ») : pour chaque grade, salaire fixe et interrupteurs (salaire, prime de vente, prime de location : un interrupteur coupé ne verse rien), **taux horaire** des grades payés à l'heure (stagiaires) ; puis les **paliers de primes** (ventes, locations). Le relevé Tablettes collé chaque semaine doit contenir la colonne « Heures de service » (format `2h30min`).
+- **Ressources humaines → Comment la fiche est remplie** (permission « Régler le recrutement ») : grade donné à l'arrivée et questions du formulaire de candidature du bot qui remplissent prénom, nom, ID employé, téléphone, RIB.
 
-## 6. Vérifications
+## 8. Bots et ordinateur en jeu
 
-- https://dynasty8.fbfa.fr : la vitrine s'affiche ; le lien WebMap ouvre https://carte.dynasty8.fbfa.fr. Une erreur `502` sur la carte vient en général de l'adresse de la WebMap (Paramètres) injoignable depuis le conteneur ; une `503`, d'une adresse pas encore réglée.
-- Connexion Discord, puis une page de l'espace agents.
-- Envoi d'une photo sur une annonce. Un refus « L'envoi d'images n'est pas encore configuré » vient de `STORAGE_URL` ou `STORAGE_TOKEN`.
-- Dans l'ordinateur en jeu : le site s'affiche et « Se connecter IG » fonctionne. Une page blanche vient presque toujours de `FOLKOS_HOTE` ou `FOLKOS_CADRES`.
-- `docker logs dynasty8-backup` : une première sauvegarde a été écrite dans `backups/`.
+- **Bot Discord, candidatures** : dans le salon panneau du bot, *Monitoring → Ajouter un webhook*, type **Candidatures** (`recruitment.updated`), URL `https://dynasty8.fbfa.fr/webhooks/bot`. Le secret, affiché une seule fois, va dans `BOT_WEBHOOK_SECRETS` du `.env`, puis `docker compose up -d`. Une candidature passée « Acceptée » sur Discord crée la fiche dans Ressources humaines.
+- **Bot de ventes** : il envoie chaque vente à `POST https://dynasty8.fbfa.fr/api/stats/ventes`, avec l'en-tête `Authorization: Bearer <STATS_BOT_SECRET>` et un corps JSON (`identite`, `type` : `Vente` ou `Location`, `semaine` au format `S36-26`, `achat`, `loc`, `dateVente` jj/mm/aaaa, et les autres colonnes du registre : voir `server/src/entreprise/stats/ventes.ts`). Réponse `201` (enregistrée) ou `200` (déjà reçue). Tant que ce bot n'est pas en place, les primes viennent du Google Sheets de la Direction.
+- **Ordinateur en jeu (FolkOS)** — à transmettre à l'opérateur FolkOS :
+  - adresse de connexion « IG » à déclarer dans son broker `access` : **`https://dynasty8.fbfa.fr/auth/folkos`** (slug suggéré : `dynasty8`) ;
+  - le site tourne sur la même machine que son validateur `id` (§ 1.7) ;
+  - le site respecte déjà son cahier des charges (cadrage complet sans `X-Frame-Options`, cookie `SameSite=None; Secure`, SDK clavier et suivi d'adresse, aucune boîte de dialogue native) : détail dans [docs/folkos.md](../docs/folkos.md), dernier tableau.
 
-## Au quotidien
+## 9. Vérifications
+
+| Vérifier | Résultat attendu | Sinon |
+|---|---|---|
+| https://dynasty8.fbfa.fr | la vitrine s'affiche, cadenas valide | nginx (§ 5), `docker compose ps` |
+| Connexion Discord, puis une page de l'espace agents | connecté, menu complet | redirection Discord (§ 2.1), `DISCORD_*` |
+| Gestion → Grades → un grade → Rôle Discord | liste des rôles par leur nom | bot pas invité ou jeton faux (§ 2) |
+| Envoi d'une photo sur une annonce | photo affichée | « L'envoi d'images n'est pas encore configuré » : `STORAGE_URL` / `STORAGE_TOKEN` |
+| Bouton « WebMap » de la vitrine | la carte s'affiche **dans la page** du site | `502` : adresse de la WebMap injoignable depuis le conteneur ; `503` : pas encore réglée (§ 7) ; certificat de `carte.dynasty8.fbfa.fr` |
+| https://carte.dynasty8.fbfa.fr ouvert directement | renvoie vers la page WebMap du site (voulu : la carte ne se consulte que sur le site) | — |
+| Une page de cohérence | la présentation Google Slides s'affiche | lien manquant dans Paramètres → Liens, ou présentation non partagée |
+| Paramètres → Discord, Paramètres → Google Sheets et carte | états « lu » sans erreur | message affiché dans l'état, droits du bot (§ 2.3) ou partage du classeur |
+| Ordinateur en jeu | le site s'affiche ; « Se connecter IG » ouvre une session | page blanche : `FOLKOS_HOTE` / `FOLKOS_CADRES`, console F8 (« ancestor violates frame-ancestors ») ; erreur de connexion : message sur la page de connexion, `FOLKOS_ID_BASE` joignable depuis le conteneur |
+| `docker logs dynasty8-backup` | une première sauvegarde dans `backups/` | droits du dossier `backups` (§ 4) |
+
+## 10. Au quotidien
 
 Dans `/opt/dynasty8` :
-- mise à jour : `git pull && docker compose up -d --build`, puis `docker image prune -f` ;
-- journaux : `docker logs -f dynasty8-app` ;
-- état : `docker compose ps` ;
-- sauvegardes : `backups/`, une par jour, 7 jours gardés. Restauration et copie hors du serveur : [server/README.md](../server/README.md#sauvegardes-de-la-base).
+- **mise à jour** : `git pull && docker compose up -d --build`, puis `docker image prune -f`. Les migrations de la base s'appliquent seules au démarrage. Avant une mise à jour qui touche la configuration, relire le `.env` : le site refuse de démarrer sur un réglage manquant ;
+- **journaux** : `docker logs -f dynasty8-app` ; **état** : `docker compose ps` ; **ressources** : `docker stats`;
+- **sauvegardes** : `backups/`, une par jour, 7 jours gardés. **Les copier régulièrement hors du serveur** (une sauvegarde qui reste sur la même machine disparaît avec elle). Restauration : [server/README.md](../server/README.md#sauvegardes-de-la-base) ;
+- **secret compromis** : le changer dans `.env`, puis `docker compose up -d` (changer `SESSION_SECRET` déconnecte tout le monde ; `POSTGRES_PASSWORD` ne se change pas ainsi).
+
+## 11. Liste de contrôle finale
+
+- [ ] DNS des deux domaines vers le VPS ; ports 80 et 443 ouverts, 3010 fermé
+- [ ] `.env` complet (§ 3), en `600`, sans `DEV_LOGIN` ni `simulation`
+- [ ] `docker compose ps` : tout « Up », app et base « healthy »
+- [ ] deux certificats (site et carte), renouvellement testé
+- [ ] redirection Discord ajoutée ; bot invité avec ses droits
+- [ ] propriétaire connecté en premier ; grades créés et liés à leurs rôles
+- [ ] Paramètres : quatre onglets renseignés (dont les quatre présentations, le Google Sheets partagé, la WebMap, le salon des services, l'agenda)
+- [ ] Comptabilité → Rémunération et paliers de primes ; Ressources humaines → recrutement réglé
+- [ ] webhook « Candidatures » créé et `BOT_WEBHOOK_SECRETS` réglé
+- [ ] `STATS_BOT_SECRET` transmis en privé au bot de ventes
+- [ ] adresse `https://dynasty8.fbfa.fr/auth/folkos` déclarée à l'opérateur FolkOS ; site testé dans l'ordinateur en jeu
+- [ ] toutes les vérifications du § 9 passées
+- [ ] première sauvegarde présente, copie hors serveur prévue
