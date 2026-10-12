@@ -37,7 +37,9 @@
           </div>
           <div class="agenda-navigation">
             <button type="button" class="agenda-fleche agenda-fleche--avant" id="agenda-semaine-precedente" aria-label="Période précédente"><svg class="ico" aria-hidden="true"><use href="#ico-chevron"></use></svg></button>
-            <button type="button" class="agenda-aujourdhui-bouton" id="agenda-aujourdhui">Aujourd’hui</button>
+            <button type="button" class="agenda-aujourdhui-bouton" id="agenda-aujourdhui" aria-keyshortcuts="T">Aujourd’hui</button>
+            <!-- touche du raccourci, montrée au survol ou au focus du bouton (hors du bouton : son texte est réécrit à chaque période) -->
+            <span class="agenda-touche" aria-hidden="true"><kbd>T</kbd> aujourd’hui</span>
             <button type="button" class="agenda-fleche agenda-fleche--apres" id="agenda-semaine-suivante" aria-label="Période suivante"><svg class="ico" aria-hidden="true"><use href="#ico-chevron"></use></svg></button>
           </div>
           <button type="button" class="btn btn-or agenda-ajouter" id="agenda-nouvel-evenement" aria-label="Nouvel événement"><svg class="ico" aria-hidden="true"><use href="#ico-plus"></use></svg><span>Nouvel événement</span></button>

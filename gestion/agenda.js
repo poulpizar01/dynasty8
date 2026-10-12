@@ -110,7 +110,7 @@ function majEnteteAgenda() {
   bouton.textContent = nom;
   bouton.classList.toggle("sur-periode-actuelle", ecart === 0);
   bouton.setAttribute("aria-label", ecart === 0 ? nom : `${nom} : revenir à ${actuelle}`);
-  bouton.title = ecart === 0 ? "" : `Revenir à ${actuelle}`;
+  bouton.title = ecart === 0 ? "Raccourci : touche T" : `Revenir à ${actuelle} (touche T)`;
   const unite = vue === "jour" ? ["Jour précédent", "Jour suivant"] : parSemaine ? ["Semaine précédente", "Semaine suivante"] : ["Mois précédent", "Mois suivant"];
   document.getElementById("agenda-semaine-precedente").setAttribute("aria-label", unite[0]);
   document.getElementById("agenda-semaine-suivante").setAttribute("aria-label", unite[1]);
@@ -303,6 +303,19 @@ grilleAgenda.addEventListener("keydown", ev => {
 
 document.getElementById("agenda-semaine-precedente").addEventListener("click", () => { decalerAgenda(-1); chargerAgenda(true); });
 document.getElementById("agenda-semaine-suivante").addEventListener("click", () => { decalerAgenda(1); chargerAgenda(true); });
+// Raccourci T (« today », comme les agendas courants) : revient à la période actuelle. Ignoré pendant une saisie, une
+// fenêtre ouverte ou avec Ctrl / Alt / Cmd ; « t » ou « T » (avec Maj, la touche arrive en majuscule). Le bouton
+// s'illumine un instant : on voit ce que la touche a fait. En jeu, le clavier reste au jeu hors des champs : le bouton suffit.
+document.addEventListener("keydown", (e) => {
+  if (e.repeat || e.ctrlKey || e.altKey || e.metaKey || e.key.length !== 1 || e.key.toLowerCase() !== "t") return;
+  if (e.target.closest?.("input, textarea, select, [contenteditable]") || document.querySelector(".modale-fond:not(.cache), [role=alertdialog]")) return;
+  e.preventDefault();
+  const bouton = document.getElementById("agenda-aujourdhui");
+  bouton.click();
+  bouton.classList.remove("raccourci");
+  void bouton.offsetWidth;   // relance l'animation si la touche est répétée
+  bouton.classList.add("raccourci");
+});
 document.getElementById("agenda-aujourdhui").addEventListener("click", () => {
   AGENDA_REF = aujourdhuiParis();
   chargerAgenda(true);
