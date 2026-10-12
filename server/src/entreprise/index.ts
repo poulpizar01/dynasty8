@@ -2,6 +2,7 @@
 // Tout src/entreprise/ est libre : ajouter des routes (routes/), des modules métier, des tâches planifiées.
 import type { Entreprise } from '../socle/contrat.js';
 import { annonces } from './routes/annonces.js';
+import { compta } from './routes/compta.js';
 import { prisma } from '../socle/db.js';
 
 export const entreprise: Entreprise = {
@@ -14,9 +15,10 @@ export const entreprise: Entreprise = {
     comptes: 'comptes',
     grades: 'grades',
     parametres: 'parametres',
+    comptabilite: 'compta',
   },
 
-  routes: [annonces],
+  routes: [annonces, compta],
 
   // page Paramètres (socle/parametres.ts) : liens et réglages modifiables sans toucher au code. Exemple à adapter :
   // le bouton « Postuler » de la vitrine (data-lien="recrutement") et l'épinglage des annonces.
@@ -42,8 +44,10 @@ export const entreprise: Entreprise = {
     },
   },
 
-  // les annonces d'un compte supprimé restent, sans auteur
+  // les annonces, relevés et écritures d'un compte supprimé restent, sans auteur
   avantSuppressionCompte: async (compteId, tx) => {
     await tx.annonce.updateMany({ where: { compteId }, data: { compteId: null } });
+    await tx.importCompta.updateMany({ where: { compteId }, data: { compteId: null } });
+    await tx.ecritureDot.updateMany({ where: { compteId }, data: { compteId: null } });
   },
 };

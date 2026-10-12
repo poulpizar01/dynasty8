@@ -13,6 +13,7 @@ Seulement ce qui est propre au site : ses modules, tables, routes, conventions e
 
 | Domaine | Permission | Pages (`gestion/`) | Routes (`server/src/entreprise/`) | Tables (`entreprise.prisma`) |
 |---|---|---|---|---|
+| Comptabilité (commune aux entreprises du serveur) | `compta` | `comptabilite.html` : relevé Tablettes collé, rémunération par grade (salaire fixe, paie à l'heure), déclaration DOT | `routes/compta.ts` ; calculs purs `compta/releve.ts` (tests `test/compta.test.ts`) ; **part variable propre à l'entreprise** (primes, commissions) : `compta/remuneration.ts`, à adapter | `compta_imports`, `compta_dot_ecritures`, `dot_bareme_imposition` (barème du serveur, rempli par la migration), `remunerations_grades` |
 | Annonces internes (exemple du modèle) | `annonces` (publier) ; lecture : tout compte validé | `annonces.html`, aperçu dans `accueil.html` | `routes/annonces.ts` | `annonces` |
 
 Événements du bot traités (`entreprise.webhooks`) : `absence.updated` (exemple : une absence acceptée devient une annonce).

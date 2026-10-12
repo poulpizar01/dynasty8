@@ -179,3 +179,24 @@ select{appearance:none;-webkit-appearance:none;padding-right:36px;background-ima
 @media (max-width:520px){.grades-identite{grid-template-columns:1fr}.grades-pied .btn{flex:1}}
 label small{display:inline;margin-left:4px;font-weight:400;color:var(--ink2)}
 @media (max-width:520px){.grades-tags{order:5;flex-basis:100%}}
+
+/* ---------- page Comptabilité ---------- */
+.compta-entete{justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.compta-entete h2{margin-bottom:2px}
+.compta-entete p{margin:0}
+.compta-resume{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px;margin:12px 0 0}
+.compta-resume div{padding:10px 12px;border:1px solid var(--line);border-radius:8px}
+.compta-resume dt{font-size:13px;color:var(--ink2)}
+.compta-resume dd{margin:2px 0 0;font-weight:600;white-space:nowrap}
+.compta-resume .fort{border-color:var(--accent)}
+.compta-ecritures{list-style:none;margin:0 0 12px;padding:0}
+.compta-ecritures li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.compta-ecritures li span{flex:1;min-width:0}
+.compta-ecritures strong{white-space:nowrap}
+.compta-case{display:inline-flex;align-items:center;gap:6px;font-weight:400;margin:0}
+.compta-fenetre{max-width:640px}
+.compta-fenetre textarea{font-family:var(--mono);font-size:13px}
+.compta-pied{justify-content:flex-end;margin-top:12px}
+.compta-deux{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+#remuneration input[type=number]{max-width:160px}
+.compta-grade{display:inline-flex;align-items:center;gap:8px;font-weight:600}

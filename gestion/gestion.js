@@ -6,6 +6,7 @@ const GESTION_NAV = [
   { href: 'annonces.html', label: 'Annonces' },
   { href: 'comptes.html', label: 'Comptes', permission: 'comptes' },
   { href: 'grades.html', label: 'Grades', permission: 'grades' },
+  { href: 'comptabilite.html', label: 'Comptabilité', permission: 'compta' },
   { href: 'parametres.html', label: 'Paramètres', permission: 'parametres' },
   { href: 'compte.html', label: 'Mon compte' },
 ];
@@ -183,6 +184,7 @@ function tablesAdaptatives(racine) {
   // mesure en mode tableau (synchrone : rien n'est affiché entre les deux), cartes si la largeur dépasse
   const ajuster = table => {
     const boite = table.parentElement;
+    if (!boite || !table.isConnected) return;   // tableau retiré de la page entre-temps (redessiné)
     table.classList.remove('en-cartes');
     boite.classList.remove('contient-cartes');
     const trop = table.offsetWidth > boite.clientWidth + 1;
@@ -197,6 +199,7 @@ function tablesAdaptatives(racine) {
     ajuster(table);
     let largeur = table.parentElement.clientWidth;
     new ResizeObserver(() => {
+      if (!table.isConnected) return;
       const l = table.parentElement.clientWidth;
       if (l !== largeur) { largeur = l; ajuster(table); }   // la hauteur change avec les cartes : seule la largeur compte
     }).observe(table.parentElement);
@@ -245,7 +248,9 @@ function erreurChampFr(input, message) {
     if (p) p.hidden = !afficher;
     input.toggleAttribute('aria-invalid', afficher);
   };
-  input.addEventListener('blur', () => montrer(invalide()));
+  // en quittant le champ, seul le contour signale l'erreur : un message ajouté à ce moment pousserait le bouton qu'on est
+  // en train de cliquer, et le clic tomberait à côté (vu : « Ajouter » qui ne faisait rien). Le message vient à l'envoi.
+  input.addEventListener('blur', () => input.toggleAttribute('aria-invalid', invalide()));
   input.addEventListener('input', () => { if (!invalide()) montrer(false); });
   input.form?.addEventListener('submit', e => { if (!invalide()) return; e.preventDefault(); e.stopImmediatePropagation(); montrer(true); input.focus(); }, true);
   input.effacerErreurFr = () => montrer(false);

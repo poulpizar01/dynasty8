@@ -73,6 +73,8 @@ Base de connaissance pour quiconque crée ou modifie une page, un composant ou u
 
 - **À la française, à l'heure de Paris** : champ texte jj/mm/aaaa et 24 h (un champ natif suit la langue du navigateur : « 02:00 PM ») ; une date invalide affiche une erreur claire et bloque l'enregistrement (`champDateFr`, `champHeureFr`, `gestion.js`). « Aujourd'hui » se calcule avec `timeZone: 'Europe/Paris'`.
   Vu : une date saisie au hasard, aucune erreur, et rien d'enregistré.
+- **Un message d'erreur n'apparaît pas en quittant un champ** : il pousserait le bouton sur lequel on est en train de cliquer, et le clic tomberait à côté. En quittant le champ, seul son contour change (rien ne bouge) ; le message vient à l'envoi.
+  Vu : « Ajouter » qui ne faisait rien après une date invalide corrigée — le message apparu au départ du champ avait déplacé le bouton.
 - **Une période se nomme par sa date**, sauf la période actuelle (« Aujourd'hui », « Cette semaine », « Ce mois-ci ») : jamais « hier », « semaine prochaine », qu'il faut recalculer de tête. Le bouton qui ramène à la période actuelle le dit (nom accessible « … : revenir à cette semaine »).
 
 ## 7. Textes d'interface
