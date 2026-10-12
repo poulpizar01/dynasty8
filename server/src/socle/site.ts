@@ -1,6 +1,8 @@
 /* SOCLE — identité du site : lue dans site.json (racine du dépôt), insérée dans les pages au moment de les servir.
    Dans une page (.html, .css, robots.txt, sitemap.xml), {{cle}} est remplacé par la valeur de site.json ;
-   {{Cle}} (majuscule) donne la même valeur avec une majuscule en tête. {{url}} vient de BASE_URL.
+   {{Cle}} (majuscule) donne la même valeur avec une majuscule en tête. {{url}} vient de BASE_URL. Tirées de la couleur :
+   {{couleur_rvb}} (« 62, 123, 250 », pour rgba()) et {{couleur_sombre}} (30 % plus sombre) : les feuilles s'en servent
+   au lieu de color-mix(), que le navigateur de l'ordinateur en jeu ne connaît pas (la couleur y disparaîtrait).
    site.json accepte toute clé dont la valeur est un texte : chaque site y ajoute les siennes (adresse, horaires…). */
 import { readFileSync } from 'node:fs';
 import { extname, join, normalize, sep } from 'node:path';
@@ -17,13 +19,16 @@ function load(): Record<string, string> {
   if (missing.length) { console.error(`site.json : valeur manquante pour ${missing.join(', ')}`); process.exit(1); }
   const pasTexte = Object.keys(raw).filter(k => !/^\w+$/.test(k) || typeof raw[k] !== 'string');
   if (pasTexte.length) { console.error(`site.json : clés (lettres, chiffres, _) et valeurs doivent être du texte : ${pasTexte.join(', ')}`); process.exit(1); }
-  if ('url' in raw) { console.error('site.json : « url » est réservée (elle vient de BASE_URL)'); process.exit(1); }
+  const reservees = ['url', 'couleur_rvb', 'couleur_sombre'].filter(k => k in raw);
+  if (reservees.length) { console.error(`site.json : ${reservees.join(', ')} : clé réservée (calculée par le site)`); process.exit(1); }
   // couleur d'accent : facultative, forcément une couleur hexadécimale (elle est insérée telle quelle dans les feuilles de style)
   const couleur = raw.couleur ?? '#3e7bfa';
   if (typeof couleur !== 'string' || !/^#[0-9a-f]{6}$/i.test(couleur)) { console.error('site.json : « couleur » doit être une couleur du type #3e7bfa'); process.exit(1); }
   // lien d'invitation : inséré dans des href, donc une adresse https et rien d'autre
   if (raw.discord !== undefined && !/^https:\/\/[^\s"'<>]+$/.test(raw.discord as string)) { console.error('site.json : « discord » doit être une adresse https:// (lien d’invitation)'); process.exit(1); }
-  return { ...(raw as Record<string, string>), couleur, url: config.baseUrl };
+  const rvb = [1, 3, 5].map(i => parseInt(couleur.slice(i, i + 2), 16));
+  const sombre = '#' + rvb.map(v => Math.round(v * 0.7).toString(16).padStart(2, '0')).join('');
+  return { ...(raw as Record<string, string>), couleur, couleur_rvb: rvb.join(', '), couleur_sombre: sombre, url: config.baseUrl };
 }
 export const site = load();
 
