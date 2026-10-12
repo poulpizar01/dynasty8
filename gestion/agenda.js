@@ -87,6 +87,12 @@ function majEnteteAgenda() {
   const span = document.getElementById("agenda-plage-dates");
   const { debut, fin } = periodeAgenda();
   const vue = agendaVue();
+  // le bouton de retour à la période actuelle nomme ce qu'il affiche ; les flèches aussi (lecteurs d'écran)
+  const nomPeriode = { jour: ["Aujourd’hui", "Jour précédent", "Jour suivant"], semaine: ["Cette semaine", "Semaine précédente", "Semaine suivante"],
+    mois: ["Ce mois-ci", "Mois précédent", "Mois suivant"], liste: ["Aujourd’hui", "Période précédente", "Période suivante"] }[vue];
+  document.getElementById("agenda-aujourdhui").textContent = nomPeriode[0];
+  document.getElementById("agenda-semaine-precedente").setAttribute("aria-label", nomPeriode[1]);
+  document.getElementById("agenda-semaine-suivante").setAttribute("aria-label", nomPeriode[2]);
   const mois = d => d.toLocaleDateString("fr-FR", { month: "long" });
   if (vue === "jour") span.textContent = capitaliser(AGENDA_REF.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
   else if (vue === "mois" || vue === "liste") span.textContent = capitaliser(AGENDA_REF.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }));

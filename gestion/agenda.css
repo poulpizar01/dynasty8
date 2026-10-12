@@ -28,7 +28,7 @@
 .agenda-vue-bouton { padding: 0 14px; }
 .agenda-vue-bouton:hover, .agenda-aujourdhui-bouton:hover, .agenda-fleche:hover { color: var(--text); background: rgba(201, 165, 92, 0.1); }
 .agenda-vue-bouton.actif { background: var(--d8-grad-gold); color: var(--or-contrast); font-weight: 600; }
-.agenda-aujourdhui-bouton { padding: 0 12px; }
+.agenda-aujourdhui-bouton { padding: 0 12px; min-width: 8.5em; }   /* « Cette semaine », le plus long : les boutons voisins ne bougent pas d’une vue à l’autre */
 .agenda-fleche { display: inline-flex; align-items: center; justify-content: center; width: 36px; }
 .agenda-fleche .ico { width: 18px; height: 18px; }
 .agenda-fleche--avant .ico { transform: rotate(90deg); }
