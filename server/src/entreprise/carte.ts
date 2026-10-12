@@ -62,7 +62,12 @@ export const relaisCarte: RequestHandler = (req, res, next) => limite(req, res, 
 });
 
 async function relayer(req: Request, res: Response): Promise<void> {
-  res.set({ 'Content-Security-Policy': `frame-ancestors ${ancetres.join(' ')}`, 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' });
+  res.set({ 'Content-Security-Policy': `frame-ancestors ${ancetres.join(' ')}`, 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', Vary: 'Sec-Fetch-Dest' });
+  // La carte se consulte sur le site, dans son cadre : ouverte directement dans un onglet (adresse du sous-domaine
+  // récupérée dans la page), elle renvoie à la page WebMap du site. Sec-Fetch-Dest vaut « document » pour un onglet,
+  // « iframe » pour le cadre ; un navigateur qui ne l'envoie pas (ordinateur en jeu ancien) passe, pour ne jamais y
+  // perdre la carte. Contournable avec des outils techniques : ceci écarte la consultation ordinaire, pas un curieux.
+  if (req.get('sec-fetch-dest') === 'document') { res.redirect(302, `${config.baseUrl}/webmap.html`); return; }
   // Cible : un chemin de la carte, rien d'autre. Concaténée telle quelle, une cible de requête en forme absolue
   // (« GET pany://x/y ») rallongerait le nom d'hôte de la carte et ferait aller ce serveur vers un autre domaine.
   if (!req.originalUrl.startsWith('/') || req.originalUrl.startsWith('//')) { res.status(400).type('text').send('Adresse refusée.'); return; }
