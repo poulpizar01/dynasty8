@@ -87,12 +87,33 @@ function majEnteteAgenda() {
   const span = document.getElementById("agenda-plage-dates");
   const { debut, fin } = periodeAgenda();
   const vue = agendaVue();
-  // le bouton de retour à la période actuelle nomme ce qu'il affiche ; les flèches aussi (lecteurs d'écran)
-  const nomPeriode = { jour: ["Aujourd’hui", "Jour précédent", "Jour suivant"], semaine: ["Cette semaine", "Semaine précédente", "Semaine suivante"],
-    mois: ["Ce mois-ci", "Mois précédent", "Mois suivant"], liste: ["Aujourd’hui", "Période précédente", "Période suivante"] }[vue];
-  document.getElementById("agenda-aujourdhui").textContent = nomPeriode[0];
-  document.getElementById("agenda-semaine-precedente").setAttribute("aria-label", nomPeriode[1]);
-  document.getElementById("agenda-semaine-suivante").setAttribute("aria-label", nomPeriode[2]);
+  // Le bouton du milieu dit où l'on est : la période actuelle par son nom (« Aujourd’hui », « Cette semaine », « Ce
+  // mois-ci »), toute autre par sa date (« Sem. du 5 oct. ») — pas de « hier » ni de « semaine prochaine », qu'il faudrait
+  // recalculer de tête. Un clic ramène toujours à la période actuelle, ce que son nom accessible annonce.
+  const auj = aujourdhuiParis(), ref = new Date(AGENDA_REF); ref.setHours(0, 0, 0, 0);
+  const parSemaine = vue === "semaine" || vue === "liste";
+  let ecart, nom, actuelle;
+  if (vue === "jour") {
+    ecart = Math.round((ref - auj) / 864e5);
+    nom = ecart === 0 ? "Aujourd’hui" : capitaliser(ref.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }));
+    actuelle = "aujourd’hui";
+  } else if (parSemaine) {
+    ecart = Math.round((lundiDeLaSemaine(ref) - lundiDeLaSemaine(auj)) / (7 * 864e5));
+    nom = ecart === 0 ? "Cette semaine" : `Sem. du ${debut.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`;
+    actuelle = "cette semaine";
+  } else {
+    ecart = (ref.getFullYear() - auj.getFullYear()) * 12 + ref.getMonth() - auj.getMonth();
+    nom = ecart === 0 ? "Ce mois-ci" : capitaliser(ref.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }));
+    actuelle = "ce mois-ci";
+  }
+  const bouton = document.getElementById("agenda-aujourdhui");
+  bouton.textContent = nom;
+  bouton.classList.toggle("sur-periode-actuelle", ecart === 0);
+  bouton.setAttribute("aria-label", ecart === 0 ? nom : `${nom} : revenir à ${actuelle}`);
+  bouton.title = ecart === 0 ? "" : `Revenir à ${actuelle}`;
+  const unite = vue === "jour" ? ["Jour précédent", "Jour suivant"] : parSemaine ? ["Semaine précédente", "Semaine suivante"] : ["Mois précédent", "Mois suivant"];
+  document.getElementById("agenda-semaine-precedente").setAttribute("aria-label", unite[0]);
+  document.getElementById("agenda-semaine-suivante").setAttribute("aria-label", unite[1]);
   const mois = d => d.toLocaleDateString("fr-FR", { month: "long" });
   if (vue === "jour") span.textContent = capitaliser(AGENDA_REF.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
   else if (vue === "mois" || vue === "liste") span.textContent = capitaliser(AGENDA_REF.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }));

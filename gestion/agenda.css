@@ -12,8 +12,12 @@
 .agenda-vis-tous { --vis: var(--vis-tous); --vis-fond: rgba(95, 211, 154, 0.16); --vis-fond-fort: rgba(95, 211, 154, 0.28); --vis-bord: rgba(95, 211, 154, 0.45); }
 
 /* ---- en-tête : titre et période à gauche, commandes à droite ---- */
-.agenda-entete { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 20px; margin-bottom: 10px; flex-shrink: 0; }
+.agenda-entete { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px 20px; margin-bottom: 10px; flex-shrink: 0; }
 .agenda-titre h1 { margin: 0; }
+/* le titre de la période (« Du 28 septembre au 4 octobre 2026 ») revient à la ligne plutôt que de faire passer les
+   commandes dessous : elles ne sautent plus d’une semaine à l’autre */
+.agenda-titre { flex: 1 1 200px; min-width: 0; }
+.agenda-commandes { flex: 0 0 auto; margin-top: 6px; }   /* calées en haut, face au titre : un titre de période sur deux lignes ne les fait plus descendre */
 .agenda-periode { margin: 2px 0 0; font-family: var(--d8-font-display); font-size: 1.15rem; color: var(--gold-light); }
 .agenda-commandes { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 
@@ -28,7 +32,9 @@
 .agenda-vue-bouton { padding: 0 14px; }
 .agenda-vue-bouton:hover, .agenda-aujourdhui-bouton:hover, .agenda-fleche:hover { color: var(--text); background: rgba(201, 165, 92, 0.1); }
 .agenda-vue-bouton.actif { background: var(--d8-grad-gold); color: var(--or-contrast); font-weight: 600; }
-.agenda-aujourdhui-bouton { padding: 0 12px; min-width: 8.5em; }   /* « Cette semaine », le plus long : les boutons voisins ne bougent pas d’une vue à l’autre */
+.agenda-aujourdhui-bouton { padding: 0 12px; min-width: 9.5em; white-space: nowrap; }   /* « Sem. du 28 sept. », le plus long : les boutons voisins ne bougent pas */
+/* hors de la période actuelle, le bouton y ramène : doré, comme une action */
+.agenda-aujourdhui-bouton:not(.sur-periode-actuelle) { color: var(--gold-light); }
 .agenda-fleche { display: inline-flex; align-items: center; justify-content: center; width: 36px; }
 .agenda-fleche .ico { width: 18px; height: 18px; }
 .agenda-fleche--avant .ico { transform: rotate(90deg); }
