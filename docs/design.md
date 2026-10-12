@@ -112,7 +112,8 @@ Base de connaissance pour quiconque crée ou modifie une page, un composant ou u
 - **Pas de transformation persistante sur un conteneur** : une animation garde `animation-fill-mode: backwards`, sinon l'élément garde une transformation et tout élément `position: fixed` à l'intérieur (fenêtre, bouton) se place par rapport à lui.
 - **Un identifiant posé par la coque ne doit pas exister dans une page** : préfixer ceux de la coque.
   Vu : un panneau de la coque nommé comme un bloc de l'accueil — il s'ouvrait au mauvais endroit et ne se fermait plus.
-- **Pas d'attribut `onclick`, de `confirm()`, `alert()` ni `prompt()`** (CSP, invisibles en jeu).
+- **Pas d'attribut `onclick`, de `confirm()`, `alert()`, `prompt()`, `print()` ni `beforeunload`** : la CSP bloque le premier, les autres gèlent le jeu entier dans l'ordinateur en jeu (le joueur doit fermer FiveM).
+- **Ordinateur en jeu** (cahier des charges complet : `docs/folkos.md`) : un raccourci sur une lettre compare `e.key.toLowerCase()` (avec Maj, la touche arrive en majuscule) ; une page tolère un paramètre inconnu dans l'adresse (`?_cb=…` anti-cache) ; rien ne dépend de `window.top` ni de `document.referrer` ; près de chaque envoi de fichier, un texte `.seulement-en-jeu` dit quoi faire si le sélecteur ne s'ouvre pas ; une fenêtre `position: fixed` est enfant de `<body>` ou d'un parent sans `transform`, `filter`, `backdrop-filter`, `perspective` ni `contain`, sinon elle s'y retrouve enfermée.
 
 ---
 

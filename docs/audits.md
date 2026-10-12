@@ -62,7 +62,8 @@ Cherche :
 - les contenus d'un tiers (cadre, lecteur, carte, script) : chacun déclaré dans entreprise.csp et décrit dans confidentialite.html (ce que le tiers reçoit, et quand) ; une adresse qui doit rester cachée envoyée au navigateur au lieu de passer par un relais ;
 - les liens qui ouvrent un contenu principal du site dans un autre onglet (target=_blank, window.open) ou qui envoient le visiteur chez le tiers qui l'héberge (« Ouvrir sur … ») au lieu de l'afficher sur la page ;
 - le CSS ou les API que le navigateur de l'ordinateur en jeu ne connaît pas (:has(), color-mix(), plein écran, transitions entre documents) utilisés sans repli ;
-- un identifiant (id) posé par la coque de la gestion qui existe aussi dans une page (le script de la coque agirait sur l'élément de la page).
+- un identifiant (id) posé par la coque de la gestion qui existe aussi dans une page (le script de la coque agirait sur l'élément de la page) ;
+- le cahier des charges de l'ordinateur en jeu (docs/folkos.md, dernier tableau) : print() ou beforeunload, raccourci sur une lettre sans toLowerCase(), dépendance à window.top ou document.referrer, page qui casse avec un paramètre inconnu (?_cb=…), envoi de fichier sans texte .seulement-en-jeu, fenêtre position:fixed enfermée dans un parent à transform, filter, backdrop-filter, perspective ou contain.
 ```
 
 ## 3. Webhooks et intégrations

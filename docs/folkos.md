@@ -25,3 +25,23 @@ Le broker de l'opérateur ouvre `<BASE_URL>/auth/folkos?folkos_ticket=…` (adre
 4. Session ouverte comme pour Discord ; compte en attente → page d'attente ; sinon `next` (chemin du site uniquement) ou l'accueil.
 
 Erreurs renvoyées à `gestion/?erreur=folkos-…` : `config`, `ticket`, `reseau`, `inconnu`, `discord`, `serveur` (messages dans `gestion/index.html`).
+
+## Cahier des charges de l'opérateur : ce que fait le socle, ce que fait le site
+
+L'opérateur de l'ordinateur en jeu fournit une liste d'exigences (navigateur FiveM : Chromium embarqué, ancien et bridé). Chacune est couverte ainsi ; la colonne « Site » est à vérifier à chaque nouvelle page (les audits « navigateur » et « ergonomie » le contrôlent, `docs/audits.md`).
+
+| Exigence | Socle (rien à faire) | Site |
+|---|---|---|
+| Aucune boîte native (`alert`, `confirm`, `prompt`, `print`, `beforeunload`) : elles gèlent tout le jeu | `gestion.confirmer`, `gestion.notifier`, `gestion.fenetre` (gestion.js) | n'en écrire aucune ; erreurs dans la page |
+| Cadrage : `frame-ancestors` avec toute la chaîne (`nui://game`, `https://cfx-nui-external-iframe`, l'hôte, les autres pages de l'opérateur), en en-tête HTTP, sans `X-Frame-Options`, en HTTPS | `security.ts` avec `FOLKOS_HOTE` et `FOLKOS_CADRES` (ex. `https://*.fbfa.fr https://fbfa.fr`) ; un relais servi à part (`entreprise.hotes`) pose le sien (voir la WebMap d'un site) | régler les deux variables ; page blanche : console F8, message « ancestor violates frame-ancestors » |
+| Cookie de session `SameSite=None; Secure` | automatique avec `FOLKOS_HOTE` en HTTPS | — (pas de repli par jeton : un jeton lisible par les scripts de la page serait exposé à toute faille d'affichage ; le cookie suffit en HTTPS) |
+| SDK clavier `fbfa-game.js` (`typing: field`, `escape: false` : le site est une page du navigateur) et suivi d'adresse `fbfa-bridge.js` | chargés par `socle/folkos.js`, injecté dans chaque page | une page entièrement au clavier demande `typing: 'always'` à l'opérateur |
+| Touche avec Maj : `e.key` arrive en majuscule | — | un raccourci sur une lettre compare `e.key.toLowerCase()` |
+| Pas de `window.open` ni `target="_blank"` (n'ouvrent rien) | `folkos.js` les ouvre dans le cadre | un contenu principal se lit dans la page (docs/design.md, §8) |
+| Pas d'accès à la fenêtre parente (`window.top…`), pas de `document.referrer` (vide) | — | n'en dépendre pour rien ; tester `window.self !== window.top` suffit à savoir qu'on est en jeu |
+| Une adresse avec `?_cb=…` (anti-cache ajouté par FolkOS) ne casse rien | le serveur ignore les paramètres inconnus | une page ne lit que les paramètres qu'elle connaît |
+| Sélecteur de fichiers peu fiable | pas d'envoi par lien : refusé par conception (docs/stockage.md : un fichier envoyé est le seul contrôlable) | près de chaque envoi, un texte `.seulement-en-jeu` : « si rien ne s'ouvre, ajoutez l'image depuis un navigateur » |
+| CSS récent instable (`color-mix()`, `line-height: 0`, `:has()`) | le modèle n'en utilise pas ; teintes calculées par le site (`{{couleur_rvb}}`, `{{couleur_sombre}}`) | n'en écrire aucun (docs/design.md, §10) |
+| Fenêtre `position: fixed` piégée par un ancêtre | fenêtres de la coque ajoutées à `<body>`, z-index élevé | une fenêtre de page est enfant de `<body>` (ou d'un parent sans `transform`, `filter`, `backdrop-filter`, `perspective`, `contain`) |
+| GPU partagé avec le jeu | `html.en-jeu` posé par `folkos.js` | couper WebGL et grosses animations sous `html.en-jeu` |
+| Identité « IG » : endpoint unique, secrets côté serveur, seule la réponse du validateur fait foi, compte retrouvé par `discord_id` (jamais `sub`), `unique_id` lu en texte, `next` relatif, validateur sur la même machine | `/auth/folkos` (adresse à déclarer à l'opérateur, au lieu du `/api/folkos` de ses exemples) | déclarer l'adresse ; dire à l'opérateur que le site tourne sur la même machine que le validateur |

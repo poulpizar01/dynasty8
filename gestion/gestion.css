@@ -129,6 +129,9 @@ table.en-cartes td select{width:100%;min-width:0}
 @media (max-width:520px){.param-modifie-long{display:none}.param-modifie-court{display:inline}}
 
 /* ---------- outils de conception (docs/design.md) ---------- */
+/* ordinateur en jeu (socle/folkos.js pose html.en-jeu) : texte montré seulement en jeu, ex. près d'un envoi de fichier */
+.seulement-en-jeu{display:none!important}
+html.en-jeu .seulement-en-jeu{display:block!important}
 /* flèche dessinée (gestion.js, fleche()) : centrée sur son texte, à sa taille et à sa couleur */
 svg.fleche{width:1.1em;height:1.1em;flex-shrink:0;vertical-align:-.2em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .btn>svg.fleche{vertical-align:0}
