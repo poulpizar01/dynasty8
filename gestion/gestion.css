@@ -121,6 +121,9 @@ img.admin-avatar { object-fit: cover; padding: 0; }
 main.admin-contenu:focus { outline: none; }
 /* la bulle de messagerie (fixe, en bas à droite) ne recouvre jamais la dernière ligne ni ses actions */
 .admin-contenu:not(.admin-contenu--pleine) { padding-bottom: 88px; }   /* bulle : 56 px + 24 px du bord, et 8 px d'air */
+/* page dont la dernière ligne est à gauche (« Mon profil ») : la bulle, à droite, ne peut pas la recouvrir ; la réserve ne
+   ferait que défiler sur du vide */
+.admin-contenu.admin-contenu--sans-reserve { padding-bottom: 24px; }
 /* WebMap de l'espace agents : la carte prend la hauteur restante, au-dessus de la bulle de messagerie */
 .admin-contenu--pleine > .webmap-boite { flex: 1; min-height: 360px; display: flex; margin: 0 0 80px; }
 .admin-contenu--pleine > .webmap-boite iframe { flex: 1; height: auto; }
