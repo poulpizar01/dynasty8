@@ -132,9 +132,9 @@ function rendrePagination(totalFiltre) {
   conteneur.innerHTML = `
     <span>Affichage de ${debut} à ${fin} sur ${totalFiltre} résultat${totalFiltre > 1 ? 's' : ''}</span>
     <div class="pagination-boutons">
-      <button type="button" class="pagination-fleche" data-sens="-1" ${PAGE_BIENS <= 1 ? 'disabled' : ''} aria-label="Page précédente">‹</button>
+      <button type="button" class="pagination-fleche" data-sens="-1" ${PAGE_BIENS <= 1 ? 'disabled' : ''} aria-label="Page précédente">${fleche("precedent")}</button>
       ${pages}
-      <button type="button" class="pagination-fleche" data-sens="1" ${PAGE_BIENS >= totalPages ? 'disabled' : ''} aria-label="Page suivante">›</button>
+      <button type="button" class="pagination-fleche" data-sens="1" ${PAGE_BIENS >= totalPages ? 'disabled' : ''} aria-label="Page suivante">${fleche("suivant")}</button>
     </div>`;
   conteneur.querySelectorAll('[data-sens]').forEach(btn => btn.addEventListener('click', () => { PAGE_BIENS += Number(btn.dataset.sens); actualiserVueAnnonces(); }));
   conteneur.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => { PAGE_BIENS = Number(btn.dataset.page); actualiserVueAnnonces(); }));

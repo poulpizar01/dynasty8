@@ -114,7 +114,7 @@ function carteCoeurHTML(bien) {
         <h3>${echapper(bien.titre)}</h3>
         <span class="carte-coeur-lieu">📍 ${etiquetteZoneHTML(bien)}</span>
         <div class="pied">${prixCarteHTML(bien)}</div>
-        <span class="carte-coeur-cta">Voir le bien <span aria-hidden="true">→</span></span>
+        <span class="carte-coeur-cta">Voir le bien ${fleche("droite")}</span>
       </div>
     </a>`;
 }
@@ -354,8 +354,8 @@ async function chargerFicheBien() {
     const enTeteHTML = `
       <div class="fiche-entete">
         <nav class="fiche-ariane" aria-label="Fil d'Ariane">
-          <a href="/accueil.html">Accueil</a><span aria-hidden="true">›</span>
-          <a href="${categorieLien}">${echapper(categorieNom)}</a><span aria-hidden="true">›</span>
+          <a href="/accueil.html">Accueil</a>${fleche("suivant")}
+          <a href="${categorieLien}">${echapper(categorieNom)}</a>${fleche("suivant")}
           <span>${echapper(bien.titre)}</span>
         </nav>
         <button type="button" class="fiche-partager" id="fiche-partager">
@@ -369,7 +369,7 @@ async function chargerFicheBien() {
         <div class="fiche-visuel-principal ${aPhotos ? "fiche-visuel-principal--zoom" : ""}" id="visuel-principal" ${aPhotos ? 'role="button" tabindex="0" aria-label="Agrandir la photo"' : ""}>
           ${aPhotos ? `<img src="${echapper(images[0])}" alt="${echapper(bien.titre)}">` : `<span style="font-size:3rem;">${iconeCategorie(bien.categorie)}</span>`}
           ${aPhotos ? `<span class="fiche-visuel-agrandir" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Agrandir</span>` : ""}
-          ${images.length > 1 ? `<button type="button" class="fiche-visuel-fleche fiche-visuel-fleche--prec" data-sens="-1" aria-label="Photo précédente">‹</button><button type="button" class="fiche-visuel-fleche fiche-visuel-fleche--suiv" data-sens="1" aria-label="Photo suivante">›</button>` : ""}
+          ${images.length > 1 ? `<button type="button" class="fiche-visuel-fleche fiche-visuel-fleche--prec" data-sens="-1" aria-label="Photo précédente">${fleche("precedent")}</button><button type="button" class="fiche-visuel-fleche fiche-visuel-fleche--suiv" data-sens="1" aria-label="Photo suivante">${fleche("suivant")}</button>` : ""}
           ${images.length > 1 ? `<span class="fiche-visuel-compteur" id="visuel-compteur">1 / ${images.length}</span>` : ""}
         </div>
         ${images.length > 1 ? `<div class="miniatures" id="miniatures">${images
@@ -408,7 +408,7 @@ async function chargerFicheBien() {
               <li><span>Patientez sur place : un agent Dynasty 8 arrive pour finaliser avec vous.</span></li>
             </ol>
           </div>
-          <a class="btn btn-fantome fiche-retour" href="${categorieLien}">← Retour aux annonces</a>
+          <a class="btn btn-fantome fiche-retour" href="${categorieLien}">${fleche("gauche")}Retour aux annonces</a>
         </div>
       </div>`;
 
@@ -472,9 +472,9 @@ function ouvrirVisionneuse(images, depart, titre, onChange) {
   v.innerHTML = `
     <button type="button" class="visionneuse-fermer" aria-label="Fermer">×</button>
     <div class="visionneuse-scene">
-      ${images.length > 1 ? `<button type="button" class="visionneuse-fleche visionneuse-fleche--prec" aria-label="Photo précédente">‹</button>` : ""}
+      ${images.length > 1 ? `<button type="button" class="visionneuse-fleche visionneuse-fleche--prec" aria-label="Photo précédente">${fleche("precedent")}</button>` : ""}
       <figure class="visionneuse-cadre"><img src="${echapper(images[i])}" alt="${echapper(titre)}"></figure>
-      ${images.length > 1 ? `<button type="button" class="visionneuse-fleche visionneuse-fleche--suiv" aria-label="Photo suivante">›</button>` : ""}
+      ${images.length > 1 ? `<button type="button" class="visionneuse-fleche visionneuse-fleche--suiv" aria-label="Photo suivante">${fleche("suivant")}</button>` : ""}
     </div>
     <div class="visionneuse-pied">
       <span class="visionneuse-titre">${echapper(titre)}</span>

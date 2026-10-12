@@ -121,7 +121,7 @@ function rendreBaremeRemu(type) {
         <span class="remu-palier-des">Dès</span>
         <input type="number" min="1" step="1" inputmode="numeric" data-palier-champ="seuil" value="${p.seuil}" aria-label="Seuil du palier, en ${unite}">
         <span class="remu-palier-unite">${unite}</span>
-        <span class="remu-palier-fleche" aria-hidden="true">→</span>
+        <span class="remu-palier-fleche">${fleche("droite")}</span>
         <span class="annonce-montant remu-montant"><input type="number" min="0" step="1000" inputmode="numeric" data-palier-champ="montant" value="${p.montant}" aria-label="Prime de ce palier, en dollars"><span aria-hidden="true">$</span></span>
         <button type="button" class="actions-icone actions-icone--danger" data-palier-supprimer="${p.id}" aria-label="Supprimer le palier dès ${p.seuil} ${unite}">${gestion.ico("trash")}</button>
       </li>`).join("") || `<li class="remu-palier-vide">Aucun palier : pas de prime ${unite === "ventes" ? "aux ventes" : "aux locations"}.</li>`}
@@ -129,7 +129,7 @@ function rendreBaremeRemu(type) {
         <span class="remu-palier-des">Dès</span>
         <input type="number" min="1" step="1" inputmode="numeric" data-nouveau="seuil" placeholder="${(paliers.at(-1)?.seuil || 0) + 20}" aria-label="Seuil du nouveau palier, en ${unite}">
         <span class="remu-palier-unite">${unite}</span>
-        <span class="remu-palier-fleche" aria-hidden="true">→</span>
+        <span class="remu-palier-fleche">${fleche("droite")}</span>
         <span class="annonce-montant remu-montant"><input type="number" min="0" step="1000" inputmode="numeric" data-nouveau="montant" placeholder="${(paliers.at(-1)?.montant || 0) + 5000}" aria-label="Prime du nouveau palier, en dollars"><span aria-hidden="true">$</span></span>
         <button type="button" class="btn btn-fantome btn-petit" data-palier-ajouter>Ajouter</button>
       </li>

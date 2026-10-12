@@ -196,6 +196,13 @@ body.page-sortie .admin-contenu, body.page-sortie > section, body.page-sortie > 
   body.page-sortie .admin-contenu, body.page-sortie > section, body.page-sortie > main, body.page-sortie > .pied-page { opacity: 1; transition: none; }
 }
 
+/* Flèche dessinée (layout.js, fleche()) : centrée sur le texte, à sa taille et à sa couleur. Dans un bouton, un
+   écart à la place de l'espace (un bouton aligne ses éléments, l'espace y disparaît). */
+svg.fleche { width: 1.1em; height: 1.1em; flex-shrink: 0; vertical-align: -0.2em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.btn > svg.fleche:first-child { margin-right: 0.55em; }
+.btn > svg.fleche:last-child { margin-left: 0.55em; }
+.coeur-fleche svg.fleche, .fiche-visuel-fleche svg.fleche, .visionneuse-fleche svg.fleche, .pagination-fleche svg.fleche { width: 20px; height: 20px; }
+
 /* Titres : serif italique fine — jamais de gras, le luxe est dans la finesse. */
 h1, h2, h3, h4 {
   font-family: var(--d8-font-display);

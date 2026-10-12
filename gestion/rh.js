@@ -100,7 +100,7 @@ function afficherEmployes() {
   const entete = COLONNES.map(([cle, libelle]) => {
     const actif = TRI.cle === cle;
     return `<button type="button" class="rh-tri${actif ? ' actif' : ''}" data-tri="${cle}" aria-sort="${actif ? (TRI.sens > 0 ? 'ascending' : 'descending') : 'none'}"
-      aria-label="Trier par ${libelle.toLowerCase()}${actif ? (TRI.sens > 0 ? ', ordre croissant' : ', ordre décroissant') : ''}">${libelle}<span class="rh-tri-fleche" aria-hidden="true">${actif ? (TRI.sens > 0 ? '↑' : '↓') : '↕'}</span></button>`;
+      aria-label="Trier par ${libelle.toLowerCase()}${actif ? (TRI.sens > 0 ? ', ordre croissant' : ', ordre décroissant') : ''}">${libelle}<span class="rh-tri-fleche">${fleche(actif ? (TRI.sens > 0 ? 'haut' : 'bas') : 'hautbas')}</span></button>`;
   }).join('');
 
   const lignes = liste.map(e => {

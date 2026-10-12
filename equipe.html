@@ -65,7 +65,7 @@
           <p>Nous sommes toujours à la recherche de talents passionnés.</p>
         </div>
       </div>
-      <a class="btn btn-or" href="https://discord.com/invite/dDAFWxeU8" target="_blank" rel="noopener">Découvrir nos offres →</a>
+      <a class="btn btn-or" href="https://discord.com/invite/dDAFWxeU8" target="_blank" rel="noopener">Découvrir nos offres<svg class="fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
     </div>
   </div>
 </section>
@@ -127,7 +127,7 @@
           <h3>${echapper(m.pseudo)}</h3>
           <span class="carte-membre-poste">${echapper(m.poste)}</span>
           ${specialite}
-          <button type="button" class="carte-membre-cta" data-index="${i}">Voir le profil <span aria-hidden="true">→</span></button>
+          <button type="button" class="carte-membre-cta" data-index="${i}">Voir le profil ${fleche("droite")}</button>
         </div>
       </article>`;
   }

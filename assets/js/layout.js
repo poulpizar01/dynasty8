@@ -647,6 +647,14 @@ const D8_ICONES_HUB = {
   "📦": '<path d="M3 8l9-4 9 4-9 4z"/><path d="M3 8v9l9 4 9-4V8"/><path d="M12 12v9"/>',
 };
 const D8_FLECHE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+// Flèches dessinées, centrées sur le texte qu'elles accompagnent : un caractère (« ← », « → », « ‹ », « ↑ ») se pose sur
+// la ligne de base et paraît trop bas, surtout à côté de majuscules. fleche('gauche') renvoie le SVG (style.css,
+// svg.fleche) ; dans une page HTML statique, le même SVG est écrit tel quel.
+const D8_FLECHES = {
+  gauche: "M19 12H5M11 6l-6 6 6 6", droite: "M5 12h14M13 6l6 6-6 6", sortie: "M7 17L17 7M9 7h8v8",
+  precedent: "M15 6l-6 6 6 6", suivant: "M9 6l6 6-6 6", haut: "M12 19V5M6 11l6-6 6 6", bas: "M12 5v14M6 13l6 6 6-6", hautbas: "M8 9l4-4 4 4M8 15l4 4 4-4",
+};
+const fleche = (sens) => `<svg class="fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="${D8_FLECHES[sens]}"/></svg>`;
 
 function habillerCartesHub() {
   const cartes = document.querySelectorAll(".carte-hub");

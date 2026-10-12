@@ -660,7 +660,8 @@ main.admin-contenu:focus { outline: none; }
 .rh-tri:hover { color: var(--text); background: rgba(201, 165, 92, 0.08); }
 .rh-tri.actif { color: var(--gold-strong); }
 .rh-tri:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 1px; }
-.rh-tri-fleche { font-size: 0.85rem; opacity: 0.6; }
+.rh-tri-fleche { display: inline-flex; opacity: 0.6; }
+.rh-tri-fleche svg.fleche { width: 14px; height: 14px; vertical-align: 0; }
 .rh-tri.actif .rh-tri-fleche { opacity: 1; }
 .rh-employe {
   display: flex; align-items: center; gap: 12px; min-width: 0; padding: 4px 6px; margin: -4px -6px; border: 0; border-radius: var(--radius-sm);
@@ -852,7 +853,7 @@ main.admin-contenu:focus { outline: none; }
 .remu-palier > input:focus { outline: none; border-color: var(--d8-gold-400); }
 .remu-palier-des, .remu-palier-unite { font-size: 0.88rem; color: var(--text-muted); }
 .remu-palier-unite { min-width: 64px; }
-.remu-palier-fleche { color: var(--gold-strong); }
+.remu-palier-fleche { display: inline-flex; color: var(--gold-strong); }
 .remu-palier .remu-montant { width: 130px; }
 .remu-palier .actions-icone, .remu-palier .btn { margin-left: auto; }
 .remu-palier-nouveau { border-top-style: dashed; }
@@ -898,7 +899,7 @@ button.grades-poignee:focus-visible { outline: 2px solid var(--d8-gold-300); out
 .grades-tag.discord { background: rgba(114, 137, 218, 0.18); color: #b9c5f5; }
 .grades-tag.alerte { background: rgba(232, 83, 74, 0.16); color: var(--danger-strong); }
 .grades-effectif { font-size: 0.85rem; color: var(--text-faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.grades-suite { margin-left: auto; color: var(--text-faint); font-size: 1.2rem; }
+.grades-suite { margin-left: auto; display: inline-flex; color: var(--text-faint); font-size: 1.2rem; }
 .grades-ligne.verrouille .grades-suite { font-size: 0.8rem; }
 .grades-ligne.verrouille .grades-nom { color: var(--text-muted); }
 .grades-fantome { opacity: 0.4; border-style: dashed; }

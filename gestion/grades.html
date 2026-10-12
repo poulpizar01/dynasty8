@@ -109,7 +109,7 @@
             <span class="grades-nom">${echapper(g.libelle)}</span>
             <span class="grades-tags">${role}${resumeDroits(g)}</span>
             ${n === null ? '' : `<span class="grades-effectif">${n} membre${n > 1 ? 's' : ''}</span>`}
-            <span class="grades-suite" aria-hidden="true">${modifiable ? '›' : 'Au-dessus de vous'}</span>
+            <span class="grades-suite" aria-hidden="true">${modifiable ? fleche('suivant') : 'Au-dessus de vous'}</span>
           </button>
         </li>`;
       }).join('') : '<li class="grades-vide">Aucun grade pour le moment : créez le premier, le plus haut, avec « + Nouveau grade ».</li>';
