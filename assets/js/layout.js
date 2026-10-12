@@ -546,7 +546,9 @@ function erreurChampFr(input, message) {
     input.toggleAttribute("aria-invalid", afficher);
     input.classList.toggle("champ-invalide", afficher);
   };
-  input.addEventListener("blur", () => montrer(invalide()));
+  // en quittant le champ, seul le contour signale l'erreur : un message ajouté à ce moment pousserait le bouton qu'on est
+  // en train de cliquer, et le clic tomberait à côté. Le message vient à l'envoi (docs/design.md).
+  input.addEventListener("blur", () => { const i = invalide(); input.toggleAttribute("aria-invalid", i); input.classList.toggle("champ-invalide", i); });
   input.addEventListener("input", () => { if (!invalide()) montrer(false); });
   input.form?.addEventListener("submit", (ev) => {
     if (!invalide()) return;

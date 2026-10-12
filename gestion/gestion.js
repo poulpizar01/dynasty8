@@ -388,6 +388,7 @@ function tablesAdaptatives(racine) {
   };
   // mesure en mode tableau (synchrone : rien n'est affiché entre les deux), cartes si la largeur dépasse
   const ajuster = table => {
+    if (!table.parentElement || !table.isConnected) return;   // tableau retiré de la page entre-temps (redessiné)
     table.classList.remove('en-cartes');
     table.parentElement.classList.remove('contient-cartes');
     const trop = table.offsetWidth > table.parentElement.clientWidth + 1;
@@ -402,6 +403,7 @@ function tablesAdaptatives(racine) {
     ajuster(table);
     let largeur = table.parentElement.clientWidth;
     new ResizeObserver(() => {
+      if (!table.isConnected) return;
       const l = table.parentElement.clientWidth;
       if (l !== largeur) { largeur = l; ajuster(table); }   // la hauteur change avec les cartes : seule la largeur compte
     }).observe(table.parentElement);
