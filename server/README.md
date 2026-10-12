@@ -36,6 +36,7 @@ docker compose up -d --build
 - Le serveur suit la branche `main` : c'est elle qui est déployée.
 - `SITE_ID` et `HOST_PORT` doivent être **uniques sur la machine** : chaque site a ses propres conteneurs (`<SITE_ID>-app`, `<SITE_ID>-db`, `<SITE_ID>-backup`, et `<SITE_ID>-db-roles`, qui ne tourne qu'un instant à chaque démarrage) et son propre port. `ss -ltnp` liste les ports déjà pris.
 - Générer `SESSION_SECRET` (32 caractères au moins, sinon le site refuse de démarrer) et `POSTGRES_PASSWORD` avec `openssl rand -hex 32` (le mot de passe de la base ne se change plus une fois la base créée).
+- **Jamais en production** : `DEV_LOGIN` (connexion sans Discord), `DISCORD_BOT_TOKEN=simulation` (faux bot) — le site refuse de démarrer avec —, ni de fichier `compose.local.yaml` (réglages d'un poste de développement).
 
 Vérifier : `docker compose ps` (les trois services `Up`, la base `healthy`) et `docker logs <SITE_ID>-app`, qui doit finir par `<nom du site> en écoute sur le port 3000 (https://<domaine>)`. Le premier démarrage crée les tables (migrations Prisma).
 
@@ -49,7 +50,24 @@ La base de prod démarre **vide** (rien n'est repris du dev). Dans cet ordre :
 1. Le **propriétaire du serveur Discord** se connecte le premier (`https://<domaine>/gestion/`) : il est validé d'office avec tous les droits.
 2. Dans Gestion → Grades, il crée les grades de l'entreprise, du sommet à la base : libellé, couleur, permissions, et le **rôle Discord** qui donne chaque grade (facultatif, mais c'est ce qui évite de valider chaque employé à la main).
 3. Les employés se connectent : ceux qui portent un rôle lié à un grade entrent directement ; les autres attendent la validation (Gestion → Comptes).
-4. Webhooks du bot (si l'entreprise utilise [roxwood-network-entreprise](https://github.com/poulpizar01/roxwood-network-entreprise)) : voir [docs/webhooks.md](../docs/webhooks.md).
+4. **Paramètres** (permission « Paramètres du site ») : liens et réglages de l'entreprise, onglet par onglet — rien de tout cela ne va dans le `.env`. Un réglage Discord (rôle, salon, catégorie) se choisit par son nom quand le bot est relié.
+5. **Comptabilité → Rémunération** (si le site garde le module commun) : salaire de chaque grade, versé ou coupé, et taux horaire.
+6. Webhooks du bot (si l'entreprise utilise [roxwood-network-entreprise](https://github.com/poulpizar01/roxwood-network-entreprise)) : voir [docs/webhooks.md](../docs/webhooks.md).
+7. **Ordinateur en jeu** (si le site y est affiché) : `FOLKOS_*` dans `.env`, et l'adresse `https://<domaine>/auth/folkos` à déclarer à l'opérateur FolkOS ; cahier des charges de l'opérateur et ce que le site doit vérifier : [docs/folkos.md](../docs/folkos.md).
+
+**Chaque site écrit son guide d'installation pas à pas** (`deploy/INSTALLATION.md`, pour la personne qui installe) : qui fournit quoi, valeurs de chaque variable, droits du bot, réglages à faire dans l'espace agents, vérifications avec le résultat attendu, et une liste de contrôle finale. Ce fichier-ci reste générique.
+
+### Liste de contrôle de mise en production
+- [ ] DNS vers le VPS ; ports 80 et 443 ouverts, `HOST_PORT` fermé de l'extérieur
+- [ ] `.env` complet, `chmod 600`, `COMPOSE_FILE=compose.yaml`, sans `DEV_LOGIN` ni `simulation`
+- [ ] `docker compose ps` : tout `Up`, site et base `healthy`
+- [ ] certificat obtenu pour chaque domaine (site, et sous-domaine éventuel `entreprise.hotes`), renouvellement testé (`certbot renew --dry-run`)
+- [ ] redirection Discord ajoutée ; bot invité sur le serveur avec les droits que le site demande
+- [ ] propriétaire du serveur Discord connecté en premier ; grades créés et liés à leurs rôles
+- [ ] Paramètres renseignés ; réglages propres au site faits (voir son `deploy/INSTALLATION.md`)
+- [ ] webhooks du bot et ordinateur en jeu déclarés, si utilisés
+- [ ] envoi d'une image testé (stockage) ; affichage dans l'ordinateur en jeu testé, si utilisé
+- [ ] première sauvegarde présente dans `backups/` ; copie hors du serveur en place
 
 Le domaine n'est écrit nulle part dans les fichiers : `robots.txt`, `sitemap.xml` et les aperçus de partage le prennent dans `BASE_URL`.
 
@@ -100,7 +118,7 @@ Une par site.
 3. OAuth2 → Redirects → ajouter `https://<domaine>/auth/discord/callback`
 4. `DISCORD_GUILD_ID` = ID du serveur Discord de l'entreprise (mode développeur → clic droit sur le serveur → Copier l'identifiant). Seuls ses membres peuvent se connecter.
 5. Le **propriétaire du serveur Discord** est propriétaire du site : validé d'office, toutes les permissions quel que soit son grade (vérifié à chaque connexion).
-6. Grades : Gestion → Grades. Pour y choisir les rôles Discord par leur nom (liste lue sur Discord, toujours à jour) : dans la même application, onglet Bot → Reset Token → `DISCORD_BOT_TOKEN` dans `.env`, puis inviter ce bot sur le serveur (OAuth2 → URL Generator, scope `bot`, aucune permission pour le socle ; un site qui s'en sert pour autre chose indique les droits à ajouter). Sans lui, l'identifiant d'un rôle se copie en mode développeur (Paramètres du serveur → Rôles → clic droit → Copier l'identifiant). Rôles et grades sont relus à chaque connexion et, avec ce jeton, toutes les 10 minutes : un rôle retiré sur Discord compte aussitôt, et un membre parti du serveur est déconnecté. Sans jeton, seulement à la connexion suivante (7 jours au plus, durée d'une session).
+6. Grades : Gestion → Grades. Pour y choisir les rôles Discord par leur nom (liste lue sur Discord, toujours à jour) : dans la même application, onglet Bot → Reset Token → `DISCORD_BOT_TOKEN` dans `.env`, puis inviter ce bot sur le serveur (OAuth2 → URL Generator, scope `bot`, aucune permission pour le socle ; un site qui s'en sert pour autre chose indique les droits à ajouter). Aucune « intention privilégiée » n'est nécessaire. Les salons et catégories proposés dans Paramètres sont ceux que le bot peut voir : un salon qui manque dans la liste est un salon que le bot ne voit pas. Sans lui, l'identifiant d'un rôle se copie en mode développeur (Paramètres du serveur → Rôles → clic droit → Copier l'identifiant). Rôles et grades sont relus à chaque connexion et, avec ce jeton, toutes les 10 minutes : un rôle retiré sur Discord compte aussitôt, et un membre parti du serveur est déconnecté. Sans jeton, seulement à la connexion suivante (7 jours au plus, durée d'une session).
 
 ## Images
 - **Dev** : les images envoyées sont écrites dans `uploads/` à la racine du dépôt, sur le poste.
