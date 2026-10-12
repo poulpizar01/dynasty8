@@ -21,7 +21,7 @@
   <!-- GESTION — paramètres du site (permission « parametres », serveur : entreprise/parametres.ts, socle/parametres.ts).
        Un onglet par « onglet » déclaré côté serveur, plus Apparence ; chaque onglet s'enregistre à part et montre en tête
        l'état de ce qui en dépend. Un réglage Discord (rôle, salon, catégorie) se choisit par son nom quand le bot est
-       relié au site (/api/parametres/discord), sinon par son identifiant. L'agenda est présenté en tableau. -->
+       relié au site (/api/parametres/discord), sinon par son identifiant. -->
   <main class="admin-contenu">
     <div class="entete-admin">
       <div>
@@ -87,23 +87,6 @@
         ${r.aide ? `<p class="champ-aide">${echapper(r.aide)}</p>` : ''}
       </div>`;
 
-    // ---- agenda : tableau « qui voit / qui crée » au lieu de huit champs presque identiques ----
-    const LIGNES_AGENDA = [['Patrons', 'agenda_roles_patrons', 'agenda_createurs_patrons'], ['Direction', 'agenda_roles_direction', 'agenda_createurs_direction'],
-      ['Tous', 'agenda_role_tous', 'agenda_createurs_tous'], ['Perso pour quelqu’un d’autre', null, 'agenda_createurs_perso']];
-    function agenda(g) {
-      const cellule = (cle, etiquette) => cle ? saisie(reglage(cle), etiquette) : '<span class="param-sans">Toujours la personne concernée</span>';
-      return `<div class="param-agenda" role="table" aria-label="Qui voit et qui crée les événements">
-          <div class="param-agenda-ligne entete" role="row"><span role="columnheader">Événements</span><span role="columnheader">Qui les voit</span><span role="columnheader">Qui les crée</span></div>
-          ${LIGNES_AGENDA.map(([nom, voit, cree]) => `<div class="param-agenda-ligne" role="row">
-            <strong role="rowheader">${echapper(nom)}</strong>
-            <div role="cell" data-libelle="Qui les voit">${cellule(voit, `Qui voit les événements ${nom}`)}</div>
-            <div role="cell" data-libelle="Qui les crée">${cellule(cree, `Qui crée les événements ${nom}`)}</div>
-          </div>`).join('')}
-        </div>
-        <p class="champ-aide">Un «&nbsp;Perso&nbsp;» pour quelqu’un d’autre est posté dans le ticket ouvert par cette personne ; un «&nbsp;Perso&nbsp;» pour soi reste ouvert à tous.</p>
-        ${champ(reglage('agenda_categories_tickets'))}`;
-    }
-
     // ---- états en tête d'onglet ----
     const etat = (classe, texte) => `<p class="param-etat ${classe}">${texte}</p>`;
     async function afficherEtats() {
@@ -146,7 +129,7 @@
         <section class="param-groupe">
           <h2 class="compta-titre">${echapper(g.titre)}</h2>
           ${g.intro ? `<p class="compta-aide" style="margin-bottom:14px;">${echapper(g.intro)}</p>` : ''}
-          ${g.reglages.some(r => r.cle === 'agenda_roles_patrons') ? agenda(g) : g.reglages.map(champ).join('')}
+          ${g.reglages.map(champ).join('')}
         </section>`).join('');
       $('panneaux').querySelectorAll('.choix-discord select').forEach(s => ameliorerSelect(s, null, 'parametres'));
       marquer(false);

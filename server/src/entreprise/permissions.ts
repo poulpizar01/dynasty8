@@ -18,5 +18,6 @@ export const permissions: Permission[] = [
   { cle: 'ventes', libelle: 'Consulter les ventes et statistiques', description: 'Ventes reçues, totaux, anomalies et chiffres du Google Sheets de la Direction' },
   { cle: 'ventes-gerer', libelle: 'Synchroniser le Google Sheets', description: 'Relire à la main le Google Sheets de la Direction (sinon automatique toutes les 20 minutes)' },
   { cle: 'compta', libelle: 'Gérer la comptabilité', description: 'Relevé Tablettes, rémunération (salaires, paliers de primes) et déclaration DOT' },
+  { cle: 'agenda-types', libelle: 'Gérer les types d’événements', description: 'Créer, renommer, colorer et supprimer les types qui classent les événements de l’agenda' },
   // « parametres » (liens, services, agenda, apparence) est une permission du socle
 ];

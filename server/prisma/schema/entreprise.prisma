@@ -110,20 +110,47 @@ model EvenementAgenda {
   heureDebut       String   @map("heure_debut") @db.VarChar(5) // HH:MM, heure de Paris
   heureFin         String   @map("heure_fin") @db.VarChar(5)
   notes            String   @default("") @db.VarChar(500)
-  visibilite       String   @default("perso") @db.VarChar(10) // perso | patrons | direction | tous
-  // « Perso » pour quelqu'un d'autre : sa fiche RH, son ID Discord (qui lui ouvre l'événement), le message de son ticket
+  typeId           Int?     @map("type_id") // classement (couleur) ; type supprimé : « Sans type »
+  type             TypeAgenda? @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  // destiné à : « perso » (l'auteur, ou la personne choisie), « tous », ou « grade » (ce grade et ceux au-dessus)
+  destination      String   @default("perso") @db.VarChar(10)
+  destinationGrade String?  @map("destination_grade") @db.VarChar(20)
+  // « Perso » pour quelqu'un d'autre : sa fiche RH, son ID Discord (qui lui ouvre l'événement), le message envoyé
   cibleEmployeId   Int?     @map("cible_employe_id")
   cibleDiscordId   String?  @map("cible_discord_id") @db.VarChar(22)
   cibleNom         String   @default("") @map("cible_nom") @db.VarChar(130)
-  discordSalonId   String?  @map("discord_salon_id") @db.VarChar(22)
+  discordSalonId   String?  @map("discord_salon_id") @db.VarChar(22) // ticket, ou conversation privée
   discordMessageId String?  @map("discord_message_id") @db.VarChar(22)
+  prevenu          String   @default("") @db.VarChar(10) // ticket | prive | '' (personne prévenue par où)
   creeLe           DateTime @default(now()) @map("cree_le") @db.Timestamptz(6)
   majLe            DateTime @default(now()) @updatedAt @map("maj_le") @db.Timestamptz(6)
 
   @@index([compteId, jour])
-  @@index([visibilite, jour])
+  @@index([destination, jour])
   @@index([cibleDiscordId, jour])
   @@map("evenements_agenda")
+}
+
+// Types d'événements de l'agenda : simple classement (nom, couleur), gérés par la permission « agenda-types »
+model TypeAgenda {
+  id          Int    @id @default(autoincrement())
+  nom         String @unique @db.VarChar(40)
+  couleur     String @db.VarChar(7)
+  position    Int    @default(0)
+  evenements  EvenementAgenda[]
+
+  @@map("agenda_types")
+}
+
+// Plafonds d'agenda d'un grade (page Grades) : jusqu'à quel grade il consulte, crée et modifie les événements destinés
+// à un grade. Valeur : clé d'un grade, '' = aucun ; pas de ligne ou grade disparu = son propre grade.
+model AgendaDroitsGrade {
+  gradeCle  String @id @map("grade") @db.VarChar(20)
+  consulter String @default("") @db.VarChar(20)
+  creer     String @default("") @db.VarChar(20)
+  modifier  String @default("") @db.VarChar(20)
+
+  @@map("agenda_droits_grades")
 }
 
 // Ressources humaines : la fiche employé, source de vérité de l'identité (routes/rh.ts). Les autres modules (ventes,

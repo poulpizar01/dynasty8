@@ -992,21 +992,11 @@ button.grades-poignee:focus-visible { outline: 2px solid var(--d8-gold-300); out
 .choix-etiquette button:hover, .choix-etiquette button:focus-visible { background: rgba(255, 255, 255, 0.12); outline: none; }
 .choix-discord .d8-select-enveloppe { flex: 1 1 200px; min-width: 0; }
 .choix-discord select { min-height: 40px; }
-.param-agenda { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; }
-.param-agenda-ligne { display: grid; grid-template-columns: 170px minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border); }
-.param-agenda-ligne:last-child { border-bottom: 0; }
-.param-agenda-ligne.entete { padding-top: 8px; padding-bottom: 8px; font-size: 0.8rem; color: var(--text-faint); }
-.param-agenda-ligne strong { font-weight: 500; color: var(--text); }
-.param-agenda-ligne input { width: 100%; min-height: 40px; padding: 8px 12px; border: 1px solid rgba(201, 165, 92, 0.28); border-radius: var(--radius-sm); background: rgba(6, 12, 26, 0.55); color: var(--text); font: inherit; font-size: 0.9rem; }
-.param-sans { font-size: 0.85rem; color: var(--text-faint); }
 @media (max-width: 760px) {
-  .param-agenda-ligne { grid-template-columns: 1fr; gap: 8px; }
   /* la bulle de messagerie occupe le coin droit : on lui laisse sa place, mention raccourcie */
   .param-pied { padding-right: 72px; }
   .param-modifie-long { display: none; }
   .param-modifie-court { display: inline !important; }
-  .param-agenda-ligne.entete { display: none; }
-  .param-agenda-ligne [data-libelle]::before { content: attr(data-libelle); display: block; margin-bottom: 4px; font-size: 0.78rem; color: var(--text-faint); }
 }
 
 .param-modifie-court { display: none; }

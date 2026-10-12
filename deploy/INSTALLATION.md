@@ -61,10 +61,10 @@ Dans le portail développeur Discord (https://discord.com/developers/application
 3. **Inviter le bot sur le serveur de Dynasty 8** : ouvrir l'adresse suivante, choisir le serveur, valider :
    `https://discord.com/oauth2/authorize?client_id=1546523997980852294&scope=bot&permissions=84992`
    (droits demandés : *Voir les salons*, *Envoyer des messages*, *Intégrer des liens*, *Voir les anciens messages*). Pour limiter les droits, les accorder plutôt salon par salon :
-   - salon des prises et fins de service : *Voir le salon* et *Voir les anciens messages* ;
-   - catégories des tickets (Ticket Tool) : *Voir le salon*, *Envoyer des messages*, *Intégrer des liens* (l'événement d'agenda est un message enrichi).
+   - catégories des tickets (Ticket Tool) : *Voir le salon*, *Envoyer des messages*, *Intégrer des liens* (les événements d'agenda sont postés dans les tickets) ;
+   - aucun droit n'est nécessaire dans le salon des prises et fins de service : le bot en transmet les événements au site par webhook.
 
-   Le bot sert à quatre choses : proposer les rôles, salons et catégories par leur nom (Grades, Paramètres) ; relire les rôles de chaque agent toutes les 10 minutes (un rôle retiré ou un départ du serveur compte aussitôt) ; lire le salon des services (« En service ») ; poster les événements d'agenda dans les tickets. Sans lui, le site fonctionne, mais ces quatre fonctions restent inactives et un rôle retiré ne compte qu'à la connexion suivante (7 jours au plus).
+   Le bot sert à proposer les rôles, salons et catégories par leur nom (Grades, Paramètres), relire les rôles de chaque agent toutes les 10 minutes (un rôle retiré ou un départ du serveur compte aussitôt), transmettre les prises et fins de service et prévenir sur Discord les personnes destinataires d'un événement d'agenda (dans leur ticket ou en message privé). Sans lui, le site fonctionne, mais ces fonctions restent inactives et un rôle retiré ne compte qu'à la connexion suivante (7 jours au plus).
 
 ## 3. Le fichier `.env`
 
@@ -155,7 +155,7 @@ Tout se règle depuis l'espace agents, sans toucher au serveur. **Paramètres** 
   - **WebMap** : adresse publique en `https://` de la carte (ex. `https://webmap.dynasty8.fbfa.fr`). Le site refuse une adresse du serveur lui-même ou d'un réseau privé. Cette adresse n'est jamais montrée aux visiteurs.
 - **Discord** (bot relié) :
   - **Membres en service** : choisir le salon où le bot des services publie « Service démarré » / « Service terminé », et la clôture automatique (12 h par défaut). L'état de la lecture s'affiche en tête de l'onglet dans la minute.
-  - **Agenda partagé** : pour « Patrons », « Direction », « Tous » et « Perso », qui voit et qui crée (rôles Discord choisis par leur nom), et les catégories où Ticket Tool crée les tickets.
+  - **Agenda partagé** : seules les catégories où Ticket Tool crée les tickets ; les droits de consultation, création et modification se règlent pour chaque grade dans **Grades**.
 - **Apparence** (facultatif) : remplacer logos, icônes et image de partage.
 
 Puis :
@@ -165,6 +165,7 @@ Puis :
 ## 8. Bots et ordinateur en jeu
 
 - **Bot Discord, candidatures** : dans le salon panneau du bot, *Monitoring → Ajouter un webhook*, type **Candidatures** (`recruitment.updated`), URL `https://dynasty8.fbfa.fr/webhooks/bot`. Le secret, affiché une seule fois, va dans `BOT_WEBHOOK_SECRETS` du `.env`, puis `docker compose up -d`. Une candidature passée « Acceptée » sur Discord crée la fiche dans Ressources humaines.
+- **Bot Discord, membres en service** : dans le panneau *Monitoring → Ajouter un webhook*, choisir le type **Prises et fins de service** (`monitoring.duty`) et la même URL `https://dynasty8.fbfa.fr/webhooks/bot`. Ajouter aussi le secret affiché par le bot à `BOT_WEBHOOK_SECRETS` (secrets séparés par des virgules), puis `docker compose up -d`. Le site ne lit plus de salon Discord pour suivre les services.
 - **Bot de ventes** : il envoie chaque vente à `POST https://dynasty8.fbfa.fr/api/stats/ventes`, avec l'en-tête `Authorization: Bearer <STATS_BOT_SECRET>` et un corps JSON (`identite`, `type` : `Vente` ou `Location`, `semaine` au format `S36-26`, `achat`, `loc`, `dateVente` jj/mm/aaaa, et les autres colonnes du registre : voir `server/src/entreprise/stats/ventes.ts`). Réponse `201` (enregistrée) ou `200` (déjà reçue). Tant que ce bot n'est pas en place, les primes viennent du Google Sheets de la Direction.
 - **Ordinateur en jeu (FolkOS)** — à transmettre à l'opérateur FolkOS :
   - adresse de connexion « IG » à déclarer dans son broker `access` : **`https://dynasty8.fbfa.fr/auth/folkos`** (slug suggéré : `dynasty8`) ;
@@ -202,9 +203,10 @@ Dans `/opt/dynasty8` :
 - [ ] deux certificats (site et carte), renouvellement testé
 - [ ] redirection Discord ajoutée ; bot invité avec ses droits
 - [ ] propriétaire connecté en premier ; grades créés et liés à leurs rôles
-- [ ] Paramètres : quatre onglets renseignés (dont les quatre présentations, le Google Sheets partagé, la WebMap, le salon des services, l'agenda)
+- [ ] Paramètres : quatre onglets renseignés (dont les quatre présentations, le Google Sheets partagé, la WebMap, la clôture automatique des services et les catégories de tickets)
+- [ ] Droits de l'agenda réglés pour chaque grade dans **Grades**
 - [ ] Comptabilité → Rémunération et paliers de primes ; Ressources humaines → recrutement réglé
-- [ ] webhook « Candidatures » créé et `BOT_WEBHOOK_SECRETS` réglé
+- [ ] webhooks « Candidatures » et « Prises et fins de service » créés ; leurs secrets sont dans `BOT_WEBHOOK_SECRETS`
 - [ ] `STATS_BOT_SECRET` transmis en privé au bot de ventes
 - [ ] adresse `https://dynasty8.fbfa.fr/auth/folkos` déclarée à l'opérateur FolkOS ; site testé dans l'ordinateur en jeu
 - [ ] toutes les vérifications du § 9 passées

@@ -60,18 +60,10 @@ export const PARAMETRES: GroupeParametres[] = [
     { cle: 'services_cloture_heures', type: 'entier', min: 1, max: 72, defaut: 12, libelle: 'Clôture automatique, en heures',
       aide: 'Un service resté ouvert (fin jamais annoncée) est fermé après ce délai ; une vraie fin annoncée plus tard la remplace.' },
   ] },
-  // Agenda : présenté en tableau (qui voit, qui crée) par la page ; « Paramètres du site » peut toujours tout créer
-  { onglet: 'Discord', titre: 'Agenda partagé', intro: 'Qui voit et qui crée les événements partagés, selon ses rôles Discord. Qui a le droit « Paramètres du site » peut toujours en créer.', reglages: [
-    { cle: 'agenda_roles_patrons', type: 'ids-discord', discord: 'role', libelle: 'Qui voit les événements « Patrons »', aide: '' },
-    { cle: 'agenda_roles_direction', type: 'ids-discord', discord: 'role', libelle: 'Qui voit les événements « Direction »', aide: '' },
-    { cle: 'agenda_role_tous', type: 'id-discord', discord: 'role', libelle: 'Qui voit les événements « Tous »', aide: 'Un seul rôle, par exemple celui commun à tous les employés.' },
-    { cle: 'agenda_createurs_patrons', type: 'ids-discord', discord: 'role', libelle: 'Qui crée les événements « Patrons »', aide: '' },
-    { cle: 'agenda_createurs_direction', type: 'ids-discord', discord: 'role', libelle: 'Qui crée les événements « Direction »', aide: '' },
-    { cle: 'agenda_createurs_tous', type: 'ids-discord', discord: 'role', libelle: 'Qui crée les événements « Tous »', aide: '' },
-    { cle: 'agenda_createurs_perso', type: 'ids-discord', discord: 'role', libelle: 'Qui crée un « Perso » pour quelqu’un d’autre',
-      aide: 'L’événement est posté dans le ticket ouvert par cette personne. Un « Perso » pour soi reste ouvert à tous.' },
+  // Agenda : qui voit, crée et modifie quoi se règle par grade (page Grades) ; ici, seulement où trouver les tickets
+  { onglet: 'Discord', titre: 'Agenda : prévenir sur Discord', intro: 'Un événement créé pour quelqu’un d’autre lui est posté sur Discord : dans son ticket s’il en a un, sinon en message privé. Qui voit, crée et modifie les événements se règle dans la fiche de chaque grade.', reglages: [
     { cle: 'agenda_categories_tickets', type: 'ids-discord', discord: 'categorie', libelle: 'Catégories des tickets',
-      aide: 'Les catégories où Ticket Tool crée les tickets : le site y cherche le ticket de la personne. Le bot doit pouvoir y écrire.' },
+      aide: 'Les catégories où le bot de tickets les ouvre : le site y cherche le ticket de la personne (le bot doit pouvoir y voir les salons et écrire). Vide : message privé seulement.' },
   ] },
 ];
 

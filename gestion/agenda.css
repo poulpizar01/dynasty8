@@ -6,10 +6,6 @@
   --agenda-filet: rgba(201, 165, 92, 0.09);
 }
 /* fonds teintés calculés d’avance (pas de color-mix : le navigateur de l’ordinateur en jeu est ancien) */
-.agenda-vis-perso { --vis: var(--vis-perso); --vis-fond: rgba(212, 178, 106, 0.16); --vis-fond-fort: rgba(212, 178, 106, 0.28); --vis-bord: rgba(212, 178, 106, 0.45); }
-.agenda-vis-patrons { --vis: var(--vis-patrons); --vis-fond: rgba(239, 127, 115, 0.16); --vis-fond-fort: rgba(239, 127, 115, 0.28); --vis-bord: rgba(239, 127, 115, 0.45); }
-.agenda-vis-direction { --vis: var(--vis-direction); --vis-fond: rgba(169, 156, 245, 0.16); --vis-fond-fort: rgba(169, 156, 245, 0.28); --vis-bord: rgba(169, 156, 245, 0.45); }
-.agenda-vis-tous { --vis: var(--vis-tous); --vis-fond: rgba(95, 211, 154, 0.16); --vis-fond-fort: rgba(95, 211, 154, 0.28); --vis-bord: rgba(95, 211, 154, 0.45); }
 
 /* ---- en-tête : titre et période à gauche, commandes à droite ---- */
 .agenda-entete { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px 20px; margin-bottom: 10px; flex-shrink: 0; }
@@ -228,3 +224,20 @@
 @keyframes agenda-raccourci { 0% { box-shadow: 0 0 0 0 rgba(201, 165, 92, 0.65); background: rgba(201, 165, 92, 0.22); } 100% { box-shadow: 0 0 0 10px rgba(201, 165, 92, 0); } }
 .agenda-aujourdhui-bouton.raccourci { animation: agenda-raccourci 0.45s ease-out; }
 @media (prefers-reduced-motion: reduce) { .agenda-touche { transition: none; } .agenda-aujourdhui-bouton.raccourci { animation: none; } }
+
+/* ---- types d'événements : légende, champ, fenêtre de gestion ---- */
+.agenda-legende-gerer { min-height: 28px; padding: 2px 10px; border: 1px solid var(--border); border-radius: 999px; background: none; color: var(--text-muted); font: inherit; font-size: 0.82rem; cursor: pointer; }
+.agenda-legende-gerer:hover, .agenda-legende-gerer:focus-visible { color: var(--text); border-color: rgba(201, 165, 92, 0.5); }
+.evenement-classement { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.evenement-classement .champ.cache + .champ { grid-column: 1 / -1; }
+.modale.modale-types { max-width: 460px; }
+.types-intro { margin: 0 0 14px; }
+.types-liste { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
+.types-ligne, .types-ajout { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.types-ligne input[type="text"], .types-ajout input[type="text"] { min-height: 40px; }
+.types-ligne input[type="color"], .types-ajout input[type="color"] { width: 44px; height: 40px; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; }
+.types-supprimer { width: 40px; height: 40px; border: 1px solid transparent; border-radius: var(--radius-sm); background: none; color: var(--text-faint); cursor: pointer; }
+.types-supprimer:hover, .types-supprimer:focus-visible { color: var(--danger-strong); border-color: rgba(232, 83, 74, 0.35); }
+.types-vide { color: var(--text-faint); font-size: 0.9rem; }
+#zone-message-types .message { margin: 12px 0 0; }
+@media (max-width: 520px) { .evenement-classement { grid-template-columns: 1fr; } }

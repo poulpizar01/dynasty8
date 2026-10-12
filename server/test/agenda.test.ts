@@ -1,38 +1,70 @@
-// Agenda partagé (src/entreprise/agenda-regles.ts) : qui voit et crée quoi, heure de Paris, ticket de la personne.
+// Agenda partagé (src/entreprise/agenda-regles.ts) : qui voit, crée et modifie quoi, heure de Paris, ticket de la personne.
 // Une erreur ici ouvrirait un événement de direction à tout le monde sans rien d'anormal à l'écran.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { choisirTicket, droitsAgenda, parisVersDate } from '../src/entreprise/agenda-regles.js';
+import { choisirTicket, droitsAgenda, modifiable, parisVersDate, peutCreer, peutCreerPour, plafondAccordable, voit } from '../src/entreprise/agenda-regles.js';
 
-const REGLES: Record<string, string[]> = {
-  agenda_roles_patrons: ['100000000000000001'], agenda_roles_direction: ['100000000000000001', '100000000000000002'],
-  agenda_role_tous: ['100000000000000003'], agenda_createurs_tous: ['100000000000000002'], agenda_createurs_perso: ['100000000000000002'],
-};
-const ids = (cle: string) => REGLES[cle] ?? [];
-const liste = (s: Set<string>) => [...s].sort();
+const GRADES = ['patron', 'directeur', 'manager', 'agent'];   // du sommet à la base
+const ev = (destination: string, destinationGrade: string | null = null, compteId: number | null = 99, cibleDiscordId: string | null = null) =>
+  ({ compteId, destination, destinationGrade, cibleDiscordId });
+const MOI = { id: 1, discordId: '411111111111111111' };
 
-test('droits selon les rôles Discord', () => {
-  const employe = droitsAgenda(['100000000000000003'], false, ids);
-  assert.deepEqual(liste(employe.voit), ['perso', 'tous']);
-  assert.deepEqual(liste(employe.cree), ['perso'], 'voir « Tous » ne permet pas d’en créer');
-  assert.equal(employe.persoAutrui, false);
-
-  const manager = droitsAgenda(['100000000000000002', '100000000000000003'], false, ids);
-  assert.deepEqual(liste(manager.voit), ['direction', 'perso', 'tous']);
-  assert.deepEqual(liste(manager.cree), ['perso', 'tous']);
-  assert.equal(manager.persoAutrui, true);
-
-  const sansRole = droitsAgenda([], false, ids);
-  assert.deepEqual(liste(sansRole.voit), ['perso']);
-  assert.deepEqual(liste(sansRole.cree), ['perso']);
+test('par défaut : son grade et ceux en dessous', () => {
+  const d = droitsAgenda(GRADES, 'manager', false, null);
+  assert.equal(voit(ev('grade', 'manager'), MOI, d, GRADES), true);
+  assert.equal(voit(ev('grade', 'agent'), MOI, d, GRADES), true);
+  assert.equal(voit(ev('grade', 'directeur'), MOI, d, GRADES), false, 'un événement de direction reste fermé');
+  assert.equal(voit(ev('tous'), MOI, d, GRADES), true);
+  assert.equal(modifiable(ev('grade', 'agent'), MOI, d, GRADES), true);
+  assert.equal(peutCreer(d, 'grade', 'directeur', GRADES), false);
+  assert.equal(peutCreer(d, 'tous', null, GRADES), true);
 });
 
-test('la permission « parametres » crée tout, mais ne voit que selon ses rôles', () => {
-  const admin = droitsAgenda([], true, ids);
-  assert.deepEqual(liste(admin.cree), ['direction', 'patrons', 'perso', 'tous']);
-  assert.deepEqual(liste(admin.voit), ['perso']);
-  assert.equal(admin.persoAutrui, true);
-  assert.deepEqual(liste(droitsAgenda([], false, () => []).cree), ['perso'], 'rien de réglé : seul « Perso »');
+test('plafonds réglés : plus haut, plus bas, aucun', () => {
+  const d = droitsAgenda(GRADES, 'agent', false, { consulter: 'directeur', creer: '', modifier: 'agent' });
+  assert.equal(voit(ev('grade', 'directeur'), MOI, d, GRADES), true);
+  assert.equal(voit(ev('grade', 'patron'), MOI, d, GRADES), false);
+  assert.equal(peutCreer(d, 'tous', null, GRADES), false, '« aucun » : pas même « Tout le monde »');
+  assert.equal(peutCreer(d, 'perso', null, GRADES), true, 'son agenda personnel reste à soi');
+  assert.equal(modifiable(ev('grade', 'manager'), MOI, d, GRADES), false);
+  assert.equal(modifiable(ev('grade', 'agent'), MOI, d, GRADES), true);
+});
+
+test('perso, sans grade, grade disparu, propriétaire', () => {
+  const d = droitsAgenda(GRADES, 'patron', false, null);
+  assert.equal(voit(ev('perso'), MOI, d, GRADES), false, 'le Perso d’un autre reste privé, même au sommet');
+  assert.equal(voit(ev('perso', null, 99, MOI.discordId), MOI, d, GRADES), true, 'créé pour moi : je le vois');
+  assert.equal(modifiable(ev('perso', null, 99, MOI.discordId), MOI, d, GRADES), false, 'seul son auteur le gère');
+  assert.equal(modifiable(ev('grade', 'patron', MOI.id), MOI, droitsAgenda(GRADES, 'agent', false, { consulter: '', creer: '', modifier: '' }), GRADES), true, 'ses propres événements : toujours');
+
+  const sans = droitsAgenda(GRADES, null, false, null);
+  assert.equal(voit(ev('tous'), MOI, sans, GRADES), true);
+  assert.equal(voit(ev('grade', 'agent'), MOI, sans, GRADES), false);
+  assert.equal(peutCreer(sans, 'tous', null, GRADES), false);
+
+  assert.equal(voit(ev('grade', 'disparu'), MOI, droitsAgenda(GRADES, 'directeur', false, null), GRADES), false, 'grade supprimé : compté comme le sommet');
+  assert.equal(droitsAgenda(GRADES, 'agent', false, { consulter: 'disparu', creer: 'agent', modifier: 'agent' }).consulter, 3, 'plafond vers un grade disparu : son propre grade');
+
+  const proprio = droitsAgenda(GRADES, null, true, null);
+  assert.equal(voit(ev('grade', 'patron'), MOI, proprio, GRADES), true);
+  assert.equal(peutCreerPour(proprio, 'patron', GRADES), true);
+});
+
+test('Perso pour quelqu’un d’autre : dans la limite de ce qu’on crée', () => {
+  const d = droitsAgenda(GRADES, 'manager', false, null);
+  assert.equal(peutCreerPour(d, 'agent', GRADES), true);
+  assert.equal(peutCreerPour(d, 'directeur', GRADES), false);
+  assert.equal(peutCreerPour(d, null, GRADES), true, 'fiche sans grade connu : le bas de l’échelle');
+  assert.equal(peutCreerPour(droitsAgenda(GRADES, 'manager', false, { consulter: 'manager', creer: '', modifier: 'manager' }), 'agent', GRADES), false);
+});
+
+test('anti-escalade : on ne donne pas un plafond au-dessus de son grade', () => {
+  assert.equal(plafondAccordable('manager', GRADES, 'manager', false), true);
+  assert.equal(plafondAccordable('agent', GRADES, 'manager', false), true);
+  assert.equal(plafondAccordable('directeur', GRADES, 'manager', false), false);
+  assert.equal(plafondAccordable('', GRADES, 'manager', false), true);
+  assert.equal(plafondAccordable('patron', GRADES, null, true), true);
+  assert.equal(plafondAccordable('inconnu', GRADES, null, true), false);
 });
 
 test('heure de Paris, été comme hiver et jours de changement d’heure', () => {

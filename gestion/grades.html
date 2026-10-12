@@ -56,6 +56,22 @@
           <p class="champ-aide" id="role-aide-bot"></p>
           <p class="champ-aide" id="role-aide">Qui porte ce rôle reçoit ce grade à sa connexion, et est validé d’office.<span class="role-aide-identifiant"> Identifiant : Discord → Paramètres du serveur → Rôles → clic droit sur le rôle → « Copier l’identifiant ».</span></p>
         </div>
+        <fieldset class="grade-permissions cache" id="agenda-droits">
+          <legend>Agenda</legend>
+          <p class="champ-aide" style="margin:0 0 6px;">Choisissez jusqu’où ce grade peut consulter, créer et modifier les événements. « Aucun » ferme cet accès, y compris aux événements « Tout le monde ».</p>
+          <div class="champ">
+            <label for="agenda-consulter">Consulter jusqu’au grade</label>
+            <select id="agenda-consulter"></select>
+          </div>
+          <div class="champ">
+            <label for="agenda-creer">Créer jusqu’au grade</label>
+            <select id="agenda-creer"></select>
+          </div>
+          <div class="champ">
+            <label for="agenda-modifier">Modifier jusqu’au grade</label>
+            <select id="agenda-modifier"></select>
+          </div>
+        </fieldset>
         <fieldset class="grade-permissions">
           <legend>Ce que ce grade peut faire</legend>
           <p class="champ-aide" style="margin:0 0 6px;">Vous ne pouvez accorder que ce que vous pouvez faire vous-même.</p>
@@ -72,7 +88,7 @@
   </div>
   <script src="/gestion/vendor/Sortable.min.js"></script>
   <script>
-    let moi, grades = [], permissions = [], edition = null, effectifs = null, ouvreur = null;
+    let moi, grades = [], permissions = [], droitsAgenda = [], edition = null, effectifs = null, ouvreur = null;
     // rôles du serveur Discord, lus sur Discord (vide sans DISCORD_BOT_TOKEN : l'identifiant se saisit à la main)
     let roles = [];
     const nomRole = id => roles.find(r => r.id === id)?.nom;
@@ -85,6 +101,7 @@
     const DOMAINES = [
       ['Équipe et site', ['comptes', 'grades', 'parametres']],
       ['Annonces', ['biens']],
+      ['Agenda', ['agenda-types']],
       ['Ressources humaines', ['rh-voir', 'rh-sensible', 'rh-creer', 'rh-modifier', 'rh-reactiver', 'rh-desactiver', 'rh-parametrer']],
       ['Ventes et statistiques', ['ventes', 'ventes-gerer']],
       ['Comptabilité', ['compta']],
@@ -113,6 +130,22 @@
           </button>
         </li>`;
       }).join('') : '<li class="grades-vide">Aucun grade pour le moment : créez le premier, le plus haut, avec « + Nouveau grade ».</li>';
+    }
+
+    function afficherDroitsAgenda(g) {
+      const boite = $('agenda-droits');
+      boite.classList.toggle('cache', !g || !gerable(g));
+      if (!g || !gerable(g)) return;
+      const enregistres = droitsAgenda.find(d => d.grade === g.cle);
+      const options = grades
+        .filter(x => moi.proprietaire || rang(x.cle) >= rang(moi.grade?.cle))
+        .map(x => `<option value="${echapper(x.cle)}">${echapper(x.libelle)}</option>`)
+        .join('');
+      for (const cle of ['consulter', 'creer', 'modifier']) {
+        const select = $(`agenda-${cle}`);
+        select.innerHTML = `<option value="">Aucun</option>${options}`;
+        select.value = enregistres?.[cle] ?? g.cle;
+      }
     }
 
     // ordre : glisser-déposer (Sortable) ou flèches sur la poignée ; le serveur refuse un ordre qui toucherait un grade
@@ -175,6 +208,7 @@
           </label>`;
         }).join('')}</div>`;
       }).join('');
+      afficherDroitsAgenda(g);
       gestion.message('zone-message-modale', '');
       $('modale-grade').classList.remove('cache');
       $('libelle').focus();
@@ -183,7 +217,12 @@
 
     async function charger() {
       let r;
-      [grades, permissions, r] = await Promise.all([socle.api('/api/grades'), socle.api('/api/permissions'), socle.api('/api/grades/roles-discord').catch(() => ({ roles: [] }))]);
+      [grades, permissions, r, droitsAgenda] = await Promise.all([
+        socle.api('/api/grades'),
+        socle.api('/api/permissions'),
+        socle.api('/api/grades/roles-discord').catch(() => ({ roles: [] })),
+        socle.api('/api/agenda/droits-grades').then(r => r.droits),
+      ]);
       roles = r.roles || [];
       // sans bot relié au site, pas de liste : on dit pourquoi, et comment saisir l’identifiant en attendant
       // sans liste des rôles : une explication pour la personne qui gère les grades, sans vocabulaire technique
@@ -235,9 +274,14 @@
         permissions: [...document.querySelectorAll('#cases input:checked')].map(c => c.value),
       };
       try {
+        const cleModifiee = edition;
         grades = edition
           ? await socle.api(`/api/grades/${encodeURIComponent(edition)}`, { method: 'PATCH', body: corps })
           : await socle.api('/api/grades', { method: 'POST', body: corps });
+        if (cleModifiee) {
+          const droits = Object.fromEntries(['consulter', 'creer', 'modifier'].map(cle => [cle, $(`agenda-${cle}`).value]));
+          await socle.api(`/api/agenda/droits-grades/${encodeURIComponent(cleModifiee)}`, { method: 'PUT', body: droits });
+        }
         fermer();
         gestion.notifier(edition ? `Grade « ${corps.libelle} » enregistré ✓` : `Grade « ${corps.libelle} » créé ✓`);
         charger();

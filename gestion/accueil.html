@@ -142,7 +142,7 @@
         document.getElementById('a-venir').innerHTML = aVenir.map(e => ligne(e, true)).join('');
       }
 
-      // en service : seulement si le salon est réglé ; les 8 premiers, puis « Voir les N autres »
+      // en service : seulement après réception d'un événement du bot ; les 8 premiers, puis « Voir les N autres »
       if (service.value?.regle) {
         const s = gestion.ordreEnService(service.value.enService);
         const listeService = document.getElementById('en-service'), tout = document.getElementById('service-tout');
