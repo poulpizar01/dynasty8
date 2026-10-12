@@ -2,6 +2,8 @@
 
 Base réutilisable pour les sites des entreprises RP : une vitrine publique et un espace de gestion réservé aux employés (connexion Discord), déployés avec Docker derrière nginx. Tout est expliqué dans **[docs/modele.md](docs/modele.md)** : ce qui est commun à tous les sites et ce qui est propre à chacun, comment créer un site, récupérer les améliorations du socle, développer.
 
+Le point de départ inclut un agenda de gestion personnalisable : événements personnels, partagés avec l’équipe ou adressés à un grade précis, avec des droits de consultation, création et modification réglés dans la fiche des grades.
+
 <!-- Dans un site créé à partir du modèle, ce fichier est le sien : remplacer tout ce qui précède par la présentation
      du site (ce qu'il est, son adresse, où lire la suite), par exemple :
 

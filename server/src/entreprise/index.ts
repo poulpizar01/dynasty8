@@ -3,6 +3,7 @@
 import type { Entreprise } from '../socle/contrat.js';
 import { annonces } from './routes/annonces.js';
 import { compta } from './routes/compta.js';
+import { agenda } from './routes/agenda.js';
 import { prisma } from '../socle/db.js';
 
 export const entreprise: Entreprise = {
@@ -12,13 +13,14 @@ export const entreprise: Entreprise = {
     accueil: 'valide',
     compte: 'valide',
     annonces: 'valide',
+    agenda: 'valide',
     comptes: 'comptes',
     grades: 'grades',
     parametres: 'parametres',
     comptabilite: 'compta',
   },
 
-  routes: [annonces, compta],
+  routes: [annonces, compta, agenda],
 
   // page Paramètres (socle/parametres.ts) : liens et réglages modifiables sans toucher au code. Exemple à adapter :
   // le bouton « Postuler » de la vitrine (data-lien="recrutement") et l'épinglage des annonces.
@@ -49,5 +51,26 @@ export const entreprise: Entreprise = {
     await tx.annonce.updateMany({ where: { compteId }, data: { compteId: null } });
     await tx.importCompta.updateMany({ where: { compteId }, data: { compteId: null } });
     await tx.ecritureDot.updateMany({ where: { compteId }, data: { compteId: null } });
+    await tx.evenementAgenda.deleteMany({ where: { compteId, destination: 'perso' } });
+    await tx.evenementAgenda.updateMany({ where: { compteId }, data: { compteId: null, auteurNom: '' } });
+  },
+
+  avantSuppressionGrade: async (gradeCle, tx) => {
+    await tx.agendaDroitsGrade.deleteMany({ where: { gradeCle } });
+    const droits = await tx.agendaDroitsGrade.findMany();
+    for (const ligne of droits) {
+      await tx.agendaDroitsGrade.update({
+        where: { gradeCle: ligne.gradeCle },
+        data: {
+          consulter: ligne.consulter.filter(cle => cle !== gradeCle),
+          creer: ligne.creer.filter(cle => cle !== gradeCle),
+          modifier: ligne.modifier.filter(cle => cle !== gradeCle),
+        },
+      });
+    }
+    await tx.evenementAgenda.updateMany({
+      where: { destination: 'grade', destinationGrade: gradeCle },
+      data: { destination: 'perso', destinationGrade: null },
+    });
   },
 };

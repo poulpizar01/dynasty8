@@ -9,12 +9,12 @@
 // Exemple : annonces internes (page gestion/annonces.html, routes src/entreprise/routes/annonces.ts). À supprimer
 // ou remplacer par les tables de l'entreprise (stocks, factures, rendez-vous…).
 model Annonce {
-  id       Int       @id @default(autoincrement())
-  compteId Int?      @map("compte_id") // auteur ; null si son compte a été supprimé
-  titre    String    @db.VarChar(120)
-  texte    String    @db.VarChar(4000)
-  epingle  Boolean   @default(false)
-  creeLe   DateTime  @default(now()) @map("cree_le") @db.Timestamptz(6)
+  id       Int      @id @default(autoincrement())
+  compteId Int?     @map("compte_id") // auteur ; null si son compte a été supprimé
+  titre    String   @db.VarChar(120)
+  texte    String   @db.VarChar(4000)
+  epingle  Boolean  @default(false)
+  creeLe   DateTime @default(now()) @map("cree_le") @db.Timestamptz(6)
 
   @@index([creeLe(sort: Desc)])
   @@index([compteId])
@@ -79,4 +79,47 @@ model RemunerationGrade {
   tauxHoraire  Int     @default(0) @map("taux_horaire")
 
   @@map("remunerations_grades")
+}
+
+// Agenda de départ : événements personnels, partagés avec l'équipe ou adressés à un grade exact.
+model EvenementAgenda {
+  id               Int         @id @default(autoincrement())
+  compteId         Int?        @map("compte_id")
+  auteurNom        String      @default("") @map("auteur_nom") @db.VarChar(64)
+  titre            String      @db.VarChar(80)
+  jour             DateTime    @db.Date
+  heureDebut       String      @map("heure_debut") @db.VarChar(5)
+  heureFin         String      @map("heure_fin") @db.VarChar(5)
+  notes            String      @default("") @db.VarChar(500)
+  typeId           Int?        @map("type_id")
+  type             TypeAgenda? @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  destination      String      @default("perso") @db.VarChar(10)
+  destinationGrade String?     @map("destination_grade") @db.VarChar(20)
+  creeLe           DateTime    @default(now()) @map("cree_le") @db.Timestamptz(6)
+
+  @@index([compteId, jour])
+  @@index([destination, jour])
+  @@map("evenements_agenda")
+}
+
+model TypeAgenda {
+  id         Int               @id @default(autoincrement())
+  nom        String            @unique @db.VarChar(40)
+  couleur    String            @db.VarChar(7)
+  position   Int               @default(0)
+  evenements EvenementAgenda[]
+
+  @@map("agenda_types")
+}
+
+// Autorisations exactes par grade destinataire : aucune extension automatique dans la hiérarchie.
+model AgendaDroitsGrade {
+  gradeCle      String   @id @map("grade") @db.VarChar(20)
+  consulter     String[] @default([])
+  creer         String[] @default([])
+  modifier      String[] @default([])
+  consulterTous Boolean  @default(false) @map("consulter_tous")
+  gererTous     Boolean  @default(false) @map("gerer_tous")
+
+  @@map("agenda_droits_grades")
 }

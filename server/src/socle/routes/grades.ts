@@ -7,6 +7,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { body, couleur, permission, text, valide } from '../http.js';
 import { rolesDiscord, rolesDiscordConfigures, RolesIndisponibles } from '../roles-discord.js';
 import { auDessusDe, chargerGrades, CLES_PERMISSIONS, gradeDe, gradePublic, peut, peutAccorder, rang, tousLesGrades } from '../droits.js';
+import { entreprise } from '../../entreprise/index.js';
 
 export const grades = Router();
 
@@ -105,7 +106,10 @@ grades.delete('/api/grades/:cle', ...permission('grades'), async (req, res) => {
   if (!auDessusDe(req.compte, g.cle)) { res.status(403).json({ error: 'Ce grade est égal ou supérieur au tien.' }); return; }
   const porteurs = await prisma.compte.count({ where: { gradeCle: g.cle } });
   if (porteurs) { res.status(409).json({ error: `Ce grade est encore porté par ${porteurs} compte(s) : change-leur de grade d’abord.` }); return; }
-  await prisma.grade.delete({ where: { cle: g.cle } });
+  await prisma.$transaction(async tx => {
+    await entreprise.avantSuppressionGrade?.(g.cle, tx);
+    await tx.grade.delete({ where: { cle: g.cle } });
+  });
   await chargerGrades();
   repondreListe(res);
 });

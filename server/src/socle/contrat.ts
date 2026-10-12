@@ -51,6 +51,8 @@ export type Entreprise = {
   // avant la suppression d'un compte (par lui-même ou par la gestion), dans la même transaction : effacer ou anonymiser
   // ce qui lui appartient dans les tables de l'entreprise
   avantSuppressionCompte?: (compteId: number, tx: Prisma.TransactionClient) => Promise<void>;
+  // avant la suppression d'un grade, dans la même transaction : nettoyer les données liées à sa clé
+  avantSuppressionGrade?: (gradeCle: string, tx: Prisma.TransactionClient) => Promise<void>;
   // au démarrage, après le chargement du socle (tâches planifiées, caches…)
   demarrage?: () => Promise<void>;
   // origines https supplémentaires autorisées par la politique de sécurité : exception à justifier (voir CLAUDE.md),

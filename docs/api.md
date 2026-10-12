@@ -19,6 +19,7 @@ Pages de `gestion/` : mêmes niveaux, contrôlés par le serveur avant tout envo
 ## Permissions et grades
 - Permissions du socle : `comptes` (valider, refuser, renommer, changer de grade, supprimer un compte), `grades` (créer, ordonner, modifier, supprimer un grade) et `parametres` (page Paramètres : liens et réglages déclarés par l'entreprise). Celles de l'entreprise : `server/src/entreprise/permissions.ts`.
 - **Hiérarchie** : les grades sont ordonnés du sommet (position 0) à la base. Hors propriétaire, on ne gère que les comptes et les grades **strictement sous** son propre grade (un compte sans grade ne gère rien), et on n'accorde ou ne retire que des permissions qu'on détient.
+- **Droits d’agenda** : les droits sur les événements adressés à un grade ciblent des clés exactes, sans héritage hiérarchique. Créer et modifier nécessitent également le droit de consulter ce grade. Pour les événements de toute l’équipe, consultation et gestion (créer, modifier, supprimer) sont deux droits distincts.
 - **Rôles Discord** : un grade peut être lié à un rôle Discord. À chaque connexion (et toutes les 10 minutes si le site a un jeton de bot, `socle/synchro-discord.ts` : un membre parti du serveur y est déconnecté et marqué `quitteLe`), le compte reçoit le plus haut grade dont il porte le rôle (et est validé d'office s'il n'avait pas été refusé) ; un grade lié à un rôle qu'il ne porte plus lui est retiré. Un grade sans rôle se donne à la main.
 
 ## Routes du socle
@@ -42,6 +43,14 @@ Pages de `gestion/` : mêmes niveaux, contrôlés par le serveur avant tout envo
 | `PATCH /api/grades/:cle` | `grades` | Mêmes champs (sauf `cle`) ; grade sous le sien ; changer `roleDiscordId` exige aussi `comptes` |
 | `PUT /api/grades/ordre` | `grades` | `{ ordre: [cle…] }` (tous les grades) ; hors propriétaire, les grades jusqu'au sien restent en place |
 | `DELETE /api/grades/:cle` | `grades` | Grade sous le sien et porté par aucun compte (`409` sinon) |
+| `GET /api/agenda?debut=AAAA-MM-JJ&fin=AAAA-MM-JJ` | validé | Événements visibles dans la période, types disponibles et destinations autorisées. Les événements personnels ne sont visibles que par leur auteur. |
+| `POST /api/agenda` | validé | Créer un événement `{ titre, jour, heure_debut, heure_fin, notes?, type_id?, destination, destination_grade? }`. `destination` : `perso`, `tous` ou `grade` ; les droits d’équipe et de grade sont vérifiés côté serveur. |
+| `PUT /api/agenda/:id` | validé | Modifier un événement visible et modifiable ; déplacer sa destination exige aussi le droit de création correspondant. |
+| `DELETE /api/agenda/:id` | validé | Supprimer un événement que le compte peut modifier. Un événement invisible répond `404`. |
+| `GET /api/agenda/types` | validé | Types de classement `{ types: [{ id, nom, couleur, position }] }`. |
+| `POST /api/agenda/types`, `PUT /api/agenda/types/:id`, `DELETE /api/agenda/types/:id` | `agenda-types` | Gérer les types de classement. Supprimer un type ne supprime pas ses événements. |
+| `GET /api/agenda/droits-grades` | `grades` | Droits précis de chaque grade : listes de clés pour consulter, créer et modifier ; droits d’équipe `consulter_tous` et `gerer_tous`. |
+| `PUT /api/agenda/droits-grades/:cle` | `grades` | Remplacer les droits d’un grade inférieur : `{ consulter[], creer[], modifier[], consulter_tous, gerer_tous }`. Créer et modifier sont des sous-ensembles de consulter ; l’acteur ne peut accorder que ses propres droits. |
 | `GET /api/liens` | public | Liens publics réglés dans Paramètres : `{ cle: url }` (`''` si vide) ; lus par `socle.js` pour les `data-lien` |
 | `GET /api/parametres` | `parametres` | Réglages déclarés par l'entreprise : `{ groupes: [{ titre, intro, onglet, reglages: [{ cle, type, libelle, aide, public, discord, valeur, min?, max?, defaut? }] }] }` (`discord` : `role`, `salon`, `categorie` ou `null`) |
 | `GET /api/parametres/discord` | `parametres` | Rôles, salons et catégories du serveur Discord, pour les choisir par leur nom : `{ configure, roles: [{ id, nom, couleur }], salons: [{ id, nom, categorie, position }], categories: [{ id, nom, position }], erreur? }` ; `configure: false` sans `DISCORD_BOT_TOKEN` (cache 5 min) |

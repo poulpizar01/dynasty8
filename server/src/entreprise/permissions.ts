@@ -8,4 +8,5 @@ export const permissions: Permission[] = [
   // comptabilité (exemple commun aux entreprises : relevé Tablettes, rémunération, DOT)
   { cle: 'compta', domaine: 'Comptabilité', libelle: 'Gérer la comptabilité', description: 'Importer le relevé des Tablettes, régler la rémunération par grade et préparer la déclaration DOT' },
   { cle: 'annonces', domaine: 'Annonces', libelle: 'Publier des annonces', description: 'Publier, épingler et retirer les annonces internes' },
+  { cle: 'agenda-types', domaine: 'Agenda', libelle: 'Gérer les types d’événements', description: 'Créer, modifier et supprimer les types utilisés pour classer les événements' },
 ];

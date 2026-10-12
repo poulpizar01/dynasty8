@@ -4,6 +4,7 @@
 const GESTION_NAV = [
   { href: 'accueil.html', label: 'Accueil' },
   { href: 'annonces.html', label: 'Annonces' },
+  { href: 'agenda.html', label: 'Agenda' },
   { href: 'comptes.html', label: 'Comptes', permission: 'comptes' },
   { href: 'grades.html', label: 'Grades', permission: 'grades' },
   { href: 'comptabilite.html', label: 'Comptabilité', permission: 'compta' },
