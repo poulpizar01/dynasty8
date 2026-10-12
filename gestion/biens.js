@@ -65,8 +65,10 @@ function biensFiltres() {
 // ---- rendu : tableau, grille et pagination ----
 
 const puceStatut = b => (b.disponible ? '<span class="puce puce-ok">Visible</span>' : '<span class="puce puce-masquee">Masquée</span>');
-const boutonsActions = (b, rond) => `
-  <a class="actions-icone${rond ? ' actions-icone--rond' : ''}" href="/bien.html?id=${b.id}" title="Voir sur le site" aria-label="Voir sur le site">${gestion.ico('globe')}</a>
+// vue en grille : « Voir sur le site » parmi les actions ; tableau : c'est le nom du bien qui y mène (une icône de plus
+// élargissait la colonne Actions et cachait « Supprimer » sous le défilement)
+const boutonsActions = (b, rond) => `${rond ? `
+  <a class="actions-icone actions-icone--rond" href="/bien.html?id=${b.id}" title="Voir sur le site" aria-label="Voir sur le site">${gestion.ico('globe')}</a>` : ''}
   <button type="button" class="actions-icone${rond ? ' actions-icone--rond' : ''}" data-editer="${b.id}" title="Modifier" aria-label="Modifier">${gestion.ico('pencil')}</button>
   <button type="button" class="actions-icone${rond ? ' actions-icone--rond' : ''} actions-icone--danger" data-supprimer="${b.id}" title="Supprimer" aria-label="Supprimer">${gestion.ico('trash')}</button>`;
 
@@ -80,7 +82,7 @@ function rendreTableBiens(liste) {
   corps.innerHTML = liste.map(b => `
     <tr class="${b.coup_de_coeur ? 'ligne-coup-de-coeur' : ''}">
       <td class="cellule-vignette"><div class="table-biens-vignette">${b.images?.[0] ? `<img src="${echapper(b.images[0])}" alt="">` : ''}</div></td>
-      <td><div class="table-biens-titre">${echapper(b.titre)}${b.coup_de_coeur ? ` <span class="table-biens-fav" title="Coup de cœur">${gestion.ico('star')}</span>` : ''}${b.standing ? ' <span class="puce puce-or">Exception</span>' : ''}</div>${b.coherence ? `<div class="table-biens-sous">${echapper(b.coherence)}</div>` : ''}</td>
+      <td><div class="table-biens-titre"><a class="table-biens-lien" href="/bien.html?id=${b.id}" title="Voir sur le site">${echapper(b.titre)}</a>${b.coup_de_coeur ? ` <span class="table-biens-fav" title="Coup de cœur">${gestion.ico('star')}</span>` : ''}${b.standing ? ' <span class="puce puce-or">Exception</span>' : ''}</div>${b.coherence ? `<div class="table-biens-sous">${echapper(b.coherence)}</div>` : ''}</td>
       <td>${echapper(ETIQUETTES_CATEGORIE[b.categorie] || b.categorie)}</td>
       <td>${echapper(b.sous_categorie || '—')}</td>
       <td>${b.dispo_vente ? `<div class="table-biens-prix">${formaterPrix(b.prix)}</div>` : ''}${b.dispo_location ? `<div class="table-biens-sous">${formaterPrix(b.prix_location)} /sem.</div>` : ''}</td>
@@ -161,6 +163,7 @@ function actualiserVueAnnonces() {
   rendreTableBiens(page);
   rendreGrilleBiens(page);
   rendrePagination(filtres.length);
+  appliquerModeVueBiens();   // la largeur du tableau dépend des annonces affichées
 }
 
 async function supprimerBien(id, depuisModale = false) {
@@ -177,19 +180,28 @@ async function supprimerBien(id, depuisModale = false) {
 
 // ---- barre d'outils : recherche, filtres, bascule liste/grille ----
 
-// Sous 1 200 px, le tableau ne tient plus (7 colonnes) : la grille s’impose et le choix de la vue disparaît ; au-delà,
-// la vue choisie revient.
-const ECRAN_ETROIT_BIENS = matchMedia('(max-width: 1199px)');
+// Quand le tableau ne tient pas dans sa place (7 colonnes), la grille s'impose et le choix de la vue disparaît ; sinon
+// la vue choisie revient. Mesuré, pas déduit de la largeur de l'écran : la place dépend du menu, de la barre de
+// défilement et des annonces affichées (un seuil fixe laissait le tableau déborder et cacher « Supprimer »).
+function tableauBiensTient() {
+  const vue = $('vue-liste-biens'), cachee = vue.classList.contains('cache');
+  vue.classList.remove('cache');
+  const tient = vue.querySelector('table').offsetWidth <= vue.clientWidth + 1;
+  vue.classList.toggle('cache', cachee);
+  return tient;
+}
 function appliquerModeVueBiens() {
-  const mode = ECRAN_ETROIT_BIENS.matches ? 'grille' : MODE_VUE_BIENS;
-  document.querySelector('.annonces-vue-toggle').classList.toggle('cache', ECRAN_ETROIT_BIENS.matches);
+  const etroit = !tableauBiensTient();
+  const mode = etroit ? 'grille' : MODE_VUE_BIENS;
+  document.querySelector('.annonces-vue-toggle').classList.toggle('cache', etroit);
   for (const m of ['liste', 'grille']) {
     $(`vue-${m}-biens`).classList.toggle('cache', mode !== m);
     $(`bouton-vue-${m}`).classList.toggle('actif', mode === m);
     $(`bouton-vue-${m}`).setAttribute('aria-pressed', String(mode === m));
   }
 }
-ECRAN_ETROIT_BIENS.addEventListener('change', appliquerModeVueBiens);
+let majVueBiens = 0;
+addEventListener('resize', () => { cancelAnimationFrame(majVueBiens); majVueBiens = requestAnimationFrame(appliquerModeVueBiens); });
 $('bouton-vue-liste').addEventListener('click', () => { MODE_VUE_BIENS = 'liste'; appliquerModeVueBiens(); });
 $('bouton-vue-grille').addEventListener('click', () => { MODE_VUE_BIENS = 'grille'; appliquerModeVueBiens(); });
 appliquerModeVueBiens();
