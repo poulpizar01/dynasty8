@@ -72,7 +72,7 @@ function carteBienHTML(bien) {
     ? `<img src="${echapper(image)}" alt="${echapper(bien.titre)}" loading="lazy" decoding="async">`
     : `<span style="font-size:2.2rem;">${iconeCategorie(bien.categorie)}</span>`;
   return `
-    <a class="carte-bien" href="/bien.html?id=${bien.id}">
+    <a class="carte-bien${bien.vip ? " carte-bien--vip" : ""}" href="/bien.html?id=${bien.id}">
       <div class="visuel">
         ${bien.coup_de_coeur ? '<span class="badge-coeur">Coup de cœur</span>' : ""}
         <span class="badge-transaction${classeBadgeTransaction(bien)}">${etiquetteTransaction(bien)}</span>
@@ -94,7 +94,7 @@ function carteBienHTML(bien) {
 // Carte enrichie utilisée uniquement par la vitrine "Nos coups de cœur" de l'accueil
 // (carrousel avec flèches + filtres) : emplacement (via etiquetteZoneHTML) mis en avant
 // avec une puce de repère, et un appel à l'action "Voir le bien" en pied de carte.
-// (Le liseré doré des biens VIP — règle .carte-bien:has(.badge-vip) déjà
+// (Le liseré doré des biens VIP — règle .carte-bien--vip déjà
 // existante — suffit à mettre en valeur une carte : pas de second liseré "vedette"
 // séparé, qui ferait doublon et brouillerait le message.)
 function carteCoeurHTML(bien) {
@@ -103,7 +103,7 @@ function carteCoeurHTML(bien) {
     ? `<img src="${echapper(image)}" alt="${echapper(bien.titre)}" loading="lazy" decoding="async">`
     : `<span style="font-size:2.2rem;">${iconeCategorie(bien.categorie)}</span>`;
   return `
-    <a class="carte-bien" href="/bien.html?id=${bien.id}">
+    <a class="carte-bien${bien.vip ? " carte-bien--vip" : ""}" href="/bien.html?id=${bien.id}">
       <div class="visuel">
         <span class="badge-coeur">♥ Coup de cœur</span>
         ${badgesSecondairesHTML(bien)}

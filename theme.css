@@ -26,7 +26,7 @@
   /* accent or (site.json) et ses nuances ; texte posé sur l'or : bleu nuit */
   --accent:{{couleur}};
   --accent-dark:#a9843f;
-  --accent-soft:color-mix(in srgb,var(--accent) 14%,transparent);
+  --accent-soft:rgba({{couleur_rvb}},.14);   /* calculée par le site : pas de color-mix(), inconnu du navigateur en jeu */
   --on-accent:#060c1a;
   /* états */
   --ok:#4caf7a;
