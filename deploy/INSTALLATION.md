@@ -50,7 +50,7 @@ Guide générique du modèle sur lequel repose le site (mises à jour, journaux,
    - leur adresse publique en `https://`, s'ils en ont une ;
    - `http://host.docker.internal:<port>` (nom déclaré dans `compose.yaml`), à condition que le service écoute aussi sur l'adresse du pont Docker (`ip -4 addr show docker0`, en général `172.17.0.1`) et que le pare-feu laisse passer `172.16.0.0/12` vers ce port.
 
-   Le validateur `id` n'écoute qu'en local : **le site doit tourner sur la même machine que lui** (à confirmer à l'opérateur FolkOS).
+   **Tout est sur la même machine** (confirmé) : le site Dynasty 8, l'ordinateur en jeu et le validateur `id` de FolkOS, qui n'écoute qu'en local. Le site doit donc être installé sur ce VPS, et non ailleurs.
 
 ## 2. Application et bot Discord
 
