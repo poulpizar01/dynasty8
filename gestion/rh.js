@@ -220,6 +220,7 @@ async function ouvrirFicheEmploye(id, preremplissage) {
   $rh('employe-bloc-sensible').classList.toggle('cache', !aDroitRh('sensible'));
   const bouton = $rh('employe-enregistrer');
   bouton.classList.toggle('cache', !peutEcrire);
+  $rh('fiche-rh-pied').classList.toggle('cache', !peutEcrire);
   bouton.textContent = id ? 'Enregistrer les modifications' : 'Ajouter le membre';
   $rh('employe-statut').textContent = id
     ? `${f.statut === 'actif' ? 'Employé actif' : 'Ancien employé'}${f.idProvisoire ? '. ID employé provisoire : remplacez-le par le vrai.' : '.'}${peutEcrire ? '' : ' Fiche en lecture seule (grade égal ou supérieur au vôtre).'}`

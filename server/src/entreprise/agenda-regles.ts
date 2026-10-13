@@ -46,12 +46,12 @@ export function droitsAgenda(grades: readonly string[], gradeCle: string | null,
 const droitSurGrade = (autorisations: readonly string[], destination: string, destinationGrade: string | null): boolean =>
   destination === 'grade' && !!destinationGrade && autorisations.includes(destinationGrade);
 
-export type EvenementVu = { compteId: number | null; destination: string; destinationGrade: string | null; cibleDiscordId: string | null };
+export type EvenementVu = { compteId: number | null; destination: string; destinationGrade: string | null; invitesDiscordIds?: readonly string[] };
 export type Lecteur = { id: number; discordId: string | null };
 
 export function voit(e: EvenementVu, moi: Lecteur, d: DroitsAgenda, _grades: readonly string[]): boolean {
   if (e.compteId === moi.id) return true;
-  if (e.destination === 'perso') return !!moi.discordId && e.cibleDiscordId === moi.discordId;
+  if (e.destination === 'perso') return !!moi.discordId && !!e.invitesDiscordIds?.includes(moi.discordId);
   if (e.destination === 'tous') return d.tout || d.consulterTous;
   return d.tout || droitSurGrade(d.consulter, e.destination, e.destinationGrade);
 }
@@ -67,8 +67,8 @@ export function modifiable(e: EvenementVu, moi: Lecteur, d: DroitsAgenda, _grade
 export const peutCreer = (d: DroitsAgenda, destination: Destination, destinationGrade: string | null, _grades: readonly string[]): boolean =>
   destination === 'perso' || d.tout || (destination === 'tous' ? d.consulterTous && d.gererTous : droitSurGrade(d.creer, destination, destinationGrade));
 
-// « Perso » pour quelqu'un d'autre : son grade exact doit être autorisé à la création.
-export function peutCreerPour(d: DroitsAgenda, gradeCible: string | null, grades: readonly string[]): boolean {
+// Une personne ne peut être invitée que si son grade exact est autorisé à la création.
+export function peutInviter(d: DroitsAgenda, gradeCible: string | null, grades: readonly string[]): boolean {
   if (d.tout) return true;
   return !!gradeCible && grades.includes(gradeCible) && d.creer.includes(gradeCible);
 }

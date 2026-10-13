@@ -74,7 +74,7 @@ export const entreprise: Entreprise = {
     await tx.message.deleteMany({ where: { OR: [{ expediteurId: compteId }, { destinataireId: compteId }] } });
     await tx.statutMessagerie.deleteMany({ where: { compteId } });
     // son agenda personnel disparaît ; ses événements partagés restent pour l'équipe, sans son nom
-    await tx.evenementAgenda.deleteMany({ where: { compteId, visibilite: 'perso' } });
+    await tx.evenementAgenda.deleteMany({ where: { compteId, destination: 'perso' } });
     await tx.evenementAgenda.updateMany({ where: { compteId }, data: { compteId: null, auteurNom: '' } });
     await tx.photo.updateMany({ where: { compteId, usage: 'profil' }, data: { statut: 'a_supprimer' } });
     await tx.photo.updateMany({ where: { compteId, statut: 'temporaire' }, data: { statut: 'a_supprimer' } });

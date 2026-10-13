@@ -2,11 +2,11 @@
 // Une erreur ici ouvrirait un événement de direction à tout le monde sans rien d'anormal à l'écran.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { choisirTicket, droitsAgenda, droitsInclusDansConsultation, gradeAccordable, modifiable, parisVersDate, peutCreer, peutCreerPour, voit } from '../src/entreprise/agenda-regles.js';
+import { choisirTicket, droitsAgenda, droitsInclusDansConsultation, gradeAccordable, modifiable, parisVersDate, peutCreer, peutInviter, voit } from '../src/entreprise/agenda-regles.js';
 
 const GRADES = ['patron', 'directeur', 'manager', 'agent'];   // du sommet à la base
-const ev = (destination: string, destinationGrade: string | null = null, compteId: number | null = 99, cibleDiscordId: string | null = null) =>
-  ({ compteId, destination, destinationGrade, cibleDiscordId });
+const ev = (destination: string, destinationGrade: string | null = null, compteId: number | null = 99, invitesDiscordIds: string[] = []) =>
+  ({ compteId, destination, destinationGrade, invitesDiscordIds });
 const MOI = { id: 1, discordId: '411111111111111111' };
 
 test('les nouvelles règles n’accordent aucun droit de grade par défaut', () => {
@@ -57,11 +57,13 @@ test('événements pour toute l’équipe : consultation distincte du droit de g
   assert.equal(voit(ev('grade', 'manager'), MOI, aucunAcces, GRADES), true, 'le réglage ne change pas les événements adressés à un grade');
 });
 
-test('perso, sans grade, grade disparu, propriétaire', () => {
+test('événement personnel, sans grade, grade disparu, propriétaire', () => {
   const d = droitsAgenda(GRADES, 'patron', false, null);
   assert.equal(voit(ev('perso'), MOI, d, GRADES), false, 'le Perso d’un autre reste privé, même au sommet');
-  assert.equal(voit(ev('perso', null, 99, MOI.discordId), MOI, d, GRADES), true, 'créé pour moi : je le vois');
-  assert.equal(modifiable(ev('perso', null, 99, MOI.discordId), MOI, d, GRADES), false, 'seul son auteur le gère');
+  assert.equal(voit(ev('perso', null, 99, [MOI.discordId]), MOI, d, GRADES), true, 'une personne invitée voit l’événement');
+  assert.equal(modifiable(ev('perso', null, 99, [MOI.discordId]), MOI, d, GRADES), false, 'une personne invitée ne le gère pas');
+  assert.equal(voit(ev('perso', null, 99, [MOI.discordId, '422222222222222222']), MOI, d, GRADES), true, 'chaque personne invitée voit le même événement');
+  assert.equal(voit(ev('perso', null, 99, ['422222222222222222']), MOI, d, GRADES), false, 'une personne non invitée ne le voit pas');
   assert.equal(modifiable(ev('grade', 'patron', MOI.id), MOI, droitsAgenda(GRADES, 'agent', false, { consulter: [], creer: [], modifier: [] }), GRADES), true, 'ses propres événements : toujours');
 
   const sans = droitsAgenda(GRADES, null, false, null);
@@ -74,15 +76,15 @@ test('perso, sans grade, grade disparu, propriétaire', () => {
 
   const proprio = droitsAgenda(GRADES, null, true, null);
   assert.equal(voit(ev('grade', 'patron'), MOI, proprio, GRADES), true);
-  assert.equal(peutCreerPour(proprio, 'patron', GRADES), true);
+  assert.equal(peutInviter(proprio, 'patron', GRADES), true);
 });
 
-test('Perso pour quelqu’un d’autre : le grade exact doit être autorisé à la création', () => {
+test('inviter une personne : son grade exact doit être autorisé à la création', () => {
   const d = droitsAgenda(GRADES, 'manager', false, { consulter: ['agent', 'manager'], creer: ['agent'], modifier: ['manager'] });
-  assert.equal(peutCreerPour(d, 'agent', GRADES), true);
-  assert.equal(peutCreerPour(d, 'manager', GRADES), false);
-  assert.equal(peutCreerPour(d, 'directeur', GRADES), false);
-  assert.equal(peutCreerPour(d, null, GRADES), false, 'fiche sans grade connu : refus par défaut');
+  assert.equal(peutInviter(d, 'agent', GRADES), true);
+  assert.equal(peutInviter(d, 'manager', GRADES), false);
+  assert.equal(peutInviter(d, 'directeur', GRADES), false);
+  assert.equal(peutInviter(d, null, GRADES), false, 'fiche sans grade connu : refus par défaut');
 });
 
 test('anti-escalade : on ne donne accès qu’à son grade ou aux grades en dessous', () => {

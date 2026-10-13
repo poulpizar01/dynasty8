@@ -340,12 +340,14 @@ document.getElementById("agenda-nouvel-evenement").addEventListener("click", () 
 
 // ---- fenêtre « ajouter / modifier un événement » ----
 
-// droits renvoyés par GET /api/agenda (destinataires proposés à la création) ; types d'événements ; fiches RH proposées
-// pour un « Perso » destiné à quelqu'un d'autre (lues une fois)
-let AGENDA_DROITS = { destinations: [{ valeur: "perso", libelle: "Moi uniquement" }], perso_autrui: false };
+// droits renvoyés par GET /api/agenda (destinataires proposés à la création) ; types et personnes qu'on peut inviter
+let AGENDA_DROITS = { destinations: [{ valeur: "perso", libelle: "Personnel" }], peut_inviter: false };
 let AGENDA_TYPES = [];
 let AGENDA_PERSONNES = null;
+let AGENDA_ERREUR_PERSONNES = "";
 let AGENDA_MOI = null;
+let AGENDA_INVITES_SELECTIONNES = [];
+let AGENDA_INVITES_ACTIF = -1;
 const COULEUR_SANS_TYPE = "#d4b26a";   // l'or de la maison : un événement sans type
 const typeDe = e => AGENDA_TYPES.find(t => t.id === e.type_id) || null;
 // couleur d'un type (#rrggbb, contrôlée par le serveur) → variables de la grille ; fonds calculés ici (pas de color-mix :
@@ -368,29 +370,109 @@ function dessinerLegende() {
     + (gere ? `<button type="button" class="agenda-legende-gerer" data-gerer-types>${AGENDA_TYPES.length ? "Gérer les types" : "Créer des types"}</button>` : "");
 }
 
-async function remplirChoixPour() {
-  const select = document.getElementById("evenement-pour");
+async function remplirChoixInvites() {
   if (AGENDA_PERSONNES === null) {
-    try { AGENDA_PERSONNES = (await socle.api("/api/agenda/personnes")).personnes || []; }
-    catch { AGENDA_PERSONNES = []; }
+    try {
+      AGENDA_PERSONNES = (await socle.api("/api/agenda/personnes")).personnes || [];
+      AGENDA_PERSONNES.sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+      AGENDA_ERREUR_PERSONNES = "";
+    } catch (e) { AGENDA_ERREUR_PERSONNES = e.message; }
   }
-  select.innerHTML = `<option value="">Moi-même</option>` + AGENDA_PERSONNES
-    .map(p => `<option value="${Number(p.id)}"${p.discord ? "" : " disabled"}>${echapper(p.nom)}${p.discord ? "" : " (sans ID Discord dans sa fiche)"}</option>`).join("");
-  ameliorerSelect(select);
+  if (AGENDA_ERREUR_PERSONNES) {
+    document.getElementById("recherche-evenement-invites").disabled = true;
+    document.getElementById("etat-evenement-invites").textContent = `Impossible de charger les personnes : ${AGENDA_ERREUR_PERSONNES}`;
+    return;
+  }
+  document.getElementById("recherche-evenement-invites").disabled = false;
+  dessinerInvitesSelectionnes();
+  afficherSuggestionsInvites();
 }
 
-function majChampPour() {
-  const edition = !!document.getElementById("evenement-id").value;
+function dessinerInvitesSelectionnes() {
+  const liste = document.getElementById("liste-evenement-invites");
+  liste.innerHTML = AGENDA_INVITES_SELECTIONNES.map(p => `
+    <li class="agenda-invite-puce">
+      <span>${echapper(p.nom)}</span>
+      <button type="button" data-retirer-invite="${p.source === "invitation" ? `invitation:${Number(p.invitation_id)}` : `employe:${Number(p.id)}`}" aria-label="Retirer ${echapper(p.nom)} des invités">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8"></path></svg>
+      </button>
+    </li>`).join("");
+  document.getElementById("etat-evenement-invites").textContent = AGENDA_INVITES_SELECTIONNES.length
+    ? `${AGENDA_INVITES_SELECTIONNES.length} ${AGENDA_INVITES_SELECTIONNES.length === 1 ? "personne invitée" : "personnes invitées"}.`
+    : AGENDA_PERSONNES && !AGENDA_PERSONNES.some(p => p.discord)
+      ? "Aucune personne ne peut être invitée avec les droits de votre grade."
+      : "Aucune personne sélectionnée. Commencez à saisir un nom pour rechercher.";
+}
+
+const normaliserNomInvite = nom => String(nom || "").toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function afficherSuggestionsInvites() {
+  const saisie = document.getElementById("recherche-evenement-invites");
+  const suggestions = document.getElementById("suggestions-evenement-invites");
+  const terme = normaliserNomInvite(saisie.value.trim());
+  if (!terme) {
+    suggestions.classList.add("cache");
+    saisie.setAttribute("aria-expanded", "false");
+    saisie.removeAttribute("aria-activedescendant");
+    AGENDA_INVITES_ACTIF = -1;
+    return;
+  }
+  const selectionnes = new Set(AGENDA_INVITES_SELECTIONNES.filter(p => p.source === "employe").map(p => Number(p.id)));
+  const nomsSelectionnes = new Set(AGENDA_INVITES_SELECTIONNES.map(p => normaliserNomInvite(p.nom)));
+  const personnes = AGENDA_PERSONNES || [];
+  const correspondantes = personnes.filter(p => !selectionnes.has(Number(p.id)) && !nomsSelectionnes.has(normaliserNomInvite(p.nom))
+    && normaliserNomInvite(p.nom).includes(terme));
+  const disponibles = correspondantes.filter(p => p.discord).slice(0, 6);
+  AGENDA_INVITES_ACTIF = -1;
+  saisie.removeAttribute("aria-activedescendant");
+  if (!disponibles.length) {
+    const sansDiscord = correspondantes.length > 0;
+    const texte = sansDiscord
+      ? "Cette personne n’a pas de compte Discord relié et ne peut pas être invitée."
+      : "Aucun résultat. Essayez un autre nom.";
+    suggestions.innerHTML = `<li class="agenda-invites-vide" role="option" aria-disabled="true" aria-selected="false">${echapper(texte)}</li>`;
+  } else {
+    suggestions.innerHTML = disponibles.map((p, i) => `
+      <li id="suggestion-invite-${i}" role="option" aria-selected="false" data-invite-id="${Number(p.id)}">${echapper(p.nom)}</li>`).join("");
+    if (correspondantes.filter(p => p.discord).length > disponibles.length) {
+      document.getElementById("etat-evenement-invites").textContent = "Plusieurs résultats : précisez le nom pour affiner la recherche.";
+    }
+  }
+  suggestions.classList.remove("cache");
+  saisie.setAttribute("aria-expanded", "true");
+}
+
+function choisirInvite(id) {
+  const personne = AGENDA_PERSONNES?.find(p => Number(p.id) === Number(id));
+  if (!personne || !personne.discord || AGENDA_INVITES_SELECTIONNES.some(p => p.source === "employe" && Number(p.id) === Number(id))) return;
+  AGENDA_INVITES_SELECTIONNES.push({ ...personne, source: "employe" });
+  document.getElementById("recherche-evenement-invites").value = "";
+  document.getElementById("recherche-evenement-invites").disabled = false;
+  dessinerInvitesSelectionnes();
+  afficherSuggestionsInvites();
+  document.getElementById("recherche-evenement-invites").focus();
+}
+
+function majChampInvites() {
   const perso = document.getElementById("evenement-destination").value === "perso";
-  document.getElementById("champ-evenement-pour").classList.toggle("cache", edition || !perso || !AGENDA_DROITS.perso_autrui);
+  const invitationExistante = AGENDA_INVITES_SELECTIONNES.some(p => p.source === "invitation");
+  const visible = AGENDA_EVENEMENT_MODIFIABLE && perso && (AGENDA_DROITS.peut_inviter || invitationExistante);
+  document.getElementById("champ-evenement-invites").classList.toggle("cache", !visible);
+  const recherche = document.getElementById("recherche-evenement-invites");
+  recherche.disabled = !AGENDA_DROITS.peut_inviter;
+  if (!AGENDA_DROITS.peut_inviter) {
+    document.getElementById("suggestions-evenement-invites").classList.add("cache");
+    recherche.setAttribute("aria-expanded", "false");
+  }
 }
 
 let OUVREUR_EVENEMENT = null;
+let AGENDA_EVENEMENT_MODIFIABLE = true;
 function ouvrirModaleEvenement(options) {
   const o = options || {};
   const e = o.evenement || null;
   const estEdition = !!o.id;
   const modifiable = !e || e.modifiable;
+  AGENDA_EVENEMENT_MODIFIABLE = modifiable;
   OUVREUR_EVENEMENT = document.activeElement;
   document.getElementById("titre-modale-evenement").textContent = !modifiable ? "Événement" : estEdition ? "Modifier l’événement" : "Nouvel événement";
   document.getElementById("evenement-id").value = o.id || "";
@@ -407,25 +489,35 @@ function ouvrirModaleEvenement(options) {
   ameliorerSelect(selectType, v => AGENDA_TYPES.find(t => String(t.id) === v)?.couleur || COULEUR_SANS_TYPE);
   document.getElementById("champ-evenement-type").classList.toggle("cache", !AGENDA_TYPES.length);
 
-  // Visibilité : ce que ce compte peut créer (+ la valeur actuelle en édition, même hors de ses droits).
+  // Partage : les choix proposés sont limités aux droits de ce compte.
   const destination = e ? valeurDestination(e) : "perso";
   const choix = [...AGENDA_DROITS.destinations];
   if (!choix.some(c => c.valeur === destination)) choix.push({ valeur: destination, libelle: e.destinataire || destination });
   const selectDest = document.getElementById("evenement-destination");
-  selectDest.innerHTML = choix.map(c => `<option value="${echapper(c.valeur)}">${echapper(e && e.pour && c.valeur === "perso" ? `Personnel — ${e.pour}` : c.libelle)}</option>`).join("");
+  selectDest.innerHTML = choix.map(c => `<option value="${echapper(c.valeur)}">${echapper(c.libelle)}</option>`).join("");
   selectDest.value = destination;
-  // la personne d'un « Perso » créé pour quelqu'un d'autre ne change pas : elle a déjà été prévenue
-  const destinationFigee = !!(e && e.pour);
+  // Une liste d'invités ne peut coexister qu'avec un événement personnel.
+  const destinationFigee = !!(e && e.invites?.length);
   ameliorerSelect(selectDest);
-  document.getElementById("evenement-pour").innerHTML = '<option value="">Moi-même</option>';
-  if (!estEdition && AGENDA_DROITS.perso_autrui) remplirChoixPour();
-  majChampPour();
+  AGENDA_INVITES_SELECTIONNES = (e?.invites || []).map(i => ({ source: "invitation", invitation_id: Number(i.invitation_id), nom: i.nom }));
+  document.getElementById("recherche-evenement-invites").value = "";
+  document.getElementById("suggestions-evenement-invites").classList.add("cache");
+  document.getElementById("recherche-evenement-invites").setAttribute("aria-expanded", "false");
+  document.getElementById("etat-evenement-invites").textContent = "Chargement des personnes…";
+  dessinerInvitesSelectionnes();
+  if (modifiable && AGENDA_DROITS.peut_inviter) remplirChoixInvites();
+  dessinerInvitesSelectionnes();
+  majChampInvites();
 
-  // origine : qui l'a ajouté, pour qui, envoyé dans un ticket
+  // origine : qui l'a ajouté, qui a été invité et comment les personnes ont été prévenues
   const origine = document.getElementById("evenement-origine");
   const lignes = [];
   if (e && !e.mien && e.auteur) lignes.push(`Ajouté par ${e.auteur}.`);
-  if (e && e.pour) lignes.push(`Pour ${e.pour}${e.prevenu === "ticket" ? ", prévenu dans son ticket Discord" : e.prevenu === "prive" ? ", prévenu en message privé sur Discord" : ""}.`);
+  if (e?.invites?.length) {
+    lignes.push(`Invités : ${e.invites.map(i => i.nom).join(", ")}.`);
+    const nonPrevenus = e.invites.filter(i => !i.prevenu).map(i => i.nom);
+    if (e.mien && nonPrevenus.length) lignes.push(`Pas prévenu sur Discord : ${nonPrevenus.join(", ")}.`);
+  }
   origine.textContent = lignes.join(" ");
   origine.classList.toggle("cache", !lignes.length);
 
@@ -444,7 +536,62 @@ function ouvrirModaleEvenement(options) {
   (modifiable ? premierChamp : document.getElementById("bouton-annuler-evenement")).focus();
 }
 
-document.getElementById("evenement-destination").addEventListener("change", majChampPour);
+document.getElementById("evenement-destination").addEventListener("change", majChampInvites);
+const rechercheInvites = document.getElementById("recherche-evenement-invites");
+rechercheInvites.addEventListener("focus", () => {
+  if (AGENDA_DROITS.peut_inviter && !AGENDA_ERREUR_PERSONNES) afficherSuggestionsInvites();
+});
+rechercheInvites.addEventListener("input", afficherSuggestionsInvites);
+rechercheInvites.addEventListener("blur", () => setTimeout(() => {
+  if (document.activeElement === rechercheInvites) return;
+  const suggestions = document.getElementById("suggestions-evenement-invites");
+  suggestions.classList.add("cache");
+  rechercheInvites.setAttribute("aria-expanded", "false");
+  rechercheInvites.removeAttribute("aria-activedescendant");
+}, 0));
+rechercheInvites.addEventListener("keydown", e => {
+  const suggestions = document.getElementById("suggestions-evenement-invites");
+  const options = [...suggestions.querySelectorAll('[role="option"][data-invite-id]')];
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (!options.length) return;
+    e.preventDefault();
+    AGENDA_INVITES_ACTIF = AGENDA_INVITES_ACTIF < 0
+      ? e.key === "ArrowDown" ? 0 : options.length - 1
+      : (AGENDA_INVITES_ACTIF + (e.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+    options.forEach((option, i) => option.setAttribute("aria-selected", String(i === AGENDA_INVITES_ACTIF)));
+    rechercheInvites.setAttribute("aria-activedescendant", options[AGENDA_INVITES_ACTIF].id);
+  } else if (e.key === "Enter" && AGENDA_INVITES_ACTIF >= 0 && options[AGENDA_INVITES_ACTIF]) {
+    e.preventDefault();
+    choisirInvite(options[AGENDA_INVITES_ACTIF].dataset.inviteId);
+  } else if (e.key === "Enter" && !suggestions.classList.contains("cache")) {
+    e.preventDefault();
+  } else if (e.key === "Escape" && !suggestions.classList.contains("cache")) {
+    e.preventDefault();
+    e.stopPropagation();
+    suggestions.classList.add("cache");
+    rechercheInvites.setAttribute("aria-expanded", "false");
+    rechercheInvites.removeAttribute("aria-activedescendant");
+  }
+});
+document.getElementById("suggestions-evenement-invites").addEventListener("pointerdown", e => {
+  if (e.target.closest("[data-invite-id]")) e.preventDefault();
+});
+document.getElementById("suggestions-evenement-invites").addEventListener("click", e => {
+  const option = e.target.closest("[data-invite-id]");
+  if (option) choisirInvite(option.dataset.inviteId);
+});
+document.getElementById("liste-evenement-invites").addEventListener("click", e => {
+  const bouton = e.target.closest("[data-retirer-invite]");
+  if (!bouton) return;
+  const [source, id] = bouton.dataset.retirerInvite.split(":");
+  AGENDA_INVITES_SELECTIONNES = AGENDA_INVITES_SELECTIONNES.filter(p => source === "invitation"
+    ? p.source !== "invitation" || Number(p.invitation_id) !== Number(id)
+    : p.source !== "employe" || Number(p.id) !== Number(id));
+  dessinerInvitesSelectionnes();
+  majChampInvites();
+  afficherSuggestionsInvites();
+  rechercheInvites.focus();
+});
 champDateFr(document.getElementById("evenement-jour"));
 champHeureFr(document.getElementById("evenement-heure-debut"));
 champHeureFr(document.getElementById("evenement-heure-fin"));
@@ -501,25 +648,36 @@ document.getElementById("formulaire-evenement").addEventListener("submit", async
   const dest = document.getElementById("evenement-destination").value || "perso";
   payload.destination = dest.startsWith("grade:") ? "grade" : dest;
   if (dest.startsWith("grade:")) payload.destination_grade = dest.slice(6);
-  const pour = document.getElementById("evenement-pour").value;
-  if (!id && dest === "perso" && pour) payload.pour_employe_id = Number(pour);
+  const invitesEmployes = AGENDA_INVITES_SELECTIONNES.filter(p => p.source === "employe").map(p => Number(p.id));
+  const invitationsExistantes = AGENDA_INVITES_SELECTIONNES.filter(p => p.source === "invitation").map(p => Number(p.invitation_id));
+  if (dest === "perso") {
+    payload.invites_employe_ids = invitesEmployes;
+    if (id) payload.invitation_ids = invitationsExistantes;
+  }
   const bouton = document.getElementById("bouton-enregistrer-evenement");
   const texteInitial = bouton.textContent;
   bouton.disabled = true;
-  bouton.textContent = pour && !id ? "Envoi sur Discord…" : "Enregistrement…";
+  bouton.textContent = invitesEmployes.length ? "Enregistrement et invitations…" : "Enregistrement…";
   let reponse = null;
   try {
-    if (id) await socle.api("/api/agenda/" + id, { method: "PUT", body: payload });
+    if (id) reponse = await socle.api("/api/agenda/" + id, { method: "PUT", body: payload });
     else reponse = await socle.api("/api/agenda", { method: "POST", body: payload });
     // l'agenda se place sur le jour de l'événement, pour qu'on le voie apparaître
     AGENDA_REF = new Date(jour + "T00:00");
     fermerModaleEvenement();
     await chargerAgenda(false);
-    // créé pour quelqu'un d'autre : par où il a été prévenu, ou pourquoi il ne l'a pas été (l'événement existe quand même)
-    if (reponse?.avertissement) gestion.message("zone-message-agenda", `Événement créé. ${reponse.avertissement}`);
-    else if (reponse?.prevenu === "ticket") gestion.notifier("Événement créé et posté dans son ticket Discord ✓");
-    else if (reponse?.prevenu === "prive") gestion.notifier("Événement créé et envoyé en message privé sur Discord ✓");
-    else gestion.notifier(id ? "Événement enregistré ✓" : "Événement créé ✓");
+    const tickets = reponse?.notifications?.filter(n => n.prevenu === "ticket").length || 0;
+    const prives = reponse?.notifications?.filter(n => n.prevenu === "prive").length || 0;
+    const resume = [
+      tickets && `${tickets} ${tickets === 1 ? "invitation envoyée dans un ticket" : "invitations envoyées dans des tickets"} Discord`,
+      prives && `${prives} ${prives === 1 ? "invitation envoyée en message privé" : "invitations envoyées en messages privés"} Discord`,
+      reponse?.annulations && `${reponse.annulations} ${reponse.annulations === 1 ? "annulation signalée" : "annulations signalées"} sur Discord`,
+    ].filter(Boolean).join(" et ");
+    const action = id ? "Événement enregistré" : "Événement créé";
+    if (reponse?.avertissements?.length) {
+      gestion.message("zone-message-agenda", `${action}${resume ? ` ; ${resume}` : ""}. ${reponse.avertissements.join(" ")}`);
+    } else if (resume) gestion.notifier(`${action} ; ${resume} ✓`);
+    else gestion.notifier(`${action} ✓`);
   } catch (e) {
     gestion.message("zone-message-modale-evenement", e.message);
   } finally {

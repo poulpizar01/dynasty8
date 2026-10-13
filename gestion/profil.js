@@ -14,6 +14,7 @@ function profilEditeur(conteneur, { adresse, nom, apresEnregistrement, champNom,
   const avecNom = champNom !== undefined;
   conteneur.innerHTML = `
     <form data-formulaire class="profil-editeur" novalidate>
+      <div class="profil-corps">
       <div class="profil-photo-ligne">
         <div class="profil-photo-apercu" data-apercu></div>
         <div class="profil-photo-actions">
@@ -53,6 +54,7 @@ function profilEditeur(conteneur, { adresse, nom, apresEnregistrement, champNom,
         </div>
         <textarea id="${id("bio")}" maxlength="1000" rows="5" placeholder="Votre parcours, ce que vous aimez dans le métier…" data-champ="bio"></textarea>
         <p class="champ-aide">Lue quand un visiteur ouvre votre profil sur la page équipe.</p>
+      </div>
       </div>
       <div class="profil-pied">
         <div data-zone-message role="status"></div>

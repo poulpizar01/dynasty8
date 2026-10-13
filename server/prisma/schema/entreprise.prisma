@@ -99,8 +99,7 @@ model StatutMessagerie {
   @@map("messagerie_statuts")
 }
 
-// « Mon agenda » : événements personnels d'un agent, visibles de lui seul (routes/agenda.ts).
-// Agenda : visibilité et règles dans entreprise/agenda-regles.ts et routes/agenda.ts
+// Agenda partagé : visibilité, invitations et règles dans entreprise/agenda-regles.ts et routes/agenda.ts
 model EvenementAgenda {
   id               Int      @id @default(autoincrement())
   compteId         Int?     @map("compte_id") // auteur ; null : compte supprimé (événement partagé gardé)
@@ -112,23 +111,31 @@ model EvenementAgenda {
   notes            String   @default("") @db.VarChar(500)
   typeId           Int?     @map("type_id") // classement (couleur) ; type supprimé : « Sans type »
   type             TypeAgenda? @relation(fields: [typeId], references: [id], onDelete: SetNull)
-  // destiné à : « perso » (l'auteur, ou la personne choisie), « tous », ou « grade » (ce grade et ceux au-dessus)
+  // destiné à : « perso » (l'auteur et ses invités), « tous », ou « grade » (ce grade et ceux au-dessus)
   destination      String   @default("perso") @db.VarChar(10)
   destinationGrade String?  @map("destination_grade") @db.VarChar(20)
-  // « Perso » pour quelqu'un d'autre : sa fiche RH, son ID Discord (qui lui ouvre l'événement), le message envoyé
-  cibleEmployeId   Int?     @map("cible_employe_id")
-  cibleDiscordId   String?  @map("cible_discord_id") @db.VarChar(22)
-  cibleNom         String   @default("") @map("cible_nom") @db.VarChar(130)
-  discordSalonId   String?  @map("discord_salon_id") @db.VarChar(22) // ticket, ou conversation privée
-  discordMessageId String?  @map("discord_message_id") @db.VarChar(22)
-  prevenu          String   @default("") @db.VarChar(10) // ticket | prive | '' (personne prévenue par où)
+  invitations      InvitationAgenda[]
   creeLe           DateTime @default(now()) @map("cree_le") @db.Timestamptz(6)
   majLe            DateTime @default(now()) @updatedAt @map("maj_le") @db.Timestamptz(6)
 
   @@index([compteId, jour])
   @@index([destination, jour])
-  @@index([cibleDiscordId, jour])
   @@map("evenements_agenda")
+}
+
+model InvitationAgenda {
+  id               Int             @id @default(autoincrement())
+  evenementId      Int             @map("evenement_id")
+  evenement        EvenementAgenda @relation(fields: [evenementId], references: [id], onDelete: Cascade)
+  discordId        String          @map("discord_id") @db.VarChar(22)
+  nom              String          @db.VarChar(130)
+  discordSalonId   String?         @map("discord_salon_id") @db.VarChar(22)
+  discordMessageId String?         @map("discord_message_id") @db.VarChar(22)
+  prevenu          String          @default("") @db.VarChar(10) // ticket | prive | '' (non prévenu)
+
+  @@unique([evenementId, discordId])
+  @@index([discordId, evenementId])
+  @@map("agenda_invitations")
 }
 
 // Types d'événements de l'agenda : simple classement (nom, couleur), gérés par la permission « agenda-types »

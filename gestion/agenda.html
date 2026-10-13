@@ -62,48 +62,54 @@
     </div>
     <form id="formulaire-evenement" novalidate>
       <input type="hidden" id="evenement-id">
-      <div class="champ cache" id="champ-evenement-type">
-        <label for="evenement-type">Type</label>
-        <select id="evenement-type"></select>
-      </div>
-      <div class="champ">
-        <label for="evenement-titre">Titre</label>
-        <input type="text" id="evenement-titre" maxlength="80" placeholder="Ex. Visite, Eclipse Tower">
-        <p class="champ-erreur cache" id="erreur-evenement-titre">Donnez un titre à l’événement.</p>
-      </div>
-      <div class="evenement-quand">
-        <div class="champ">
-          <label for="evenement-jour">Date</label>
-          <input type="date" id="evenement-jour">
-          <p class="champ-erreur cache" id="erreur-evenement-jour">Date au format jj/mm/aaaa.</p>
+      <div class="evenement-corps">
+        <div class="champ cache" id="champ-evenement-type">
+          <label for="evenement-type">Type</label>
+          <select id="evenement-type"></select>
         </div>
         <div class="champ">
-          <label for="evenement-heure-debut">Début</label>
-          <input type="time" id="evenement-heure-debut" step="300">
+          <label for="evenement-titre">Titre</label>
+          <input type="text" id="evenement-titre" maxlength="80" placeholder="Ex. Visite, Eclipse Tower">
+          <p class="champ-erreur cache" id="erreur-evenement-titre">Donnez un titre à l’événement.</p>
         </div>
+        <div class="evenement-quand">
+          <div class="champ">
+            <label for="evenement-jour">Date</label>
+            <input type="date" id="evenement-jour">
+            <p class="champ-erreur cache" id="erreur-evenement-jour">Date au format jj/mm/aaaa.</p>
+          </div>
+          <div class="champ">
+            <label for="evenement-heure-debut">Début</label>
+            <input type="time" id="evenement-heure-debut" step="300">
+          </div>
+          <div class="champ">
+            <label for="evenement-heure-fin">Fin</label>
+            <input type="time" id="evenement-heure-fin" step="300">
+          </div>
+        </div>
+        <p class="champ-erreur cache evenement-erreur-heures" id="erreur-evenement-heures">Heures au format 24 h (14:30) ; la fin doit être après le début.</p>
+        <div class="evenement-classement">
+          <div class="champ">
+            <label for="evenement-destination">Partager avec</label>
+            <select id="evenement-destination"></select>
+            <p class="champ-aide">« Personnel » le réserve à vous et aux personnes invitées ; les autres choix dépendent des droits définis dans Grades.</p>
+          </div>
+        </div>
+        <fieldset class="champ agenda-invitations cache" id="champ-evenement-invites">
+          <legend>Inviter des personnes <small>facultatif</small></legend>
+          <p class="champ-aide" id="aide-evenement-invites">Les personnes invitées verront l’événement dans leur agenda et seront prévenues sur Discord. Si vous les retirez, l’événement disparaît de leur agenda et une annulation leur est envoyée si le bot est disponible. Elles ne peuvent pas répondre depuis le site.</p>
+          <label for="recherche-evenement-invites">Rechercher une personne</label>
+          <input type="search" id="recherche-evenement-invites" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions-evenement-invites" aria-describedby="aide-evenement-invites" autocomplete="off" placeholder="Nom d’un agent">
+          <ul class="agenda-invites-suggestions cache" id="suggestions-evenement-invites" role="listbox" aria-label="Suggestions de personnes"></ul>
+          <ul class="agenda-invites-selection" id="liste-evenement-invites" aria-label="Personnes invitées"></ul>
+          <p class="champ-aide agenda-invites-etat" id="etat-evenement-invites" role="status" aria-live="polite"></p>
+        </fieldset>
         <div class="champ">
-          <label for="evenement-heure-fin">Fin</label>
-          <input type="time" id="evenement-heure-fin" step="300">
+          <label for="evenement-notes">Notes <small>facultatif</small></label>
+          <textarea id="evenement-notes" maxlength="500" rows="3" placeholder="Lieu de rendez-vous, contact, détails…"></textarea>
         </div>
+        <p class="champ-aide cache" id="evenement-origine"></p>
       </div>
-      <p class="champ-erreur cache" id="erreur-evenement-heures">Heures au format 24 h (14:30) ; la fin doit être après le début.</p>
-      <div class="evenement-classement">
-        <div class="champ">
-          <label for="evenement-destination">Qui peut voir cet événement ?</label>
-          <select id="evenement-destination"></select>
-          <p class="champ-aide">Choisissez un événement personnel, partagé avec toute l’équipe ou adressé à un grade.</p>
-        </div>
-      </div>
-      <div class="champ cache" id="champ-evenement-pour">
-        <label for="evenement-pour">Personne concernée <small>facultatif</small></label>
-        <select id="evenement-pour"></select>
-        <p class="champ-aide">La personne choisie verra l’événement dans son agenda et sera prévenue sur Discord.</p>
-      </div>
-      <div class="champ">
-        <label for="evenement-notes">Notes <small>facultatif</small></label>
-        <textarea id="evenement-notes" maxlength="500" rows="3" placeholder="Lieu de rendez-vous, contact, détails…"></textarea>
-      </div>
-      <p class="champ-aide cache" id="evenement-origine"></p>
       <div id="zone-message-modale-evenement" role="status"></div>
       <div class="evenement-pied">
         <button type="button" class="btn btn-fantome evenement-supprimer cache" id="bouton-supprimer-evenement">Supprimer</button>
@@ -121,27 +127,31 @@
       <h2 id="titre-modale-types">Types d’événements</h2>
       <button id="fermer-modale-types" type="button" aria-label="Fermer">✕</button>
     </div>
-    <p class="champ-aide types-intro">Les types servent à repérer les événements par couleur. Ils ne changent pas qui peut les voir.</p>
-    <div class="types-section-entete">
-      <h3 class="types-sous-titre">Types existants</h3>
-      <span class="types-compte" id="types-compte"></span>
-    </div>
-    <ul class="types-liste" id="types-liste"></ul>
-    <form class="types-ajout" id="form-type" novalidate>
-      <h3 class="types-sous-titre">Créer un type</h3>
-      <div class="types-ajout-champs">
-        <div class="champ">
-          <label for="type-nom">Nom</label>
-          <input type="text" id="type-nom" maxlength="40" placeholder="Ex. Visite, Réunion">
-        </div>
-        <div class="champ types-couleur">
-          <label for="type-couleur">Couleur</label>
-          <input type="color" id="type-couleur" aria-label="Couleur du nouveau type">
-        </div>
+    <div class="types-corps">
+      <p class="champ-aide types-intro">Les types servent à repérer les événements par couleur. Ils ne changent pas qui peut les voir.</p>
+      <div class="types-section-entete">
+        <h3 class="types-sous-titre">Types existants</h3>
+        <span class="types-compte" id="types-compte"></span>
       </div>
-      <button type="submit" class="btn btn-or">Ajouter le type</button>
-    </form>
-    <div id="zone-message-types" role="status"></div>
+      <ul class="types-liste" id="types-liste"></ul>
+    </div>
+    <div class="types-pied">
+      <form class="types-ajout" id="form-type" novalidate>
+        <h3 class="types-sous-titre">Créer un type</h3>
+        <div class="types-ajout-champs">
+          <div class="champ">
+            <label for="type-nom">Nom</label>
+            <input type="text" id="type-nom" maxlength="40" placeholder="Ex. Visite, Réunion">
+          </div>
+          <div class="champ types-couleur">
+            <label for="type-couleur">Couleur</label>
+            <input type="color" id="type-couleur" aria-label="Couleur du nouveau type">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-or">Ajouter le type</button>
+      </form>
+      <div id="zone-message-types" role="status"></div>
+    </div>
   </div>
 </div>
 

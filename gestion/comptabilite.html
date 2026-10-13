@@ -223,30 +223,32 @@
   </main>
 
 <div class="modale-fond cache" id="modale-import-tablette">
-  <div class="modale" style="max-width:1100px;">
+  <div class="modale modale-import-tablette" style="max-width:1100px;" role="dialog" aria-modal="true" aria-labelledby="titre-modale-import-tablette">
     <div class="modale-entete">
-      <h3>Importer un relevé — Tablettes</h3>
-      <button id="fermer-modale-import-tablette">✕</button>
+      <h3 id="titre-modale-import-tablette">Importer un relevé — Tablettes</h3>
+      <button type="button" id="fermer-modale-import-tablette" aria-label="Fermer">✕</button>
     </div>
     <div id="zone-message-modale-import"></div>
-    <div class="champ">
-      <label for="import-tablette-texte">Collez vos données ici</label>
-      <p class="champ-aide" style="margin-top:-4px;">
-        Le plus fiable : copiez les cellules directement depuis Excel, Google Sheets ou un tableau similaire, puis collez-les ici (Ctrl+V) — la première ligne doit contenir les titres des colonnes.
-        Si vous tapez ou collez un texte à espaces (par exemple depuis Discord) et qu'une ligne comme « TOTAL » n'a pas de valeur pour une colonne, mettez un tiret « - » à cet endroit avant de coller, sinon les colonnes suivantes risquent de se décaler — vérifiez toujours l'aperçu ci-dessous avant d'enregistrer.
-      </p>
-      <textarea id="import-tablette-texte" rows="18" wrap="off" style="font-family:monospace;font-size:0.82rem;white-space:pre;overflow-x:auto;" placeholder="Nom    Rang    Factures    Runs    Ventes    Total entreprise    Part employé    Heures de service
+    <div class="import-tablette-corps">
+      <div class="champ">
+        <label for="import-tablette-texte">Collez vos données ici</label>
+        <p class="champ-aide" style="margin-top:-4px;">
+          Le plus fiable : copiez les cellules directement depuis Excel, Google Sheets ou un tableau similaire, puis collez-les ici (Ctrl+V) — la première ligne doit contenir les titres des colonnes.
+          Si vous tapez ou collez un texte à espaces (par exemple depuis Discord) et qu'une ligne comme « TOTAL » n'a pas de valeur pour une colonne, mettez un tiret « - » à cet endroit avant de coller, sinon les colonnes suivantes risquent de se décaler — vérifiez toujours l'aperçu ci-dessous avant d'enregistrer.
+        </p>
+        <textarea id="import-tablette-texte" rows="18" wrap="off" style="font-family:monospace;font-size:0.82rem;white-space:pre;overflow-x:auto;" placeholder="Nom    Rang    Factures    Runs    Ventes    Total entreprise    Part employé    Heures de service
 Javier Silva    Co-patron    0    0    0    0    0    0h52min
 TOTAL    -    0    0    0    0    0    -"></textarea>
-    </div>
-    <div id="apercu-import-tablette" class="cache">
-      <p class="champ-aide" style="margin:14px 0 8px;">Aperçu — vérifiez que chaque valeur est dans la bonne colonne avant d'enregistrer :</p>
-      <div style="overflow-x:auto;max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">
-        <table class="table-admin" id="table-apercu-import"></table>
+      </div>
+      <div id="apercu-import-tablette" class="cache">
+        <p class="champ-aide" style="margin:14px 0 8px;">Aperçu — vérifiez que chaque valeur est dans la bonne colonne avant d'enregistrer :</p>
+        <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">
+          <table class="table-admin" id="table-apercu-import"></table>
+        </div>
       </div>
     </div>
-    <div style="display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;">
-      <button type="button" class="btn btn-or" id="bouton-enregistrer-import-tablette" style="flex:1;" disabled>Enregistrer ce tableau</button>
+    <div class="import-tablette-pied">
+      <button type="button" class="btn btn-or" id="bouton-enregistrer-import-tablette" disabled>Enregistrer ce tableau</button>
       <button type="button" class="btn btn-fantome" id="bouton-annuler-import-tablette">Annuler</button>
     </div>
   </div>

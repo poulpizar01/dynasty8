@@ -719,6 +719,53 @@ main.admin-contenu:focus { outline: none; }
 .rh-historique strong { font-weight: 500; color: var(--text); }
 .rh-historique small { flex-basis: 100%; color: var(--text-faint); }
 
+.modale.modale-fiche-rh {
+  display: flex; flex-direction: column; height: min(88vh, 760px); max-height: calc(100dvh - 40px); overflow: hidden; padding: 0;
+}
+.modale-fiche-rh > .modale-entete { flex: 0 0 auto; margin: 0; padding: 20px 28px 14px; border-bottom: 1px solid var(--border); }
+.modale-fiche-rh > #zone-message-modale-employe { flex: 0 0 auto; margin: 12px 28px 0; }
+.modale-fiche-rh > #zone-message-modale-employe:empty { display: none; }
+.modale-fiche-rh > form { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; }
+.fiche-rh-corps {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 18px 28px 12px; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(201, 165, 92, 0.36) transparent;
+}
+.fiche-rh-corps::-webkit-scrollbar { width: 7px; }
+.fiche-rh-corps::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(201, 165, 92, 0.36); }
+.fiche-rh-pied { flex: 0 0 auto; padding: 12px 28px 20px; border-top: 1px solid var(--border); background: var(--bg-card); }
+.fiche-rh-pied .btn { width: 100%; min-height: 44px; }
+.modale.modale-profil {
+  display: flex; flex-direction: column; height: min(88vh, 760px); max-height: calc(100dvh - 40px); overflow: hidden; padding: 0;
+}
+.modale-profil > .modale-entete { flex: 0 0 auto; margin: 0; padding: 20px 28px 14px; border-bottom: 1px solid var(--border); }
+.modale-profil > #editeur-profil { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+#editeur-profil .profil-editeur { display: flex; height: 100%; min-height: 0; flex-direction: column; }
+#editeur-profil .profil-corps {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 18px 28px 12px; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(201, 165, 92, 0.36) transparent;
+}
+#editeur-profil .profil-corps::-webkit-scrollbar { width: 7px; }
+#editeur-profil .profil-corps::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(201, 165, 92, 0.36); }
+#editeur-profil .profil-pied { flex: 0 0 auto; padding: 12px 28px 20px; border-top: 1px solid var(--border); background: var(--bg-card); }
+#editeur-profil .profil-pied .btn { min-height: 44px; }
+.modale.modale-import-tablette {
+  display: flex; flex-direction: column; height: min(90vh, 860px); max-height: calc(100dvh - 40px); overflow: hidden; padding: 0;
+}
+.modale-import-tablette > .modale-entete { flex: 0 0 auto; margin: 0; padding: 20px 28px 14px; border-bottom: 1px solid var(--border); }
+.modale-import-tablette > .modale-entete h3 { margin: 0; font-size: 1.3rem; }
+.modale-import-tablette > #zone-message-modale-import { flex: 0 0 auto; margin: 12px 28px 0; }
+.modale-import-tablette > #zone-message-modale-import:empty { display: none; }
+.import-tablette-corps {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 18px 28px 12px; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(201, 165, 92, 0.36) transparent;
+}
+.import-tablette-corps::-webkit-scrollbar { width: 7px; }
+.import-tablette-corps::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(201, 165, 92, 0.36); }
+.import-tablette-corps > .champ { margin: 0; }
+.import-tablette-corps textarea { width: 100%; }
+.import-tablette-pied { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 12px; padding: 12px 28px 20px; border-top: 1px solid var(--border); background: var(--bg-card); }
+.import-tablette-pied .btn-or { flex: 1; }
+
 @media (max-width: 760px) {
   .rh-liste .comptes-ligne { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; grid-template-areas: "id id menu" "grade discord discord" "arrivee arrivee arrivee"; }
   .rh-liste .comptes-ligne > .rh-employe { grid-area: id; }
@@ -729,6 +776,14 @@ main.admin-contenu:focus { outline: none; }
   .rh-cellule::before { content: attr(data-libelle); display: block; font-size: 0.75rem; color: var(--text-faint); }
   .rh-outils-droite { flex-basis: 100%; justify-content: stretch; }
   .rh-outils-droite .d8-select-enveloppe { width: 100%; }
+  .modale-fond#modale-employe, .modale-fond#modale-import-tablette, .modale-fond#modale-profil { padding: 0; }
+  .modale.modale-fiche-rh, .modale.modale-import-tablette, .modale.modale-profil { height: 100vh; height: 100dvh; max-height: none; max-width: none; border: 0; border-radius: 0; }
+  .modale-fiche-rh > .modale-entete, .modale-import-tablette > .modale-entete, .modale-profil > .modale-entete { padding: 16px 18px 12px; }
+  .modale-fiche-rh > #zone-message-modale-employe { margin-right: 18px; margin-left: 18px; }
+  .fiche-rh-corps, .import-tablette-corps, #editeur-profil .profil-corps { padding: 14px 18px 10px; }
+  .fiche-rh-pied, .import-tablette-pied, #editeur-profil .profil-pied { padding: 10px 18px 14px; }
+  .import-tablette-pied { gap: 8px; }
+  .import-tablette-pied .btn { min-height: 44px; }
 }
 
 /* recrutement : une ligne par information, « quelle question la contient ? » */
