@@ -25,6 +25,7 @@
         <button class="btn" type="button" id="agenda-aujourdhui">Aujourd’hui</button>
         <button class="btn" type="button" id="agenda-suivant" aria-label="Période suivante">Suivant</button>
         <div class="agenda-vues" role="group" aria-label="Affichage de l’agenda">
+          <button class="btn" type="button" data-vue="jour" aria-pressed="false">Jour</button>
           <button class="btn" type="button" data-vue="semaine" aria-pressed="false">Semaine</button>
           <button class="btn" type="button" data-vue="mois" aria-pressed="true">Mois</button>
         </div>
@@ -41,43 +42,60 @@
 
   <div class="modale-fond" id="agenda-fenetre" hidden>
     <section class="modale agenda-fenetre" role="dialog" aria-modal="true" aria-labelledby="agenda-titre-fenetre">
-      <h2 id="agenda-titre-fenetre">Nouvel événement</h2>
+      <header class="agenda-fenetre-entete">
+        <h2 id="agenda-titre-fenetre">Nouvel événement</h2>
+        <button type="button" id="agenda-fermer" aria-label="Fermer"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"></path></svg></button>
+      </header>
       <form id="agenda-form" novalidate>
-        <div class="champ">
-          <label for="agenda-titre">Titre</label>
-          <input id="agenda-titre" type="text" maxlength="80" required>
-        </div>
-        <div class="agenda-date-heures">
+        <div class="agenda-fenetre-corps">
           <div class="champ">
-            <label for="agenda-date">Date</label>
-            <input id="agenda-date" type="text" inputmode="numeric" placeholder="jj/mm/aaaa" maxlength="10" required>
+            <label for="agenda-titre">Titre</label>
+            <input id="agenda-titre" type="text" maxlength="80" required>
+          </div>
+          <div class="agenda-date-heures">
+            <div class="champ">
+              <label for="agenda-date">Date</label>
+              <input id="agenda-date" type="text" inputmode="numeric" placeholder="jj/mm/aaaa" maxlength="10" required>
+            </div>
+            <div class="champ">
+              <label for="agenda-debut">Début</label>
+              <input id="agenda-debut" type="text" inputmode="numeric" placeholder="hh:mm" maxlength="5" required>
+            </div>
+            <div class="champ">
+              <label for="agenda-fin">Fin</label>
+              <input id="agenda-fin" type="text" inputmode="numeric" placeholder="hh:mm" maxlength="5" required>
+            </div>
           </div>
           <div class="champ">
-            <label for="agenda-debut">Début</label>
-            <input id="agenda-debut" type="text" inputmode="numeric" placeholder="hh:mm" maxlength="5" required>
+            <label for="agenda-destination">Partager avec</label>
+            <select id="agenda-destination"></select>
+            <small>« Personnel » le réserve à vous et aux personnes invitées ; les autres choix dépendent des droits définis dans Grades.</small>
+          </div>
+          <fieldset class="champ agenda-invitations" id="agenda-invitations" hidden>
+            <legend>Inviter des personnes <small>facultatif</small></legend>
+            <p class="muet" id="agenda-invitations-aide">Les personnes invitées verront l’événement dans leur agenda et seront prévenues sur Discord. Si vous les retirez, une annulation leur est envoyée si le bot est disponible.</p>
+            <label for="agenda-invitations-recherche">Rechercher une personne</label>
+            <input id="agenda-invitations-recherche" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="agenda-invitations-suggestions" aria-describedby="agenda-invitations-aide" autocomplete="off" placeholder="Nom d’une personne">
+            <ul id="agenda-invitations-suggestions" class="agenda-invites-suggestions" role="listbox" aria-label="Suggestions de personnes" hidden></ul>
+            <ul id="agenda-invitations-selection" class="agenda-invites-selection" aria-label="Personnes invitées"></ul>
+            <p id="agenda-invitations-etat" class="muet" role="status" aria-live="polite"></p>
+          </fieldset>
+          <div class="champ">
+            <label for="agenda-type">Type <small>facultatif</small></label>
+            <select id="agenda-type"></select>
           </div>
           <div class="champ">
-            <label for="agenda-fin">Fin</label>
-            <input id="agenda-fin" type="text" inputmode="numeric" placeholder="hh:mm" maxlength="5" required>
+            <label for="agenda-notes">Notes <small>facultatif</small></label>
+            <textarea id="agenda-notes" rows="3" maxlength="500"></textarea>
           </div>
         </div>
-        <div class="champ">
-          <label for="agenda-destination">Qui peut voir cet événement ?</label>
-          <select id="agenda-destination"></select>
-        </div>
-        <div class="champ">
-          <label for="agenda-type">Type <small>facultatif</small></label>
-          <select id="agenda-type"></select>
-        </div>
-        <div class="champ">
-          <label for="agenda-notes">Notes <small>facultatif</small></label>
-          <textarea id="agenda-notes" rows="3" maxlength="500"></textarea>
-        </div>
-        <p class="message" id="agenda-erreur" hidden></p>
-        <div class="ligne agenda-pied">
-          <button class="btn btn--danger" type="button" id="agenda-supprimer" hidden>Supprimer</button>
-          <button class="btn" type="button" id="agenda-annuler">Annuler</button>
-          <button class="btn btn--accent" type="submit" id="agenda-enregistrer">Enregistrer</button>
+        <div class="agenda-fenetre-pied">
+          <p class="message" id="agenda-erreur" hidden></p>
+          <div class="ligne agenda-pied">
+            <button class="btn btn--danger" type="button" id="agenda-supprimer" hidden>Supprimer</button>
+            <button class="btn" type="button" id="agenda-annuler">Annuler</button>
+            <button class="btn btn--accent" type="submit" id="agenda-enregistrer">Enregistrer</button>
+          </div>
         </div>
       </form>
     </section>
@@ -85,25 +103,32 @@
 
   <div class="modale-fond" id="agenda-types-fenetre" hidden>
     <section class="modale agenda-fenetre agenda-types-fenetre" role="dialog" aria-modal="true" aria-labelledby="agenda-titre-types">
-      <h2 id="agenda-titre-types">Types d’événements</h2>
-      <p class="muet">Les types classent les événements par couleur ; ils ne changent pas qui peut les consulter.</p>
-      <ul id="agenda-types-liste" class="agenda-types-liste"></ul>
-      <form id="agenda-type-form">
-        <h3>Créer un type</h3>
-        <div class="agenda-type-champs">
-          <div class="champ">
-            <label for="agenda-type-nom">Nom</label>
-            <input id="agenda-type-nom" type="text" maxlength="40" required>
-          </div>
-          <div class="champ">
-            <label for="agenda-type-couleur">Couleur</label>
-            <input id="agenda-type-couleur" type="color" value="#5077a8">
+      <header class="agenda-fenetre-entete">
+        <h2 id="agenda-titre-types">Types d’événements</h2>
+        <button type="button" id="agenda-types-fermer" aria-label="Fermer"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"></path></svg></button>
+      </header>
+      <form id="agenda-type-form" class="agenda-types-form">
+        <div class="agenda-fenetre-corps agenda-types-corps">
+          <p class="muet">Les types classent les événements par couleur ; ils ne changent pas qui peut les consulter.</p>
+          <ul id="agenda-types-liste" class="agenda-types-liste"></ul>
+          <h3>Créer un type</h3>
+          <div class="agenda-type-champs">
+            <div class="champ">
+              <label for="agenda-type-nom">Nom</label>
+              <input id="agenda-type-nom" type="text" maxlength="40" required>
+            </div>
+            <div class="champ">
+              <label for="agenda-type-couleur">Couleur</label>
+              <input id="agenda-type-couleur" type="color" value="#5077a8">
+            </div>
           </div>
         </div>
-        <p class="message" id="agenda-types-erreur" hidden></p>
-        <div class="ligne agenda-pied">
-          <button class="btn" type="button" id="agenda-types-fermer">Fermer</button>
-          <button class="btn btn--accent" type="submit">Ajouter le type</button>
+        <div class="agenda-fenetre-pied">
+          <p class="message" id="agenda-types-erreur" hidden></p>
+          <div class="ligne agenda-pied">
+            <button class="btn" type="button" id="agenda-types-annuler">Annuler</button>
+            <button class="btn btn--accent" type="submit">Ajouter le type</button>
+          </div>
         </div>
       </form>
     </section>

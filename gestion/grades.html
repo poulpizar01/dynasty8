@@ -32,9 +32,13 @@
   </main>
 
   <div class="modale-fond grades-fenetre-fond" id="fenetre" hidden>
-    <div class="modale grades-fenetre" role="dialog" aria-modal="true" aria-labelledby="titre-fenetre">
-      <h2 id="titre-fenetre">Nouveau grade</h2>
+    <section class="modale grades-fenetre" role="dialog" aria-modal="true" aria-labelledby="titre-fenetre">
+      <header class="grades-fenetre-entete">
+        <h2 id="titre-fenetre">Nouveau grade</h2>
+        <button type="button" id="fermer" aria-label="Fermer"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"></path></svg></button>
+      </header>
       <form id="form" novalidate>
+        <div class="grades-fenetre-corps">
         <div class="grades-identite">
           <div class="champ">
             <label for="libelle">Nom du grade</label>
@@ -57,7 +61,7 @@
         <template id="agenda-droits-modele">
           <section class="grades-agenda" id="agenda-droits" aria-label="Droits sur les événements de l’agenda">
             <h3>Agenda</h3>
-            <p class="muet">Les événements personnels ne sont visibles que par leur auteur.</p>
+            <p class="muet">Les événements personnels ne sont visibles que par leur auteur et les personnes invitées.</p>
             <section>
               <h3>Événements pour toute l’équipe</h3>
               <label class="grades-permission"><input type="checkbox" id="agenda-consulter-tous"><span><strong>Consulter</strong><small>Voir les événements partagés avec toute l’équipe.</small></span></label>
@@ -67,20 +71,28 @@
               <h3>Événements adressés à un grade</h3>
               <p class="muet">Créer et modifier nécessitent aussi le droit de consulter le grade destinataire.</p>
               <div class="grades-agenda-matrice">
-                <div class="grades-agenda-entete"><strong>Grade destinataire</strong><strong>Consulter</strong><strong>Modifier</strong><strong>Créer</strong></div>
+                <div class="grades-agenda-entete">
+                  <strong>Grade destinataire</strong>
+                  <div><strong>Consulter</strong><label><input type="checkbox" data-agenda-tous="consulter" aria-label="Consulter les événements de tous les grades"><span>Tous</span></label></div>
+                  <div><strong>Modifier</strong><label><input type="checkbox" data-agenda-tous="modifier" aria-label="Modifier les événements de tous les grades"><span>Tous</span></label></div>
+                  <div><strong>Créer</strong><label><input type="checkbox" data-agenda-tous="creer" aria-label="Créer des événements pour tous les grades"><span>Tous</span></label></div>
+                </div>
                 <div id="agenda-grades"></div>
               </div>
             </section>
           </section>
         </template>
-        <p class="message" id="msg-fenetre" hidden></p>
-        <div class="ligne grades-pied">
-          <button type="button" class="btn btn--danger" id="supprimer" hidden>Supprimer le grade</button>
-          <button type="button" class="btn" id="annuler">Annuler</button>
-          <button type="submit" class="btn btn--accent" id="enregistrer">Créer le grade</button>
+        </div>
+        <div class="grades-fenetre-pied">
+          <p class="message" id="msg-fenetre" hidden></p>
+          <div class="ligne grades-pied">
+            <button type="button" class="btn btn--danger" id="supprimer" hidden>Supprimer le grade</button>
+            <button type="button" class="btn" id="annuler">Annuler</button>
+            <button type="submit" class="btn btn--accent" id="enregistrer">Créer le grade</button>
+          </div>
         </div>
       </form>
-    </div>
+    </section>
   </div>
   <script src="/gestion/vendor/Sortable.min.js"></script>
   <script>
@@ -157,6 +169,13 @@
     }
 
     function actualiserMatriceAgenda() {
+      for (const action of ['consulter', 'modifier', 'creer']) {
+        const cases = [...$('agenda-grades').querySelectorAll(`[data-agenda-action="${action}"]`)];
+        const tout = $('agenda-droits').querySelector(`[data-agenda-tous="${action}"]`);
+        const coches = cases.filter(c => c.checked).length;
+        tout.checked = cases.length > 0 && coches === cases.length;
+        tout.indeterminate = coches > 0 && coches < cases.length;
+      }
       for (const ligne of $('agenda-grades').querySelectorAll('.grades-agenda-ligne')) {
         const cle = ligne.dataset.grade;
         const consulter = ligne.querySelector('[data-agenda-action="consulter"]');
@@ -175,7 +194,7 @@
       const disponibles = grades.filter(x => moi.proprietaire || rang(x.cle) >= rang(moi.grade?.cle));
       if (!g) disponibles.push({ cle: '__nouveau_grade__', libelle: 'Ce nouveau grade' });
       const droits = { consulter: enregistres?.consulter ?? [], modifier: enregistres?.modifier ?? [], creer: enregistres?.creer ?? [] };
-      $('agenda-grades').innerHTML = disponibles.map(x => `<div class="grades-agenda-ligne" data-grade="${esc(x.cle)}">
+      $('agenda-grades').innerHTML = disponibles.map(x => `<div class="grades-agenda-ligne" role="group" aria-label="Droits pour les événements du grade ${esc(x.libelle)}" data-grade="${esc(x.cle)}">
         <strong>${esc(x.libelle)}</strong>
         ${['consulter', 'modifier', 'creer'].map(action => `<label class="grades-permission"><input type="checkbox" data-agenda-action="${action}" data-grade="${esc(x.cle)}" aria-label="${action === 'consulter' ? 'Consulter' : action === 'modifier' ? 'Modifier' : 'Créer'} les événements du grade ${esc(x.libelle)}" ${droits[action].includes(x.cle) ? 'checked' : ''}><span>${action === 'consulter' ? 'Consulter' : action === 'modifier' ? 'Modifier' : 'Créer'}</span></label>`).join('')}
       </div>`).join('');
@@ -185,22 +204,42 @@
 
     $('form').addEventListener('change', async e => {
       if (e.target.id === 'agenda-consulter-tous') {
-        if (!e.target.checked) $('agenda-gerer-tous').checked = false;
+        if (!e.target.checked && $('agenda-gerer-tous').checked) {
+          if (!await gestion.confirmer('Retirer la consultation supprimera aussi la gestion des événements partagés avec toute l’équipe.', { titre: 'Retirer ces droits d’agenda ?', libelle: 'Retirer ces droits' })) {
+            e.target.checked = true;
+            return;
+          }
+          $('agenda-gerer-tous').checked = false;
+        }
         actualiserEquipeAgenda();
       }
       if (e.target.id === 'agenda-gerer-tous') {
         if (e.target.checked) $('agenda-consulter-tous').checked = true;
         actualiserEquipeAgenda();
       }
-      const input = e.target.closest('[data-agenda-action]');
+      const input = e.target.closest('[data-agenda-action], [data-agenda-tous]');
       if (!input) return;
-      const action = input.dataset.agendaAction, cle = input.dataset.grade;
+      const action = input.dataset.agendaAction || input.dataset.agendaTous, cle = input.dataset.grade;
       if (action === 'consulter' && !input.checked) {
-        const dependantes = [...$('agenda-grades').querySelectorAll(`[data-grade="${CSS.escape(cle)}"] [data-agenda-action="modifier"]:checked, [data-grade="${CSS.escape(cle)}"] [data-agenda-action="creer"]:checked`)];
-        if (dependantes.length && !await gestion.confirmer('Retirer la consultation supprimera aussi les droits de création et de modification pour ce grade.', { titre: 'Retirer l’accès à l’agenda ?', libelle: 'Retirer ces droits' })) input.checked = true;
-        else dependantes.forEach(c => { c.checked = false; });
+        const dependantes = cle
+          ? [...$('agenda-grades').querySelectorAll(`[data-grade="${CSS.escape(cle)}"] [data-agenda-action="modifier"]:checked, [data-grade="${CSS.escape(cle)}"] [data-agenda-action="creer"]:checked`)]
+          : [...$('agenda-grades').querySelectorAll('[data-agenda-action="modifier"]:checked, [data-agenda-action="creer"]:checked')];
+        if (dependantes.length && !await gestion.confirmer('Retirer la consultation supprimera aussi les droits de création et de modification associés.', { titre: 'Retirer l’accès à l’agenda ?', libelle: 'Retirer ces droits' })) {
+          if (cle) input.checked = true;
+          actualiserMatriceAgenda();
+          return;
+        }
+        if (dependantes.length) dependantes.forEach(c => { c.checked = false; });
       }
-      if ((action === 'modifier' || action === 'creer') && input.checked) {
+      if (input.matches('[data-agenda-tous]')) {
+        const cases = [...$('agenda-grades').querySelectorAll(`[data-agenda-action="${action}"]`)];
+        cases.forEach(c => { c.checked = input.checked; });
+        if ((action === 'modifier' || action === 'creer') && input.checked) {
+          cases.forEach(c => {
+            $('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(c.dataset.grade)}"]`).checked = true;
+          });
+        }
+      } else if ((action === 'modifier' || action === 'creer') && input.checked) {
         $('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(cle)}"]`).checked = true;
       }
       actualiserMatriceAgenda();
@@ -263,6 +302,7 @@
     }
 
     $('nouveau').addEventListener('click', () => ouvrir(null));
+    $('fermer').addEventListener('click', () => fermerFenetre?.());
     $('annuler').addEventListener('click', () => fermerFenetre?.());
     $('supprimer').addEventListener('click', async () => {
       const g = grades.find(x => x.cle === edition);

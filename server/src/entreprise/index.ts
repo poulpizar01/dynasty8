@@ -31,6 +31,9 @@ export const entreprise: Entreprise = {
     { titre: 'Annonces', reglages: [
       { cle: 'annonces_epinglees_max', type: 'entier', min: 1, max: 10, defaut: 3, libelle: 'Annonces épinglées au plus', aide: 'Nombre d’annonces gardées en tête de liste.' },
     ] },
+    { titre: 'Agenda', reglages: [
+      { cle: 'agenda_categories_tickets', type: 'ids-discord', discord: 'categorie', libelle: 'Catégories des tickets', aide: 'Le bot envoie l’invitation dans le ticket ouvert de la personne. Sans ticket trouvé, il essaie de lui écrire en message privé.' },
+    ] },
   ],
 
   // événements du bot Discord entreprise (voir docs/webhooks.md) : un traitement par type d'événement reçu.
@@ -46,11 +49,13 @@ export const entreprise: Entreprise = {
     },
   },
 
-  // les annonces, relevés et écritures d'un compte supprimé restent, sans auteur
+  // Les invitations d'un compte supprimé sont retirées ; ses événements partagés restent, sans auteur.
   avantSuppressionCompte: async (compteId, tx) => {
+    const compte = await tx.compte.findUnique({ where: { id: compteId }, select: { discordId: true } });
     await tx.annonce.updateMany({ where: { compteId }, data: { compteId: null } });
     await tx.importCompta.updateMany({ where: { compteId }, data: { compteId: null } });
     await tx.ecritureDot.updateMany({ where: { compteId }, data: { compteId: null } });
+    if (compte) await tx.invitationAgenda.deleteMany({ where: { discordId: compte.discordId } });
     await tx.evenementAgenda.deleteMany({ where: { compteId, destination: 'perso' } });
     await tx.evenementAgenda.updateMany({ where: { compteId }, data: { compteId: null, auteurNom: '' } });
   },

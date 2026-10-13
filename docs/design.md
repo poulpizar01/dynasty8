@@ -44,6 +44,8 @@ Base de connaissance pour quiconque crée ou modifie une page, un composant ou u
 - **Un élément flottant ne recouvre jamais une action.** Placer la dernière action (souvent destructrice) à gauche, du côté opposé à la bulle.
 - **Bouton d'enregistrement flottant sans bandeau** : un bouton collant (`position: sticky`), sans rectangle de fond derrière lui, avec `pointer-events` limités au bouton.
   Vu : une barre d'enregistrement collante qui dessinait un rectangle sombre sur le contenu.
+- **Fenêtre longue : le bandeau (titre et fermeture) et le pied (actions) restent fixes ; seul le contenu défile**, dans une fenêtre à hauteur limitée. Sur téléphone, elle peut prendre tout l’écran, sans déplacer ces repères.
+  Vu : dans l’agenda, la croix et les boutons de validation disparaissaient en faisant défiler les champs ; même défaut dans les fenêtres longues d'autres rubriques.
 - **Barres de défilement aux couleurs du site**, fines ; aucune zone qui défile à l'intérieur d'une autre.
 
 ## 4. Tableaux

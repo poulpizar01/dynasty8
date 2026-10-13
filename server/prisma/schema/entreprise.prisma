@@ -95,11 +95,28 @@ model EvenementAgenda {
   type             TypeAgenda? @relation(fields: [typeId], references: [id], onDelete: SetNull)
   destination      String      @default("perso") @db.VarChar(10)
   destinationGrade String?     @map("destination_grade") @db.VarChar(20)
+  invitations      InvitationAgenda[]
   creeLe           DateTime    @default(now()) @map("cree_le") @db.Timestamptz(6)
 
   @@index([compteId, jour])
   @@index([destination, jour])
   @@map("evenements_agenda")
+}
+
+// Personnes invitées à un événement personnel ; discordId est conservé même si leur compte est supprimé.
+model InvitationAgenda {
+  id               Int             @id @default(autoincrement())
+  evenementId      Int             @map("evenement_id")
+  evenement        EvenementAgenda @relation(fields: [evenementId], references: [id], onDelete: Cascade)
+  discordId        String          @map("discord_id") @db.VarChar(22)
+  nom              String          @db.VarChar(130)
+  discordSalonId   String?         @map("discord_salon_id") @db.VarChar(22)
+  discordMessageId String?         @map("discord_message_id") @db.VarChar(22)
+  prevenu          String          @default("") @db.VarChar(10) // ticket | prive | '' (non prévenu)
+
+  @@unique([evenementId, discordId])
+  @@index([discordId, evenementId])
+  @@map("agenda_invitations")
 }
 
 model TypeAgenda {

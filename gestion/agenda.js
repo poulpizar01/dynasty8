@@ -24,7 +24,11 @@
     d.setUTCMonth(d.getUTCMonth() + 1, 0);
     return isoDate(d);
   };
-  const state = { moi: null, reference: aujourdHui(), vue: matchMedia('(max-width: 760px)').matches ? 'semaine' : 'mois', evenements: [], types: [], destinations: [], fermer: null, evenement: null, fermerTypes: null };
+  const state = {
+    moi: null, reference: aujourdHui(), vue: matchMedia('(max-width: 760px)').matches ? 'semaine' : 'mois',
+    evenements: [], types: [], destinations: [], peutInviter: false, personnes: null, erreurPersonnes: '',
+    invites: [], inviteActif: -1, fermer: null, evenement: null, fermerTypes: null,
+  };
   const legendeType = id => state.types.find(t => t.id === Number(id));
   const destinationValeur = e => e.destination === 'grade' ? `grade:${e.destination_grade}` : e.destination;
   const plage = () => state.vue === 'semaine'
@@ -99,11 +103,15 @@
       state.evenements = reponse.evenements;
       state.types = reponse.types;
       state.destinations = reponse.droits.destinations;
+      state.peutInviter = reponse.droits.peut_inviter;
       gestion.message($('agenda-message'), '');
       rendre();
+      return '';
     } catch (e) {
-      gestion.message($('agenda-message'), `L’agenda n’a pas pu être chargé : ${e.message}`);
+      const message = `L’agenda n’a pas pu être chargé : ${e.message}`;
+      gestion.message($('agenda-message'), message);
       $('agenda-grille').replaceChildren();
+      return message;
     }
   }
 
@@ -125,6 +133,137 @@
     charger();
   }));
   $('agenda-ajouter').addEventListener('click', () => ouvrirEvenement(aujourdHui()));
+
+  async function chargerPersonnes() {
+    if (state.personnes === null) {
+      try {
+        state.personnes = (await api('/api/agenda/personnes')).personnes || [];
+        state.personnes.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+        state.erreurPersonnes = '';
+      } catch (e) { state.erreurPersonnes = e.message; }
+    }
+    if (state.erreurPersonnes) {
+      $('agenda-invitations-recherche').disabled = true;
+      $('agenda-invitations-etat').textContent = `Impossible de charger les personnes : ${state.erreurPersonnes}`;
+      return;
+    }
+    $('agenda-invitations-recherche').disabled = !state.peutInviter;
+    dessinerInvites();
+    afficherSuggestionsInvites();
+  }
+
+  function dessinerInvites() {
+    const liste = $('agenda-invitations-selection');
+    liste.replaceChildren(...state.invites.map(p => {
+      const li = document.createElement('li');
+      li.className = 'agenda-invite-puce';
+      const nom = Object.assign(document.createElement('span'), { textContent: p.nom });
+      const retirer = Object.assign(document.createElement('button'), {
+        type: 'button',
+        'aria-label': `Retirer ${p.nom} des invités`,
+      });
+      retirer.dataset.retirerInvite = p.source === 'invitation' ? `invitation:${p.invitation_id}` : `compte:${p.id}`;
+      retirer.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"></path></svg>';
+      li.append(nom, retirer);
+      return li;
+    }));
+    $('agenda-invitations-etat').textContent = state.invites.length
+      ? `${state.invites.length} ${state.invites.length === 1 ? 'personne invitée' : 'personnes invitées'}.`
+      : state.personnes && !state.personnes.length
+        ? 'Aucune personne ne peut être invitée avec les droits de votre grade.'
+        : 'Aucune personne sélectionnée. Commencez à saisir un nom pour rechercher.';
+  }
+
+  const normaliserNom = nom => String(nom || '').toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  function afficherSuggestionsInvites() {
+    const saisie = $('agenda-invitations-recherche'), suggestions = $('agenda-invitations-suggestions');
+    const terme = normaliserNom(saisie.value.trim());
+    if (!terme || !state.peutInviter) {
+      suggestions.hidden = true;
+      saisie.setAttribute('aria-expanded', 'false');
+      saisie.removeAttribute('aria-activedescendant');
+      state.inviteActif = -1;
+      return;
+    }
+    const comptes = new Set(state.invites.filter(p => p.source === 'compte').map(p => Number(p.id)));
+    const noms = new Set(state.invites.map(p => normaliserNom(p.nom)));
+    const resultats = (state.personnes || []).filter(p => !comptes.has(Number(p.id)) && !noms.has(normaliserNom(p.nom))
+      && normaliserNom(p.nom).includes(terme)).slice(0, 6);
+    suggestions.replaceChildren();
+    state.inviteActif = -1;
+    saisie.removeAttribute('aria-activedescendant');
+    if (!resultats.length) {
+      const vide = Object.assign(document.createElement('li'), { className: 'agenda-invites-vide', textContent: 'Aucun résultat. Essayez un autre nom.' });
+      vide.setAttribute('role', 'option');
+      vide.setAttribute('aria-disabled', 'true');
+      vide.setAttribute('aria-selected', 'false');
+      suggestions.append(vide);
+    } else {
+      resultats.forEach((p, i) => {
+        const option = Object.assign(document.createElement('li'), { id: `agenda-invite-${i}`, textContent: p.nom });
+        option.dataset.inviteId = String(p.id);
+        option.setAttribute('role', 'option');
+        option.setAttribute('aria-selected', 'false');
+        suggestions.append(option);
+      });
+    }
+    suggestions.hidden = false;
+    saisie.setAttribute('aria-expanded', 'true');
+  }
+
+  function choisirInvite(id) {
+    const personne = state.personnes?.find(p => Number(p.id) === Number(id));
+    if (!personne || state.invites.some(p => p.source === 'compte' && Number(p.id) === Number(id))) return;
+    state.invites.push({ ...personne, source: 'compte' });
+    $('agenda-invitations-recherche').value = '';
+    actualiserChampInvites();
+    dessinerInvites();
+    afficherSuggestionsInvites();
+    $('agenda-invitations-recherche').focus();
+  }
+
+  $('agenda-invitations-recherche').addEventListener('focus', afficherSuggestionsInvites);
+  $('agenda-invitations-recherche').addEventListener('input', afficherSuggestionsInvites);
+  $('agenda-invitations-recherche').addEventListener('keydown', e => {
+    const options = [...$('agenda-invitations-suggestions').querySelectorAll('[role="option"][data-invite-id]')];
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!options.length) return;
+      e.preventDefault();
+      state.inviteActif = state.inviteActif < 0
+        ? e.key === 'ArrowDown' ? 0 : options.length - 1
+        : (state.inviteActif + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+      options.forEach((option, i) => option.setAttribute('aria-selected', String(i === state.inviteActif)));
+      e.currentTarget.setAttribute('aria-activedescendant', options[state.inviteActif].id);
+    } else if (e.key === 'Enter' && state.inviteActif >= 0 && options[state.inviteActif]) {
+      e.preventDefault();
+      choisirInvite(options[state.inviteActif].dataset.inviteId);
+    } else if (e.key === 'Escape' && !$('agenda-invitations-suggestions').hidden) {
+      e.preventDefault();
+      e.stopPropagation();
+      $('agenda-invitations-suggestions').hidden = true;
+      e.currentTarget.setAttribute('aria-expanded', 'false');
+      e.currentTarget.removeAttribute('aria-activedescendant');
+    }
+  });
+  $('agenda-invitations-suggestions').addEventListener('pointerdown', e => {
+    if (e.target.closest('[data-invite-id]')) e.preventDefault();
+  });
+  $('agenda-invitations-suggestions').addEventListener('click', e => {
+    const option = e.target.closest('[data-invite-id]');
+    if (option) choisirInvite(option.dataset.inviteId);
+  });
+  $('agenda-invitations-selection').addEventListener('click', e => {
+    const bouton = e.target.closest('[data-retirer-invite]');
+    if (!bouton) return;
+    const [source, id] = bouton.dataset.retirerInvite.split(':');
+    state.invites = state.invites.filter(p => source === 'invitation'
+      ? p.source !== 'invitation' || Number(p.invitation_id) !== Number(id)
+      : p.source !== 'compte' || Number(p.id) !== Number(id));
+    actualiserChampInvites();
+    dessinerInvites();
+    afficherSuggestionsInvites();
+    $('agenda-invitations-recherche').focus();
+  });
 
   function remplirDestinations(e) {
     const select = $('agenda-destination');
@@ -154,14 +293,33 @@
     $('agenda-erreur').hidden = true;
     remplirDestinations(e);
     remplirTypes(e?.type_id);
+    $('agenda-invitations-recherche').value = '';
+    $('agenda-invitations-suggestions').hidden = true;
+    $('agenda-invitations-recherche').setAttribute('aria-expanded', 'false');
+    state.invites = (e?.invites || []).map(i => ({ source: 'invitation', invitation_id: Number(i.invitation_id), nom: i.nom }));
+    $('agenda-destination').disabled = state.invites.length > 0;
+    const afficherInvitations = $('agenda-destination').value === 'perso' && (state.peutInviter || state.invites.length > 0);
+    $('agenda-invitations').hidden = !afficherInvitations;
+    $('agenda-invitations-recherche').disabled = !state.peutInviter;
+    dessinerInvites();
+    if (state.peutInviter) void chargerPersonnes();
     $('agenda-date').effacerErreurFr?.();
     $('agenda-debut').effacerErreurFr?.();
     $('agenda-fin').effacerErreurFr?.();
     state.fermer = gestion.fenetre($('agenda-fenetre'), { focus: $('agenda-titre') });
   }
+
+  function actualiserChampInvites() {
+    const visible = $('agenda-destination').value === 'perso' && (state.peutInviter || state.invites.some(p => p.source === 'invitation'));
+    $('agenda-invitations').hidden = !visible;
+    $('agenda-invitations-recherche').disabled = !state.peutInviter;
+    $('agenda-destination').disabled = state.invites.length > 0;
+  }
+  $('agenda-destination').addEventListener('change', actualiserChampInvites);
   champDateFr($('agenda-date'));
   champHeureFr($('agenda-debut'));
   champHeureFr($('agenda-fin'));
+  $('agenda-fermer').addEventListener('click', () => state.fermer?.());
   $('agenda-annuler').addEventListener('click', () => state.fermer?.());
   $('agenda-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -176,13 +334,36 @@
       destination: dest.startsWith('grade:') ? 'grade' : dest,
       destination_grade: dest.startsWith('grade:') ? dest.slice(6) : null,
     };
+    const invitesCompte = state.invites.filter(p => p.source === 'compte').map(p => Number(p.id));
+    if (dest === 'perso') {
+      payload.invites_compte_ids = invitesCompte;
+      if (state.evenement) payload.invitation_ids = state.invites.filter(p => p.source === 'invitation').map(p => Number(p.invitation_id));
+    }
+    const bouton = $('agenda-enregistrer');
+    const texteInitial = bouton.textContent;
+    bouton.disabled = true;
+    bouton.textContent = invitesCompte.length ? 'Enregistrement et invitations…' : 'Enregistrement…';
+    let reponse;
     try {
-      if (state.evenement) await api(`/api/agenda/${state.evenement.id}`, { method: 'PUT', body: payload });
-      else await api('/api/agenda', { method: 'POST', body: payload });
+      if (state.evenement) reponse = await api(`/api/agenda/${state.evenement.id}`, { method: 'PUT', body: payload });
+      else reponse = await api('/api/agenda', { method: 'POST', body: payload });
       state.fermer?.();
-      gestion.notifier(state.evenement ? 'Événement enregistré' : 'Événement créé');
-      await charger();
+      const erreurChargement = await charger();
+      const action = state.evenement ? 'Événement enregistré' : 'Événement créé';
+      const tickets = reponse?.notifications?.filter(n => n.prevenu === 'ticket').length || 0;
+      const prives = reponse?.notifications?.filter(n => n.prevenu === 'prive').length || 0;
+      const resume = [
+        tickets && `${tickets} ${tickets === 1 ? 'invitation envoyée dans un ticket' : 'invitations envoyées dans des tickets'} Discord`,
+        prives && `${prives} ${prives === 1 ? 'invitation envoyée en message privé' : 'invitations envoyées en messages privés'} Discord`,
+        reponse?.annulations && `${reponse.annulations} ${reponse.annulations === 1 ? 'annulation signalée' : 'annulations signalées'} sur Discord`,
+      ].filter(Boolean).join(' et ');
+      if (reponse?.avertissements?.length || erreurChargement) {
+        gestion.message($('agenda-message'), [action, resume, ...(reponse?.avertissements || []), erreurChargement].filter(Boolean).join('. '));
+      }
+      else if (resume) gestion.notifier(`${action} ; ${resume}`);
+      else gestion.notifier(action);
     } catch (err) { gestion.message($('agenda-erreur'), err.message); }
+    finally { bouton.disabled = false; bouton.textContent = texteInitial; }
   });
   $('agenda-supprimer').addEventListener('click', async () => {
     if (!state.evenement) return;
@@ -253,6 +434,7 @@
   }
   $('agenda-types').addEventListener('click', ouvrirTypes);
   $('agenda-types-fermer').addEventListener('click', () => state.fermerTypes?.());
+  $('agenda-types-annuler').addEventListener('click', () => state.fermerTypes?.());
   $('agenda-type-form').addEventListener('submit', async e => {
     e.preventDefault();
     const nom = $('agenda-type-nom').value.trim();
