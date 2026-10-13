@@ -191,7 +191,13 @@
 
     $('form').addEventListener('change', async e => {
       if (e.target.id === 'agenda-consulter-tous') {
-        if (!$('agenda-consulter-tous').checked) $('agenda-gerer-tous').checked = false;
+        if (!e.target.checked && $('agenda-gerer-tous').checked) {
+          if (!await gestion.confirmer('Retirer la consultation supprimera aussi la gestion des événements partagés avec toute l’équipe.', 'Retirer ces droits d’agenda ?', 'Retirer ces droits')) {
+            e.target.checked = true;
+            return;
+          }
+          $('agenda-gerer-tous').checked = false;
+        }
         actualiserDroitsEquipe();
       }
       if (e.target.id === 'agenda-gerer-tous') {

@@ -25,7 +25,7 @@ export type DroitsEnregistres = {
   creer: string[];
   modifier: string[];
   consulterTous?: boolean;
-  modifierTous?: boolean;
+  gererTous?: boolean;
 } | null;
 
 // droits d'un compte ; une clé de grade supprimée est ignorée jusqu'au nettoyage de sa ligne
@@ -39,7 +39,7 @@ export function droitsAgenda(grades: readonly string[], gradeCle: string | null,
     creer: lire(enregistres?.creer),
     modifier: lire(enregistres?.modifier),
     consulterTous: enregistres?.consulterTous ?? false,
-    gererTous: enregistres?.modifierTous ?? false,
+    gererTous: enregistres?.gererTous ?? false,
   };
 }
 

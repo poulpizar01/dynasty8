@@ -156,8 +156,8 @@ model AgendaDroitsGrade {
   consulter     String[] @default([])
   creer         String[] @default([])
   modifier      String[] @default([])
-  consulterTous Boolean  @default(true) @map("consulter_tous")
-  modifierTous  Boolean  @default(true) @map("modifier_tous")
+  consulterTous Boolean  @default(false) @map("consulter_tous")
+  gererTous     Boolean  @default(false) @map("gerer_tous")
 
   @@map("agenda_droits_grades")
 }

@@ -234,7 +234,7 @@ agenda.put('/api/agenda/droits-grades/:cle', ...permission('grades'), traiter(as
   if (!droitsActeur.tout && gererTous && !droitsActeur.gererTous && !droitsExistants.gererTous) {
     throw new Refus('Vous ne pouvez pas accorder un droit de gestion que vous n’avez pas.', 403);
   }
-  const tous = { consulterTous, modifierTous: gererTous };
+  const tous = { consulterTous, gererTous };
   await prisma.agendaDroitsGrade.upsert({ where: { gradeCle: cle }, create: { gradeCle: cle, ...valeurs, ...tous }, update: { ...valeurs, ...tous } });
   res.json({ ok: true });
 }));

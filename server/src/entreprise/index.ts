@@ -63,6 +63,7 @@ export const entreprise: Entreprise = {
   // disparaît, et sa photo de profil comme ses photos envoyées mais jamais utilisées partent au nettoyage. Ventes,
   // lignes du tableur et comptabilité restent (historique de la paie), détachées du compte.
   avantSuppressionCompte: async (compteId, tx) => {
+    const compte = await tx.compte.findUnique({ where: { id: compteId }, select: { discordId: true } });
     await tx.bien.updateMany({ where: { compteId }, data: { compteId: null } });
     await tx.profil.deleteMany({ where: { compteId } });
     await tx.vente.updateMany({ where: { compteId }, data: { compteId: null } });
@@ -74,11 +75,31 @@ export const entreprise: Entreprise = {
     await tx.message.deleteMany({ where: { OR: [{ expediteurId: compteId }, { destinataireId: compteId }] } });
     await tx.statutMessagerie.deleteMany({ where: { compteId } });
     // son agenda personnel disparaît ; ses événements partagés restent pour l'équipe, sans son nom
+    if (compte) await tx.invitationAgenda.deleteMany({ where: { discordId: compte.discordId } });
     await tx.evenementAgenda.deleteMany({ where: { compteId, destination: 'perso' } });
     await tx.evenementAgenda.updateMany({ where: { compteId }, data: { compteId: null, auteurNom: '' } });
     await tx.photo.updateMany({ where: { compteId, usage: 'profil' }, data: { statut: 'a_supprimer' } });
     await tx.photo.updateMany({ where: { compteId, statut: 'temporaire' }, data: { statut: 'a_supprimer' } });
     await tx.photo.updateMany({ where: { compteId }, data: { compteId: null } });
+  },
+
+  avantSuppressionGrade: async (gradeCle, tx) => {
+    await tx.agendaDroitsGrade.deleteMany({ where: { gradeCle } });
+    const droits = await tx.agendaDroitsGrade.findMany();
+    for (const ligne of droits) {
+      await tx.agendaDroitsGrade.update({
+        where: { gradeCle: ligne.gradeCle },
+        data: {
+          consulter: ligne.consulter.filter(cle => cle !== gradeCle),
+          creer: ligne.creer.filter(cle => cle !== gradeCle),
+          modifier: ligne.modifier.filter(cle => cle !== gradeCle),
+        },
+      });
+    }
+    await tx.evenementAgenda.updateMany({
+      where: { destination: 'grade', destinationGrade: gradeCle },
+      data: { destination: 'perso', destinationGrade: null },
+    });
   },
 
   demarrage: async () => {

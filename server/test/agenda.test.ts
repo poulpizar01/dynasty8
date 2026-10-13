@@ -36,7 +36,7 @@ test('événements pour toute l’équipe : consultation distincte du droit de g
   assert.equal(voit(partage, MOI, parDefaut, GRADES), false);
   assert.equal(modifiable(partage, MOI, parDefaut, GRADES), false);
   const equipe = droitsAgenda(GRADES, 'manager', false, {
-    consulter: [], creer: [], modifier: [], consulterTous: true, modifierTous: true,
+    consulter: [], creer: [], modifier: [], consulterTous: true, gererTous: true,
   });
   assert.equal(voit(partage, MOI, equipe, GRADES), true);
   assert.equal(modifiable(partage, MOI, equipe, GRADES), true);
@@ -44,13 +44,13 @@ test('événements pour toute l’équipe : consultation distincte du droit de g
   assert.equal(peutCreer(droitsAgenda(GRADES, 'manager', false, { consulter: ['manager'], creer: ['manager'], modifier: ['manager'] }), 'tous', null, GRADES), false, 'créer pour toute l’équipe est un droit distinct');
 
   const lectureSeule = droitsAgenda(GRADES, 'manager', false, {
-    consulter: ['manager'], creer: ['manager'], modifier: ['manager'], consulterTous: true, modifierTous: false,
+    consulter: ['manager'], creer: ['manager'], modifier: ['manager'], consulterTous: true, gererTous: false,
   });
   assert.equal(voit(partage, MOI, lectureSeule, GRADES), true);
   assert.equal(modifiable(partage, MOI, lectureSeule, GRADES), false);
 
   const aucunAcces = droitsAgenda(GRADES, 'manager', false, {
-    consulter: ['manager'], creer: ['manager'], modifier: ['manager'], consulterTous: false, modifierTous: false,
+    consulter: ['manager'], creer: ['manager'], modifier: ['manager'], consulterTous: false, gererTous: false,
   });
   assert.equal(voit(partage, MOI, aucunAcces, GRADES), false);
   assert.equal(modifiable(partage, MOI, aucunAcces, GRADES), false);
