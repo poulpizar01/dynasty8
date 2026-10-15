@@ -238,7 +238,7 @@ main.admin-contenu:focus { outline: none; }
 .accueil-panneau { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; min-width: 0; }
 .accueil-panneau-entete { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .accueil-panneau-entete h2 { margin: 0; font-size: 1.25rem; }
-.accueil-panneau-entete a { font-size: 0.85rem; color: var(--gold-strong); }
+.accueil-panneau-entete a { display: inline-block; padding: 3px 0; font-size: 0.85rem; color: var(--gold-strong); }   /* 24 px de haut : cible tactile */
 .accueil-liste { list-style: none; margin: 0; padding: 0; }
 .accueil-liste li { display: flex; gap: 12px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--border); min-width: 0; }
 .accueil-liste li:first-child { border-top: none; }
@@ -485,7 +485,7 @@ main.admin-contenu:focus { outline: none; }
 /* éditeur (aussi dans la fenêtre de Comptes) : intitulés en casse normale, photo en ligne */
 .profil-editeur label { font-size: inherit; text-transform: none; letter-spacing: 0; }
 .profil-editeur .champ label { display: block; margin-bottom: 6px; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
-.profil-editeur .champ label small { font-weight: 400; color: var(--text-faint); }
+.profil-editeur .champ label small { font-size: 0.75rem; font-weight: 400; color: var(--text-faint); }
 .profil-photo-ligne { display: flex; align-items: center; gap: 18px; margin-bottom: 20px; }
 .profil-editeur .profil-photo-apercu { width: 88px; height: 88px; flex-shrink: 0; }
 .profil-photo-actions { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -807,7 +807,7 @@ main.admin-contenu:focus { outline: none; }
 .rh-automatique::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #5fd39a; flex-shrink: 0; }
 .rh-precision { display: block; margin-top: 6px; font-size: 0.8rem; color: var(--text-faint); }
 /* étiquette « Obligatoire » (plutôt qu'un astérisque que rien n'explique) */
-.rh-obligatoire { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: rgba(201, 165, 92, 0.16); color: var(--gold-strong); font-size: 0.72rem; font-weight: 600; vertical-align: 1px; }
+.rh-obligatoire { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: rgba(201, 165, 92, 0.16); color: var(--gold-strong); font-size: 0.75rem; font-weight: 600; vertical-align: 1px; }
 
 /* notifications (gestion.notifier) : en bas au centre, au-dessus de tout, au-dessus de la bulle de messagerie */
 .notifications { position: fixed; left: 50%; bottom: 24px; z-index: 100200; display: flex; flex-direction: column; align-items: center; gap: 8px; transform: translateX(-50%); width: max-content; max-width: min(92vw, 560px); pointer-events: none; }

@@ -252,7 +252,7 @@ $rh('formulaire-employe').addEventListener('submit', async e => {
   };
   if (aDroitRh('sensible')) { corps.telephone = val('employe-telephone'); corps.rib = val('employe-rib'); }
   // l’ID employé est un numéro ; un ID provisoire (PROV-…) reste accepté tant qu’on ne l’a pas remplacé
-  const idValide = /^d{1,12}$/.test(corps.idEmploye) || /^PROV-/.test(corps.idEmploye);
+  const idValide = /^\d{1,12}$/.test(corps.idEmploye) || /^PROV-/.test(corps.idEmploye);
   $rh('erreur-employe-id').classList.toggle('cache', idValide);
   $rh('aide-employe-id').classList.toggle('cache', !idValide);   // l’erreur dit déjà la règle
   $rh('employe-id').classList.toggle('champ-invalide', !idValide);
