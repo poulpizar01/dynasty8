@@ -13,7 +13,7 @@ function formaterDateAdmin(iso) {
 }
 document.querySelectorAll(".compta-sous-onglet").forEach((btn) => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".compta-sous-onglet").forEach((b) => b.classList.toggle("actif", b === btn));
+    document.querySelectorAll(".compta-sous-onglet").forEach((b) => { b.classList.toggle("actif", b === btn); b.setAttribute("aria-selected", String(b === btn)); });
     const nom = btn.dataset.comptaOnglet;
     document.getElementById("compta-panneau-tablettes").classList.toggle("cache", nom !== "tablettes");
     document.getElementById("compta-panneau-parametres").classList.toggle("cache", nom !== "parametres");

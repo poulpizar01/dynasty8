@@ -29,10 +29,10 @@
         </div>
       </div>
 
-      <div class="compta-sous-onglets" role="tablist">
-        <button type="button" class="compta-sous-onglet actif" data-compta-onglet="tablettes"><svg class="ico" aria-hidden="true"><use href="#ico-sheet"></use></svg> Tablettes</button>
-        <button type="button" class="compta-sous-onglet" data-compta-onglet="dot"><svg class="ico" aria-hidden="true"><use href="#ico-receipt"></use></svg> Déclaration DOT</button>
-        <button type="button" class="compta-sous-onglet" data-compta-onglet="parametres"><svg class="ico" aria-hidden="true"><use href="#ico-coins"></use></svg> Rémunération</button>
+      <div class="compta-sous-onglets" role="tablist" aria-label="Rubriques de la comptabilité">
+        <button type="button" class="compta-sous-onglet actif" role="tab" aria-selected="true" aria-controls="compta-panneau-tablettes" data-compta-onglet="tablettes"><svg class="ico" aria-hidden="true"><use href="#ico-sheet"></use></svg> Tablettes</button>
+        <button type="button" class="compta-sous-onglet" role="tab" aria-selected="false" aria-controls="compta-panneau-dot" data-compta-onglet="dot"><svg class="ico" aria-hidden="true"><use href="#ico-receipt"></use></svg> Déclaration DOT</button>
+        <button type="button" class="compta-sous-onglet" role="tab" aria-selected="false" aria-controls="compta-panneau-parametres" data-compta-onglet="parametres"><svg class="ico" aria-hidden="true"><use href="#ico-coins"></use></svg> Rémunération</button>
       </div>
 
       <!-- Sous-onglet : Tablettes -->
@@ -143,7 +143,8 @@
         </div>
         <!-- les trois chiffres à déclarer ou à verser, puis le calcul ligne à ligne (même formule que le serveur :
              routes/compta.ts, /api/compta/dot/resume) -->
-        <div class="compta-chiffres" id="dot-chiffres"></div>
+        <!-- place réservée (squelettes) : les chiffres arrivent sans pousser le détail du calcul -->
+        <div class="compta-chiffres" id="dot-chiffres"><div class="compta-chiffre squelette" aria-hidden="true"><span class="compta-chiffre-libelle">&nbsp;</span><strong>&nbsp;</strong><small>&nbsp;</small></div><div class="compta-chiffre squelette" aria-hidden="true"><span class="compta-chiffre-libelle">&nbsp;</span><strong>&nbsp;</strong><small>&nbsp;</small></div><div class="compta-chiffre squelette" aria-hidden="true"><span class="compta-chiffre-libelle">&nbsp;</span><strong>&nbsp;</strong><small>&nbsp;</small></div></div>
         <div class="dot-calcul-bloc">
           <h3 class="compta-sous-titre" style="margin-top:0;">Détail du calcul</h3>
           <ol class="dot-calcul" id="dot-calcul"></ol>
@@ -198,14 +199,14 @@
             <h2 class="compta-titre">Tableau des salariés</h2>
             <p class="compta-aide">À coller dans le document de la DOT. Run, facture et vente viennent du relevé (0 si la personne n’y figure pas) ; le salaire est le fixe du grade plus son palier ; la prime se saisit à la main dans le document.</p>
             <ol class="dot-etapes">
-              <li>Dans le document de la DOT, repérez la ligne de la première personne et indiquez son numéro dans « Ligne de départ ».</li>
+              <li>Dans le document de la DOT, repérez la ligne de la première personne et indiquez son numéro dans « N° de ligne du premier salarié ».</li>
               <li>Cliquez sur « Copier le tableau ».</li>
               <li>Dans le document, cliquez sur la case de la colonne A de cette ligne, puis collez (Ctrl+V).</li>
             </ol>
             <p class="compta-aide" style="margin-top:6px;">Les titres des colonnes ne sont pas copiés. Le CA total réalisé se calcule tout seul dans le document.</p>
           </div>
           <div class="dot-copie-outils">
-            <label for="dot-copie-premiere-ligne" class="dot-copie-libelle">Ligne de départ</label>
+            <label for="dot-copie-premiere-ligne" class="dot-copie-libelle">N° de ligne du premier salarié</label>
             <input type="number" id="dot-copie-premiere-ligne" class="table-input dot-copie-ligne" min="1" step="1" value="2" title="Numéro de la ligne du document DOT où sera collée la première personne (pour que la formule CA TOTAL vise les bonnes cases)">
             <button type="button" class="btn btn-or" id="bouton-copier-salaries"><svg class="ico" aria-hidden="true"><use href="#ico-copy"></use></svg> Copier le tableau</button>
           </div>
@@ -223,7 +224,7 @@
     </section>
   </main>
 
-<div class="modale-fond cache" id="modale-import-tablette">
+<div class="modale-fond cache" id="modale-import-tablette" data-echap>
   <div class="modale modale-import-tablette" style="max-width:1100px;" role="dialog" aria-modal="true" aria-labelledby="titre-modale-import-tablette">
     <div class="modale-entete">
       <h3 id="titre-modale-import-tablette">Importer un relevé — Tablettes</h3>
@@ -254,11 +255,11 @@ TOTAL    -    0    0    0    0    0    -"></textarea>
     </div>
   </div>
 </div>
-<div class="modale-fond cache" id="modale-ecriture-dot">
+<div class="modale-fond cache" id="modale-ecriture-dot" data-echap>
   <div class="modale" style="max-width:420px;">
     <div class="modale-entete">
       <h3 id="titre-modale-ecriture-dot">Nouvelle dépense déductible</h3>
-      <button id="fermer-modale-ecriture-dot">✕</button>
+      <button type="button" id="fermer-modale-ecriture-dot" aria-label="Fermer">✕</button>
     </div>
     <div id="zone-message-modale-ecriture-dot"></div>
     <form id="formulaire-ecriture-dot">

@@ -202,7 +202,7 @@
     $('form').addEventListener('change', async e => {
       if (e.target.id === 'agenda-consulter-tous') {
         if (!e.target.checked && $('agenda-gerer-tous').checked) {
-          if (!await gestion.confirmer('Retirer la consultation supprimera aussi la gestion des événements partagés avec toute l’équipe.', 'Retirer ces droits d’agenda ?', 'Retirer ces droits')) {
+          if (!await gestion.confirmer('Retirer la consultation supprimera aussi la gestion des événements partagés avec toute l’équipe.', 'Retirer ces droits d’agenda ?', 'Retirer ces droits', { danger: false })) {
             e.target.checked = true;
             return;
           }
@@ -221,7 +221,7 @@
       if (action === 'consulter' && !input.checked && cle) {
         const dependantes = [...$('agenda-grades').querySelectorAll(`[data-grade="${CSS.escape(cle)}"][data-agenda-action="modifier"], [data-grade="${CSS.escape(cle)}"][data-agenda-action="creer"]`)];
         if (dependantes.some(c => c.checked)) {
-          const confirmer = await gestion.confirmer('Retirer la consultation supprimera aussi les droits de modification et de création pour ce grade.', 'Retirer l’accès à l’agenda ?', 'Retirer ces droits');
+          const confirmer = await gestion.confirmer('Retirer la consultation supprimera aussi les droits de modification et de création pour ce grade.', 'Retirer l’accès à l’agenda ?', 'Retirer ces droits', { danger: false });
           if (!confirmer) input.checked = true;
           else dependantes.forEach(c => { c.checked = false; });
         }
@@ -234,7 +234,7 @@
         const coches = [...$('agenda-grades').querySelectorAll(`[data-agenda-action="${action}"]:not([data-verrou="1"])`)];
         if (action === 'consulter' && !input.checked) {
           const dependantes = [...$('agenda-grades').querySelectorAll('[data-agenda-action="modifier"]:checked, [data-agenda-action="creer"]:checked')];
-          if (dependantes.length && !await gestion.confirmer('Retirer la consultation supprimera aussi les droits de modification et de création associés.', 'Retirer l’accès à l’agenda ?', 'Retirer ces droits')) input.checked = true;
+          if (dependantes.length && !await gestion.confirmer('Retirer la consultation supprimera aussi les droits de modification et de création associés.', 'Retirer l’accès à l’agenda ?', 'Retirer ces droits', { danger: false })) input.checked = true;
           else dependantes.forEach(c => { c.checked = false; });
         }
         coches.forEach(c => { c.checked = input.checked; });

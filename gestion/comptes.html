@@ -202,18 +202,18 @@
         if (b.dataset.action === 'supprimer') {
           if (!await gestion.confirmer(`Le compte de ${nom} sera supprimé du site. Il pourra refaire une demande en se reconnectant.`, 'Supprimer ce compte ?', 'Supprimer le compte')) return;
           await socle.api(`/api/comptes/${id}`, { method: 'DELETE' });
-          gestion.message('zone-message', `Compte de ${nom} supprimé.`, 'succes');
+          gestion.message('zone-message', ''), gestion.notifier(`Compte de ${nom} supprimé.`);
         } else if (b.dataset.action === 'refuse' && c.statut === 'valide') {
-          if (!await gestion.confirmer(`${nom} n’aura plus accès à l’espace agents. Son compte et sa fiche sont conservés : vous pourrez rétablir l’accès.`, 'Suspendre l’accès ?', 'Suspendre l’accès')) return;
+          if (!await gestion.confirmer(`${nom} n’aura plus accès à l’espace agents. Son compte et sa fiche sont conservés : vous pourrez rétablir l’accès.`, 'Suspendre l’accès ?', 'Suspendre l’accès', { danger: false })) return;
           await socle.api(`/api/comptes/${id}`, { method: 'PATCH', body: { statut: 'refuse' } });
-          gestion.message('zone-message', `Accès de ${nom} suspendu.`, 'succes');
+          gestion.message('zone-message', ''), gestion.notifier(`Accès de ${nom} suspendu.`);
         } else {
           // une demande se valide avec le grade choisi sur sa carte, en un seul envoi
           const corps = { statut: b.dataset.action };
           const grade = e.target.closest('.comptes-demande')?.querySelector('[data-grade-demande]');
           if (grade && b.dataset.action === 'valide') corps.grade = grade.value || null;
           await socle.api(`/api/comptes/${id}`, { method: 'PATCH', body: corps });
-          gestion.message('zone-message', b.dataset.action === 'valide' ? `${nom} a désormais accès à l’espace agents.` : `Demande de ${nom} refusée.`, 'succes');
+          gestion.message('zone-message', ''), gestion.notifier(b.dataset.action === 'valide' ? `${nom} a désormais accès à l’espace agents.` : `Demande de ${nom} refusée.`);
         }
         await charger();
       } catch (err) { gestion.message('zone-message', err.message); }
@@ -221,7 +221,7 @@
     document.querySelector('main').addEventListener('change', async e => {
       const id = e.target.closest('[data-id]')?.dataset.id;
       if (!e.target.matches('[data-grade]') || !id) return;
-      try { await socle.api(`/api/comptes/${id}`, { method: 'PATCH', body: { grade: e.target.value || null } }); gestion.message('zone-message', 'Grade enregistré.', 'succes'); }
+      try { await socle.api(`/api/comptes/${id}`, { method: 'PATCH', body: { grade: e.target.value || null } }); gestion.message('zone-message', ''), gestion.notifier('Grade enregistré.'); }
       catch (err) { gestion.message('zone-message', err.message); }
       await charger();
     });
@@ -236,7 +236,9 @@
     let editeur = null, ouvreurProfil = null;
     const modaleProfil = document.getElementById('modale-profil');
     function ouvrirProfil(c) {
-      ouvreurProfil = document.activeElement;
+      // ouverte depuis le menu « ⋯ » : le focus revient à son bouton (l'élément du menu sera caché à la fermeture)
+      const actif = document.activeElement;
+      ouvreurProfil = actif?.closest('.comptes-menu')?.querySelector('.comptes-menu-bouton') || actif?.closest('[data-id], tr, li')?.querySelector('.comptes-menu-bouton') || actif;
       document.getElementById('titre-modale-profil').textContent = `Fiche de ${c.nom || c.pseudo}`;
       editeur = profilEditeur(document.getElementById('editeur-profil'), { adresse: `/api/profils/${c.id}`, nom: () => c.nom || c.pseudo });
       editeur.charger();

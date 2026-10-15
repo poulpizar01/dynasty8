@@ -260,7 +260,15 @@ window.gestion = {
     burger.addEventListener('click', () => ouvrir(!document.body.classList.contains('admin-menu-ouvert')));
     voile.addEventListener('click', () => ouvrir(false));
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && document.body.classList.contains('admin-menu-ouvert')) { ouvrir(false); burger.focus(); }
+      if (!document.body.classList.contains('admin-menu-ouvert')) return;
+      if (e.key === 'Escape') { ouvrir(false); burger.focus(); return; }
+      // tiroir ouvert (téléphone) : Tab boucle entre le bouton du menu et les liens, jamais sur la page sous le voile
+      if (e.key !== 'Tab') return;
+      const liste = [burger, ...[...barre.querySelectorAll('a[href], button')].filter(el => !el.disabled && (el.offsetWidth || el.offsetHeight))];
+      // le bouton du menu et les liens ne se suivent pas dans la page : on avance soi-même dans cette liste
+      e.preventDefault();
+      const i = liste.indexOf(document.activeElement);
+      liste[i === -1 ? 0 : (i + (e.shiftKey ? -1 : 1) + liste.length) % liste.length].focus();
     });
     const main = document.querySelector('main.admin-contenu');
     const coque = document.createElement('div');

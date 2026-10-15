@@ -159,9 +159,9 @@ function ouvrirFenetre(contact, { focus = true, minimisee = false } = {}) {
     <div class="messagerie-fenetre-corps" id="messagerie-corps-${etat.membreId}"></div>
     <div class="messagerie-fenetre-frappe cache" id="messagerie-frappe-${etat.membreId}">${echapper(etat.pseudo)} est en train d'écrire…</div>
     <form class="messagerie-fenetre-pied" id="messagerie-form-${etat.membreId}">
-      <textarea id="messagerie-champ-${etat.membreId}" maxlength="1000" placeholder="Écrire un message…" rows="1"></textarea>
-      <button type="button" class="messagerie-fenetre-clin-oeil" id="messagerie-clin-oeil-${etat.membreId}" title="Envoyer un clin d'œil">👋</button>
-      <button type="submit" class="messagerie-fenetre-envoyer" title="Envoyer" aria-label="Envoyer">➤</button>
+      <textarea id="messagerie-champ-${etat.membreId}" maxlength="1000" placeholder="Écrire un message…" rows="1" aria-label="Message à ${echapper(etat.pseudo)}"></textarea>
+      <button type="button" class="messagerie-fenetre-clin-oeil" id="messagerie-clin-oeil-${etat.membreId}" title="Envoyer un clin d'œil" aria-label="Envoyer un clin d'œil">👋</button>
+      <button type="submit" class="messagerie-fenetre-envoyer" title="Envoyer" aria-label="Envoyer">${fleche("droite")}</button>
     </form>`;
   mid('messagerie-fenetres').append(div);
   brancherFenetre(etat);
@@ -260,7 +260,7 @@ function demarrerMessagerie(moi) {
             <strong>${echapper(nom)}</strong>
             <div class="messagerie-statut-menu">
               <button type="button" class="messagerie-statut-bouton" id="bouton-mon-statut" aria-haspopup="true" aria-expanded="false">
-                <span class="messagerie-pastille" id="mon-statut-pastille"></span> <span id="mon-statut-texte">Disponible</span> ▾
+                <span class="messagerie-pastille" id="mon-statut-pastille"></span> <span id="mon-statut-texte">Disponible</span> ${fleche("deplier")}
               </button>
               <div class="messagerie-statut-options cache" id="menu-mon-statut">
                 <button type="button" data-statut="disponible"><span class="messagerie-pastille messagerie-statut-disponible"></span> Disponible</button>
@@ -272,7 +272,7 @@ function demarrerMessagerie(moi) {
           </div>
           <button type="button" class="messagerie-fermer" id="messagerie-fermer-liste" aria-label="Fermer la messagerie">✕</button>
         </div>
-        <input type="search" class="messagerie-recherche" id="messagerie-recherche" placeholder="🔎 Rechercher un contact…">
+        <input type="search" class="messagerie-recherche" id="messagerie-recherche" placeholder="🔎 Rechercher un contact…" aria-label="Rechercher un contact">
       </div>
       <div class="messagerie-contacts" id="messagerie-contacts"></div>
     </div>

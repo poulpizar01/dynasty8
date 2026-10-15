@@ -172,7 +172,7 @@ async function supprimerBien(id, depuisModale = false) {
     await socle.api(`/api/biens/${id}`, { method: 'DELETE' });
     if (depuisModale) fermerModaleBien();
     await chargerTableBiens();
-    gestion.message('zone-message-annonces', 'Annonce supprimée avec succès.', 'succes');
+    gestion.message('zone-message-annonces', ''), gestion.notifier('Annonce supprimée avec succès.');
   } catch (e) {
     gestion.message(depuisModale ? 'zone-message-modale-bien' : 'zone-message-annonces', e.message);
   }
@@ -554,9 +554,9 @@ function fermerModaleBien() {
 async function demanderFermetureModaleBien() {
   if (SAUVEGARDE_BIEN_EN_COURS) return;
   if (TRANSFERTS_BIEN.length) {
-    if (!await gestion.confirmer('Des photos sont encore en cours d’envoi : fermer maintenant annule ces envois, et les modifications non enregistrées seront perdues.', 'Fermer sans enregistrer ?', 'Fermer')) return;
+    if (!await gestion.confirmer('Des photos sont encore en cours d’envoi : fermer maintenant annule ces envois, et les modifications non enregistrées seront perdues.', 'Fermer sans enregistrer ?', 'Fermer sans enregistrer')) return;
   } else if (etatFormulaireBien() !== ETAT_INITIAL_BIEN) {
-    if (!await gestion.confirmer('Les modifications saisies seront perdues si vous fermez maintenant.', 'Fermer sans enregistrer ?', 'Fermer')) return;
+    if (!await gestion.confirmer('Les modifications saisies seront perdues si vous fermez maintenant.', 'Fermer sans enregistrer ?', 'Fermer sans enregistrer')) return;
   }
   fermerModaleBien();
 }

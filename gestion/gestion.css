@@ -840,6 +840,10 @@ main.admin-contenu:focus { outline: none; }
 .compta-chiffre small { font-size: 0.8rem; color: var(--text-faint); }
 .compta-chiffre.accent { border-color: var(--d8-gold-400); background: linear-gradient(135deg, rgba(201, 165, 92, 0.14), rgba(14, 26, 50, 0.6) 60%); }
 .compta-chiffre.accent strong { color: var(--gold-light); }
+/* titre des pages de connexion, d'attente et de refus : un <h1> (titre de la page), à la taille d'un intertitre */
+.connexion-titre { margin: 0 0 14px; text-align: center; font-size: 1.35rem; }
+.compta-chiffre.squelette > * { width: 60%; border-radius: 4px; background: rgba(255, 255, 255, 0.06); color: transparent; }
+.compta-chiffre.squelette > strong { width: 45%; }
 
 /* DOT : semaine, calcul ligne à ligne (signe, libellé, montant ; sous-totaux et total marqués) */
 .dot-semaine { display: flex; align-items: center; gap: 10px; }
@@ -891,7 +895,7 @@ main.admin-contenu:focus { outline: none; }
 .remu-ligne.inactive .remu-montant { opacity: 0.45; }
 .remu-montant { width: 150px; }
 .remu-montant input {
-  width: 100%; min-height: 38px; padding: 6px 70px 6px 10px; border: 1px solid rgba(201, 165, 92, 0.28); border-radius: var(--radius-sm);
+  width: 100%; min-height: 38px; padding: 6px 70px 6px 10px; border: 1px solid var(--d8-contour-champ); border-radius: var(--radius-sm);
   background: rgba(6, 12, 26, 0.55); color: var(--text); font: inherit; font-size: 0.92rem; text-align: right; font-variant-numeric: tabular-nums;
 }
 .remu-montant input:focus { outline: none; border-color: var(--d8-gold-400); }
@@ -909,7 +913,7 @@ main.admin-contenu:focus { outline: none; }
 .remu-bareme-grades { margin: 2px 0 10px; font-size: 0.8rem; color: var(--text-faint); }
 .remu-paliers { list-style: none; margin: 0; padding: 0; }
 .remu-palier { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); }
-.remu-palier > input { width: 72px; min-height: 38px; padding: 6px 8px; border: 1px solid rgba(201, 165, 92, 0.28); border-radius: var(--radius-sm); background: rgba(6, 12, 26, 0.55); color: var(--text); font: inherit; text-align: right; font-variant-numeric: tabular-nums; }
+.remu-palier > input { width: 72px; min-height: 38px; padding: 6px 8px; border: 1px solid var(--d8-contour-champ); border-radius: var(--radius-sm); background: rgba(6, 12, 26, 0.55); color: var(--text); font: inherit; text-align: right; font-variant-numeric: tabular-nums; }
 .remu-palier > input:focus { outline: none; border-color: var(--d8-gold-400); }
 .remu-palier-des, .remu-palier-unite { font-size: 0.88rem; color: var(--text-muted); }
 .remu-palier-unite { min-width: 64px; }

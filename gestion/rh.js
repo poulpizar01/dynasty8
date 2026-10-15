@@ -110,7 +110,7 @@ function afficherEmployes() {
     ].join('');
     const actions = [
       `<button type="button" role="menuitem" data-rh-fiche="${e.id}">${gestion.ico('user')} Ouvrir la fiche</button>`,
-      e.statut === 'actif' && aDroitRh('desactiver') ? `<button type="button" role="menuitem" class="danger" data-rh-desactiver="${e.id}">${gestion.ico('lock')} Désactiver (départ)</button>` : '',
+      e.statut === 'actif' && aDroitRh('desactiver') ? `<button type="button" role="menuitem" data-rh-desactiver="${e.id}">${gestion.ico('lock')} Désactiver (départ)</button>` : '',
       e.statut !== 'actif' && aDroitRh('reactiver') ? `<button type="button" role="menuitem" data-rh-reactiver="${e.id}">${gestion.ico('sync')} Réactiver</button>` : '',
     ].join('');
     return `<div class="comptes-ligne rh-ligne${e.statut === 'inactif' ? ' refuse' : ''}">
@@ -262,7 +262,7 @@ $rh('formulaire-employe').addEventListener('submit', async e => {
     if (creation) await socle.api('/api/rh/employes', { method: 'POST', body: corps });
     else await socle.api(`/api/rh/employes/${FICHE_OUVERTE}`, { method: 'PATCH', body: corps });
     fermerModaleEmploye();
-    gestion.message('zone-message-rh', creation ? 'Membre ajouté ✓' : 'Fiche enregistrée ✓', 'succes');
+    gestion.message('zone-message-rh', ''), gestion.notifier(creation ? 'Membre ajouté ✓' : 'Fiche enregistrée ✓');
     chargerRh();
   } catch (err) {
     gestion.message('zone-message-modale-employe', err.message);
@@ -272,12 +272,12 @@ $rh('formulaire-employe').addEventListener('submit', async e => {
 async function changerStatutEmploye(id, action) {
   const e = CACHE_EMPLOYES.find(x => x.id === id), nom = e ? e.nomComplet : 'Cet employé';
   const ok = action === 'desactiver'
-    ? await gestion.confirmer(`${nom} quittera l'effectif actif, avec la date d'aujourd'hui comme date de départ. Sa fiche et tout son historique sont conservés, et il pourra être réactivé.`, 'Désactiver cet employé ?', 'Désactiver')
+    ? await gestion.confirmer(`${nom} quittera l'effectif actif, avec la date d'aujourd'hui comme date de départ. Sa fiche et tout son historique sont conservés, et il pourra être réactivé.`, 'Désactiver cet employé ?', 'Désactiver', { danger: false })
     : await gestion.confirmer(`${nom} réintègre l'effectif actif ; sa date de départ est effacée.`, 'Réactiver cet employé ?', 'Réactiver', { danger: false });
   if (!ok) return;
   try {
     await socle.api(`/api/rh/employes/${id}/${action}`, { method: 'POST', body: {} });
-    gestion.message('zone-message-rh', action === 'desactiver' ? `${nom} a quitté l’effectif actif ✓` : `${nom} a réintégré l’effectif ✓`, 'succes');
+    gestion.message('zone-message-rh', ''), gestion.notifier(action === 'desactiver' ? `${nom} a quitté l’effectif actif ✓` : `${nom} a réintégré l’effectif ✓`);
     chargerRh();
   } catch (err) { gestion.message('zone-message-rh', err.message); }
 }
@@ -400,8 +400,8 @@ async function chargerArriveesBot() {
       b.disabled = true;
       try {
         const res = await socle.api(`/api/rh/bot/arrivees/${b.dataset.rhBotId}/${b.dataset.rhBotAction}`, { method: 'POST', body: {} });
-        if (ecarterLigne) gestion.message('zone-message-rh-bot', 'Candidature écartée ✓', 'succes');
-        else if (res.resultat === 'creee') gestion.message('zone-message-rh-bot', 'Fiche créée ✓', 'succes');
+        if (ecarterLigne) gestion.message('zone-message-rh-bot', ''), gestion.notifier('Candidature écartée ✓');
+        else if (res.resultat === 'creee') gestion.message('zone-message-rh-bot', ''), gestion.notifier('Fiche créée ✓');
         else gestion.message('zone-message-rh-bot', res.motif || 'Toujours à traiter.', res.ok ? 'succes' : 'erreur');
         chargerRh();
       } catch (e) { gestion.message('zone-message-rh-bot', e.message); b.disabled = false; }
@@ -424,7 +424,7 @@ $rh('rh-bot-reglages').addEventListener('submit', async e => {
   else corps.questionIdentite = '';
   try {
     await socle.api('/api/rh/bot/reglages', { method: 'PUT', body: corps });
-    gestion.message('zone-message-rh-bot', 'Réglages enregistrés ✓ Les candidatures « à traiter » peuvent être retraitées.', 'succes');
+    gestion.message('zone-message-rh-bot', ''), gestion.notifier('Réglages enregistrés ✓ Les candidatures « à traiter » peuvent être retraitées.');
     chargerArriveesBot();
   } catch (err) { gestion.message('zone-message-rh-bot', err.message); }
 });
