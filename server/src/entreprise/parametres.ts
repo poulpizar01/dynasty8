@@ -41,7 +41,7 @@ export const PARAMETRES: GroupeParametres[] = [
     { cle: 'boutique_vip', type: 'lien', public: true, libelle: 'Boutique VIP', aide: 'Boutons de la page VIP.' },
     { cle: 'discord_partenaire_deco', type: 'lien', public: true, libelle: 'Discord du partenaire décoration', aide: 'Bouton « Rejoindre Terra Home Deco » de l’accueil.' },
   ] },
-  { onglet: 'Liens', titre: 'Présentations des cohérences', intro: 'Bouton « Ouvrir sur Google Slides » de chaque page de cohérence. La présentation doit être partagée à « Tous les utilisateurs disposant du lien ». Vide : bouton masqué.', reglages: [
+  { onglet: 'Liens', titre: 'Présentations des cohérences', intro: 'Présentation affichée directement sur la page de chaque cohérence, et dans l’espace agents. Elle doit être partagée à « Tous les utilisateurs disposant du lien ». Vide : la page indique qu’aucune présentation n’est encore disponible.', reglages: [
     slides('slides_coherence_habitation', 'Habitation'), slides('slides_coherence_garage', 'Garage'),
     slides('slides_coherence_cayo_perico', 'Cayo Perico'), slides('slides_coherence_roxwood', 'Roxwood'),
   ] },

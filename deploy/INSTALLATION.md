@@ -59,8 +59,8 @@ Dans le portail développeur Discord (https://discord.com/developers/application
 1. **OAuth2 → Redirects** : ajouter `https://dynasty8.fbfa.fr/auth/discord/callback`, à l'identique (sans barre finale). La connexion demande les autorisations `identify`, `guilds` et `guilds.members.read` : rien à cocher, le site les demande lui-même.
 2. **Bot → Reset Token** : copier le jeton (il ne s'affiche qu'une fois) ; c'est `DISCORD_BOT_TOKEN`. Aucune « intention privilégiée » n'est nécessaire (le site n'utilise que l'API, pas la passerelle).
 3. **Inviter le bot sur le serveur de Dynasty 8** : ouvrir l'adresse suivante, choisir le serveur, valider :
-   `https://discord.com/oauth2/authorize?client_id=1546523997980852294&scope=bot&permissions=84992`
-   (droits demandés : *Voir les salons*, *Envoyer des messages*, *Intégrer des liens*, *Voir les anciens messages*). Pour limiter les droits, les accorder plutôt salon par salon :
+   `https://discord.com/oauth2/authorize?client_id=1546523997980852294&scope=bot&permissions=19456`
+   (droits demandés : *Voir les salons*, *Envoyer des messages*, *Intégrer des liens* ; le site ne lit aucun salon, il n'a pas besoin de voir les anciens messages). Pour limiter les droits, les accorder plutôt salon par salon :
    - catégories des tickets (Ticket Tool) : *Voir le salon*, *Envoyer des messages*, *Intégrer des liens* (les événements d'agenda sont postés dans les tickets) ;
    - aucun droit n'est nécessaire dans le salon des prises et fins de service : le bot en transmet les événements au site par webhook.
 
@@ -154,7 +154,7 @@ Tout se règle depuis l'espace agents, sans toucher au serveur. **Paramètres** 
   - **Google Sheets de la Direction** : ouvrir l'onglet du récapitulatif, coller l'adresse de la barre du navigateur (elle finit par `gid=…`). Le classeur doit être partagé à « Tous les utilisateurs disposant du lien », en lecture. L'état de la lecture s'affiche en tête de l'onglet (lu toutes les 5 minutes, et aussitôt après un changement de lien).
   - **WebMap** : adresse publique en `https://` de la carte (ex. `https://webmap.dynasty8.fbfa.fr`). Le site refuse une adresse du serveur lui-même ou d'un réseau privé. Cette adresse n'est jamais montrée aux visiteurs.
 - **Discord** (bot relié) :
-  - **Membres en service** : choisir le salon où le bot des services publie « Service démarré » / « Service terminé », et la clôture automatique (12 h par défaut). L'état de la lecture s'affiche en tête de l'onglet dans la minute.
+  - **Membres en service** : seulement la clôture automatique d'un service jamais terminé (12 h par défaut). Les prises et fins de service arrivent du bot Discord par webhook (section 8) ; l'état de la réception s'affiche en tête de l'onglet.
   - **Agenda partagé** : seules les catégories où Ticket Tool crée les tickets ; les droits de consultation, création et modification se règlent pour chaque grade dans **Grades**.
 - **Apparence** (facultatif) : remplacer logos, icônes et image de partage.
 

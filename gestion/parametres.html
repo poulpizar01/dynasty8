@@ -92,7 +92,7 @@
     async function afficherEtats() {
       const zone = $('etats'), lignes = [];
       if (onglet === 'Discord') {
-        lignes.push(!discord.configure ? etat('alerte', 'Bot Discord non relié au site : les rôles et salons se saisissent par leur identifiant, et l’encadré «&nbsp;En&nbsp;service&nbsp;» ne fonctionne pas. Demandez-le à la personne qui s’occupe du site. En attendant : dans Discord, activez le mode développeur (Paramètres → Avancés), puis clic droit sur le rôle, le salon ou la catégorie → «&nbsp;Copier&nbsp;l’identifiant&nbsp;».')
+        lignes.push(!discord.configure ? etat('alerte', 'Bot Discord non relié au site : les rôles et salons se saisissent par leur identifiant, les rôles Discord ne sont relus qu’à la connexion de chacun, et les invitations de l’agenda ne sont pas envoyées sur Discord. Demandez-le à la personne qui s’occupe du site. En attendant : dans Discord, activez le mode développeur (Paramètres → Avancés), puis clic droit sur le rôle, le salon ou la catégorie → «&nbsp;Copier&nbsp;l’identifiant&nbsp;».')
           : discord.erreur ? etat('erreur', `Bot Discord : ${echapper(discord.erreur)}`)
           : discord.simulation ? etat('neutre', 'Bot Discord simulé (développement) : rôles, salons et catégories sont fictifs, des prises de service sont inventées toutes les quelques minutes, et rien n’est envoyé à Discord.')
           : etat('ok', 'Bot Discord relié : rôles et salons proposés par leur nom.'));
