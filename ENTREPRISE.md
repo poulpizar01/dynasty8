@@ -54,7 +54,7 @@ Porté sur le modèle depuis une première version jamais mise en production (Ja
 
 ## Tests
 
-Tests du site (convention dans CLAUDE.md, `npm test`) : moteur de calcul des primes (`stats-calc.test.ts`), paie à l'heure (`paie-horaire.test.ts`), lecture du tableur (`tableur.test.ts`), lecture des messages de service (`services.test.ts`), règles de l'agenda (`agenda.test.ts`). À relancer après toute modification de `stats/calcul.ts`, `stats/paie-horaire.ts` ou `stats/tableur.ts` (une erreur s'y paie en argent RP, sans rien d'anormal à l'écran), de `services-messages.ts` ou de `agenda-regles.ts`.
+Tests du site (convention dans CLAUDE.md, `npm test`) : moteur de calcul des primes (`stats-calc.test.ts`), paie à l'heure (`paie-horaire.test.ts`), relevé Tablettes et impôt de la DOT (`releve.test.ts`), lecture du tableur (`tableur.test.ts`), lecture des messages de service (`services.test.ts`), règles de l'agenda (`agenda.test.ts`). À relancer après toute modification de `stats/calcul.ts`, `stats/paie-horaire.ts`, `stats/releve.ts` ou `stats/tableur.ts` (une erreur s'y paie en argent RP, sans rien d'anormal à l'écran), de `services-messages.ts` ou de `agenda-regles.ts`.
 
 ## Pièges propres à ce site
 

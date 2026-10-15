@@ -402,11 +402,14 @@ document.getElementById("formulaire-ecriture-dot").addEventListener("submit", as
 async function chargerDotSalaries() {
   const semaine = document.getElementById("select-semaine-dot").value;
   const corps = document.getElementById("corps-table-dot-salaries");
+  gestion.message("dot-primes-avertissement", "");
   if (!semaine) { DOT_SALARIES = []; corps.innerHTML = `<tr><td colspan="8" class="champ-aide">Choisissez une semaine.</td></tr>`; return; }
   try {
     const r = await socle.api(`/api/compta/dot/salaries?semaine=${encodeURIComponent(semaine)}`);
     const agents = r.agents || [];
     DOT_SALARIES = agents;
+    // semaine passée sans archive du tableur : primes lues dans le tableur actuel (routes/compta.ts, salariesDot)
+    gestion.message("dot-primes-avertissement", r.avertissementPrimes || "");
     corps.innerHTML = agents.length
       ? agents.map((a) => `<tr>
             <td>${echapper(a.identiteRp || a.identite)}${a.horsReferentiel ? ' <span class="champ-aide" title="Présent dans le relevé Tablettes, sans fiche dans le référentiel agents (onglet Ressources humaines)">*</span>' : ""}</td>
@@ -600,15 +603,13 @@ function afficherPaieHoraire(p) {
 }
 
 // Chiffres clés du relevé : le total « entreprise » (CA brut de la DOT), le nombre de membres, la paie à l'heure.
+// CA brut calculé par le serveur (somme des membres) : la ligne TOTAL de la tablette est fausse dès qu'un membre est
+// retiré, et une autre colonne « total » peut précéder « Total entreprise ».
 let RELEVE_TABLETTE = null;
-function afficherSyntheseTablette(releve, paie) {
-  const colonnes = releve.colonnes.map(c => String(c).toLowerCase());
-  const iTotal = colonnes.findIndex(c => c.includes("total"));
-  const ligneTotal = releve.lignes.find(comptaLigneEstTotal);
+function afficherSyntheseTablette(releve, caBrut, paie) {
   const membres = releve.lignes.filter(l => !comptaLigneEstTotal(l)).length;
-  const caBrut = iTotal >= 0 && ligneTotal ? `${ligneTotal[iTotal]} $` : "—";
   document.getElementById("compta-tablette-synthese").innerHTML = [
-    carteChiffre("CA brut", caBrut, "repris dans la déclaration DOT", true),
+    carteChiffre("CA brut", caBrut == null ? "—" : formaterArgentStats(caBrut), caBrut == null ? "colonne « Total entreprise » introuvable" : "repris dans la déclaration DOT", true),
     carteChiffre("Membres du relevé", String(membres), ""),
     paie && paie.lignes && paie.lignes.length ? carteChiffre("Paie à l’heure", formaterArgentStats(paie.total), "comprise dans les salaires") : "",
   ].join("");
@@ -641,7 +642,7 @@ async function chargerTablette() {
       `Importé par ${reponse.import.importe_par || "un membre"} le ${formaterDateHeureCompta(reponse.import.importe_le)}.`;
     RELEVE_TABLETTE = reponse.import;
     document.getElementById("bouton-copier-tablette").classList.remove("cache");
-    afficherSyntheseTablette(reponse.import, reponse.paie_horaire);
+    afficherSyntheseTablette(reponse.import, reponse.ca_brut, reponse.paie_horaire);
     const table = document.getElementById("table-tablette");
     table.innerHTML = rendreTableCompta(reponse.import.colonnes, reponse.import.lignes, true);
     table.querySelectorAll(".compta-supprimer-ligne").forEach((btn) => {

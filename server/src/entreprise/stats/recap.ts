@@ -49,33 +49,46 @@ export async function recapSemaine(semaine: string) {
   return agents.sort((a, b) => rang(a.gradeCle) - rang(b.gradeCle) || b.totalGagne - a.totalGagne);
 }
 
+
 // Primes du tableur : par fiche RH pour une ligne rattachée, par nom écrit pour une ligne sans fiche (personnes du
 // relevé Tablettes qui n'ont pas — encore — de fiche).
-// Primes selon le grade (interrupteurs de Rémunération) : celui de la fiche RH, sinon celui écrit dans le tableur.
-export async function primesTableur() {
-  const [lignes, baremes, remu, employes] = await Promise.all([prisma.ligneTableur.findMany(), lireBaremes(), remunerations(), prisma.employe.findMany({ select: { id: true, gradeCle: true } })]);
-  const gradeFiche = new Map(employes.map(e => [e.id, e.gradeCle]));
-  const gradeParLibelle = new Map(tousLesGrades().map(g => [normaliserTexte(g.libelle), g.cle]));
+// Semaine archivée (dimanche 23:59) : primes figées de son archive — le tableur actuel est déjà celui de la semaine
+// suivante, souvent remis à zéro. Sinon le tableur actuel, primes selon le grade (interrupteurs de Rémunération) :
+// celui de la fiche RH, sinon celui écrit dans le tableur. `source` dit lequel a servi.
+export async function primesTableur(semaine?: string) {
   type Primes = { ventes: number; locations: number; primeVente: number; primeLocations: number; primeTotale: number };
   const parEmploye = new Map<number, Primes>(), parNomSansFiche = new Map<string, Primes>();
-  for (const l of lignes) {
-    const grade = (l.employeId ? gradeFiche.get(l.employeId) : null) ?? gradeParLibelle.get(normaliserTexte(l.gradeSheet)) ?? null;
-    const v = { ventes: l.nbVentes, locations: l.nbLocations, ...primesSelonGrade(remu(grade), baremes, l.nbVentes, l.nbLocations) };
-    if (l.employeId) parEmploye.set(l.employeId, v);
-    else if (l.nomNormalise && !parNomSansFiche.has(l.nomNormalise)) parNomSansFiche.set(l.nomNormalise, v);
+  const ranger = (employeId: number | null, nomNormalise: string, v: Primes) => {
+    if (employeId) parEmploye.set(employeId, v);
+    else if (nomNormalise && !parNomSansFiche.has(nomNormalise)) parNomSansFiche.set(nomNormalise, v);
+  };
+  const archive = semaine ? await prisma.tableurArchive.findUnique({ where: { semaine }, include: { lignes: true } }) : null;
+  if (archive) {
+    for (const l of archive.lignes) ranger(l.employeId, normaliserTexte(l.nom), { ventes: l.ventes, locations: l.locations, primeVente: l.primeVente, primeLocations: l.primeLocations, primeTotale: l.primeVente + l.primeLocations });
+  } else {
+    const [lignes, baremes, remu, employes] = await Promise.all([prisma.ligneTableur.findMany(), lireBaremes(), remunerations(), prisma.employe.findMany({ select: { id: true, gradeCle: true } })]);
+    const gradeFiche = new Map(employes.map(e => [e.id, e.gradeCle]));
+    const gradeParLibelle = new Map(tousLesGrades().map(g => [normaliserTexte(g.libelle), g.cle]));
+    for (const l of lignes) {
+      const grade = (l.employeId ? gradeFiche.get(l.employeId) : null) ?? gradeParLibelle.get(normaliserTexte(l.gradeSheet)) ?? null;
+      ranger(l.employeId, l.nomNormalise, { ventes: l.nbVentes, locations: l.nbLocations, ...primesSelonGrade(remu(grade), baremes, l.nbVentes, l.nbLocations) });
+    }
   }
   const zero: Primes = { ventes: 0, locations: 0, primeVente: 0, primeLocations: 0, primeTotale: 0 };
-  return (employeId: number | null, ...noms: string[]): Primes => {
+  const pour = (employeId: number | null, ...noms: string[]): Primes => {
     if (employeId) return parEmploye.get(employeId) ?? zero;
     for (const n of noms) { const v = parNomSansFiche.get(normaliserTexte(n)); if (v) return v; }
     return zero;
   };
+  return Object.assign(pour, { source: archive ? 'archive' as const : 'actuel' as const });
 }
+export type PrimesTableur = Awaited<ReturnType<typeof primesTableur>>;
 
-// récapitulatif dont les primes « par semaine » sont remplacées par celles du tableur ; le salaire fixe reste. Un agent
-// sans ligne du tableur retombe sur 0 (jamais sur le calcul par semaine).
-export async function recapAvecPrimesTableur(semaine: string) {
-  const [agents, primePour] = await Promise.all([recapSemaine(semaine), primesTableur()]);
+// récapitulatif dont les primes « par semaine » sont remplacées par celles du tableur (de cette semaine : son archive
+// s'il y en a une) ; le salaire fixe reste. Un agent sans ligne du tableur retombe sur 0 (jamais sur le calcul par
+// semaine).
+export async function recapAvecPrimesTableur(semaine: string, primePour: PrimesTableur) {
+  const agents = await recapSemaine(semaine);
   return agents.map(a => {
     const p = primePour(a.employeId, a.identite, a.identiteRp);
     return {
