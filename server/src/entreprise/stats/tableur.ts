@@ -3,6 +3,7 @@
 // du lien — lecteur ») : ni compte de service ni clé côté serveur. Colonne D = nom, E = grade, L = ventes, M = locations.
 // Les MONTANTS de primes ne sont jamais lus dans le Sheet (colonnes N/O) : recalculés avec les barèmes du site
 // (baremes_primes, réglables dans Comptabilité), le seul endroit où changer un montant.
+import { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../../socle/db.js';
 import { gradeDe, tousLesGrades } from '../../socle/droits.js';
 import { sheetRegle } from '../parametres.js';
@@ -81,6 +82,25 @@ export function gradesInconnus(brutes: string[][], libelles: string[] = tousLesG
   return [...inconnus].map(([grade, lignes]) => ({ grade, lignes }));
 }
 
+// N° de semaine écrit par la Direction : la case sous l'intitulé « N° de la Semaine » (ou à sa droite). La semaine du
+// tableur finit quand la Direction le remet à zéro (lundi vers 11h30) et change ce numéro, pas au calendrier. Sans
+// intitulé, le seul code « S41-26 » présent dans l'onglet ; null : aucun, ou plusieurs sans intitulé (ambigu).
+const CODE_SEMAINE = /^S\d{1,2}-\d{2}$/i;
+export function semaineDuSheet(brutes: string[][]): string | null {
+  const code = (v: unknown) => { const t = String(v ?? '').trim(); return CODE_SEMAINE.test(t) ? t.toUpperCase() : null; };
+  for (let r = 0; r < brutes.length; r++) {
+    for (let c = 0; c < brutes[r].length; c++) {
+      const t = normaliserTexte(brutes[r][c]);
+      if (!t.startsWith('n') || !t.includes('semaine')) continue;
+      for (let k = 1; k <= 4 && r + k < brutes.length; k++) { const v = code(brutes[r + k][c]); if (v) return v; }
+      const aDroite = code(brutes[r][c + 1]);
+      if (aDroite) return aDroite;
+    }
+  }
+  const tous = new Set(brutes.flat().map(code).filter((v): v is string => !!v));
+  return tous.size === 1 ? [...tous][0] : null;
+}
+
 // Synchronisation complète : relit tout le Sheet et remplace le contenu de tableur_lignes (s'il a changé). RH fait foi :
 // chaque ligne est rattachée à la fiche dont le « Prénom Nom » est EXACTEMENT le nom écrit (sans casse ni accents,
 // jamais de ressemblance ; deux fiches au même nom : aucune), sinon à celle dont le pseudo Discord est celui de la
@@ -97,11 +117,17 @@ export function synchroniser() {
 async function synchroniserUneFois() {
   const sheet = sheetRegle();
   if (!sheet) throw new TableurNonConfigure();
-  // une semaine terminée et pas encore archivée (serveur arrêté dimanche soir…) est figée AVANT que la nouvelle lecture
-  // n'écrase ses chiffres ; pas pendant la minute de 23:59 elle-même : la tâche d'archivage s'en charge alors
-  await archiverSiDue({ grace: 60_000 });
   const brutes = (await lireCSV(sheet)).slice(1);
-  const lignes = analyserLignesSheet(brutes), inconnus = gradesInconnus(brutes);
+  const lignes = analyserLignesSheet(brutes), inconnus = gradesInconnus(brutes), semaine = semaineDuSheet(brutes);
+  const etatAvant = await prisma.tableurEtat.findUnique({ where: { id: 1 } });
+  // Numéro changé par la Direction : la semaine précédente est figée (son dernier relevé non nul) AVANT que la nouvelle
+  // lecture n'écrase ses chiffres. Sans numéro dans le tableur : archivage au calendrier (dimanche 23:59), comme avant ;
+  // pas pendant la minute de 23:59 elle-même, la tâche d'archivage s'en charge alors.
+  if (semaine) {
+    if (etatAvant?.semaine && etatAvant.semaine !== semaine && Array.isArray(etatAvant.instantane)) {
+      await figerSemaine(etatAvant.semaine, etatAvant.instantane as unknown as LigneSource[], etatAvant.instantaneDu ?? new Date());
+    }
+  } else await archiverSiDue({ grace: 60_000 });
 
   const [employes, comptes] = await Promise.all([
     prisma.employe.findMany({ select: { id: true, prenom: true, nom: true, discordId: true, discordPseudoNormalise: true } }),
@@ -138,8 +164,13 @@ async function synchroniserUneFois() {
   const avertissement = inconnus.length
     ? `${inconnus.reduce((n, i) => n + i.lignes, 0)} ligne(s) ignorée(s), grade inconnu du site : ${inconnus.map(i => `« ${i.grade} »`).join(', ')}. Corrigez le grade dans le tableur ou créez-le dans la page Grades.`.slice(0, 500)
     : '';
-  const etat = { derniereSync: new Date(), statut: 'ok', erreur: '', avertissement, nbLignes: donnees.length, nbApparies: donnees.filter(d => d.compteId !== null).length };
-  await prisma.tableurEtat.upsert({ where: { id: 1 }, create: { id: 1, ...etat }, update: etat });
+  // dernier relevé non nul de la semaine : une remise à zéro faite avant le changement de numéro ne l'efface pas
+  const nonNul = donnees.some(d => d.nbVentes || d.nbLocations), maintenant = new Date();
+  const instantane = !semaine ? { instantane: Prisma.DbNull, instantaneDu: null }
+    : nonNul ? { instantane: donnees.map(({ nomNormalise: _n, ...d }) => d), instantaneDu: maintenant }
+      : semaine !== etatAvant?.semaine ? { instantane: Prisma.DbNull, instantaneDu: null } : {};
+  const etat = { derniereSync: maintenant, statut: 'ok', erreur: '', avertissement, semaine: semaine ?? '', nbLignes: donnees.length, nbApparies: donnees.filter(d => d.compteId !== null).length };
+  await prisma.tableurEtat.upsert({ where: { id: 1 }, create: { id: 1, ...etat, ...instantane }, update: { ...etat, ...instantane } });
   const sansFiche = donnees.filter(d => d.employeId === null).length;
   if (sansFiche) console.log(`[tableur] ${sansFiche} ligne(s) du tableur sans fiche RH (voir RH → À rattacher)`);
   return { ...etat, sansFicheRh: sansFiche };
@@ -172,19 +203,27 @@ export const lireBaremes = async () => {
 const employeResume = (e: { id: number; idEmploye: string; prenom: string; nom: string; discordPseudo: string; gradeCle: string; statut: string } | null | undefined) =>
   e ? { id: e.id, idEmploye: e.idEmploye, nomComplet: nomComplet(e), grade: gradeDe(e.gradeCle)?.libelle ?? e.gradeCle, statut: e.statut } : null;
 
+// ligne du tableur telle qu'enregistrée (table tableur_lignes ou relevé gardé dans tableur_etat.instantane)
+type LigneSource = { ligneSheet: number | null; nomSheet: string; gradeSheet: string; nbVentes: number; nbLocations: number; employeId: number | null; compteId: number | null };
+
 // Chiffres actuels : chaque ligne lue, ses primes (barèmes du site), sa fiche RH et le compte relié. Nom et grade
 // viennent de RH quand la ligne a sa fiche (RH fait foi). Sert à l'écran ET à l'archive.
 export async function lireActuel() {
-  const [lignes, baremes, remu] = await Promise.all([prisma.ligneTableur.findMany({ orderBy: { ligneSheet: 'asc' } }), lireBaremes(), remunerations()]);
+  const lignes = await prisma.ligneTableur.findMany({ orderBy: { ligneSheet: 'asc' } });
+  let lueLe: Date | null = null;
+  for (const l of lignes) if (!lueLe || l.majLe > lueLe) lueLe = l.majLe;
+  return { lignes: await calculerLignes(lignes), lueLe: lueLe as Date | null };
+}
+
+async function calculerLignes(lignes: LigneSource[]) {
+  const [baremes, remu] = await Promise.all([lireBaremes(), remunerations()]);
   const [employes, comptes] = await Promise.all([
     prisma.employe.findMany({ where: { id: { in: lignes.map(l => l.employeId).filter((x): x is number => x !== null) } } }),
     prisma.compte.findMany({ where: { id: { in: lignes.map(l => l.compteId).filter((x): x is number => x !== null) } }, select: { id: true, nom: true, pseudo: true } }),
   ]);
   const employeDe = new Map(employes.map(e => [e.id, e])), compteDe = new Map(comptes.map(c => [c.id, c.nom ?? c.pseudo]));
   const gradeParLibelle = new Map(tousLesGrades().map(g => [normaliserTexte(g.libelle), g.cle]));
-  let lueLe: Date | null = null;
-  const resultat = lignes.map(l => {
-    if (!lueLe || l.majLe > lueLe) lueLe = l.majLe;
+  return lignes.map(l => {
     const fiche = l.employeId ? employeDe.get(l.employeId) : null;
     // primes selon le grade (interrupteurs de Rémunération) : celui de la fiche RH, sinon celui écrit dans le tableur
     const { primeVente, primeLocations } = primesSelonGrade(remu(fiche?.gradeCle ?? gradeParLibelle.get(normaliserTexte(l.gradeSheet)) ?? null), baremes, l.nbVentes, l.nbLocations);
@@ -195,7 +234,22 @@ export async function lireActuel() {
       employe, compte: l.compteId ? compteDe.get(l.compteId) ?? null : null,
     };
   });
-  return { lignes: resultat, lueLe: lueLe as Date | null };
+}
+
+// Fige une semaine du tableur sous son numéro, primes calculées avec les barèmes du moment. Un numéro déjà archivé est
+// remplacé : après une faute de frappe corrigée (S14 puis S41), c'est la dernière fin de semaine qui fait foi.
+async function figerSemaine(code: string, source: LigneSource[], donneesDu: Date) {
+  const lignes = await calculerLignes(source);
+  await prisma.$transaction([
+    prisma.tableurArchive.deleteMany({ where: { semaine: code } }),
+    prisma.tableurArchive.create({
+      data: {
+        semaine: code, archiveLe: new Date(), donneesDu, enRetard: false,
+        lignes: { create: lignes.map(l => ({ ligneSheet: l.ligneSheet, nom: l.nom, grade: l.grade || '', ventes: l.ventes, locations: l.locations, primeVente: l.primeVente, primeLocations: l.primeLocations, compte: l.compte, employeId: l.employe?.id ?? null })) },
+      },
+    }),
+  ]);
+  console.log(`[tableur] semaine ${code} archivée (${lignes.length} agent(s), numéro changé dans le tableur)`);
 }
 
 // ---------- semaines à l'heure de Paris (lundi 00:00 → dimanche 23:59, été comme hiver) ----------
@@ -271,8 +325,9 @@ export async function lireArchive(code: string) {
 }
 
 // Synchronisation toutes les 5 minutes (une lecture d'environ 5 Ko, rien d'écrit si rien n'a changé) et dès que le
-// lien change dans Paramètres ; contrôle de l'archivage toutes les 30 s (dimanche 23:59 heure de Paris : une dernière
-// lecture puis l'archive ; si le serveur était arrêté à cette heure-là, archive au redémarrage).
+// lien change dans Paramètres. Archivage : quand le n° de semaine du tableur change ; sans ce numéro, au calendrier,
+// contrôlé toutes les 30 s (dimanche 23:59 heure de Paris : une dernière lecture puis l'archive ; si le serveur était
+// arrêté à cette heure-là, archive au redémarrage).
 const lienActuel = () => JSON.stringify(sheetRegle());
 export function planifierTableur(): void {
   let lienLu = lienActuel();
@@ -283,6 +338,8 @@ export function planifierTableur(): void {
     try {
       // lien réglé ou changé dans Paramètres : lu aussitôt, sans attendre la prochaine passe
       if (lienActuel() !== lienLu) { lienLu = lienActuel(); await synchroniserSansErreur(); }
+      // le tableur porte son numéro de semaine : archivé quand la Direction le change (synchroniserUneFois)
+      if ((await prisma.tableurEtat.findUnique({ where: { id: 1 }, select: { semaine: true } }))?.semaine) return;
       const semaine = semaineParis(new Date()), t = Date.now();
       if (t >= semaine.fin.getTime() && t - semaine.fin.getTime() < 60_000 && derniereArchivee !== semaine.code) await synchroniserSansErreur();
       const r = await archiverSiDue();

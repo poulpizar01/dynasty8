@@ -3,7 +3,7 @@
 // entière, sans que rien ne le signale à l'écran.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyserCSV, analyserLignesSheet, gradesInconnus, semaineArchivable, semaineParis } from '../src/entreprise/stats/tableur.js';
+import { analyserCSV, analyserLignesSheet, gradesInconnus, semaineArchivable, semaineDuSheet, semaineParis } from '../src/entreprise/stats/tableur.js';
 
 // libellés de grades créés dans la page Grades (exemple)
 const GRADES = ['Patron', 'Co Patron', 'Manager', 'Référent Immobilier', 'Agent Expert', 'Agent', 'Agent Novice', 'Stagiaire'];
@@ -91,6 +91,20 @@ test("pseudo Discord de la colonne C gardé pour le rattachement", () => {
   const l = new Array(16).fill("");
   l[2] = "  .kpz "; l[3] = "Andrew Finley"; l[4] = "Patron";
   assert.equal(lire([l])[0].pseudo, ".kpz");
+});
+test("n° de semaine écrit par la Direction : sous l'intitulé, sinon le seul code de l'onglet", () => {
+  const grille = (cases: [number, number, string][]) => {
+    const g = Array.from({ length: 8 }, () => new Array(22).fill(""));
+    for (const [r, c, v] of cases) g[r][c] = v;
+    return g;
+  };
+  // tableur réel : intitulé en T, code deux lignes plus bas, une ligne vide entre les deux
+  assert.equal(semaineDuSheet(grille([[2, 19, "N° de la Semaine"], [4, 19, " s41-26 "]])), "S41-26");
+  assert.equal(semaineDuSheet(grille([[2, 5, "N° de semaine"], [2, 6, "S7-27"]])), "S7-27", "code à droite");
+  assert.equal(semaineDuSheet(grille([[6, 1, "S41-26"]])), "S41-26", "seul code, sans intitulé");
+  assert.equal(semaineDuSheet(grille([[6, 1, "S41-26"], [7, 1, "S40-26"]])), null, "plusieurs codes sans intitulé : ambigu");
+  assert.equal(semaineDuSheet(grille([[2, 19, "N° de la Semaine"]])), null, "case vide");
+  assert.equal(semaineDuSheet(grille([[2, 3, "Semaine 41"]])), null, "texte libre : pas un code");
 });
 test("semaines du site : lundi 00:00 → dimanche 23:59 heure de Paris, été comme hiver", () => {
   // Été (UTC+2) : dimanche 4 octobre 2026, 23:59 à Paris = 21:59 UTC.

@@ -316,6 +316,12 @@ model TableurEtat {
   nbApparies   Int       @default(0) @map("nb_apparies")
   // lecture réussie mais incomplète : lignes d'agents écartées (grade inconnu du site), à corriger dans le tableur ou Grades
   avertissement String   @default("") @db.VarChar(500)
+  // n° de semaine écrit par la Direction dans le tableur (case « N° de la Semaine ») ; vide : semaines du calendrier
+  semaine      String    @default("") @db.VarChar(8)
+  // dernières lignes NON NULLES lues sous ce numéro : figées en archive quand il change (une remise à zéro faite avant
+  // le changement de numéro n'efface donc pas la semaine)
+  instantane   Json?
+  instantaneDu DateTime? @map("instantane_du") @db.Timestamptz(6)
 
   @@map("tableur_etat")
 }

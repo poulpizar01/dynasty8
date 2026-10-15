@@ -49,7 +49,7 @@ stats.get('/api/stats/tableur', ...voir, traiter(async (req, res) => {
     return;
   }
   const [actuel, etat] = await Promise.all([lireActuel(), prisma.tableurEtat.findUnique({ where: { id: 1 } })]);
-  res.json({ configure: !!sheetRegle(), semaineEnCours: semaineParis(new Date()).code, derniereSync: etat?.derniereSync ?? null, statut: etat?.statut ?? null, archives, lignes: actuel.lignes });
+  res.json({ configure: !!sheetRegle(), semaineEnCours: etat?.semaine || semaineParis(new Date()).code, derniereSync: etat?.derniereSync ?? null, statut: etat?.statut ?? null, archives, lignes: actuel.lignes });
 }));
 
 // état de la synchronisation et lignes lues (page Synchro du tableur)

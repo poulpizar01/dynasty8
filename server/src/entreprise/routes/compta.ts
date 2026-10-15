@@ -7,6 +7,7 @@ import { gradeDe, tousLesGrades } from '../../socle/droits.js';
 import { body, intParam, permission } from '../../socle/http.js';
 import { Refus, traiter } from '../refus.js';
 import { normaliserTexte } from '../texte.js';
+import { analyserCodeSemaine } from '../stats/calcul.js';
 import { calculerPaieHoraire, normaliserNom, type GradeHoraire } from '../stats/paie-horaire.js';
 import { primesTableur, recapAvecPrimesTableur, remunerations } from '../stats/recap.js';
 import { caBrutReleve, estLigneTotal as estTotal, impotDot, indexColonne, minuscules, montantReleve } from '../stats/releve.js';
@@ -144,6 +145,8 @@ compta.delete('/api/compta/dot/ecritures', ...gerer, traiter(async (req, res) =>
 const ALIAS_NOM = ['nom', 'nom de l\'employé', 'nom du salarié', 'employé', 'employe'];
 const ALIAS = { run: ['run', 'runs'], facture: ['facture', 'factures'], vente: ['vente', 'ventes'], rang: ['rang', 'grade', 'poste', 'rôle', 'role'] };
 const semaineDemandee = (v: unknown) => String(v ?? '').trim().toUpperCase();
+// semaine du tableur en cours : le numéro écrit par la Direction, sinon celle du calendrier
+const semaineEnCours = async () => (await prisma.tableurEtat.findUnique({ where: { id: 1 }, select: { semaine: true } }))?.semaine || semaineParis(new Date()).code;
 
 // tableau des salariés « prêt à copier-coller » : RUN / FACTURE / VENTE viennent du relevé Tablettes (retrouvé par nom
 // RP), jamais des ventes du bot. Le tableau et le total de la déclaration viennent de ce seul calcul : salaire = fixe
@@ -194,7 +197,7 @@ async function salariesDot(semaine: string) {
   }
   // semaine passée sans archive (synchronisation coupée le dimanche soir…) : primes du tableur actuel, peut-être déjà
   // celui de la semaine suivante — à vérifier avant de déclarer
-  const avertissementPrimes = primePour.source === 'actuel' && semaine !== semaineParis(new Date()).code
+  const avertissementPrimes = primePour.source === 'actuel' && semaine !== await semaineEnCours()
     ? `Aucune archive du tableur pour ${semaine} : les primes sont celles du tableur actuel. Vérifiez-les avant de déclarer.`
     : null;
   return { agents: resultat, tabletteTrouvee: !!releve, avertissementPrimes };
@@ -234,4 +237,12 @@ compta.get('/api/compta/dot/resume', ...gerer, async (req, res) => {
 });
 
 // semaines proposées pour la déclaration (de la plus ancienne ayant des ventes à la semaine en cours, sans trou)
-compta.get('/api/compta/semaines', ...gerer, async (_req, res) => { res.json({ semaines: (await semaines()).semaines }); });
+// + les semaines du tableur (archivées et en cours) : numérotées par la Direction, elles peuvent différer du calendrier
+compta.get('/api/compta/semaines', ...gerer, async (_req, res) => {
+  const [liste, archives, enCours] = await Promise.all([semaines(), prisma.tableurArchive.findMany({ select: { semaine: true } }), semaineEnCours()]);
+  const codes = new Set(liste.semaines.map(s => s.code));
+  const ajout = [enCours, ...archives.map(a => a.semaine)].filter(c => !codes.has(c) && (codes.add(c), true)).map(code => ({ code, debut: null, fin: null, lignes: 0 }));
+  const ordre = (c: string) => { const a = analyserCodeSemaine(c); return a ? a.anneeIso * 100 + a.numero : -1; };
+  // jamais au-delà de la semaine en cours du tableur (le calendrier peut avoir une semaine d'avance sur la Direction)
+  res.json({ semaines: [...liste.semaines, ...ajout].filter(s => ordre(s.code) <= ordre(enCours)).sort((x, y) => ordre(y.code) - ordre(x.code)) });
+});

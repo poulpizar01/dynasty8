@@ -23,7 +23,8 @@ async function chargerStatistiques() {
   } catch { $st('stats-bot').textContent = ''; }
 }
 
-// la semaine : en cours (chiffres actuels) ou archivée (figée le dimanche à 23:59)
+// la semaine : en cours (chiffres actuels) ou archivée (figée quand la Direction change le n° de semaine du tableur ;
+// sans ce numéro, le dimanche à 23:59)
 async function chargerTableur(semaine) {
   gestion.message('zone-message-tableur', '');
   const etatLigne = $st('tableur-etat'), select = $st('select-semaine-tableur');
