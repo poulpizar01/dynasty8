@@ -99,7 +99,7 @@ function injecterEntete(cleActive) {
       </a>
       <nav class="nav-principale" id="nav-mobile">${liens}</nav>
       <div class="nav-cta">
-        <button class="bouton-menu" id="bouton-menu" aria-label="Ouvrir le menu">☰</button>
+        <button type="button" class="bouton-menu" id="bouton-menu" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="nav-mobile"><svg class="fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         <a href="${PAGE_WEBMAP}" class="btn btn-fantome btn-petit nav-webmap" id="nav-webmap" title="Carte interactive du serveur">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>
           <span>WebMap</span>
@@ -109,7 +109,16 @@ function injecterEntete(cleActive) {
     </div>`;
   const bouton = document.getElementById("bouton-menu");
   const nav = document.getElementById("nav-mobile");
-  if (bouton && nav) bouton.addEventListener("click", () => nav.classList.toggle("ouvert"));
+  // menu sur téléphone : état annoncé (lecteur d'écran), Échap le ferme et rend le focus au bouton
+  const ouvrirMenu = ouvert => {
+    nav.classList.toggle("ouvert", ouvert);
+    bouton.setAttribute("aria-expanded", String(ouvert));
+    bouton.setAttribute("aria-label", ouvert ? "Fermer le menu" : "Ouvrir le menu");
+  };
+  if (bouton && nav) {
+    bouton.addEventListener("click", () => ouvrirMenu(!nav.classList.contains("ouvert")));
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && nav.classList.contains("ouvert")) { ouvrirMenu(false); bouton.focus(); } });
+  }
 
   // Bouton WebMap de la barre : sur une page qui a déjà la carte intégrée
   // (accueil), on l'ouvre sur place et on y descend ; ailleurs, le lien ouvre
@@ -157,7 +166,7 @@ function injecterPied() {
             <li><a href="/garages.html">Garages</a></li>
             <li><a href="/coherences.html">Cohérences</a></li>
             <li><a href="/exclusifs.html">Exclusifs</a></li>
-            <li><a href="/vip.html">Avantages VIP</a></li>
+            <li><a href="/vip.html">VIP PLUS</a></li>
           </ul>
         </div>
         <div>
@@ -654,7 +663,7 @@ const D8_FLECHE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 1
 // svg.fleche) ; dans une page HTML statique, le même SVG est écrit tel quel.
 const D8_FLECHES = {
   gauche: "M19 12H5M11 6l-6 6 6 6", droite: "M5 12h14M13 6l6 6-6 6", sortie: "M7 17L17 7M9 7h8v8",
-  precedent: "M15 6l-6 6 6 6", suivant: "M9 6l6 6-6 6", haut: "M12 19V5M6 11l6-6 6 6", bas: "M12 5v14M6 13l6 6 6-6", hautbas: "M8 9l4-4 4 4M8 15l4 4 4-4",
+  precedent: "M15 6l-6 6 6 6", suivant: "M9 6l6 6-6 6", haut: "M12 19V5M6 11l6-6 6 6", bas: "M12 5v14M6 13l6 6 6-6", deplier: "M6 9l6 6 6-6", hautbas: "M8 9l4-4 4 4M8 15l4 4 4-4",
 };
 const fleche = (sens) => `<svg class="fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="${D8_FLECHES[sens]}"/></svg>`;
 
@@ -774,6 +783,74 @@ function pleinEcran(bouton, boite) {
   });
   document.addEventListener("fullscreenchange", maj);
 }
+
+// ---- fenêtres (vitrine et espace agents) : règle commune, sans rien à faire dans chaque page ----
+// Une fenêtre ouverte (« .modale-fond » visible, ou la visionneuse de photos) garde le clavier : focus placé dedans à
+// l'ouverture, Tab qui y boucle, focus rendu à l'élément qui l'a ouverte à la fermeture ; Échap la ferme quand la page
+// ne le fait pas elle-même (attribut data-echap). Sans cela, Tab continuait sur la page cachée derrière. Le titre est
+// relié à la fenêtre pour les lecteurs d'écran. La confirmation de la coque (role="alertdialog") a sa propre règle.
+const D8_FOCUSABLES = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+const fenetreOuverte = () => {
+  if (document.querySelector('[role="alertdialog"]')) return null;
+  const ouvertes = [...document.querySelectorAll(".modale-fond:not(.cache), .visionneuse")].filter(f => f.offsetParent !== null || getComputedStyle(f).position === "fixed");
+  return ouvertes.at(-1) || null;
+};
+const focusablesDe = f => [...f.querySelectorAll(D8_FOCUSABLES)].filter(el => !el.disabled && !el.closest(".cache") && (el.offsetWidth || el.offsetHeight));
+document.addEventListener("keydown", ev => {
+  const f = fenetreOuverte();
+  if (!f) return;
+  if (ev.key === "Escape" && f.hasAttribute("data-echap")) {
+    const croix = f.querySelector('[aria-label="Fermer"]');
+    if (croix) { ev.preventDefault(); croix.click(); }
+    return;
+  }
+  if (ev.key !== "Tab") return;
+  const liste = focusablesDe(f);
+  if (!liste.length) return;
+  const premier = liste[0], dernier = liste[liste.length - 1];
+  if (!f.contains(document.activeElement)) { ev.preventDefault(); premier.focus(); }
+  else if (ev.shiftKey && document.activeElement === premier) { ev.preventDefault(); dernier.focus(); }
+  else if (!ev.shiftKey && document.activeElement === dernier) { ev.preventDefault(); premier.focus(); }
+});
+(function suivreFenetres() {
+  const ouvreurs = new WeakMap();
+  // dernier élément qui avait le focus hors de toute fenêtre : la page place souvent le focus dans la fenêtre avant
+  // que l'ouverture soit vue ici, l'élément d'origine est donc retenu au fil de la navigation
+  let focusHorsFenetre = null;
+  document.addEventListener("focusin", e => { if (!e.target.closest?.(".modale-fond, .visionneuse")) focusHorsFenetre = e.target; });
+  const preparer = f => {
+    const boite = f.matches(".modale-fond") ? f.querySelector(".modale") : f;
+    if (boite && !boite.hasAttribute("role")) {
+      boite.setAttribute("role", "dialog"); boite.setAttribute("aria-modal", "true");
+      const titre = boite.querySelector(".modale-entete h1, .modale-entete h2, .modale-entete h3");
+      if (titre && titre.id && !boite.hasAttribute("aria-labelledby")) boite.setAttribute("aria-labelledby", titre.id);
+    }
+  };
+  const ouverte = f => {
+    if (f.querySelector('[role="alertdialog"]')) return;
+    preparer(f);
+    const avant = document.activeElement && !f.contains(document.activeElement) && document.activeElement !== document.body ? document.activeElement : focusHorsFenetre;
+    if (avant) ouvreurs.set(f, avant);
+    // la page place souvent elle-même le focus (premier champ) : on ne le fait qu'à défaut
+    setTimeout(() => { if (!f.contains(document.activeElement)) focusablesDe(f)[0]?.focus(); }, 0);
+  };
+  const fermee = f => {
+    const ouvreur = ouvreurs.get(f);
+    ouvreurs.delete(f);
+    const perdu = !document.activeElement || document.activeElement === document.body || f.contains(document.activeElement);
+    if (perdu && ouvreur && ouvreur.isConnected && (ouvreur.offsetWidth || ouvreur.offsetHeight)) ouvreur.focus();
+  };
+  new MutationObserver(mutations => {
+    for (const m of mutations) {
+      if (m.type === "attributes" && m.target.classList?.contains("modale-fond")) {
+        const visible = !m.target.classList.contains("cache"), avant = !String(m.oldValue || "").split(/\s+/).includes("cache");
+        if (visible && !avant) ouverte(m.target); else if (!visible && avant) fermee(m.target);
+      }
+      for (const n of m.addedNodes || []) if (n.nodeType === 1 && n.classList.contains("visionneuse")) ouverte(n);
+      for (const n of m.removedNodes || []) if (n.nodeType === 1 && n.classList.contains("visionneuse")) fermee(n);
+    }
+  }).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ["class"], attributeOldValue: true, childList: true });
+})();
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => { habillerCartesHub(); demarrerPoussiereOr(); initialiserWebmapInline(); });

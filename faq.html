@@ -56,12 +56,12 @@
 
   document.getElementById("accordeon").innerHTML = FAQ.map((item, i) => `
     <div class="accordeon-item" data-i="${i}">
-      <button class="accordeon-question">${item.q}<span class="chevron">⌄</span></button>
-      <div class="accordeon-reponse"><p>${item.r}</p></div>
+      <button type="button" class="accordeon-question" aria-expanded="false" aria-controls="faq-reponse-${i}">${item.q}<span class="chevron">${fleche("deplier")}</span></button>
+      <div class="accordeon-reponse" id="faq-reponse-${i}"><p>${item.r}</p></div>
     </div>`).join("");
 
   document.querySelectorAll(".accordeon-question").forEach((btn) => {
-    btn.addEventListener("click", () => btn.parentElement.classList.toggle("ouvert"));
+    btn.addEventListener("click", () => btn.setAttribute("aria-expanded", String(btn.parentElement.classList.toggle("ouvert"))));
   });
 </script>
 </body>

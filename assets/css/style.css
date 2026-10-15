@@ -77,6 +77,8 @@
   --bg-card: var(--d8-navy-700);
   --bg-card-hover: var(--d8-navy-600);
   --border: rgba(201, 165, 92, 0.28);
+  /* contour d’un champ de saisie : 3:1 au moins sur le fond (0,28 donnait 1,7:1, on ne voyait pas où écrire) */
+  --d8-contour-champ: rgba(201, 165, 92, 0.55);
   --border-light: rgba(201, 165, 92, 0.45);
   --text: var(--d8-cream);
   --text-muted: var(--d8-text);
@@ -1881,7 +1883,7 @@ section.section.serre {
 }
 .champ input, .champ select, .champ textarea {
   width: 100%; min-height: 48px; padding: 11px 14px; border-radius: var(--radius-sm);
-  border: 1px solid rgba(201, 165, 92, 0.28); background: rgba(6, 12, 26, 0.55);
+  border: 1px solid var(--d8-contour-champ); background: rgba(6, 12, 26, 0.55);
   color: var(--text); font-size: 0.95rem; font-family: inherit;
   transition: border-color var(--d8-t), box-shadow var(--d8-t);
 }
@@ -2156,13 +2158,13 @@ section.section.serre {
 .annonces-recherche-icone { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-faint); font-size: 0.88rem; pointer-events: none; }
 .annonces-recherche input {
   width: 100%; height: 44px; padding: 0 14px 0 38px; border-radius: var(--radius-sm);
-  border: 1px solid rgba(201, 165, 92, 0.28); background: rgba(6, 12, 26, 0.55);
+  border: 1px solid var(--d8-contour-champ); background: rgba(6, 12, 26, 0.55);
   color: var(--text); font-size: 0.9rem; font-family: inherit;
 }
 .annonces-recherche input:focus { outline: none; border-color: var(--d8-gold-400); box-shadow: 0 0 0 3px rgba(201, 165, 92, 0.15); }
 .annonces-outils select {
   height: 44px; padding: 0 14px; border-radius: var(--radius-sm);
-  border: 1px solid rgba(201, 165, 92, 0.28); background: rgba(6, 12, 26, 0.55);
+  border: 1px solid var(--d8-contour-champ); background: rgba(6, 12, 26, 0.55);
   color: var(--text); font-size: 0.86rem; font-family: inherit;
 }
 .annonces-outils select:focus { outline: none; border-color: var(--d8-gold-400); }
@@ -2366,7 +2368,7 @@ section.section.serre {
 
 .table-input, .table-select {
   min-height: 38px; padding: 7px 10px; border-radius: var(--radius-sm);
-  border: 1px solid rgba(201, 165, 92, 0.28); background: rgba(6, 12, 26, 0.55);
+  border: 1px solid var(--d8-contour-champ); background: rgba(6, 12, 26, 0.55);
   color: var(--text); font-size: 0.86rem; font-family: inherit;
 }
 .table-input:focus, .table-select:focus {

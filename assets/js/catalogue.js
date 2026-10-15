@@ -337,10 +337,11 @@ async function chargerFicheBien() {
   const conteneur = document.getElementById("fiche-bien");
   const id = new URLSearchParams(window.location.search).get("id");
   if (!conteneur) return;
-  if (!id) {
-    conteneur.innerHTML = '<div class="etat-vide">Annonce introuvable.</div>';
-    return;
-  }
+  // annonce absente ou retirée : un titre (la page en a toujours un) et la suite à donner
+  const introuvable = texte => {
+    conteneur.innerHTML = `<div class="etat-vide"><h1 class="etat-vide-titre">Annonce introuvable</h1><p>${texte}</p><a class="btn btn-fantome" href="/interieurs.html">Voir le catalogue</a></div>`;
+  };
+  if (!id) { introuvable("Le lien ne précise pas quelle annonce afficher."); return; }
   try {
     const bien = await appelAPI("/api/biens?id=" + encodeURIComponent(id));
     document.title = bien.titre + " — Dynasty 8";
@@ -398,7 +399,7 @@ async function chargerFicheBien() {
             ${bien.places ? `<div><dt>Places</dt><dd>${echapper(bien.places)}</dd></div>` : ""}
             ${bien.coffre_kg ? `<div><dt>Coffre</dt><dd>${echapper(bien.coffre_kg)} kg</dd></div>` : ""}
             ${bien.vip ? '<div><dt>Statut</dt><dd>VIP</dd></div>' : ""}
-            ${bien.coherence ? `<div><dt>Cohérence</dt><dd><a href="/coherence-zone.html?zone=${encodeURIComponent(bien.coherence)}" class="fiche-carac-lien">${echapper(bien.coherence)} <span aria-hidden="true">→</span></a></dd></div>` : ""}
+            ${bien.coherence ? `<div><dt>Cohérence</dt><dd><a href="/coherence-zone.html?zone=${encodeURIComponent(bien.coherence)}" class="fiche-carac-lien">${echapper(bien.coherence)} ${fleche("droite")}</a></dd></div>` : ""}
           </dl>
           <div class="encart-contact">
             <div class="encart-contact-titre">Comment obtenir ce bien ?</div>
@@ -455,7 +456,7 @@ async function chargerFicheBien() {
       }
     });
   } catch (e) {
-    conteneur.innerHTML = `<div class="etat-vide">Cette annonce n'existe plus ou a été retirée.</div>`;
+    introuvable("Cette annonce n'existe plus ou a été retirée du catalogue.");
   }
 }
 
