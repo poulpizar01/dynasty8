@@ -4,7 +4,8 @@
 //   - prise : nouvelle ligne ouverte ; une prise précédente de la même personne restée ouverte est fermée à l'heure de
 //     la nouvelle (« debut_en_double ») ;
 //   - fin : ferme le service ouvert de la personne (ou remplace une clôture automatique) ; sans service, une ligne est
-//     créée à l'heure de la fin (« fin_sans_debut ») ;
+//     créée à l'heure de la fin (« fin_sans_debut »), complétée si sa prise arrive ensuite ;
+//   - reçus dans le désordre (le bot rejoue ses envois en échec après une coupure) : chaque événement reprend sa place ;
 //   - service jamais fermé : fermé N heures après son début (« cloture_auto ») ; une vraie fin reçue plus tard la remplace ;
 //   - même événement renvoyé par le bot : sans effet (identifiant tiré de la personne et de l'heure).
 // Seuls les événements signés du bot arrivent ici (socle/routes/webhooks.ts) ; leur contenu est revérifié (services-duty.ts).
@@ -22,27 +23,43 @@ function trouverFiche(employes: Fiche[], ev: EvenementDuty): Fiche | null {
   return nom ? employes.find(e => normaliser(`${e.prenom} ${e.nom}`) === nom) ?? null : null;
 }
 
+// Le bot rejoue ses envois en échec dans le désordre (après une coupure du site) : chaque événement est remis à sa place
+// dans le temps, quel que soit l'ordre d'arrivée.
 async function enregistrer(ev: EvenementDuty, fiche: Fiche | null): Promise<void> {
   const nom = fiche ? `${fiche.prenom} ${fiche.nom}`.trim() : ev.nom;
+  const personne = { discordId: ev.discordId };
   await prisma.$transaction(async tx => {
     if (ev.sens === 'debut') {
       if (await tx.service.findUnique({ where: { serviceId: ev.serviceId } })) return;   // déjà reçu
+      // sa fin est déjà arrivée (reçue avant elle) : la ligne « fin sans début » est complétée, pas de service fantôme
+      const orpheline = await tx.service.findFirst({ where: { ...personne, anomalie: 'fin_sans_debut', fin: { gte: ev.instant } }, orderBy: { fin: 'asc' } });
+      if (orpheline && !await tx.service.count({ where: { ...personne, debut: { gte: ev.instant, lt: orpheline.debut } } })) {
+        await tx.service.update({ where: { id: orpheline.id }, data: { serviceId: ev.serviceId, debut: ev.instant, anomalie: '' } });
+        return;
+      }
+      // un service commencé avant et resté ouvert (ou fermé par une prise plus tardive) s'arrête à cette prise
       await tx.service.updateMany({
-        where: { discordId: ev.discordId, fin: null, debut: { lt: ev.instant } },
+        where: { ...personne, debut: { lt: ev.instant }, OR: [{ fin: null }, { finSource: 'doublon', fin: { gt: ev.instant } }] },
         data: { fin: ev.instant, causeFin: 'Nouvelle prise de service sans fin', finSource: 'doublon', anomalie: 'debut_en_double' },
       });
-      await tx.service.create({ data: { serviceId: ev.serviceId, employeNom: nom, discordId: ev.discordId, employeId: fiche?.id ?? null, debut: ev.instant } });
+      // une prise plus tardive est déjà arrivée : ce service s'arrête au plus tard à elle (une vraie fin reçue ensuite corrige)
+      const suivante = await tx.service.findFirst({ where: { ...personne, debut: { gt: ev.instant } }, orderBy: { debut: 'asc' } });
+      await tx.service.create({
+        data: {
+          serviceId: ev.serviceId, employeNom: nom, discordId: ev.discordId, employeId: fiche?.id ?? null, debut: ev.instant,
+          ...(suivante && { fin: suivante.debut, causeFin: 'Nouvelle prise de service sans fin', finSource: 'doublon', anomalie: 'debut_en_double' }),
+        },
+      });
       return;
     }
-    // fin : le service ouvert de la personne, sinon le dernier fermé automatiquement (la vraie fin l'emporte)
-    const ouvert = await tx.service.findFirst({ where: { discordId: ev.discordId, debut: { lte: ev.instant }, OR: [{ fin: null }, { finSource: 'auto' }] }, orderBy: { debut: 'desc' } });
-    if (ouvert) {
-      if (ouvert.fin && ouvert.finSource === 'bot') return;
-      await tx.service.update({ where: { id: ouvert.id }, data: { fin: ev.instant, causeFin: 'Fin de service', finSource: 'bot', anomalie: ouvert.anomalie === 'cloture_auto' ? '' : ouvert.anomalie } });
+    // fin : le dernier service commencé avant elle, s'il est encore ouvert, fermé automatiquement, ou fermé
+    // provisoirement par une prise plus tardive (la vraie fin l'emporte dans les trois cas)
+    const dernier = await tx.service.findFirst({ where: { ...personne, debut: { lte: ev.instant } }, orderBy: { debut: 'desc' } });
+    if (dernier && (!dernier.fin || dernier.finSource === 'auto' || (dernier.finSource === 'doublon' && dernier.fin >= ev.instant))) {
+      await tx.service.update({ where: { id: dernier.id }, data: { fin: ev.instant, causeFin: 'Fin de service', finSource: 'bot', anomalie: '' } });
       return;
     }
-    const dejaFermee = await tx.service.findFirst({ where: { discordId: ev.discordId, fin: ev.instant, finSource: 'bot' } });
-    if (dejaFermee) return;   // même fin renvoyée
+    if (await tx.service.findFirst({ where: { ...personne, fin: ev.instant, finSource: 'bot' } })) return;   // même fin renvoyée
     await tx.service.create({ data: { serviceId: `${ev.serviceId}-fin`, employeNom: nom, discordId: ev.discordId, employeId: fiche?.id ?? null, debut: ev.instant, fin: ev.instant, causeFin: 'Fin de service', finSource: 'bot', anomalie: 'fin_sans_debut' } });
   });
 }
