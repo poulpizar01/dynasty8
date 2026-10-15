@@ -2,7 +2,7 @@
 // Une erreur ici ouvrirait un événement de direction à tout le monde sans rien d'anormal à l'écran.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { choisirTicket, droitsAgenda, droitsInclusDansConsultation, gradeAccordable, modifiable, parisVersDate, peutCreer, peutInviter, voit } from '../src/entreprise/agenda-regles.js';
+import { ajoutsNonDetenus, choisirTicket, droitsAgenda, droitsInclusDansConsultation, gradeAccordable, modifiable, parisVersDate, peutCreer, peutInviter, voit } from '../src/entreprise/agenda-regles.js';
 
 const GRADES = ['patron', 'directeur', 'manager', 'agent'];   // du sommet à la base
 const ev = (destination: string, destinationGrade: string | null = null, compteId: number | null = 99, invitesDiscordIds: string[] = []) =>
@@ -123,4 +123,16 @@ test('ticket de la personne : catégorie réglée, permission à son nom, le plu
   assert.equal(choisirTicket(salons, '433333333333333333', [cat]), null);
   assert.equal(choisirTicket(salons, moi, []), null);
   assert.equal(choisirTicket({ message: 'erreur' }, moi, [cat]), null, 'réponse inattendue : aucun ticket');
+});
+
+test('on n’accorde que des droits d’agenda qu’on a soi-même ; retirer ou garder reste libre', () => {
+  const G = ['patron', 'manager', 'agent'];
+  const manager = droitsAgenda(G, 'manager', false, { consulter: ['agent'], creer: ['agent'], modifier: [] });
+  // le manager ne voit pas les événements « manager » : il ne peut pas les ouvrir aux agents
+  assert.deepEqual(ajoutsNonDetenus(manager, manager.consulter, [], ['manager', 'agent']), ['manager']);
+  assert.deepEqual(ajoutsNonDetenus(manager, manager.modifier, [], ['agent']), ['agent'], 'modifier : il ne l’a pas');
+  assert.deepEqual(ajoutsNonDetenus(manager, manager.consulter, ['manager', 'agent'], ['manager']), [], 'droit déjà accordé par un supérieur : gardé');
+  assert.deepEqual(ajoutsNonDetenus(manager, manager.consulter, ['manager'], []), [], 'retirer : toujours permis');
+  const proprietaire = droitsAgenda(G, null, true, null);
+  assert.deepEqual(ajoutsNonDetenus(proprietaire, proprietaire.consulter, [], G), [], 'le propriétaire a tout');
 });

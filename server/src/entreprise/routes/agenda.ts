@@ -14,7 +14,7 @@ import { appelBot, ErreurDiscord, posterMessage } from '../../socle/discord.js';
 import { auDessusDe, gradeDe, tousLesGrades } from '../../socle/droits.js';
 import { body, couleur, entier, intParam, permission, text, valide } from '../../socle/http.js';
 import { site } from '../../socle/site.js';
-import { choisirTicket, droitsAgenda, droitsInclusDansConsultation, estDestination, gradeAccordable, modifiable, parisVersDate, peutCreer, peutInviter, voit, type Destination, type DroitsAgenda } from '../agenda-regles.js';
+import { ajoutsNonDetenus, choisirTicket, droitsAgenda, droitsInclusDansConsultation, estDestination, gradeAccordable, modifiable, parisVersDate, peutCreer, peutInviter, voit, type Destination, type DroitsAgenda } from '../agenda-regles.js';
 import { idsRegles } from '../parametres.js';
 import { Refus, traiter } from '../refus.js';
 import { nomComplet } from '../rh.js';
@@ -228,6 +228,13 @@ agenda.put('/api/agenda/droits-grades/:cle', ...permission('grades'), traiter(as
     prisma.agendaDroitsGrade.findUnique({ where: { gradeCle: cle } }),
   ]);
   const droitsExistants = droitsAgenda(grades, cle, false, existant);
+  for (const [champ, libelle] of [['consulter', 'consulter'], ['creer', 'créer'], ['modifier', 'modifier']] as const) {
+    const refuses = ajoutsNonDetenus(droitsActeur, droitsActeur[champ], droitsExistants[champ], valeurs[champ]);
+    if (refuses.length) {
+      const noms = refuses.map(k => gradeDe(k)?.libelle ?? k).join(', ');
+      throw new Refus(`Vous ne pouvez accorder que des droits que vous avez vous-même : vous ne pouvez pas ${libelle} les événements destinés à ${noms}. Demandez à un supérieur.`, 403);
+    }
+  }
   if (!droitsActeur.tout && consulterTous && !droitsActeur.consulterTous && !droitsExistants.consulterTous) {
     throw new Refus('Vous ne pouvez pas accorder un accès de consultation que vous n’avez pas.', 403);
   }

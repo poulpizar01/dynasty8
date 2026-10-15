@@ -900,6 +900,10 @@ main.admin-contenu:focus { outline: none; }
 .remu-palier .remu-montant input { padding-right: 26px; }
 
 .remu-baremes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 14px; margin-top: 12px; }
+/* réglage qu'on ne peut pas modifier (grade égal ou supérieur, paliers communs) : il se lit, il n'a pas l'air d'un champ */
+.remu-lecture-note { margin: 2px 0 8px; font-size: 0.8rem; color: var(--text-faint); }
+.remu-lecture .remu-ligne, .remu-lecture .remu-palier { opacity: 0.55; }
+.remu-lecture input:disabled { border-color: transparent; background: transparent; }
 .remu-bareme { padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(14, 26, 50, 0.6); }
 .remu-bareme-titre { margin: 0; font-size: 1rem; font-weight: 500; color: var(--text); font-family: var(--d8-font-ui); }
 .remu-bareme-grades { margin: 2px 0 10px; font-size: 0.8rem; color: var(--text-faint); }

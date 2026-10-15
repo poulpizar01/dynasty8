@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 import { Router, type Request } from 'express';
 import { prisma } from '../../socle/db.js';
-import { gradeDe, peut, tousLesGrades } from '../../socle/droits.js';
+import { auDessusDe, gradeDe, peut, tousLesGrades } from '../../socle/droits.js';
 import { body, entier, intParam, permission, valide } from '../../socle/http.js';
 import { carte } from '../carte.js';
 import { configEntreprise } from '../config.js';
@@ -98,15 +98,29 @@ stats.get('/api/profil/primes', ...valide, async (req, res) => {
 
 // ---------- rémunération (Comptabilité) ----------
 // Salaire fixe et interrupteurs par grade du site, paliers de primes : ils alimentent la DOT et les primes partout.
+// Règle anti-escalade, comme les fiches RH : hors propriétaire, on ne règle que la rémunération des grades SOUS le sien
+// (sinon un agent qui a « compta » relèverait son propre salaire). Les paliers valent pour tous les grades, le sien
+// compris : réservés au grade le plus haut (personne au-dessus) et au propriétaire.
+type Acteur = { proprietaire: boolean; gradeCle: string | null };
+const reglableGrade = (c: Acteur, cle: string) => auDessusDe(c, cle);
+const baremesModifiables = (c: Acteur) => {
+  if (c.proprietaire) return true;
+  const g = gradeDe(c.gradeCle);
+  return !!g && !tousLesGrades().some(x => x.position < g.position);
+};
+const exigerBaremes = (req: Request) => {
+  if (!baremesModifiables(req.compte)) throw new Refus('Les paliers de primes valent pour tous les grades, le vôtre compris : seul le grade le plus haut peut les modifier.', 403);
+};
 
-stats.get('/api/stats/remuneration', ...compta, async (_req, res) => {
+stats.get('/api/stats/remuneration', ...compta, async (req, res) => {
   const [lignes, baremes] = await Promise.all([prisma.remunerationGrade.findMany(), prisma.baremePrime.findMany({ orderBy: [{ type: 'asc' }, { seuil: 'asc' }] })]);
   const parGrade = new Map(lignes.map(l => [l.gradeCle, l]));
   res.json({
     grades: tousLesGrades().map(g => {
       const r = parGrade.get(g.cle);
-      return { grade: g.cle, libelle: g.libelle, couleur: g.couleur, salaireFixe: r?.salaireFixe ?? 0, salaireActif: r?.salaireActif ?? false, primeVenteActive: r?.primeVenteActive ?? true, primeLocationActive: r?.primeLocationActive ?? true, tauxHoraire: r?.tauxHoraire ?? 0 };
+      return { grade: g.cle, libelle: g.libelle, couleur: g.couleur, salaireFixe: r?.salaireFixe ?? 0, salaireActif: r?.salaireActif ?? false, primeVenteActive: r?.primeVenteActive ?? true, primeLocationActive: r?.primeLocationActive ?? true, tauxHoraire: r?.tauxHoraire ?? 0, modifiable: reglableGrade(req.compte, g.cle) };
     }),
+    baremesModifiables: baremesModifiables(req.compte),
     baremesVentes: baremes.filter(b => b.type === 'vente').map(({ id, seuil, montant }) => ({ id, seuil, montant })),
     baremesLocations: baremes.filter(b => b.type === 'location').map(({ id, seuil, montant }) => ({ id, seuil, montant })),
   });
@@ -115,6 +129,7 @@ stats.get('/api/stats/remuneration', ...compta, async (_req, res) => {
 stats.patch('/api/stats/remuneration/grades/:cle', ...compta, traiter(async (req, res) => {
   const g = gradeDe(String(req.params.cle));
   if (!g) throw new Refus('Grade invalide.');
+  if (!reglableGrade(req.compte, g.cle)) throw new Refus('Vous ne réglez que la rémunération des grades en dessous du vôtre.', 403);
   const b = body(req), data: Record<string, unknown> = {};
   if (b.salaireFixe !== undefined) {
     const n = b.salaireFixe === null || b.salaireFixe === '' ? 0 : Number(b.salaireFixe);
@@ -152,23 +167,26 @@ const conflitPalier = (e: unknown) => {
 };
 
 stats.post('/api/stats/baremes', ...compta, traiter(async (req, res) => {
+  exigerBaremes(req);
   const b = body(req);
   if (b.type !== 'vente' && b.type !== 'location') throw new Refus('Le type doit être « vente » ou « location ».');
   const p = await prisma.baremePrime.create({ data: { type: b.type, ...lirePalier(b, false) } as { type: string; seuil: number; montant: number } }).catch(conflitPalier);
   res.status(201).json({ id: p.id });
 }));
 stats.patch('/api/stats/baremes/:id', ...compta, traiter(async (req, res) => {
+  exigerBaremes(req);
   const data = lirePalier(body(req), true);
   if (!Object.keys(data).length) throw new Refus('Rien à modifier.');
   const { count } = await prisma.baremePrime.updateMany({ where: { id: intParam(req, 'id') }, data }).catch(conflitPalier);
   if (!count) throw new Refus('Palier introuvable.', 404);
   res.json({ ok: true });
 }));
-stats.delete('/api/stats/baremes/:id', ...compta, async (req, res) => {
+stats.delete('/api/stats/baremes/:id', ...compta, traiter(async (req, res) => {
+  exigerBaremes(req);
   const { count } = await prisma.baremePrime.deleteMany({ where: { id: intParam(req, 'id') } });
   if (!count) { res.status(404).json({ error: 'Palier introuvable.' }); return; }
   res.json({ ok: true });
-});
+}));
 
 // outils du menu : lien du registre (réglé dans Paramètres, servi aux seuls comptes validés), WebMap disponible
 stats.get('/api/outils', ...valide, (req, res) => {

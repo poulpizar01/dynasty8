@@ -90,6 +90,7 @@
                 </div>
                 <div id="agenda-grades"></div>
               </div>
+              <p class="champ-aide cache" id="agenda-verrou-note">Les cases grisées sont des droits que vous n’avez pas vous-même sur l’agenda : seul un supérieur peut les accorder.</p>
             </section>
           </section>
         </template>
@@ -167,10 +168,19 @@
       const gradesAccordables = grades.filter(x => moi.proprietaire || rang(x.cle) >= rang(moi.grade?.cle));
       if (!g) gradesAccordables.push({ cle: '__nouveau_grade__', libelle: 'Ce nouveau grade' });
       const droits = { consulter: enregistres?.consulter ?? [], modifier: enregistres?.modifier ?? [], creer: enregistres?.creer ?? [] };
+      // on n'accorde que des droits qu'on a soi-même (le serveur le revérifie) : une case qu'on ne détient pas et qui
+      // n'est pas déjà cochée par un supérieur est verrouillée
+      const propres = droitsAgenda.find(d => d.grade === moi.grade?.cle);
+      const verrou = (action, cle) => !moi.proprietaire && !droits[action].includes(cle) && !(propres?.[action] ?? []).includes(cle);
+      const nomAction = { consulter: 'Consulter', modifier: 'Modifier', creer: 'Créer' };
       $('agenda-grades').innerHTML = gradesAccordables.map(x => `<div class="grade-agenda-ligne" role="group" aria-label="Droits pour les événements du grade ${echapper(x.libelle)}" data-grade="${echapper(x.cle)}">
         <strong>${echapper(x.libelle)}</strong>
-        ${['consulter', 'modifier', 'creer'].map(action => `<label><input type="checkbox" data-agenda-action="${action}" data-grade="${echapper(x.cle)}" aria-label="${action === 'consulter' ? 'Consulter' : action === 'modifier' ? 'Modifier' : 'Créer'} les événements du grade ${echapper(x.libelle)}" ${droits[action].includes(x.cle) ? 'checked' : ''}><span>${action === 'consulter' ? 'Consulter' : action === 'modifier' ? 'Modifier' : 'Créer'}</span></label>`).join('')}
+        ${['consulter', 'modifier', 'creer'].map(action => {
+          const ferme = verrou(action, x.cle);
+          return `<label${ferme ? ` class="is-disabled" title="Vous n’avez pas ce droit vous-même : seul un supérieur peut l’accorder."` : ''}><input type="checkbox" data-agenda-action="${action}" data-grade="${echapper(x.cle)}" ${ferme ? 'data-verrou="1" disabled' : ''} aria-label="${nomAction[action]} les événements du grade ${echapper(x.libelle)}${ferme ? ' (vous n’avez pas ce droit vous-même)' : ''}" ${droits[action].includes(x.cle) ? 'checked' : ''}><span>${nomAction[action]}</span></label>`;
+        }).join('')}
       </div>`).join('');
+      $('agenda-verrou-note').classList.toggle('cache', !$('agenda-grades').querySelector('[data-verrou="1"]'));
       actualiserMatriceAgenda();
       actualiserDroitsEquipe();
     }
@@ -184,7 +194,7 @@
         tout.indeterminate = coches > 0 && coches < cases.length;
       }
       $('agenda-grades').querySelectorAll('[data-agenda-action="modifier"], [data-agenda-action="creer"]').forEach(input => {
-        input.disabled = !$('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(input.dataset.grade)}"]`).checked;
+        input.disabled = input.dataset.verrou === '1' || !$('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(input.dataset.grade)}"]`).checked;
         input.closest('label').classList.toggle('is-disabled', input.disabled);
       });
     }
@@ -217,10 +227,11 @@
         }
       }
       if ((action === 'modifier' || action === 'creer') && input.checked && cle) {
-        $('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(cle)}"]`).checked = true;
+        const consulter = $('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(cle)}"]`);
+        if (consulter.dataset.verrou !== '1') consulter.checked = true;
       }
       if (input.matches('[data-agenda-tous]')) {
-        const coches = [...$('agenda-grades').querySelectorAll(`[data-agenda-action="${action}"]`)];
+        const coches = [...$('agenda-grades').querySelectorAll(`[data-agenda-action="${action}"]:not([data-verrou="1"])`)];
         if (action === 'consulter' && !input.checked) {
           const dependantes = [...$('agenda-grades').querySelectorAll('[data-agenda-action="modifier"]:checked, [data-agenda-action="creer"]:checked')];
           if (dependantes.length && !await gestion.confirmer('Retirer la consultation supprimera aussi les droits de modification et de création associés.', 'Retirer l’accès à l’agenda ?', 'Retirer ces droits')) input.checked = true;
@@ -229,12 +240,14 @@
         coches.forEach(c => { c.checked = input.checked; });
         if (action === 'modifier' || action === 'creer') {
           coches.filter(c => c.checked).forEach(c => {
-            $('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(c.dataset.grade)}"]`).checked = true;
+            const consulter = $('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(c.dataset.grade)}"]`);
+            if (consulter.dataset.verrou !== '1') consulter.checked = true;
+            else c.checked = false;   // sans consultation possible, ni création ni modification
           });
         }
       }
       $('agenda-grades').querySelectorAll('[data-agenda-action="modifier"], [data-agenda-action="creer"]').forEach(c => {
-        c.disabled = !$('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(c.dataset.grade)}"]`).checked;
+        c.disabled = c.dataset.verrou === '1' || !$('agenda-grades').querySelector(`[data-agenda-action="consulter"][data-grade="${CSS.escape(c.dataset.grade)}"]`).checked;
       });
       actualiserMatriceAgenda();
     });

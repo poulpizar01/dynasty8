@@ -33,8 +33,8 @@ document.querySelectorAll(".compta-sous-onglet").forEach((btn) => {
 
 let REMU = { grades: [], baremesVentes: [], baremesLocations: [] };
 const montantPalierRemu = (bareme, valeur) => [...bareme].sort((a, b) => a.seuil - b.seuil).reduce((m, p) => (valeur >= p.seuil ? p.montant : m), 0);
-const interrupteurRemu = (attributs, actif, libelle) =>
-  `<label class="d8-switch" title="${libelle}"><input type="checkbox" ${attributs} ${actif ? "checked" : ""} aria-label="${libelle}"><span class="d8-switch-piste"></span></label>`;
+const interrupteurRemu = (attributs, actif, libelle, bloque) =>
+  `<label class="d8-switch" title="${libelle}"><input type="checkbox" ${attributs} ${actif ? "checked" : ""} ${bloque ? "disabled" : ""} aria-label="${libelle}"><span class="d8-switch-piste"></span></label>`;
 
 async function chargerRemuneration() {
   gestion.message("zone-message-parametres", "");
@@ -54,26 +54,29 @@ function rendreGradesRemu() {
   document.getElementById("remu-grades").innerHTML = REMU.grades.map(g => {
     const cle = echapper(g.grade), couleur = echapper(g.couleur || "#8a93b8");
     const nom = echapper(g.libelle);
-    return `<article class="remu-grade" style="--grade:${couleur}" data-grade="${cle}">
+    // grade égal ou supérieur au sien : affiché, jamais modifiable (le serveur le refuse aussi)
+    const bloque = g.modifiable === false;
+    return `<article class="remu-grade${bloque ? " remu-lecture" : ""}" style="--grade:${couleur}" data-grade="${cle}">
       <h4 class="remu-grade-nom"><span class="pastille-grade" style="background:${couleur}"></span>${nom}</h4>
+      ${bloque ? `<p class="remu-lecture-note">Grade égal ou supérieur au vôtre : réglé par un supérieur.</p>` : ""}
       <div class="remu-ligne${g.salaireActif ? "" : " inactive"}">
-        ${interrupteurRemu(`data-remu="salaireActif"`, g.salaireActif, `Salaire fixe pour ${nom}`)}
+        ${interrupteurRemu(`data-remu="salaireActif"`, g.salaireActif, `Salaire fixe pour ${nom}`, bloque)}
         <span class="remu-ligne-libelle">Salaire fixe</span>
-        <span class="annonce-montant remu-montant"><input type="number" min="0" step="1000" inputmode="numeric" data-remu="salaireFixe" value="${Number(g.salaireFixe) || 0}" ${g.salaireActif ? "" : "disabled"} aria-label="Salaire fixe de ${nom}, en dollars par semaine"><span aria-hidden="true">$ / sem.</span></span>
+        <span class="annonce-montant remu-montant"><input type="number" min="0" step="1000" inputmode="numeric" data-remu="salaireFixe" value="${Number(g.salaireFixe) || 0}" ${g.salaireActif && !bloque ? "" : "disabled"} aria-label="Salaire fixe de ${nom}, en dollars par semaine"><span aria-hidden="true">$ / sem.</span></span>
       </div>
       <div class="remu-ligne${g.primeVenteActive ? "" : " inactive"}">
-        ${interrupteurRemu(`data-remu="primeVenteActive"`, g.primeVenteActive, `Prime ventes pour ${nom}`)}
+        ${interrupteurRemu(`data-remu="primeVenteActive"`, g.primeVenteActive, `Prime ventes pour ${nom}`, bloque)}
         <span class="remu-ligne-libelle">Prime ventes</span><span class="remu-ligne-note">selon le barème</span>
       </div>
       <div class="remu-ligne${g.primeLocationActive ? "" : " inactive"}">
-        ${interrupteurRemu(`data-remu="primeLocationActive"`, g.primeLocationActive, `Prime locations pour ${nom}`)}
+        ${interrupteurRemu(`data-remu="primeLocationActive"`, g.primeLocationActive, `Prime locations pour ${nom}`, bloque)}
         <span class="remu-ligne-libelle">Prime locations</span><span class="remu-ligne-note">selon le barème</span>
       </div>
       <!-- pas d’interrupteur : 0 $ / h = pas de paie à l’heure ; le champ reste toujours modifiable -->
       <div class="remu-ligne">
         <span class="remu-ligne-vide" aria-hidden="true"></span>
         <span class="remu-ligne-libelle">Paie à l’heure<small class="remu-ligne-aide">0 = aucune</small></span>
-        <span class="annonce-montant remu-montant"><input type="number" min="0" step="100" inputmode="numeric" data-remu="tauxHoraire" value="${Number(g.tauxHoraire) || 0}" aria-label="Taux horaire de ${nom}, en dollars par heure (0 : pas de paie à l’heure)"><span aria-hidden="true">$ / h</span></span>
+        <span class="annonce-montant remu-montant"><input type="number" min="0" step="100" inputmode="numeric" data-remu="tauxHoraire" value="${Number(g.tauxHoraire) || 0}" ${bloque ? "disabled" : ""} aria-label="Taux horaire de ${nom}, en dollars par heure (0 : pas de paie à l’heure)"><span aria-hidden="true">$ / h</span></span>
       </div>
     </article>`;
   }).join("") || `<p class="compta-aide">Aucun grade : créez-les d’abord dans la page Grades.</p>`;
@@ -109,30 +112,34 @@ document.getElementById("remu-grades").addEventListener("change", async e => {
 // ---- barèmes : « Dès 20 ventes → 10 000 $ », modifiables sur place, ajout en dernière ligne ----
 function rendreBaremeRemu(type) {
   const bloc = document.querySelector(`.remu-bareme[data-type="${type}"]`);
+  bloc.classList.toggle("remu-lecture", REMU.baremesModifiables === false);
   const paliers = [...(type === "vente" ? REMU.baremesVentes : REMU.baremesLocations)].sort((a, b) => a.seuil - b.seuil);
   const unite = type === "vente" ? "ventes" : "locations";
   const actif = type === "vente" ? "primeVenteActive" : "primeLocationActive";
   const utilisateurs = REMU.grades.filter(g => g[actif]).map(g => echapper(g.libelle));
+  // paliers communs à tous les grades : modifiables par le grade le plus haut seulement (routes/stats.ts)
+  const lecture = REMU.baremesModifiables === false, fige = lecture ? "disabled" : "";
   bloc.innerHTML = `
     <h4 class="remu-bareme-titre">Prime ${type === "vente" ? "ventes" : "locations"}</h4>
     <p class="remu-bareme-grades">${utilisateurs.length ? `Pour : ${utilisateurs.join(", ")}` : "Aucun grade ne la touche pour l’instant."}</p>
+    ${lecture ? `<p class="remu-lecture-note">Ces paliers valent pour tous les grades, le vôtre compris : seul le grade le plus haut peut les modifier.</p>` : ""}
     <ol class="remu-paliers">
       ${paliers.map(p => `<li class="remu-palier" data-palier="${p.id}">
         <span class="remu-palier-des">Dès</span>
-        <input type="number" min="1" step="1" inputmode="numeric" data-palier-champ="seuil" value="${p.seuil}" aria-label="Seuil du palier, en ${unite}">
+        <input type="number" min="1" step="1" inputmode="numeric" data-palier-champ="seuil" value="${p.seuil}" ${fige} aria-label="Seuil du palier, en ${unite}">
         <span class="remu-palier-unite">${unite}</span>
         <span class="remu-palier-fleche">${fleche("droite")}</span>
-        <span class="annonce-montant remu-montant"><input type="number" min="0" step="1000" inputmode="numeric" data-palier-champ="montant" value="${p.montant}" aria-label="Prime de ce palier, en dollars"><span aria-hidden="true">$</span></span>
-        <button type="button" class="actions-icone actions-icone--danger" data-palier-supprimer="${p.id}" aria-label="Supprimer le palier dès ${p.seuil} ${unite}">${gestion.ico("trash")}</button>
+        <span class="annonce-montant remu-montant"><input type="number" min="0" step="1000" inputmode="numeric" data-palier-champ="montant" value="${p.montant}" ${fige} aria-label="Prime de ce palier, en dollars"><span aria-hidden="true">$</span></span>
+        ${lecture ? "" : `<button type="button" class="actions-icone actions-icone--danger" data-palier-supprimer="${p.id}" aria-label="Supprimer le palier dès ${p.seuil} ${unite}">${gestion.ico("trash")}</button>`}
       </li>`).join("") || `<li class="remu-palier-vide">Aucun palier : pas de prime ${unite === "ventes" ? "aux ventes" : "aux locations"}.</li>`}
-      <li class="remu-palier remu-palier-nouveau">
+      ${lecture ? "" : `<li class="remu-palier remu-palier-nouveau">
         <span class="remu-palier-des">Dès</span>
         <input type="number" min="1" step="1" inputmode="numeric" data-nouveau="seuil" placeholder="${(paliers.at(-1)?.seuil || 0) + 20}" aria-label="Seuil du nouveau palier, en ${unite}">
         <span class="remu-palier-unite">${unite}</span>
         <span class="remu-palier-fleche">${fleche("droite")}</span>
         <span class="annonce-montant remu-montant"><input type="number" min="0" step="1000" inputmode="numeric" data-nouveau="montant" placeholder="${(paliers.at(-1)?.montant || 0) + 5000}" aria-label="Prime du nouveau palier, en dollars"><span aria-hidden="true">$</span></span>
         <button type="button" class="btn btn-fantome btn-petit" data-palier-ajouter>Ajouter</button>
-      </li>
+      </li>`}
     </ol>`;
 }
 

@@ -80,6 +80,12 @@ export function gradeAccordable(cle: string, grades: readonly string[], gradeAct
   return !!gradeActeur && grades.includes(gradeActeur) && grades.indexOf(cle) >= grades.indexOf(gradeActeur);
 }
 
+// Comme les permissions : on n'accorde à un grade que des droits qu'on détient soi-même. Renvoie les grades ajoutés à
+// la liste (par rapport à ce qui était enregistré) que l'acteur n'a pas dans sa propre liste ; retirer reste libre, et un
+// droit déjà accordé par un supérieur peut être conservé.
+export const ajoutsNonDetenus = (acteur: DroitsAgenda, propre: readonly string[], avant: readonly string[], apres: readonly string[]): string[] =>
+  acteur.tout ? [] : apres.filter(cle => !avant.includes(cle) && !propre.includes(cle));
+
 export const droitsInclusDansConsultation = (consulter: readonly string[], droits: readonly string[]): boolean =>
   droits.every(cle => consulter.includes(cle));
 
