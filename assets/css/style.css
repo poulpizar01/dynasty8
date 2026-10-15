@@ -228,11 +228,11 @@ button { font-family: inherit; cursor: pointer; }
    anciennes pastilles arrondies au-dessus des titres de hero. */
 .eyebrow {
   display: inline-flex; align-items: center; gap: 10px;
-  font-family: var(--d8-font-ui); font-weight: 500; font-size: 11px;
+  font-family: var(--d8-font-ui); font-weight: 500; font-size: 12px;
   text-transform: uppercase; letter-spacing: 0.28em; color: var(--d8-gold-500);
 }
 label, .eyebrow-label {
-  font-family: var(--d8-font-ui); font-weight: 400; font-size: 10.5px;
+  font-family: var(--d8-font-ui); font-weight: 400; font-size: 12px;
   text-transform: uppercase; letter-spacing: 0.2em; color: var(--d8-muted);
 }
 
@@ -323,10 +323,10 @@ label, .eyebrow-label {
 .nav-principale a {
   position: relative;
   font-family: var(--d8-font-ui);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.07em;
   color: rgba(242, 223, 168, 0.72);
   padding: 6px 2px;
   border-bottom: 2px solid transparent;
@@ -511,7 +511,7 @@ label, .eyebrow-label {
   padding: 0 20px;
   border-radius: var(--d8-r-pill);
   font-family: var(--d8-font-ui);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.16em;
@@ -526,7 +526,7 @@ label, .eyebrow-label {
 .btn-large { height: 52px; padding: 0 34px; font-size: 12.5px; }
 /* petit écran : un long libellé passe à la ligne plutôt que de déborder de la page */
 @media (max-width: 480px) { .btn-large { height: auto; min-height: 52px; padding: 12px 22px; white-space: normal; text-align: center; max-width: 100%; } }
-.btn-petit { height: 34px; padding: 0 16px; font-size: 10.5px; }
+.btn-petit { height: 34px; padding: 0 16px; font-size: 12px; }
 
 .btn-or {
   position: relative;
@@ -577,8 +577,8 @@ label, .eyebrow-label {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--d8-shadow-card);
 }
 .numero-contact-libelle {
-  font-family: var(--d8-font-ui); font-weight: 500; font-size: 11px;
-  color: var(--d8-gold-500); text-transform: uppercase; letter-spacing: 0.28em;
+  font-family: var(--d8-font-ui); font-weight: 500; font-size: 12px;
+  color: var(--d8-gold-500); text-transform: uppercase; letter-spacing: 0.26em;
 }
 .numero-contact-chiffre {
   font-family: var(--d8-font-display); font-style: normal; font-weight: 500;
@@ -612,8 +612,8 @@ label, .eyebrow-label {
   font-family: var(--d8-font-ui);
   font-weight: 500;
   color: var(--d8-gold-500);
-  font-size: 11px;
-  letter-spacing: 0.28em;
+  font-size: 12px;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
   margin-bottom: 26px;
 }
@@ -659,8 +659,8 @@ label, .eyebrow-label {
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .hero-stats span {
-  font-family: var(--d8-font-ui); font-size: 10.5px; color: var(--text-faint);
-  text-transform: uppercase; letter-spacing: 0.2em;
+  font-family: var(--d8-font-ui); font-size: 12px; color: var(--text-faint);
+  text-transform: uppercase; letter-spacing: 0.16em;
 }
 
 /* ---------- hero d'accueil : variante "vitrine produit" (page d'accueil uniquement) ---------- */
@@ -929,8 +929,8 @@ section.section { padding: var(--d8-section-y) 24px; position: relative; z-index
 section.section.serre { padding: clamp(48px, 7vw, 84px) 24px; }
 .section-entete { text-align: center; max-width: 640px; margin: 0 auto 48px; }
 .section-entete .etiquette {
-  font-family: var(--d8-font-ui); font-weight: 500; font-size: 11px;
-  color: var(--d8-gold-500); text-transform: uppercase; letter-spacing: 0.28em;
+  font-family: var(--d8-font-ui); font-weight: 500; font-size: 12px;
+  color: var(--d8-gold-500); text-transform: uppercase; letter-spacing: 0.26em;
 }
 /* Le marbre de fond  reste visible sur le hero et les sections "aérées".
    Les sections denses en contenu (listings, tableaux, formulaires) posent un panneau
@@ -1180,7 +1180,7 @@ section.section.serre {
 .carte-bien .badge-coeur {
   position: absolute; top: 12px; left: 12px; z-index: 2;
   background: var(--accent); color: var(--accent-contrast);
-  font-family: var(--d8-font-ui); font-size: 0.64rem; font-weight: 600; text-transform: uppercase;
+  font-family: var(--d8-font-ui); font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
   padding: 6px 11px; border-radius: var(--d8-r-xs); letter-spacing: 0.14em;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
@@ -1189,7 +1189,7 @@ section.section.serre {
 .carte-bien .badge-transaction {
   position: absolute; top: 12px; right: 12px; z-index: 2;
   background: var(--d8-grad-red); color: #fff3ee;
-  font-family: var(--d8-font-ui); font-size: 0.64rem; font-weight: 500; text-transform: uppercase;
+  font-family: var(--d8-font-ui); font-size: 0.75rem; font-weight: 500; text-transform: uppercase;
   padding: 7px 12px; border-radius: var(--d8-r-xs); letter-spacing: 0.14em;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
@@ -1207,7 +1207,7 @@ section.section.serre {
 }
 .carte-bien .badge-info {
   background: rgba(6, 12, 26, 0.82); border: 1px solid rgba(255, 255, 255, 0.15);
-  color: var(--text); font-family: var(--d8-font-ui); font-size: 0.6rem; font-weight: 500; text-transform: uppercase;
+  color: var(--text); font-family: var(--d8-font-ui); font-size: 0.75rem; font-weight: 500; text-transform: uppercase;
   padding: 5px 10px; border-radius: var(--d8-r-pill); letter-spacing: 0.12em;
 }
 .carte-bien .badge-vip {
@@ -1218,14 +1218,14 @@ section.section.serre {
 
 .carte-bien .corps { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .carte-bien h3 { font-family: var(--d8-font-display); font-weight: 500; font-style: normal; font-size: 1.24rem; line-height: 1.25; margin-bottom: 0; }
-.carte-bien .zone-tag { font-family: var(--d8-font-ui); font-size: 0.68rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.18em; }
+.carte-bien .zone-tag { font-family: var(--d8-font-ui); font-size: 0.75rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.18em; }
 .carte-bien .description { font-size: 0.88rem; margin-bottom: 4px; flex: 1; }
 .carte-bien .pied {
   display: flex; align-items: center; justify-content: space-between;
   margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(201, 165, 92, 0.2);
 }
 .carte-bien .prix { font-family: var(--d8-font-ui); font-weight: 600; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
-.carte-bien .prix span:not(.prix-valeur) { font-size: 0.72rem; font-weight: 400; color: var(--text-faint); }
+.carte-bien .prix span:not(.prix-valeur) { font-size: 0.75rem; font-weight: 400; color: var(--text-faint); }
 
 /* Bloc prix double (Vente + Location) : grille à 2 colonnes séparées par un filet or,
    plutôt que deux "chips" empilées — plus sobre, façon fiche technique de maison de vente. */
@@ -1243,9 +1243,9 @@ section.section.serre {
 }
 .prix-double .prix-ligne + .prix-ligne { padding-left: 12px; padding-right: 0; border-left: 1px solid rgba(201, 165, 92, 0.18); }
 .prix-double .prix-ligne > .prix-etiquette { flex: 0 0 100%; }
-.prix-double .prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { font-size: 0.64rem; font-weight: 400; color: var(--text-faint); }
+.prix-double .prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { font-size: 0.75rem; font-weight: 400; color: var(--text-faint); }
 .prix-etiquette {
-  display: block; font-size: 0.62rem; font-weight: 500; font-family: var(--d8-font-ui);
+  display: block; font-size: 0.75rem; font-weight: 500; font-family: var(--d8-font-ui);
   color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.2em;
 }
 .fiche-prix-double {
@@ -1259,8 +1259,8 @@ section.section.serre {
 }
 .fiche-prix-double .fiche-prix-ligne > .prix-etiquette { flex: 0 0 100%; }
 .fiche-prix-double .fiche-prix-ligne + .fiche-prix-ligne { border-left: 1px solid rgba(201, 165, 92, 0.2); }
-.fiche-prix-double .fiche-prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { font-size: 0.72rem; font-weight: 400; color: var(--text-faint); }
-.fiche-prix-double .prix-etiquette { font-size: 0.72rem; }
+.fiche-prix-double .fiche-prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { font-size: 0.75rem; font-weight: 400; color: var(--text-faint); }
+.fiche-prix-double .prix-etiquette { font-size: 0.75rem; }
 
 /* Le chiffre du prix (et lui seul) reçoit le dégradé "or métallique" — porté par un
    <span class="prix-valeur"> dédié plutôt que par le conteneur directement : le dégradé
@@ -1291,7 +1291,7 @@ section.section.serre {
   flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
   background: var(--d8-grad-gold); color: var(--or-contrast);
   display: inline-flex; align-items: center; justify-content: center;
-  font-family: var(--d8-font-ui); font-size: 0.68rem; font-weight: 700;
+  font-family: var(--d8-font-ui); font-size: 0.75rem; font-weight: 700;
   transform: translateY(1px);
 }
 .encart-contact-etapes strong { color: var(--text); }
@@ -1324,7 +1324,7 @@ section.section.serre {
 .filtre {
   height: 36px; padding: 0 18px; border-radius: var(--d8-r-pill); border: 1px solid rgba(201, 165, 92, 0.28);
   background: transparent; color: var(--text-muted);
-  font-family: var(--d8-font-ui); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+  font-family: var(--d8-font-ui); font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;
   transition: all var(--d8-t);
 }
 .filtre:hover { border-color: rgba(201, 165, 92, 0.5); color: var(--d8-gold-300); }
@@ -1362,7 +1362,7 @@ section.section.serre {
 .d8-filtre2-tab {
   position: relative; z-index: 1; flex: 0 0 auto; display: inline-flex; align-items: center;
   height: 34px; padding: 0 18px; border: 0; border-radius: var(--d8-r-pill); background: transparent;
-  font-family: var(--d8-font-ui); font-weight: 500; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase;
+  font-family: var(--d8-font-ui); font-weight: 500; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: color .2s ease;
 }
 .d8-filtre2-tab:hover { color: var(--d8-gold-300); }
@@ -1370,7 +1370,7 @@ section.section.serre {
 .d8-filtre2-tab:focus-visible { outline: 2px solid var(--d8-gold-300); outline-offset: 2px; }
 
 .d8-filtre2-n {
-  margin-left: 6px; padding: 1px 6px; border-radius: var(--d8-r-pill); font-size: 10px; letter-spacing: 0;
+  margin-left: 6px; padding: 1px 6px; border-radius: var(--d8-r-pill); font-size: 12px; letter-spacing: 0;
   background: rgba(255, 255, 255, .08); color: var(--text-faint);
 }
 .d8-filtre2-tab[aria-selected="true"] .d8-filtre2-n { background: rgba(26, 18, 6, .18); color: var(--or-contrast); }
@@ -1405,7 +1405,7 @@ section.section.serre {
   position: absolute; right: 14px; bottom: 14px; z-index: 2;
   background: rgba(6, 9, 24, 0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(201, 165, 92, 0.35); border-radius: var(--d8-r-pill);
-  padding: 4px 12px; font-family: var(--d8-font-ui); font-size: 0.72rem; font-weight: 600;
+  padding: 4px 12px; font-family: var(--d8-font-ui); font-size: 0.75rem; font-weight: 600;
   letter-spacing: 0.04em; color: var(--d8-gold-300); font-variant-numeric: tabular-nums;
 }
 
@@ -1469,7 +1469,7 @@ section.section.serre {
   display: flex; gap: 20px; overflow-x: auto; padding-bottom: 12px;
   scroll-snap-type: x mandatory;
 }
-.carrousel-scroll .carte-bien { flex: 0 0 300px; width: 300px; scroll-snap-align: start; }
+.carrousel-scroll .carte-bien { flex: 0 0 min(300px, 100%); width: min(300px, 100%); scroll-snap-align: start; }
 
 /* ---------- section "coups de cœur" : filtres + flèches + carte enrichie ---------- */
 
@@ -1477,7 +1477,7 @@ section.section.serre {
 .coeur-filtre {
   display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 18px; border-radius: var(--d8-r-pill);
   border: 1px solid var(--border); background: rgba(255, 255, 255, 0.03); color: var(--text-muted);
-  font-family: var(--d8-font-ui); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.14em;
+  font-family: var(--d8-font-ui); font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em;
   transition: background var(--d8-t), border-color var(--d8-t), color var(--d8-t);
 }
 .coeur-filtre:hover { border-color: var(--d8-gold-400); color: var(--text); }
@@ -1502,7 +1502,7 @@ section.section.serre {
 }
 .carte-coeur-cta {
   display: flex; align-items: center; gap: 6px; margin-top: 6px;
-  font-family: var(--d8-font-ui); font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.16em;
+  font-family: var(--d8-font-ui); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.16em;
   color: var(--gold-strong); transition: gap var(--d8-t);
 }
 .carte-bien:hover .carte-coeur-cta { gap: 10px; }
@@ -1530,7 +1530,7 @@ section.section.serre {
   margin: 16px 0 22px; color: var(--gold);
 }
 .hero-diviseur span:not(.hero-diviseur-losange) { width: 44px; height: 1px; background: var(--border-light); }
-.hero-diviseur-losange { font-size: 0.7rem; }
+.hero-diviseur-losange { font-size: 0.75rem; }
 
 .grille-services { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
 @media (max-width: 980px) { .grille-services { grid-template-columns: repeat(2, 1fr); } }
@@ -1759,9 +1759,9 @@ section.section.serre {
 
 .carte-membre-corps { padding: 22px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .carte-membre-corps h3 { font-family: var(--d8-font-display); font-weight: 500; font-style: normal; font-size: 1.16rem; margin: 0; }
-.carte-membre-poste { color: var(--gold); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+.carte-membre-poste { color: var(--gold); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
 .carte-membre-specialite { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px; }
-.carte-membre-specialite span { display: block; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-faint); margin-bottom: 2px; }
+.carte-membre-specialite span { display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-faint); margin-bottom: 2px; }
 .carte-membre-specialite strong { font-weight: 500; font-size: 0.86rem; }
 
 .carte-membre-cta {
@@ -1841,11 +1841,12 @@ section.section.serre {
 .pied-grille { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 36px; margin-bottom: 40px; padding-top: 28px; }
 @media (max-width: 760px) { .pied-grille { grid-template-columns: 1fr 1fr; } }
 .pied-page h4 {
-  font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--d8-gold-500);
-  margin-bottom: 16px; font-family: var(--d8-font-ui); font-weight: 500;
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--d8-gold-500);
+  margin-bottom: 12px; font-family: var(--d8-font-ui); font-weight: 500;
 }
-.pied-page ul li { margin-bottom: 10px; }
-.pied-page a { color: var(--text-muted); font-size: 0.88rem; }
+.pied-page ul li { margin-bottom: 2px; }
+/* 24 px de haut au moins : une cible qu'on touche au doigt (le texte seul faisait 16 px) */
+.pied-page a { display: inline-block; padding: 4px 0; color: var(--text-muted); font-size: 0.88rem; }
 .pied-page a:hover { color: var(--gold); }
 .pied-bas {
   display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
@@ -1875,7 +1876,7 @@ section.section.serre {
 
 .champ { margin-bottom: 18px; }
 .champ label {
-  display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.2em;
+  display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.2em;
   color: var(--d8-muted); margin-bottom: 8px; font-weight: 500;
 }
 .champ input, .champ select, .champ textarea {
@@ -1981,7 +1982,7 @@ section.section.serre {
 .messagerie-avatar, .messagerie-avatar-img {
   width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; object-fit: cover;
   display: flex; align-items: center; justify-content: center;
-  background: var(--bg-elevated); color: var(--gold-strong); font-size: 0.72rem; font-weight: 600;
+  background: var(--bg-elevated); color: var(--gold-strong); font-size: 0.75rem; font-weight: 600;
 }
 
 .messagerie-lanceur {
@@ -2051,7 +2052,7 @@ section.section.serre {
 .messagerie-avatar-bloc .messagerie-pastille { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border: 2px solid var(--bg-card); }
 .messagerie-contact-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .messagerie-contact-texte strong { font-size: 0.86rem; color: var(--text); }
-.messagerie-contact-apercu { font-size: 0.74rem; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.messagerie-contact-apercu { font-size: 0.75rem; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .messagerie-contact .messagerie-badge { position: static; border: none; flex-shrink: 0; }
 
 /* fenêtres de conversation (plusieurs à la fois, comme MSN) */
@@ -2072,7 +2073,7 @@ section.section.serre {
 }
 .messagerie-fenetre-titre { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .messagerie-fenetre-titre strong { font-size: 0.84rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.messagerie-fenetre-statut-texte { font-size: 0.68rem; color: var(--text-faint); }
+.messagerie-fenetre-statut-texte { font-size: 0.75rem; color: var(--text-faint); }
 .messagerie-fenetre-icone { flex-shrink: 0; background: none; border: none; color: var(--text-faint); font-size: 0.95rem; width: 22px; height: 22px; border-radius: 4px; }
 .messagerie-fenetre-icone:hover { background: rgba(201,165,92,0.18); color: var(--text); }
 
@@ -2084,10 +2085,10 @@ section.section.serre {
   border: 1px solid var(--border); color: var(--text); word-break: break-word;
 }
 .messagerie-mien .messagerie-bulle { background: linear-gradient(135deg, rgba(201,165,92,0.34), rgba(201,165,92,0.2)); border-color: var(--d8-gold-400); }
-.messagerie-heure { font-size: 0.64rem; color: var(--text-faint); margin-top: 2px; padding: 0 2px; }
+.messagerie-heure { font-size: 0.75rem; color: var(--text-faint); margin-top: 2px; padding: 0 2px; }
 .messagerie-clin-oeil-ligne { align-self: center; font-size: 0.76rem; font-style: italic; color: var(--gold-strong); }
 
-.messagerie-fenetre-frappe { padding: 2px 12px 4px; font-size: 0.7rem; color: var(--text-faint); font-style: italic; flex-shrink: 0; }
+.messagerie-fenetre-frappe { padding: 2px 12px 4px; font-size: 0.75rem; color: var(--text-faint); font-style: italic; flex-shrink: 0; }
 
 .messagerie-fenetre-pied { display: flex; align-items: flex-end; gap: 6px; padding: 8px; border-top: 1px solid var(--border); flex-shrink: 0; }
 .messagerie-fenetre-pied textarea {
@@ -2121,7 +2122,7 @@ section.section.serre {
 
 .table-admin { width: 100%; border-collapse: collapse; }
 .table-admin th, .table-admin td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-.table-admin th { color: var(--text-faint); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; }
+.table-admin th { color: var(--text-faint); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
 .table-admin tr:hover td { background: var(--bg-card-hover); }
 .actions-ligne { display: flex; gap: 8px; }
 
@@ -2147,7 +2148,7 @@ section.section.serre {
 .stat-icone--mauve { background: rgba(151, 138, 224, 0.2); }
 .stat-icone img { width: 30px; height: 30px; object-fit: contain; }
 .stat-valeur { font-family: var(--d8-font-ui); font-size: 1.3rem; font-weight: 500; color: var(--text); line-height: 1.2; }
-.stat-libelle { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--gold-strong); font-weight: 500; margin-top: 2px; }
+.stat-libelle { font-size: 12px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--gold-strong); font-weight: 500; margin-top: 2px; }
 .stat-sous-libelle { font-size: 0.78rem; color: var(--text-faint); }
 
 .annonces-outils { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 20px; }
@@ -2228,7 +2229,7 @@ section.section.serre {
 .table-admin .admin-avatar, .table-admin .admin-avatar-img { width: 32px; height: 32px; }
 .admin-compte-profil > div { min-width: 0; }
 .admin-compte-profil strong { display: block; font-size: 0.88rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.admin-compte-grade { font-size: 0.74rem; color: var(--text-faint); }
+.admin-compte-grade { font-size: 0.75rem; color: var(--text-faint); }
 
 
 .modale-fond {
@@ -2244,7 +2245,7 @@ section.section.serre {
 
 .puce {
   display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
-  font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
 }
 .puce-ok { background: rgba(28,156,80,0.18); color: var(--success); }
 .puce-off { background: rgba(232,83,74,0.16); color: var(--danger-strong); }
@@ -2304,7 +2305,7 @@ section.section.serre {
   bottom: 4px;
   background: rgba(23,25,15,0.75);
   color: #fbfaf6;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 3px 6px;
@@ -2319,7 +2320,7 @@ section.section.serre {
   border-radius: 50%;
   background: rgba(23,25,15,0.75);
   color: #fbfaf6;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -2455,7 +2456,7 @@ section.section.serre {
 .admin-barre-laterale a.logo { margin-bottom: 12px !important; }
 .admin-barre-laterale a.logo img { height: auto; width: 150px; max-width: 100%; }
 .admin-nav-groupe {
-  margin: 0; padding: 14px 14px 6px; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+  margin: 0; padding: 14px 14px 6px; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase;
   color: var(--d8-gold-600); font-weight: 500;
 }
 .admin-barre-laterale button.lien-onglet, .admin-barre-laterale a.lien-onglet {
@@ -2475,7 +2476,7 @@ section.section.serre {
 .admin-aide-titre { display: flex; align-items: center; gap: 8px; color: var(--gold-light); }
 .admin-barre-laterale .admin-aide a { display: inline; width: auto; padding: 0; font-size: 0.8rem; color: var(--gold-strong); }
 .admin-aide-titre .ico { width: 16px; height: 16px; }
-.admin-compte-grade { text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.68rem; color: var(--gold); }
+.admin-compte-grade { text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.75rem; color: var(--gold); }
 #bouton-deconnexion .ico { width: 14px; height: 14px; }
 
 /* La zone de contenu ne doit jamais déborder du viewport : les tableaux larges
@@ -2513,7 +2514,7 @@ section.section.serre {
 
 /* ---- tableau encadré ---- */
 .carte-table { border: 1px solid var(--border); border-radius: var(--radius); background: rgba(14, 27, 51, 0.6); }
-.carte-table .table-admin th { background: rgba(6, 12, 26, 0.35); font-size: 0.69rem; letter-spacing: 0.08em; font-weight: 500; }
+.carte-table .table-admin th { background: rgba(6, 12, 26, 0.35); font-size: 0.75rem; letter-spacing: 0.08em; font-weight: 500; }
 .carte-table .table-admin th, .carte-table .table-admin td { padding: 9px 14px; border-bottom-color: rgba(201, 165, 92, 0.18); }
 .carte-table .table-admin tr:last-child td { border-bottom: none; }
 .table-admin tr.ligne-coup-de-coeur td:first-child { box-shadow: none; }
@@ -2531,7 +2532,7 @@ section.section.serre {
 .actions-icone--rond .ico { width: 15px; height: 15px; }
 
 /* ---- badges de statut (point + libellé) ---- */
-.puce { font-size: 0.66rem; letter-spacing: 0.12em; font-weight: 500; padding: 0 10px; height: 24px; }
+.puce { font-size: 0.75rem; letter-spacing: 0.12em; font-weight: 500; padding: 0 10px; height: 24px; }
 .puce-ok::before, .puce-off::before, .puce-masquee::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .puce-ok { color: #8fe0ad; background: rgba(28, 156, 80, 0.16); }
 .puce-masquee { background: rgba(154, 166, 190, 0.14); color: var(--text-faint); }
@@ -2551,11 +2552,11 @@ section.section.serre {
 .carte-admin-bien-fav {
   position: absolute; top: 10px; left: 10px; z-index: 1; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px;
   border-radius: 999px; background: linear-gradient(135deg, var(--d8-gold-600), var(--d8-gold-300)); color: var(--or-contrast);
-  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500;
+  font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500;
 }
 .carte-admin-bien-fav .ico { width: 13px; height: 13px; }
 .carte-admin-bien-categorie {
-  position: absolute; bottom: 10px; left: 12px; z-index: 1; font-size: 10.5px; letter-spacing: 0.18em;
+  position: absolute; bottom: 10px; left: 12px; z-index: 1; font-size: 12px; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--gold-light); font-weight: 500;
 }
 .carte-admin-bien-corps { padding: 12px 14px 14px; gap: 10px; }
@@ -2705,7 +2706,7 @@ body.page-agents .ecran-connexion {
 .page-accueil .hero-indice {
   position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 3;
   display: flex; flex-direction: column; align-items: center; gap: 10px;
-  font-family: var(--d8-font-ui); font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+  font-family: var(--d8-font-ui); font-size: 12px; letter-spacing: 0.26em; text-transform: uppercase;
   color: var(--d8-gold-500); opacity: 0.85; transition: opacity var(--d8-t), color var(--d8-t);
 }
 .page-accueil .hero-indice:hover { opacity: 1; color: var(--d8-gold-300); }
@@ -2720,10 +2721,14 @@ body.page-agents .ecran-connexion {
   .page-accueil .hero-accueil .hero-stats { max-width: none; }
 }
 @media (max-width: 560px) {
-  .page-accueil .hero-accueil .hero-stats { flex-direction: column; gap: 16px; }
-  .page-accueil .hero-accueil .hero-stats div { padding: 0; }
+  .page-accueil .hero-accueil .hero-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 36px; }
+  .page-accueil .hero-accueil .hero-stats div { padding: 0; white-space: normal; }
   .page-accueil .hero-accueil .hero-stats div + div::before { display: none; }
+  .page-accueil .hero-accueil .hero-stats strong { font-size: 1.75rem; }
+  .page-accueil .hero-accueil .hero-stats span { display: block; letter-spacing: 0.08em; line-height: 1.35; margin-top: 2px; }
   .page-accueil .hero-indice { display: none; }
+  /* le logo animé passe derrière le texte une fois la colonne unique : à peine visible, le texte reste lisible */
+  .page-accueil .hero-logo-canvas { opacity: 0.22; }
 }
 
 /* ---- 1. accès rapide : collé au hero, comme sa suite naturelle ---- */
@@ -2806,6 +2811,8 @@ body.page-agents .ecran-connexion {
 .pied-grille { gap: 44px; padding-top: 36px; margin-bottom: 44px; }
 .pied-page .logo img.logo-pied { height: 64px; }
 .pied-page .pied-grille > div:first-child p { max-width: 34ch; font-size: 0.9rem; line-height: 1.7; }
+/* téléphone : présentation de l’agence sur toute la largeur (dans une demi-colonne, elle tenait sur 12 lignes de 2 mots), liens sur deux colonnes ; gouttière plus étroite */
+@media (max-width: 760px) { .pied-grille { column-gap: 24px; row-gap: 32px; } .pied-grille > div:first-child { grid-column: 1 / -1; } }
 .pied-page ul li { margin-bottom: 12px; }
 .pied-page ul a { position: relative; transition: color var(--d8-t), padding-left var(--d8-t); }
 .pied-page ul a:hover { padding-left: 12px; }
@@ -2831,14 +2838,14 @@ body.page-agents .ecran-connexion {
 @media (max-width: 860px) { .fiche-bien-grille { grid-template-columns: 1fr; gap: 32px; } }
 
 .fiche-entete { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
-.fiche-ariane { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-family: var(--d8-font-ui); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-faint); }
+.fiche-ariane { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-family: var(--d8-font-ui); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-faint); }
 .fiche-ariane a { color: var(--text-faint); transition: color var(--d8-t); }
 .fiche-ariane a:hover { color: var(--d8-gold-300); }
 .fiche-ariane > span:last-child { color: var(--d8-gold-400); }
 .fiche-partager {
   display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: var(--d8-r-pill);
   border: 1px solid var(--border); background: rgba(255, 255, 255, 0.03); color: var(--text-muted);
-  font-family: var(--d8-font-ui); font-size: 10.5px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase;
+  font-family: var(--d8-font-ui); font-size: 12px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase;
   transition: border-color var(--d8-t), color var(--d8-t), background var(--d8-t);
 }
 .fiche-partager svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -2854,7 +2861,7 @@ body.page-agents .ecran-connexion {
   display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: var(--d8-r-pill);
   background: rgba(6, 9, 24, 0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(201, 165, 92, 0.35); color: var(--d8-gold-300);
-  font-family: var(--d8-font-ui); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  font-family: var(--d8-font-ui); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
   opacity: 0; transform: translateY(4px); transition: opacity var(--d8-t), transform var(--d8-t);
 }
 .fiche-visuel-agrandir svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
@@ -2879,14 +2886,14 @@ body.page-agents .ecran-connexion {
 .fiche-fiche h1 { font-size: clamp(2rem, 3.6vw, 2.9rem); line-height: 1.08; margin-bottom: 18px; }
 .fiche-indispo { color: var(--danger-strong); font-weight: 500; font-size: 0.92rem; margin: 0 0 14px; }
 .fiche-fiche .fiche-prix-double .fiche-prix-ligne { font-size: 1.5rem; padding: 16px 20px; }
-.fiche-fiche .fiche-prix-double .fiche-prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { flex: 0 0 100%; font-size: 0.72rem; }
+.fiche-fiche .fiche-prix-double .fiche-prix-ligne > span:not(.prix-etiquette):not(.prix-valeur) { flex: 0 0 100%; font-size: 0.75rem; }
 dl.fiche-carac {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin: 18px 0 22px; padding: 0;
   background: rgba(6, 12, 26, 0.35); border: 1px solid var(--border); border-radius: var(--d8-r-sm); overflow: hidden;
 }
 dl.fiche-carac > div { padding: 14px 18px; border-right: 1px solid rgba(201, 165, 92, 0.14); border-bottom: 1px solid rgba(201, 165, 92, 0.14); text-transform: none; letter-spacing: 0; font-size: inherit; }
 dl.fiche-carac > div:nth-child(3n) { border-right: 0; }
-dl.fiche-carac dt { font-family: var(--d8-font-ui); font-size: 0.66rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 5px; }
+dl.fiche-carac dt { font-family: var(--d8-font-ui); font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 5px; }
 dl.fiche-carac dd { margin: 0; font-family: var(--d8-font-display); font-size: 1.12rem; color: var(--d8-gold-300); line-height: 1.2; }
 .fiche-carac-lien { color: var(--d8-gold-300); border-bottom: 1px solid rgba(201, 165, 92, 0.4); transition: border-color var(--d8-t), color var(--d8-t); }
 .fiche-carac-lien:hover { color: var(--d8-cream); border-color: var(--d8-cream); }
@@ -2927,7 +2934,7 @@ body.visionneuse-ouverte { overflow: hidden; }
 .visionneuse-pied { display: flex; align-items: baseline; justify-content: center; gap: 18px; flex-wrap: wrap; padding: 10px 24px 0; font-family: var(--d8-font-ui); }
 .visionneuse-titre { font-family: var(--d8-font-display); font-size: 1.15rem; color: var(--d8-cream); }
 .visionneuse-compteur { font-size: 0.78rem; font-weight: 600; color: var(--d8-gold-300); font-variant-numeric: tabular-nums; letter-spacing: 0.06em; }
-.visionneuse-aide { font-size: 0.72rem; color: var(--text-faint); letter-spacing: 0.04em; }
+.visionneuse-aide { font-size: 0.75rem; color: var(--text-faint); letter-spacing: 0.04em; }
 .visionneuse-vignettes { display: flex; gap: 8px; justify-content: center; padding: 12px 24px 18px; overflow-x: auto; }
 .visionneuse-vignettes button { flex: 0 0 auto; width: 74px; height: 52px; padding: 0; border-radius: 6px; overflow: hidden; border: 2px solid rgba(201, 165, 92, 0.25); background: var(--bg-card); opacity: 0.6; transition: opacity var(--d8-t), border-color var(--d8-t); }
 .visionneuse-vignettes button:hover, .visionneuse-vignettes button.actif { opacity: 1; }
@@ -2960,7 +2967,7 @@ tr:hover .compta-supprimer-ligne, .compta-supprimer-ligne:focus-visible { opacit
 
 /* Comptabilité → DOT : réglage « coller à partir de la ligne » à côté du bouton de copie */
 .dot-copie-outils { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.dot-copie-libelle { font-family: var(--d8-font-ui); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
+.dot-copie-libelle { font-family: var(--d8-font-ui); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
 .dot-copie-ligne { width: 72px; text-align: center; }
 /* menus habillés : le texte s'arrête avant le chevron (à 16 px du bord) au lieu de passer dessous */
 .d8-select-enveloppe select { padding-right: 44px !important; text-overflow: ellipsis; }
