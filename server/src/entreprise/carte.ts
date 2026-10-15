@@ -12,6 +12,7 @@ import type { Request, RequestHandler, Response } from 'express';
 import { requeteHttps } from '../socle/adresses.js';
 import { config, fail } from '../socle/config.js';
 import { limiter } from '../socle/limites.js';
+import { cspCarte, estTexte, masquerAdresse } from './carte-masque.js';
 import { webmapOrigine } from './parametres.js';
 
 // sous-domaine de la carte (infrastructure : nginx, certificat) ; vide : carte désactivée. L'adresse de la carte
@@ -38,7 +39,8 @@ const lireCorps = (req: Request) => new Promise<Buffer>((ok, ko) => {
 // adresse de la carte (absolue ou relative à sa racine) → la même sur le sous-domaine
 const versSousDomaine = (lien: string, origineCarte: string) => {
   try { const u = new URL(lien, origineCarte); if (u.origin === origineCarte) return `${carte!.url}${u.pathname}${u.search}${u.hash}`; } catch { /* laissé tel quel */ }
-  return lien;
+  // autre forme de l'adresse réelle (http://, nom d'hôte dans un paramètre…) : masquée elle aussi
+  return masquerAdresse(lien, origineCarte, carte!.url);
 };
 
 // Ce relais passe avant tout le socle, limites de requêtes comprises : il a les siennes. Par adresse (une carte charge
@@ -62,7 +64,9 @@ export const relaisCarte: RequestHandler = (req, res, next) => limite(req, res, 
 });
 
 async function relayer(req: Request, res: Response): Promise<void> {
-  res.set({ 'Content-Security-Policy': `frame-ancestors ${ancetres.join(' ')}`, 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', Vary: 'Sec-Fetch-Dest' });
+  // aucun tiers contacté depuis la carte (carte-masque.ts), et rien ne part vers l'adresse réelle même si un script la
+  // reconstruisait : le navigateur n'a le droit de joindre que le sous-domaine
+  res.set({ 'Content-Security-Policy': cspCarte(ancetres), 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', Vary: 'Sec-Fetch-Dest' });
   // La carte se consulte sur le site, dans son cadre : ouverte directement dans un onglet (adresse du sous-domaine
   // récupérée dans la page), elle renvoie à la page WebMap du site. Sec-Fetch-Dest vaut « document » pour un onglet,
   // « iframe » pour le cadre ; un navigateur qui ne l'envoie pas (ordinateur en jeu ancien) passe, pour ne jamais y
@@ -93,10 +97,10 @@ async function relayer(req: Request, res: Response): Promise<void> {
   // redirection de la carte : suivie vers son équivalent sur le sous-domaine, jamais l'adresse réelle
   if ([301, 302, 303, 307, 308].includes(statut)) { distante.resume(); res.redirect(statut, versSousDomaine(entete('location') || '/', origineCarte)); return; }
   const type = entete('content-type') || 'application/octet-stream';
-  const texte = /text\/html|javascript|text\/css|json/i.test(type);
+  const texte = estTexte(type);
   // l'adresse réelle de la carte n'apparaît pas dans ce que reçoit le navigateur : un texte est lu en entier (borné)
-  // pour la réécrire, avant d'envoyer quoi que ce soit
-  const contenu = texte && req.method !== 'HEAD' ? (await lireBorne(distante, TEXTE_MAX)).toString('utf8').split(origineCarte).join(carte!.url) : null;
+  // pour la réécrire sous toutes ses formes, avant d'envoyer quoi que ce soit
+  const contenu = texte && req.method !== 'HEAD' ? masquerAdresse((await lireBorne(distante, TEXTE_MAX)).toString('utf8'), origineCarte, carte!.url) : null;
   res.status(statut).type(type);
   for (const nom of ['cache-control', 'etag', 'last-modified', 'content-range', 'accept-ranges', ...(texte ? [] : ['content-length'])]) { const v = entete(nom); if (v) res.set(nom, v); }
   // cookies de la carte : reposés sur le sous-domaine (sans Domain, qui viserait celui de la carte réelle)
