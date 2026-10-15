@@ -96,17 +96,19 @@ function texteMessage(discordId: string, ev: { titre: string; jour: string; heur
     ...(ev.notes ? [echapperMarkdown(ev.notes)] : []), '', `*Ajouté à ton agenda par ${echapperMarkdown(auteur)} · ${echapperMarkdown(site.nom)}*`].join('\n').slice(0, 2000);
 }
 
-async function prevenir(discordId: string, nom: string, ev: Parameters<typeof texteMessage>[1], auteur: string): Promise<Envoi> {
+// salons du serveur, lus une seule fois pour tous les invités d'une même requête (pas un appel par personne)
+const lireSalons = (): Promise<unknown> | null => {
+  if (!config.discord.botToken || !idsRegles('agenda_categories_tickets').length) return null;
+  return appelBot('GET', `/guilds/${config.discord.guildId}/channels`).catch(e => { console.error('[agenda] salons du serveur :', pourquoi(e)); return null; });
+};
+
+async function prevenir(discordId: string, nom: string, ev: Parameters<typeof texteMessage>[1], auteur: string, salons: Promise<unknown> | null): Promise<Envoi> {
   const rien = (avertissement: string): Envoi => ({ prevenu: '', discordSalonId: null, discordMessageId: null, avertissement });
   if (!config.discord.botToken) return rien(`${nom} n’a pas été prévenu sur Discord : le bot n’est pas relié au site.`);
   const contenu = { content: texteMessage(discordId, ev, auteur) };
   // 1. son ticket : salon d'une des catégories réglées où il a une permission à son nom
   const categories = idsRegles('agenda_categories_tickets');
-  let ticket: string | null = null;
-  if (categories.length) {
-    try { ticket = choisirTicket(await appelBot('GET', `/guilds/${config.discord.guildId}/channels`), discordId, categories); }
-    catch (e) { console.error('[agenda] salons du serveur :', pourquoi(e)); }
-  }
+  const ticket = salons ? choisirTicket(await salons, discordId, categories) : null;
   if (ticket) {
     // ticket trouvé mais refusé : on le dit plutôt que d'écrire ailleurs en silence (droits du bot à corriger)
     try { return { prevenu: 'ticket', discordSalonId: ticket, discordMessageId: await posterMessage(ticket, contenu, [discordId]), avertissement: '' }; }
@@ -121,6 +123,36 @@ async function prevenir(discordId: string, nom: string, ev: Parameters<typeof te
     const cause = e instanceof ErreurDiscord && e.statut === 403 ? 'ses messages privés sont fermés' : pourquoi(e);
     return rien(`${nom} n’a pas de ticket ouvert et n’a pas pu être prévenu en message privé (${cause}) : prévenez-le vous-même.`);
   }
+}
+
+// Prévenir les invités sans faire attendre la page indéfiniment : quatre à la fois, et au bout de DELAI_REPONSE_MS la
+// réponse part avec ceux déjà prévenus ; les autres continuent en arrière-plan (leur état s'enregistre quand même).
+// Sinon, avec beaucoup d'invités ou un Discord lent, la page dépassait le délai du serveur web : erreur affichée alors
+// que l'événement était créé, et l'agent le recréait en double.
+const EN_PARALLELE = 4, DELAI_REPONSE_MS = 20_000;
+async function prevenirInvitations(invitations: InvitationAgenda[], ev: Parameters<typeof texteMessage>[1], auteur: string) {
+  const envois: { nom: string; prevenu: Envoi['prevenu']; avertissement: string }[] = [];
+  if (!invitations.length) return { envois, enCours: 0 };
+  const salons = lireSalons(), file = [...invitations];
+  const travailleur = async () => {
+    for (let inv = file.shift(); inv; inv = file.shift()) {
+      const invitation = inv;
+      try {
+        const envoi = await prevenir(invitation.discordId, invitation.nom, ev, auteur, salons);
+        await prisma.invitationAgenda.updateMany({
+          where: { id: invitation.id },   // updateMany : l'invitation a pu être retirée entre-temps
+          data: { prevenu: envoi.prevenu, discordSalonId: envoi.discordSalonId, discordMessageId: envoi.discordMessageId },
+        });
+        envois.push({ nom: invitation.nom, prevenu: envoi.prevenu, avertissement: envoi.avertissement });
+      } catch (e) { console.error('[agenda] invitation non prévenue :', e); envois.push({ nom: invitation.nom, prevenu: '', avertissement: `${invitation.nom} n’a pas pu être prévenu sur Discord : prévenez-le vous-même.` }); }
+    }
+  };
+  const tous = Promise.all(Array.from({ length: Math.min(EN_PARALLELE, invitations.length) }, travailleur));
+  let minuteur: NodeJS.Timeout | undefined;
+  await Promise.race([tous, new Promise(r => { minuteur = setTimeout(r, DELAI_REPONSE_MS); })]);
+  clearTimeout(minuteur);
+  // copie : la liste continue de se remplir en arrière-plan
+  return { envois: [...envois], enCours: invitations.length - envois.length };
 }
 
 async function prevenirRetrait(invitation: InvitationAgenda, titre: string): Promise<string> {
@@ -286,7 +318,7 @@ agenda.post('/api/agenda', ...valide, traiter(async (req, res) => {
   const auteur = req.compte.nom || req.compte.pseudo;
 
   const valeurs = b.invites_employe_ids;
-  if (valeurs !== undefined && (!Array.isArray(valeurs) || valeurs.some(id => entier(id) === null))) {
+  if (valeurs !== undefined && (!Array.isArray(valeurs) || valeurs.length > 100 || valeurs.some(id => entier(id) === null))) {
     throw new Refus('La liste des personnes à inviter est invalide.');
   }
   const ids: number[] = [];
@@ -318,18 +350,11 @@ agenda.post('/api/agenda', ...valide, traiter(async (req, res) => {
     },
     include: { invitations: true },
   });
-  const envois: { nom: string; prevenu: Envoi['prevenu']; avertissement: string }[] = [];
-  for (const invitation of e.invitations) {
-    const envoi = await prevenir(invitation.discordId, invitation.nom, { ...d, jour: String(b.jour) }, auteur);
-    await prisma.invitationAgenda.update({
-      where: { id: invitation.id },
-      data: { prevenu: envoi.prevenu, discordSalonId: envoi.discordSalonId, discordMessageId: envoi.discordMessageId },
-    });
-    envois.push({ nom: invitation.nom, prevenu: envoi.prevenu, avertissement: envoi.avertissement });
-  }
+  const { envois, enCours } = await prevenirInvitations(e.invitations, { ...d, jour: String(b.jour) }, auteur);
   res.status(201).json({
     id: e.id,
     notifications: envois.map(({ nom, prevenu }) => ({ nom, prevenu })),
+    en_cours: enCours,
     avertissements: envois.map(x => x.avertissement).filter(Boolean),
   });
 }));
@@ -406,24 +431,15 @@ agenda.put('/api/agenda/:id', ...valide, traiter(async (req, res) => {
       : [];
   });
   const auteur = req.compte.nom || req.compte.pseudo;
-  const avertissements: string[] = [];
-  const envois: { nom: string; prevenu: Envoi['prevenu'] }[] = [];
-  for (const invitation of ajoutes) {
-    const envoi = await prevenir(invitation.discordId, invitation.nom, { ...d, jour: String(b.jour) }, auteur);
-    await prisma.invitationAgenda.update({
-      where: { id: invitation.id },
-      data: { prevenu: envoi.prevenu, discordSalonId: envoi.discordSalonId, discordMessageId: envoi.discordMessageId },
-    });
-    envois.push({ nom: invitation.nom, prevenu: envoi.prevenu });
-    if (envoi.avertissement) avertissements.push(envoi.avertissement);
-  }
+  const { envois, enCours } = await prevenirInvitations(ajoutes, { ...d, jour: String(b.jour) }, auteur);
+  const avertissements = envois.map(x => x.avertissement).filter(Boolean);
   let annulations = 0;
   for (const invitation of retires) {
     const avertissement = await prevenirRetrait(invitation, e.titre);
     if (!avertissement && invitation.prevenu) annulations++;
     if (avertissement) avertissements.push(avertissement);
   }
-  res.json({ ok: true, notifications: envois, annulations, avertissements });
+  res.json({ ok: true, notifications: envois.map(({ nom, prevenu }) => ({ nom, prevenu })), en_cours: enCours, annulations, avertissements });
 }));
 
 agenda.delete('/api/agenda/:id', ...valide, traiter(async (req, res) => {

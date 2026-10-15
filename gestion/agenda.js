@@ -671,6 +671,8 @@ document.getElementById("formulaire-evenement").addEventListener("submit", async
     const resume = [
       tickets && `${tickets} ${tickets === 1 ? "invitation envoyée dans un ticket" : "invitations envoyées dans des tickets"} Discord`,
       prives && `${prives} ${prives === 1 ? "invitation envoyée en message privé" : "invitations envoyées en messages privés"} Discord`,
+      // Discord lent ou beaucoup d'invités : la page n'attend pas, les dernières invitations partent juste après
+      reponse?.en_cours && `${reponse.en_cours} ${reponse.en_cours === 1 ? "invitation encore en cours d’envoi" : "invitations encore en cours d’envoi"} sur Discord`,
       reponse?.annulations && `${reponse.annulations} ${reponse.annulations === 1 ? "annulation signalée" : "annulations signalées"} sur Discord`,
     ].filter(Boolean).join(" et ");
     const action = id ? "Événement enregistré" : "Événement créé";
