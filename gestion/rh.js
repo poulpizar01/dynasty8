@@ -314,6 +314,7 @@ const ETATS_ARRIVEE = {
   existante: { classe: 'neutre', libelle: 'Avait déjà une fiche' },
   refusee: { classe: 'alerte', libelle: 'À traiter' },
   ecartee: { classe: 'neutre', libelle: 'Écartée' },
+  ecartee_rh: { classe: 'neutre', libelle: 'Écartée' },   // écartée dans RH : un renvoi du bot ne la recrée pas
 };
 const CHAMPS_REGLAGES_BOT = {
   questionIdentite: 'rh-bot-q-identite', questionIdEmploye: 'rh-bot-q-id-employe', questionPrenom: 'rh-bot-q-prenom',

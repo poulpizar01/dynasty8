@@ -191,8 +191,9 @@ model Employe {
 
 // Candidature reçue du bot Discord (webhook recruitment.updated), une ligne par ticket : un renvoi du même ticket ne
 // crée jamais une deuxième fiche. resultat : creee | existante | refusee (« à traiter », réglage manquant…) |
-// attente (embauche constatée en jeu, à approuver) | ecartee. « reponses » (qui peuvent contenir téléphone et RIB) n'est
-// gardé que pour un ticket en suspens, 30 jours au plus.
+// attente (embauche constatée en jeu, à approuver) | ecartee (refusée dans Discord) | ecartee_rh (écartée dans RH :
+// un renvoi du bot ne la recrée pas). « reponses » (qui peuvent contenir téléphone et RIB) n'est gardé que pour un
+// ticket en suspens, 30 jours au plus.
 model ArriveeBot {
   id        Int      @id @default(autoincrement())
   ticketId  String   @unique @map("ticket_id") @db.VarChar(100)

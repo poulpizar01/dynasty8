@@ -284,7 +284,13 @@ export async function recevoirCandidature(e: EvenementBot): Promise<void> {
     return;
   }
   if (p.status !== 'ACCEPTED') return;
-  // abouti (fiche créée ou déjà existante) : jamais repris ; écarté puis de nouveau accepté dans Discord : retraité
+  // écartée à la main dans RH : la décision du site tient, même si le bot renvoie le ticket comme accepté (il le fait à
+  // chaque changement : recruteur, pièce jointe…) ; RH est prévenue au lieu d'une fiche créée en silence
+  if (deja?.resultat === 'ecartee_rh') {
+    await prisma.arriveeBot.update({ where: { id: deja.id }, data: { motif: 'Écartée dans Ressources humaines, mais de nouveau acceptée dans Discord : à vérifier (créez la fiche à la main si besoin).', evenementLe: quand } });
+    return;
+  }
+  // abouti (fiche créée ou déjà existante) : jamais repris ; refusé puis de nouveau accepté dans Discord : retraité
   if (deja && !EN_SUSPENS.includes(deja.resultat) && deja.resultat !== 'ecartee') return;
   const reponses = lireReponses(p.answers);
   const id = identite(reponses, lireReglagesBot());
@@ -309,7 +315,7 @@ export async function traiterEnSuspens(id: number): Promise<Resultat> {
 }
 
 export async function ecarter(id: number): Promise<void> {
-  const { count } = await prisma.arriveeBot.updateMany({ where: { id, resultat: { in: EN_SUSPENS } }, data: { resultat: 'ecartee', motif: 'Écartée dans Ressources humaines.', reponses: Prisma.DbNull } });
+  const { count } = await prisma.arriveeBot.updateMany({ where: { id, resultat: { in: EN_SUSPENS } }, data: { resultat: 'ecartee_rh', motif: 'Écartée dans Ressources humaines.', reponses: Prisma.DbNull } });
   if (!count) {
     if (!await prisma.arriveeBot.findUnique({ where: { id } })) throw new Refus('Candidature introuvable.', 404);
     throw new Refus('Cette candidature a déjà été traitée.', 409);
