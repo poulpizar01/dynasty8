@@ -3,7 +3,7 @@
 // entière, sans que rien ne le signale à l'écran.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyserCSV, analyserLignesSheet, semaineArchivable, semaineParis } from '../src/entreprise/stats/tableur.js';
+import { analyserCSV, analyserLignesSheet, gradesInconnus, semaineArchivable, semaineParis } from '../src/entreprise/stats/tableur.js';
 
 // libellés de grades créés dans la page Grades (exemple)
 const GRADES = ['Patron', 'Co Patron', 'Manager', 'Référent Immobilier', 'Agent Expert', 'Agent', 'Agent Novice', 'Stagiaire'];
@@ -37,7 +37,7 @@ test("lignes du Sheet : seules les colonnes utiles sont retenues", () => {
 
   assert.equal(lignes.length, 2, "la ligne sans nom est écartée");
   assert.deepEqual(lignes[0], {
-    ligneSheet: 2, nom: "Jean Dupont", nomNormalise: "jean dupont",
+    ligneSheet: 2, nom: "Jean Dupont", nomNormalise: "jean dupont", pseudo: "",
     grade: "Agent", nbVentes: 12, nbLocations: 3,
   });
   assert.equal(lignes[1].nom, "Marie Curie", "espaces retirés");
@@ -71,6 +71,26 @@ test("titres de section et ligne d'en-tête ne sont pas des agents ; grade écri
     ["Caleb Duval", "Agent Expert"],
     ["Ava Snow", "Référent Immobilier"],
   ]);
+});
+test("grade inconnu du site : ligne signalée, titres et en-têtes jamais", () => {
+  const ligne = (nom: string, grade: string, ventes = "0", locations = "0") => {
+    const l = new Array(16).fill("");
+    l[3] = nom; l[4] = grade; l[11] = ventes; l[12] = locations;
+    return l;
+  };
+  assert.deepEqual(gradesInconnus([
+    ligne("Identité RP", "Grade", "Nombre d'Achat", "Nombre de Location"), // en-tête : compteurs non numériques
+    ligne("Directions", ""),                       // titre de section
+    ligne("Jean Dupont", "Agent", "12", "3"),      // grade connu
+    ligne("Ana Lopez", "Agent confirmé", "4", ""), // grade absent du site
+    ligne("Léo Marin", "Agent confirmé", "1 200", "0"),
+    ligne("Tom Ray", "Formateur", "", ""),
+  ], GRADES), [{ grade: "Agent confirmé", lignes: 2 }, { grade: "Formateur", lignes: 1 }]);
+});
+test("pseudo Discord de la colonne C gardé pour le rattachement", () => {
+  const l = new Array(16).fill("");
+  l[2] = "  .kpz "; l[3] = "Andrew Finley"; l[4] = "Patron";
+  assert.equal(lire([l])[0].pseudo, ".kpz");
 });
 test("semaines du site : lundi 00:00 → dimanche 23:59 heure de Paris, été comme hiver", () => {
   // Été (UTC+2) : dimanche 4 octobre 2026, 23:59 à Paris = 21:59 UTC.

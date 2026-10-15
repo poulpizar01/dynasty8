@@ -8,6 +8,7 @@ import { body, intParam, permission } from '../../socle/http.js';
 import { arriveesBot, droitsRh, ecarter, fichePublique, gradesEmployes, lireChamps, nomComplet, Refus, refusUnicite, reglerBot, traiterEnSuspens, trierEmployes, verifierHierarchie, verifierUnicite, type DroitRh } from '../rh.js';
 import { reglage } from '../../socle/reglages.js';
 import { traiter } from '../refus.js';
+import { relireTableur } from '../stats/tableur.js';
 import { rattacherVentes } from '../stats/ventes.js';
 import { jourValide, versDate } from '../texte.js';
 
@@ -70,6 +71,7 @@ rh.post('/api/rh/employes', ...voir, exiger('creer', 'Vous n’avez pas le droit
   await verifierUnicite(champs);
   const e = await prisma.employe.create({ data: { statut: 'actif', ...champs } as Parameters<typeof prisma.employe.create>[0]['data'] }).catch(refusUnicite);
   await rattacherVentes(e);
+  relireTableur();
   res.status(201).json({ id: e.id });
 }));
 
@@ -89,6 +91,7 @@ rh.patch('/api/rh/employes/:id', ...voir, exiger('modifier', 'Vous n’avez pas 
   if (!Object.keys(champs).length) throw new Refus('Rien à modifier.');
   await verifierUnicite(champs, id);
   await rattacherVentes(await prisma.employe.update({ where: { id }, data: champs }).catch(refusUnicite));
+  relireTableur();
   res.json({ ok: true });
 }));
 

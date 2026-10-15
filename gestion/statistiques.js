@@ -87,10 +87,12 @@ async function chargerSynchro() {
     const bouton = $st('bouton-synchroniser-sheet');
     bouton.disabled = !r.configure;
     const e = r.etat;
-    etatLigne.classList.toggle('stats-erreur', e?.statut === 'erreur');
+    etatLigne.classList.toggle('stats-erreur', e?.statut === 'erreur' || !!e?.avertissement);
     etatLigne.textContent = !r.configure ? 'Pas encore réglé : il faut le lien du Google Sheets.'
       : !e || e.statut === 'desactive' ? 'Pas encore lu.'
         : e.statut === 'erreur' ? `La dernière lecture a échoué (${dateHeureStats(e.derniereSync)}) : ${e.erreur}`
+          // lignes écartées (grade inconnu du site) : nommées, sinon l'agent disparaîtrait des primes sans rien dire
+          : e.avertissement ? `Lu le ${dateHeureStats(e.derniereSync)} : ${pluriel(e.nbLignes, 'ligne', 'lignes')}. ${e.avertissement}`
           // lecture réussie sans aucun agent : presque toujours le mauvais onglet du classeur
           : !e.nbLignes ? `Lu le ${dateHeureStats(e.derniereSync)}, mais aucune ligne d’agent trouvée : le lien vise sans doute le mauvais onglet. Ouvrez l’onglet du récapitulatif dans Google Sheets, copiez l’adresse (elle finit par « gid=… ») et collez-la dans Paramètres.`
           : `Lu le ${dateHeureStats(e.derniereSync)} : ${pluriel(e.nbLignes, 'ligne', 'lignes')}, ${pluriel(e.nbApparies, 'reliée', 'reliées')} à un compte du site.`;

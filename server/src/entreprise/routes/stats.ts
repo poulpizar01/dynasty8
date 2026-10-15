@@ -64,7 +64,7 @@ stats.get('/api/tableur/etat', ...voir, async (_req, res) => {
 
 // état seul de la lecture, pour la page Paramètres (qui règle le lien sans forcément voir les ventes)
 stats.get('/api/tableur/etat-lecture', ...permission('parametres'), async (_req, res) => {
-  const etat = await prisma.tableurEtat.findUnique({ where: { id: 1 }, select: { statut: true, derniereSync: true, erreur: true, nbLignes: true } });
+  const etat = await prisma.tableurEtat.findUnique({ where: { id: 1 }, select: { statut: true, derniereSync: true, erreur: true, avertissement: true, nbLignes: true } });
   res.json({ configure: !!sheetRegle(), etat });
 });
 

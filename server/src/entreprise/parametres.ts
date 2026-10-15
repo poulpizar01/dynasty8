@@ -45,7 +45,7 @@ export const PARAMETRES: GroupeParametres[] = [
     slides('slides_coherence_habitation', 'Habitation'), slides('slides_coherence_garage', 'Garage'),
     slides('slides_coherence_cayo_perico', 'Cayo Perico'), slides('slides_coherence_roxwood', 'Roxwood'),
   ] },
-  { onglet: 'Google Sheets et carte', titre: 'Google Sheets de la Direction', intro: 'Les ventes et locations de chaque agent, lues toutes les 20 minutes pour les primes.', reglages: [
+  { onglet: 'Google Sheets et carte', titre: 'Google Sheets de la Direction', intro: 'Les ventes et locations de chaque agent, lues toutes les 5 minutes pour les primes.', reglages: [
     // enregistré sous la forme d'un lien complet vers l'onglet (identifiant du classeur + gid)
     { cle: 'sheet', type: 'texte', libelle: 'Lien de l’onglet du récapitulatif',
       aide: 'Ouvrez l’onglet dans Google Sheets et collez l’adresse de la barre du navigateur (elle finit par « gid=… »). Le classeur doit être partagé à « Tous les utilisateurs disposant du lien », en lecture.',

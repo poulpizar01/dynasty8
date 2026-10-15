@@ -7,7 +7,7 @@ import { prisma } from '../../socle/db.js';
 import { gradeDe, tousLesGrades } from '../../socle/droits.js';
 import { sheetRegle } from '../parametres.js';
 import { nomComplet } from '../rh.js';
-import { normaliserTexte } from '../texte.js';
+import { normaliserPseudo, normaliserTexte } from '../texte.js';
 import { primesSelonGrade, semaineISO, type Palier } from './calcul.js';
 // import circulaire avec recap.ts (qui lit lireBaremes ici) : sans effet, seules des fonctions sont échangées
 import { remunerations } from './recap.js';
@@ -36,10 +36,13 @@ export function analyserCSV(texte: string): string[][] {
 }
 
 // sans délai, une lecture bloquée resterait en vol, et les passes suivantes s'empileraient
-const DELAI_MS = 20_000;
+// taille bornée : un onglet récapitulatif pèse quelques Ko ; au-delà, c'est le mauvais onglet (ou tout un classeur)
+const DELAI_MS = 20_000, TAILLE_MAX = 2 * 1024 * 1024;
 async function lireCSV(sheet: { id: string; gid: string }): Promise<string[][]> {
   const r = await fetch(`https://docs.google.com/spreadsheets/d/${sheet.id}/export?format=csv&gid=${sheet.gid}`, { signal: AbortSignal.timeout(DELAI_MS) });
+  if (Number(r.headers.get('content-length') ?? 0) > TAILLE_MAX) throw new Error('Onglet du Google Sheets trop volumineux : le lien doit viser l’onglet du récapitulatif.');
   const texte = await r.text();
+  if (texte.length > TAILLE_MAX) throw new Error('Onglet du Google Sheets trop volumineux : le lien doit viser l’onglet du récapitulatif.');
   // un classeur non partagé renvoie la page de connexion Google (HTML, statut 200 après redirection)
   if (!r.ok || /^\s*<(!doctype|html)/i.test(texte)) throw new Error('Impossible de lire le Google Sheets. Vérifiez que son partage est réglé sur « Tous les utilisateurs disposant du lien — Lecteur ».');
   return analyserCSV(texte);
@@ -59,15 +62,31 @@ export function analyserLignesSheet(brutes: string[][], libelles: string[] = tou
     const nom = String(ligne[3] ?? '').trim();
     const grade = gradeParLibelle.get(normaliserTexte(ligne[4] ?? ''));
     if (!nom || !grade) return [];
-    return [{ ligneSheet: index + 2, nom, nomNormalise: normaliserTexte(nom), grade, nbVentes: nombreEntier(ligne[11]), nbLocations: nombreEntier(ligne[12]) }];
+    return [{ ligneSheet: index + 2, nom, nomNormalise: normaliserTexte(nom), pseudo: String(ligne[2] ?? '').trim(), grade, nbVentes: nombreEntier(ligne[11]), nbLocations: nombreEntier(ligne[12]) }];
   });
 }
 
-// Synchronisation complète : relit tout le Sheet et REMPLACE le contenu de tableur_lignes. RH fait foi : chaque ligne est
-// rattachée à la fiche dont le « Prénom Nom » est EXACTEMENT le nom écrit (sans casse ni accents, jamais de
-// ressemblance ; deux fiches au même nom : aucune). Une ligne sans fiche est signalée dans RH « À rattacher ».
-// Compte du site relié (« Mon profil ») : celui de l'employé (même ID Discord que sa fiche, sinon même pseudo
-// Discord) ; à défaut, le compte dont le nom RP est exactement le nom écrit.
+// Lignes d'agents écartées faute de grade connu : un nom, un grade écrit, des compteurs (colonnes L et M) numériques ou
+// vides — ce qui exclut titres de section et en-têtes. Sans ce signalement, un agent dont le grade est mal écrit (ou un
+// grade pas encore créé sur le site) disparaîtrait des primes sans rien dire. Renvoie les grades inconnus et leur nombre.
+export function gradesInconnus(brutes: string[][], libelles: string[] = tousLesGrades().map(g => g.libelle)) {
+  const connus = new Set(libelles.map(l => normaliserTexte(l)));
+  const compteur = (v: unknown) => /^[\s  ]*[\d\s  .,]*$/.test(String(v ?? ''));
+  const inconnus = new Map<string, number>();
+  for (const ligne of brutes) {
+    const nom = String(ligne[3] ?? '').trim(), grade = String(ligne[4] ?? '').trim();
+    if (!nom || !grade || connus.has(normaliserTexte(grade)) || !compteur(ligne[11]) || !compteur(ligne[12])) continue;
+    inconnus.set(grade, (inconnus.get(grade) ?? 0) + 1);
+  }
+  return [...inconnus].map(([grade, lignes]) => ({ grade, lignes }));
+}
+
+// Synchronisation complète : relit tout le Sheet et remplace le contenu de tableur_lignes (s'il a changé). RH fait foi :
+// chaque ligne est rattachée à la fiche dont le « Prénom Nom » est EXACTEMENT le nom écrit (sans casse ni accents,
+// jamais de ressemblance ; deux fiches au même nom : aucune), sinon à celle dont le pseudo Discord est celui de la
+// colonne C. Une ligne sans fiche est signalée dans RH « À rattacher ».
+// Compte du site relié (« Mon profil ») : celui de l'employé (même ID Discord que sa fiche, sinon même pseudo
+// Discord) ; jamais d'après le nom RP du compte.
 // Deux synchronisations ne tournent jamais en même temps : la seconde attend la première.
 let enCours: Promise<Awaited<ReturnType<typeof synchroniserUneFois>>> | null = null;
 export function synchroniser() {
@@ -81,7 +100,8 @@ async function synchroniserUneFois() {
   // une semaine terminée et pas encore archivée (serveur arrêté dimanche soir…) est figée AVANT que la nouvelle lecture
   // n'écrase ses chiffres ; pas pendant la minute de 23:59 elle-même : la tâche d'archivage s'en charge alors
   await archiverSiDue({ grace: 60_000 });
-  const lignes = analyserLignesSheet((await lireCSV(sheet)).slice(1));
+  const brutes = (await lireCSV(sheet)).slice(1);
+  const lignes = analyserLignesSheet(brutes), inconnus = gradesInconnus(brutes);
 
   const [employes, comptes] = await Promise.all([
     prisma.employe.findMany({ select: { id: true, prenom: true, nom: true, discordId: true, discordPseudoNormalise: true } }),
@@ -92,6 +112,9 @@ async function synchroniserUneFois() {
     const cle = normaliserTexte(`${e.prenom} ${e.nom}`);
     if (cle) employeParNom.set(cle, employeParNom.has(cle) ? null : e);   // homonymes : ambigu, aucune
   }
+  // en secours, le pseudo Discord de la colonne C, identique à celui de la fiche (unique en base) : un nom RP écrit
+  // autrement dans le tableur (faute de frappe, surnom) n'empêche plus le rattachement
+  const employeParPseudo = new Map(employes.filter(e => e.discordPseudoNormalise).map(e => [e.discordPseudoNormalise!, e]));
   const compteParDiscord = new Map(comptes.map(c => [c.discordId, c.id]));
   const compteParPseudo = new Map(comptes.map(c => [normaliserTexte(c.pseudo), c.id]));
   // compte du site relié : par la fiche RH (ID Discord, sinon pseudo Discord), jamais par le nom RP du compte, que
@@ -100,27 +123,39 @@ async function synchroniserUneFois() {
     !e ? null : e.discordId ? compteParDiscord.get(e.discordId) ?? null : e.discordPseudoNormalise ? compteParPseudo.get(normaliserTexte(e.discordPseudoNormalise)) ?? null : null;
 
   const donnees = lignes.map(l => {
-    const e = employeParNom.get(l.nomNormalise) ?? null;
+    const e = employeParNom.get(l.nomNormalise) ?? (l.pseudo ? employeParPseudo.get(normaliserPseudo(l.pseudo)) : null) ?? null;
     return {
       ligneSheet: l.ligneSheet, nomSheet: l.nom, nomNormalise: l.nomNormalise, gradeSheet: l.grade, nbVentes: l.nbVentes, nbLocations: l.nbLocations,
       employeId: e?.id ?? null, compteId: compteDe(e),
     };
   });
-  await prisma.$transaction([prisma.ligneTableur.deleteMany(), prisma.ligneTableur.createMany({ data: donnees })]);
-  const etat = { derniereSync: new Date(), statut: 'ok', erreur: '', nbLignes: donnees.length, nbApparies: donnees.filter(d => d.compteId !== null).length };
+  // rien de changé depuis la lecture précédente (le cas le plus courant) : seule la date de lecture avance (l'archivage
+  // s'y fie pour savoir de quelle semaine datent les chiffres), sans tout effacer et réécrire
+  const empreinte = (d: { ligneSheet: number | null; nomSheet: string; gradeSheet: string; nbVentes: number; nbLocations: number; employeId: number | null; compteId: number | null }) => JSON.stringify([d.ligneSheet, d.nomSheet, d.gradeSheet, d.nbVentes, d.nbLocations, d.employeId, d.compteId]);
+  const avant = await prisma.ligneTableur.findMany({ orderBy: { id: 'asc' } });
+  if (avant.length === donnees.length && avant.every((a, i) => empreinte(a) === empreinte(donnees[i]))) await prisma.ligneTableur.updateMany({ data: { majLe: new Date() } });
+  else await prisma.$transaction([prisma.ligneTableur.deleteMany(), prisma.ligneTableur.createMany({ data: donnees })]);
+  const avertissement = inconnus.length
+    ? `${inconnus.reduce((n, i) => n + i.lignes, 0)} ligne(s) ignorée(s), grade inconnu du site : ${inconnus.map(i => `« ${i.grade} »`).join(', ')}. Corrigez le grade dans le tableur ou créez-le dans la page Grades.`.slice(0, 500)
+    : '';
+  const etat = { derniereSync: new Date(), statut: 'ok', erreur: '', avertissement, nbLignes: donnees.length, nbApparies: donnees.filter(d => d.compteId !== null).length };
   await prisma.tableurEtat.upsert({ where: { id: 1 }, create: { id: 1, ...etat }, update: etat });
   const sansFiche = donnees.filter(d => d.employeId === null).length;
   if (sansFiche) console.log(`[tableur] ${sansFiche} ligne(s) du tableur sans fiche RH (voir RH → À rattacher)`);
   return { ...etat, sansFicheRh: sansFiche };
 }
 
+// Fiche RH créée ou modifiée (nom, pseudo, ID Discord) : le tableur est relu tout de suite pour la rattacher, plutôt
+// qu'à la prochaine passe ; en tâche de fond, la réponse à la page n'attend pas Google.
+export const relireTableur = (): void => { if (sheetRegle()) void synchroniserSansErreur(); };
+
 // Pour la synchronisation automatique : jamais d'exception. L'échec est journalisé et enregistré (visible dans la page).
 export async function synchroniserSansErreur() {
   try { return await synchroniser(); }
   catch (e) {
-    // réglage absent : ce n'est pas une panne, pas la peine de remplir les journaux toutes les 20 minutes
+    // réglage absent : ce n'est pas une panne, pas la peine de remplir les journaux toutes les 5 minutes
     const nonConfigure = e instanceof TableurNonConfigure;
-    const etat = { derniereSync: new Date(), statut: nonConfigure ? 'desactive' : 'erreur', erreur: String((e as Error)?.message ?? e).slice(0, 500), nbLignes: 0, nbApparies: 0 };
+    const etat = { derniereSync: new Date(), statut: nonConfigure ? 'desactive' : 'erreur', erreur: String((e as Error)?.message ?? e).slice(0, 500), avertissement: '', nbLignes: 0, nbApparies: 0 };
     await prisma.tableurEtat.upsert({ where: { id: 1 }, create: { id: 1, ...etat }, update: etat }).catch(e2 => console.error('[tableur] état non enregistré :', e2));
     if (!nonConfigure) console.error('[tableur] échec de la synchronisation :', e);
     return { ...etat, sansFicheRh: 0 };
@@ -235,14 +270,19 @@ export async function lireArchive(code: string) {
   };
 }
 
-// Synchronisation toutes les 20 minutes ; contrôle de l'archivage toutes les 30 s (dimanche 23:59 heure de Paris : une
-// dernière lecture puis l'archive ; si le serveur était arrêté à cette heure-là, archive au redémarrage).
+// Synchronisation toutes les 5 minutes (une lecture d'environ 5 Ko, rien d'écrit si rien n'a changé) et dès que le
+// lien change dans Paramètres ; contrôle de l'archivage toutes les 30 s (dimanche 23:59 heure de Paris : une dernière
+// lecture puis l'archive ; si le serveur était arrêté à cette heure-là, archive au redémarrage).
+const lienActuel = () => JSON.stringify(sheetRegle());
 export function planifierTableur(): void {
+  let lienLu = lienActuel();
   synchroniserSansErreur();
-  setInterval(synchroniserSansErreur, 20 * 60_000).unref();
+  setInterval(synchroniserSansErreur, 5 * 60_000).unref();
   let derniereArchivee: string | null = null;
   setInterval(async () => {
     try {
+      // lien réglé ou changé dans Paramètres : lu aussitôt, sans attendre la prochaine passe
+      if (lienActuel() !== lienLu) { lienLu = lienActuel(); await synchroniserSansErreur(); }
       const semaine = semaineParis(new Date()), t = Date.now();
       if (t >= semaine.fin.getTime() && t - semaine.fin.getTime() < 60_000 && derniereArchivee !== semaine.code) await synchroniserSansErreur();
       const r = await archiverSiDue();

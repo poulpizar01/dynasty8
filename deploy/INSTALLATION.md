@@ -151,7 +151,7 @@ Tout se règle depuis l'espace agents, sans toucher au serveur. **Paramètres** 
 
 - **Liens** : registre (intranet), Discord de l'agence, boutique VIP, Discord du partenaire décoration, **présentations Google Slides des quatre cohérences** (Habitation, Garage, Cayo Perico, Roxwood : coller le lien de partage de chaque présentation, partagée à « Tous les utilisateurs disposant du lien »). Un lien vide masque son bouton.
 - **Google Sheets et carte** :
-  - **Google Sheets de la Direction** : ouvrir l'onglet du récapitulatif, coller l'adresse de la barre du navigateur (elle finit par `gid=…`). Le classeur doit être partagé à « Tous les utilisateurs disposant du lien », en lecture. L'état de la lecture s'affiche en tête de l'onglet (lu toutes les 20 minutes).
+  - **Google Sheets de la Direction** : ouvrir l'onglet du récapitulatif, coller l'adresse de la barre du navigateur (elle finit par `gid=…`). Le classeur doit être partagé à « Tous les utilisateurs disposant du lien », en lecture. L'état de la lecture s'affiche en tête de l'onglet (lu toutes les 5 minutes, et aussitôt après un changement de lien).
   - **WebMap** : adresse publique en `https://` de la carte (ex. `https://webmap.dynasty8.fbfa.fr`). Le site refuse une adresse du serveur lui-même ou d'un réseau privé. Cette adresse n'est jamais montrée aux visiteurs.
 - **Discord** (bot relié) :
   - **Membres en service** : choisir le salon où le bot des services publie « Service démarré » / « Service terminé », et la clôture automatique (12 h par défaut). L'état de la lecture s'affiche en tête de l'onglet dans la minute.

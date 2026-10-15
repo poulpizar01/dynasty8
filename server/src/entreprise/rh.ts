@@ -10,6 +10,7 @@ import { auDessusDe, gradeDe, peut, tousLesGrades } from '../socle/droits.js';
 import { definirReglage, reglage } from '../socle/reglages.js';
 import type { EvenementBot } from '../socle/contrat.js';
 import { jourParis, jourValide, normaliserPseudo, normaliserTexte, versDate, versJour } from './texte.js';
+import { relireTableur } from './stats/tableur.js';
 import { rattacherVentes } from './stats/ventes.js';
 
 export const DROITS_RH = ['voir', 'creer', 'modifier', 'desactiver', 'reactiver', 'sensible', 'parametrer'] as const;
@@ -237,6 +238,7 @@ async function creerDepuisCandidature(c: Candidature): Promise<Resultat> {
       return tx.employe.update({ where: { id: f.id }, data: { idEmploye: prov, idEmployeNormalise: prov.toLowerCase() } });
     });
     await rattacherVentes(fiche);
+    relireTableur();
     return { resultat: 'creee', employeId: fiche.id, motif: '' };
   } catch (e) {
     // deux envois simultanés pour le même compte : le second trouve la fiche du premier

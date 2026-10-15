@@ -108,8 +108,10 @@
         try {
           const t = await socle.api('/api/tableur/etat-lecture'), e = t.etat;
           lignes.push(!t.configure ? etat('alerte', 'Google Sheets non réglé : les primes restent à zéro.')
-            : !e || e.statut === 'desactive' ? etat('neutre', 'Google Sheets : première lecture dans quelques minutes.')
+            : !e || e.statut === 'desactive' ? etat('neutre', 'Google Sheets : première lecture dans moins d’une minute.')
             : e.statut === 'erreur' ? etat('erreur', `Google Sheets : la dernière lecture a échoué (${echapper(quand(e.derniereSync))}) : ${echapper(e.erreur)}`)
+            // lignes écartées (grade inconnu du site) : dit lesquelles, plutôt que « mauvais onglet »
+            : e.avertissement ? etat('alerte', `Google Sheets lu le ${echapper(quand(e.derniereSync))} : ${e.nbLignes} agent${e.nbLignes > 1 ? 's' : ''}. ${echapper(e.avertissement)}`)
             : !e.nbLignes ? etat('alerte', `Google Sheets lu le ${echapper(quand(e.derniereSync))}, mais aucun agent trouvé : le lien vise sans doute le mauvais onglet.`)
             : etat('ok', `Google Sheets lu le ${echapper(quand(e.derniereSync))} : ${e.nbLignes} agent${e.nbLignes > 1 ? 's' : ''}.`));
         } catch {}

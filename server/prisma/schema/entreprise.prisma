@@ -314,6 +314,8 @@ model TableurEtat {
   erreur       String    @default("") @db.VarChar(500)
   nbLignes     Int       @default(0) @map("nb_lignes")
   nbApparies   Int       @default(0) @map("nb_apparies")
+  // lecture réussie mais incomplète : lignes d'agents écartées (grade inconnu du site), à corriger dans le tableur ou Grades
+  avertissement String   @default("") @db.VarChar(500)
 
   @@map("tableur_etat")
 }
