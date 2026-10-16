@@ -44,7 +44,7 @@
     document.getElementById('quitter').addEventListener('click', () => socle.deconnexion());
     document.getElementById('retirer').addEventListener('click', async () => {
       if (!await gestion.confirmer('Votre compte sera supprimé du site. Vous pourrez refaire une demande plus tard.', 'Retirer votre demande ?', 'Retirer')) return;
-      try { await socle.api('/api/moi', { method: 'DELETE' }); location.href = '/'; } catch (e) { gestion.message('zone-message', e.message); }
+      try { await socle.api('/api/moi', { method: 'DELETE' }); location.href = '/'; } catch (e) { gestion.message('zone-message', `La suppression n’a pas abouti (${e.message}). Réessayez dans un instant.`); }
     });
   </script>
 </body>

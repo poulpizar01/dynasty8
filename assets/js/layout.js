@@ -680,7 +680,8 @@ function habillerCartesHub() {
     }
     // flèche : "Texte →" -> "Texte" + icône
     const fl = c.querySelector(".carte-hub-fleche");
-    if (fl && !fl.querySelector("svg")) fl.innerHTML = fl.textContent.replace(/\s*→\s*$/, "") + " " + D8_FLECHE_SVG;
+    // le texte reste du texte (jamais relu comme du HTML) ; seule la flèche dessinée est ajoutée
+    if (fl && !fl.querySelector("svg")) { fl.textContent = fl.textContent.replace(/\s*→\s*$/, "") + " "; fl.insertAdjacentHTML("beforeend", D8_FLECHE_SVG); }
     // apparition en cascade (réinitialisée par grille)
     const grille = c.closest(".grille-hub");
     const idx = grille ? Array.prototype.indexOf.call(grille.children, c) : i;
@@ -782,6 +783,27 @@ function pleinEcran(bouton, boite) {
     else boite.requestFullscreen().catch(() => {});
   });
   document.addEventListener("fullscreenchange", maj);
+}
+
+// Notification en bas de l'écran (vitrine et espace agents, gestion.notifier), visible quel que soit le défilement
+// (une confirmation affichée en haut de page passait inaperçue quand on avait cliqué en bas) ; lue par les lecteurs
+// d'écran ; une seule à la fois ; s'efface après quelques secondes.
+function notifier(texte, type = "succes") {
+  let zone = document.getElementById("notifications");
+  if (!zone) {
+    zone = document.createElement("div");
+    zone.id = "notifications";
+    zone.className = "notifications";
+    zone.setAttribute("role", "status");
+    zone.setAttribute("aria-live", "polite");
+    document.body.append(zone);
+  }
+  zone.replaceChildren();   // la plus récente seulement (empilées, elles masquaient la page)
+  const n = document.createElement("div");
+  n.className = `notification notification-${type === "erreur" ? "erreur" : "succes"}`;
+  n.textContent = texte;
+  zone.append(n);
+  setTimeout(() => { n.classList.add("sortie"); setTimeout(() => n.remove(), 300); }, type === "erreur" ? 6000 : 3200);
 }
 
 // ---- fenêtres (vitrine et espace agents) : règle commune, sans rien à faire dans chaque page ----

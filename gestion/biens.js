@@ -301,7 +301,7 @@ const observateurEtapes = new IntersectionObserver(entrees => {
 }, { root: document.querySelector('.annonce-corps'), rootMargin: '-10% 0px -70% 0px' });
 document.querySelectorAll('.annonce-etape').forEach(e => observateurEtapes.observe(e));
 
-// ---- photos : fichier envoyé tel quel, ou lien téléchargé par le serveur ----
+// ---- photos : fichiers envoyés au site (jamais une image donnée par lien) ----
 // Le serveur contrôle, réencode (WebP) et stocke chaque photo, puis renvoie son adresse : c'est elle seule que garde
 // l'annonce. Un envoi à la fois ; EDITION_BIEN change à chaque ouverture et fermeture de la fenêtre, si bien qu'un envoi
 // qui se termine après coup n'ajoute rien (la photo reçue par le serveur, jamais utilisée, sera nettoyée).
@@ -360,7 +360,7 @@ function redessinerImagesBien() {
     const texte = document.createElement('div');
     texte.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px;text-align:center;font-size:0.68rem;line-height:1.25;overflow:hidden;';
     const etat = document.createElement('strong');
-    etat.textContent = t.enCours ? (t.lien ? '⏳ Téléchargement…' : '⏳ Envoi…') : 'En attente';
+    etat.textContent = t.enCours ? '⏳ Envoi…' : 'En attente';
     const nom = document.createElement('span');
     nom.textContent = t.nom;
     nom.style.cssText = 'opacity:0.7;word-break:break-all;';

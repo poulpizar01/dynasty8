@@ -60,7 +60,7 @@ img.admin-avatar { object-fit: cover; padding: 0; }
 
 /* panneau « En service » (gestion.js, enService) : à droite du menu, ou sous la barre du haut sur téléphone */
 .admin-service-panneau {
-  position: fixed; z-index: 80; width: min(320px, calc(100vw - 32px)); max-height: min(440px, calc(100dvh - 96px));
+  position: fixed; z-index: 80; width: min(320px, calc(100vw - 32px)); max-height: min(440px, calc(100vh - 96px)); max-height: min(440px, calc(100dvh - 96px));
   display: flex; flex-direction: column; background: var(--bg-elevated); border: 1px solid var(--border);
   border-radius: var(--radius); box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
 }
@@ -91,7 +91,7 @@ img.admin-avatar { object-fit: cover; padding: 0; }
   .admin-barre-haut-logo img { height: 36px; width: auto; }
   .admin-barre-haut .admin-avatar { width: 34px; height: 34px; }
   .admin-barre-laterale {
-    position: fixed; top: 0; left: 0; bottom: 0; z-index: 70; width: min(300px, 86vw); height: 100dvh;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 70; width: min(300px, 86vw); height: 100vh; height: 100dvh;
     transform: translateX(-100%); visibility: hidden; transition: transform .22s ease, visibility 0s linear .22s;
     box-shadow: 0 0 40px rgba(0, 0, 0, .5); overflow-y: auto;
   }
@@ -421,7 +421,7 @@ main.admin-contenu:focus { outline: none; }
 /* téléphone : plein écran, sans sommaire, une colonne */
 @media (max-width: 760px) {
   #modale-bien { padding: 0; }
-  .modale.modale-annonce { height: 100dvh; max-width: none; border-radius: 0; border: 0; }
+  .modale.modale-annonce { height: 100vh; height: 100dvh; max-width: none; border-radius: 0; border: 0; }
   .annonce-formulaire { grid-template-columns: minmax(0, 1fr); }
   .annonce-sommaire { display: none; }
   .annonce-entete, .annonce-corps, .annonce-pied { padding-left: 18px; padding-right: 18px; }
@@ -720,7 +720,7 @@ main.admin-contenu:focus { outline: none; }
 .rh-historique small { flex-basis: 100%; color: var(--text-faint); }
 
 .modale.modale-fiche-rh {
-  display: flex; flex-direction: column; height: min(88vh, 760px); max-height: calc(100dvh - 40px); overflow: hidden; padding: 0;
+  display: flex; flex-direction: column; height: min(88vh, 760px); max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow: hidden; padding: 0;
 }
 .modale-fiche-rh > .modale-entete { flex: 0 0 auto; margin: 0; padding: 20px 28px 14px; border-bottom: 1px solid var(--border); }
 .modale-fiche-rh > #zone-message-modale-employe { flex: 0 0 auto; margin: 12px 28px 0; }
@@ -735,7 +735,7 @@ main.admin-contenu:focus { outline: none; }
 .fiche-rh-pied { flex: 0 0 auto; padding: 12px 28px 20px; border-top: 1px solid var(--border); background: var(--bg-card); }
 .fiche-rh-pied .btn { width: 100%; min-height: 44px; }
 .modale.modale-profil {
-  display: flex; flex-direction: column; height: min(88vh, 760px); max-height: calc(100dvh - 40px); overflow: hidden; padding: 0;
+  display: flex; flex-direction: column; height: min(88vh, 760px); max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow: hidden; padding: 0;
 }
 .modale-profil > .modale-entete { flex: 0 0 auto; margin: 0; padding: 20px 28px 14px; border-bottom: 1px solid var(--border); }
 .modale-profil > #editeur-profil { flex: 1 1 auto; min-height: 0; overflow: hidden; }
@@ -749,7 +749,7 @@ main.admin-contenu:focus { outline: none; }
 #editeur-profil .profil-pied { flex: 0 0 auto; padding: 12px 28px 20px; border-top: 1px solid var(--border); background: var(--bg-card); }
 #editeur-profil .profil-pied .btn { min-height: 44px; }
 .modale.modale-import-tablette {
-  display: flex; flex-direction: column; height: min(90vh, 860px); max-height: calc(100dvh - 40px); overflow: hidden; padding: 0;
+  display: flex; flex-direction: column; height: min(90vh, 860px); max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow: hidden; padding: 0;
 }
 .modale-import-tablette > .modale-entete { flex: 0 0 auto; margin: 0; padding: 20px 28px 14px; border-bottom: 1px solid var(--border); }
 .modale-import-tablette > .modale-entete h3 { margin: 0; font-size: 1.3rem; }
@@ -809,20 +809,9 @@ main.admin-contenu:focus { outline: none; }
 /* étiquette « Obligatoire » (plutôt qu'un astérisque que rien n'explique) */
 .rh-obligatoire { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: rgba(201, 165, 92, 0.16); color: var(--gold-strong); font-size: 0.75rem; font-weight: 600; vertical-align: 1px; }
 
-/* notifications (gestion.notifier) : en bas au centre, au-dessus de tout, au-dessus de la bulle de messagerie */
-.notifications { position: fixed; left: 50%; bottom: 24px; z-index: 100200; display: flex; flex-direction: column; align-items: center; gap: 8px; transform: translateX(-50%); width: max-content; max-width: min(92vw, 560px); pointer-events: none; }
-/* écran large : centrée sur le contenu, pas sur la fenêtre (la barre latérale fait 240 px) */
+/* notifications (notifier, layout.js ; règles de base dans style.css) : écran large, centrées sur le contenu, pas sur la
+   fenêtre (la barre latérale fait 240 px) */
 @media (min-width: 901px) { .page-agents .notifications { left: calc(50% + 120px); max-width: min(calc(100vw - 300px), 560px); } }
-.notification {
-  padding: 10px 18px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); font-size: 0.9rem; text-align: center;
-  background: #10301f; color: #c9f2da; border: 1px solid rgba(95, 211, 154, 0.45); animation: notification-entree 0.2s ease-out;
-}
-.notification-erreur { background: #3a1414; color: #ffd5d0; border-color: rgba(239, 127, 115, 0.5); }
-.notification.sortie { opacity: 0; transform: translateY(6px); transition: opacity 0.25s, transform 0.25s; }
-@keyframes notification-entree { from { opacity: 0; transform: translateY(8px); } }
-@media (prefers-reduced-motion: reduce) { .notification { animation: none; } .notification.sortie { transition: none; } }
-/* bouton qui confirme son action (« Copié ✓ ») pendant deux secondes */
-.btn.confirme, .actions-icone.confirme { border-color: rgba(95, 211, 154, 0.6) !important; color: #8fe0ad !important; }
 
 /* ---------- Comptabilité (comptabilite.html) : chiffres clés, calcul de la DOT, titres lisibles ---------- */
 .compta-titre, .entete-admin .compta-titre { margin: 0 0 4px; font-family: var(--d8-font-display); font-weight: 400; font-size: 1.35rem; color: var(--text); }
@@ -870,7 +859,6 @@ main.admin-contenu:focus { outline: none; }
 /* rémunération : intitulés des champs d'ajout de palier en casse normale */
 #compta-panneau-parametres .champ label { font-size: 0.85rem; text-transform: none; letter-spacing: 0; color: var(--text-muted); }
 /* bouton doré confirmé : le vert ne se lit pas sur l'or, on garde le texte sombre et on souligne d'un contour vert */
-.btn-or.confirme { color: var(--or-contrast) !important; box-shadow: 0 0 0 2px rgba(95, 211, 154, 0.7) !important; }
 
 /* en-tête de section : le texte d'aide prend la place laissée par les commandes à droite (plafonné à 80 caractères,
    il passait à la ligne alors qu'il restait de la place) */
@@ -971,7 +959,7 @@ button.grades-poignee:focus-visible { outline: 2px solid var(--d8-gold-300); out
 .grades-note { margin-top: 14px; }
 
 .modale.modale-grade {
-  display: flex; flex-direction: column; max-width: 920px; height: min(88vh, 900px); max-height: calc(100dvh - 40px);
+  display: flex; flex-direction: column; max-width: 920px; height: min(88vh, 900px); max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px);
   overflow: hidden; padding: 0;
 }
 .modale-grade > .modale-entete { flex: 0 0 auto; margin: 0; padding: 22px 32px 14px; border-bottom: 1px solid var(--border); }

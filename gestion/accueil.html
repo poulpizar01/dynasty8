@@ -49,7 +49,7 @@
         </div>
         <ul class="accueil-liste" id="aujourdhui"><li class="accueil-vide">Chargement…</li></ul>
         <div class="cache" id="a-venir-bloc">
-          <h3 class="accueil-sous-titre">Cette semaine</h3>
+          <h3 class="accueil-sous-titre">Les 7 prochains jours</h3>
           <ul class="accueil-liste" id="a-venir"></ul>
         </div>
       </section>
@@ -161,7 +161,7 @@
       document.getElementById('accueil-attente').remove();
       document.getElementById('accueil-corps').removeAttribute('aria-busy');
       const erreur = [taches, primes, biens].find(r => r.status === 'rejected');
-      if (erreur) gestion.message('zone-message', erreur.reason.message);
+      if (erreur) gestion.message('zone-message', `Une partie de l’accueil n’a pas pu se charger (${erreur.reason.message}). Rechargez la page dans un instant.`);
     });
   </script>
 </body>

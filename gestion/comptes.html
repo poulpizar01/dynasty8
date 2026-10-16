@@ -77,17 +77,16 @@
     const gradesPossibles = () => grades.filter(g => moi.proprietaire || (moi.grade && rang(g.cle) > rang(moi.grade.cle)));
     const PARIS = { timeZone: 'Europe/Paris' };
     const dateHeure = d => new Date(d).toLocaleString('fr-FR', { ...PARIS, dateStyle: 'short', timeStyle: 'short' });
-    // « il y a 2 h », « hier », « le 16/09/2026 » : plus parlant qu'une date complète pour juger d'une activité
+    // dernière activité : « il y a 5 min » dans l'heure, « aujourd'hui à 14:30 », sinon la date (jamais « hier »
+    // ni « il y a 3 jours », à recalculer de tête : docs/design.md, Dates)
     function ilYA(d) {
       if (!d) return 'Jamais';
-      const min = Math.round((Date.now() - new Date(d)) / 60000);
+      const quand = new Date(d), min = Math.round((Date.now() - quand) / 60000);
       if (min < 2) return 'À l’instant';
-      if (min < 60) return `Il y a ${min} min`;
-      if (min < 24 * 60) return `Il y a ${Math.round(min / 60)} h`;
-      const jours = Math.round(min / 1440);
-      if (jours === 1) return 'Hier';
-      if (jours < 7) return `Il y a ${jours} jours`;
-      return `Le ${new Date(d).toLocaleDateString('fr-FR', PARIS)}`;
+      if (min < 60) return `Il y a ${min} min`;
+      const jour = x => x.toLocaleDateString('fr-FR', PARIS);
+      const heure = quand.toLocaleTimeString('fr-FR', { ...PARIS, hour: '2-digit', minute: '2-digit' });
+      return jour(quand) === jour(new Date()) ? `Aujourd’hui à ${heure}` : `Le ${jour(quand)}`;
     }
 
     function identite(c) {

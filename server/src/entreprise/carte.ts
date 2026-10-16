@@ -10,15 +10,15 @@ import type { IncomingMessage, OutgoingHttpHeaders } from 'node:http';
 import { pipeline } from 'node:stream/promises';
 import type { Request, RequestHandler, Response } from 'express';
 import { requeteHttps } from '../socle/adresses.js';
-import { config, fail } from '../socle/config.js';
+import { config } from '../socle/config.js';
 import { limiter } from '../socle/limites.js';
 import { cspCarte, estTexte, masquerAdresse } from './carte-masque.js';
+import { configEntreprise } from './config.js';
 import { webmapOrigine } from './parametres.js';
 
-// sous-domaine de la carte (infrastructure : nginx, certificat) ; vide : carte désactivée. L'adresse de la carte
+// sous-domaine de la carte (WEBMAP_HOTE, lu et contrôlé dans config.ts) ; vide : carte désactivée. L'adresse de la carte
 // elle-même se règle dans Paramètres, et s'applique sans redémarrage.
-const hote = (process.env.WEBMAP_HOTE || '').trim().toLowerCase();
-if (hote && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(hote)) fail(`WEBMAP_HOTE dans .env : un nom de domaine (ex. carte.monsite.fr) : ${hote}`);
+const hote = configEntreprise.webmapHote;
 
 // adresse publique de la carte : même protocole et même port que le site (en dev : http://carte.localhost:3010)
 const base = new URL(config.baseUrl);

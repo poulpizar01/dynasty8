@@ -1,6 +1,6 @@
 // ENTREPRISE — membres en service, reçus du bot Discord entreprise : événement « monitoring.duty » (journaux FiveM de
 // prise et de fin de service, lus par le bot ; abonnement à créer dans son panneau Monitoring, docs/webhooks.md). Le
-// site ne lit plus aucun salon : seule la clôture automatique se règle (Paramètres). Une ligne par service :
+// site ne lit aucun salon : seule la clôture automatique se règle (Paramètres). Une ligne par service :
 //   - prise : nouvelle ligne ouverte ; une prise précédente de la même personne restée ouverte est fermée à l'heure de
 //     la nouvelle (« debut_en_double ») ;
 //   - fin : ferme le service ouvert de la personne (ou remplace une clôture automatique) ; sans service, une ligne est

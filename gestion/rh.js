@@ -356,7 +356,7 @@ async function chargerArriveesBot() {
     // arrivée depuis l'Accueil (« À traiter » → rh.html#rh-bot) : la section n'existait pas encore au chargement
     if (location.hash === '#rh-bot' && !bloc.classList.contains('cache')) requestAnimationFrame(() => bloc.scrollIntoView({ block: 'start' }));
     $rh('rh-bot-details').classList.toggle('cache', !reglable);
-    $rh('rh-bot-etat').textContent = 'Le bot envoie ses candidatures à l’adresse /webhooks/bot du site (abonnement « Candidatures » de son panneau Monitoring).';
+    $rh('rh-bot-etat').textContent = 'Les candidatures acceptées sur Discord arrivent ici d’elles-mêmes, envoyées par le bot de l’agence. Si rien n’arrive, demandez à la personne qui s’occupe du site de vérifier l’abonnement « Candidatures » du bot.';
     if (reglable) {
       const select = $rh('rh-bot-grade');
       select.innerHTML = '<option value="">À choisir</option>' + r.grades.map(g => `<option value="${echapper(g.cle)}">${echapper(g.libelle)}</option>`).join('');

@@ -35,7 +35,7 @@ export const entreprise: Entreprise = {
     statistiques: 'ventes',
     comptabilite: 'compta',
     parametres: 'parametres',
-    webmap: 'parametres',   // réservée à la Direction, comme sur l'ancien espace agents
+    webmap: 'parametres',   // réservée à la Direction
   },
 
   // apparence en premier : elle répond sur les adresses des images de la marque, avant le fichier livré

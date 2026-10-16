@@ -98,7 +98,7 @@
           : etat('ok', 'Bot Discord relié : rôles et salons proposés par leur nom.'));
         try {
           const s = await socle.api('/api/services/etat');
-          // prises et fins de service : envoyées par le bot (événement monitoring.duty), plus aucun salon à lire
+          // prises et fins de service : envoyées par le bot (événement monitoring.duty) ; le site ne lit aucun salon
           lignes.push(s.dernierRecu
             ? etat('ok', `Prises et fins de service reçues du bot : la dernière le ${echapper(quand(s.dernierRecu))}. ${s.enService} personne${s.enService > 1 ? 's' : ''} en service.`)
             : etat('neutre', 'Aucune prise de service reçue du bot pour le moment. Pour la recevoir, la personne qui s’occupe du site abonne le site à l’événement «&nbsp;Prise de service&nbsp;» (monitoring.duty) dans le panneau Monitoring du bot Discord de l’agence.'));

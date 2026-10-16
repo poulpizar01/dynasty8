@@ -5,7 +5,7 @@
 // séparateur de milliers comme formaterPrix (layout.js), sans « HT »
 function formaterArgentStats(valeur) {
   const n = Math.round(Number(valeur) || 0);
-  return `${n < 0 ? '-' : ''}${Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} $`;
+  return `${n < 0 ? '-' : ''}${Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} $`;
 }
 function formaterDateAdmin(iso) {
   const d = new Date(iso);
@@ -241,17 +241,10 @@ document.getElementById("select-semaine-dot").addEventListener("change", () => {
 });
 
 // Résultat d'une copie : notification en bas de l'écran (la zone de message en haut de l'onglet était hors de vue quand
-// on copiait en bas) et le bouton qui affiche « Copié ✓ » deux secondes.
-function signalerCopie(bouton, reussie, texte) {
+// on copiait en bas) ; le bouton garde son libellé et sa taille.
+function signalerCopie(_bouton, reussie, texte) {
   if (!reussie) { gestion.notifier("Copie impossible : sélectionnez le tableau à la main puis Ctrl+C.", "erreur"); return; }
   gestion.notifier(texte);
-  if (!bouton || bouton.dataset.texteInitial) return;
-  bouton.dataset.texteInitial = bouton.innerHTML;
-  // largeur figée : « Copié ✓ » est plus court, le bouton et ses voisins ne doivent pas bouger
-  bouton.style.width = `${bouton.offsetWidth}px`;
-  bouton.innerHTML = `${gestion.ico("copy")} Copié ✓`;
-  bouton.classList.add("confirme");
-  setTimeout(() => { bouton.innerHTML = bouton.dataset.texteInitial; delete bouton.dataset.texteInitial; bouton.style.width = ""; bouton.classList.remove("confirme"); }, 2000);
 }
 
 // Une carte de chiffre clé : libellé, montant, précision ; « accent » pour celui qui compte le plus.
@@ -430,7 +423,7 @@ async function chargerDotSalaries() {
           </tr>`).join("")
       : `<tr><td colspan="8" class="champ-aide">Aucune vente/location cette semaine-là.</td></tr>`;
   } catch (e) {
-    corps.innerHTML = `<tr><td colspan="8" class="champ-aide">Erreur : ${echapper(e.message)}</td></tr>`;
+    corps.innerHTML = `<tr><td colspan="8" class="champ-aide">Le tableau des salariés n’a pas pu se charger (${echapper(e.message)}). Changez de semaine ou rechargez la page.</td></tr>`;
   }
 }
 

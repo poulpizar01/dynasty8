@@ -439,9 +439,8 @@ async function chargerFicheBien() {
     partager.addEventListener("click", async () => {
       try {
         if (!(await copierTexte(window.location.href))) throw new Error("copie impossible");
-        partager.querySelector("span").textContent = "Lien copié !";
-        partager.classList.add("ok");
-        setTimeout(() => { partager.querySelector("span").textContent = "Copier le lien"; partager.classList.remove("ok"); }, 2200);
+        // confirmé par une notification : le bouton garde son libellé et sa taille
+        notifier("Lien de l’annonce copié ✓");
       } catch (e) {
         // Pas de presse-papiers (navigateur ancien, iframe en jeu…) : on affiche le
         // lien dans un champ pré-sélectionné — jamais de window.prompt (gèle FiveM).

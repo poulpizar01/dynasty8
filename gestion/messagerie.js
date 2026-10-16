@@ -89,7 +89,7 @@ function rendreContacts() {
   }
   conteneur.innerHTML = liste.map(c => `
     <button type="button" class="messagerie-contact" data-id="${c.id}">
-      <span class="messagerie-avatar-bloc">${avatarMessagerie(c)}<span class="messagerie-pastille messagerie-statut-${c.statut}" title="${libelleStatut(c.statut)}"></span></span>
+      <span class="messagerie-avatar-bloc">${avatarMessagerie(c)}<span class="messagerie-pastille messagerie-statut-${c.statut}" role="img" title="${libelleStatut(c.statut)}" aria-label="${libelleStatut(c.statut)}"></span></span>
       <span class="messagerie-contact-texte">
         <strong>${echapper(c.pseudo)}</strong>
         <span class="messagerie-contact-apercu">${c.dernier_message ? echapper(c.dernier_message) : libelleStatut(c.statut)}</span>

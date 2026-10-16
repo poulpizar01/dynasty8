@@ -239,7 +239,7 @@ window.gestion = {
       const avatar = moi.avatar ? `<img class="admin-avatar" src="${socle.esc(moi.avatar)}" alt="">` : `<span class="admin-avatar" aria-hidden="true">${socle.esc(initiales(nom))}</span>`;
       barre.querySelector('[data-compte]').innerHTML = `${avatar}
         <div class="admin-compte-texte"><strong>${socle.esc(nom)}</strong><span class="admin-compte-grade">${socle.esc(grade)}</span></div>
-        <a class="admin-icone-bouton" href="/faq.html" target="_blank" rel="noopener" title="Besoin d’aide ? La FAQ" aria-label="FAQ (nouvel onglet)">${ico('headset')}</a>
+        <a class="admin-icone-bouton" href="/faq.html" title="Besoin d’aide ? La FAQ" aria-label="FAQ">${ico('headset')}</a>
         <button type="button" class="admin-icone-bouton" data-deconnexion title="Se déconnecter" aria-label="Se déconnecter">${ico('logout')}</button>`;
       haut.querySelector('[data-avatar]').innerHTML = avatar;
     };
@@ -308,23 +308,8 @@ window.gestion = {
 
   // Notification en bas de l'écran, visible quel que soit le défilement (une confirmation affichée en haut de page
   // passait inaperçue quand on avait cliqué en bas) ; lue par les lecteurs d'écran ; s'efface après quelques secondes.
-  notifier(texte, type = 'succes') {
-    let zone = document.getElementById('notifications');
-    if (!zone) {
-      zone = document.createElement('div');
-      zone.id = 'notifications';
-      zone.className = 'notifications';
-      zone.setAttribute('role', 'status');
-      zone.setAttribute('aria-live', 'polite');
-      document.body.append(zone);
-    }
-    zone.replaceChildren();   // une seule à la fois : la plus récente (empilées, elles masquaient la page)
-    const n = document.createElement('div');
-    n.className = `notification notification-${type === 'erreur' ? 'erreur' : 'succes'}`;
-    n.textContent = texte;
-    zone.append(n);
-    setTimeout(() => { n.classList.add('sortie'); setTimeout(() => n.remove(), 300); }, type === 'erreur' ? 6000 : 3200);
-  },
+  // (outil commun avec la vitrine : notifier, layout.js)
+  notifier(texte, type = 'succes') { notifier(texte, type); },
 
   // message dans une zone de la page (texte seulement, jamais de HTML) ; type : 'succes' ou 'erreur'
   message(zone, texte, type = 'erreur') {

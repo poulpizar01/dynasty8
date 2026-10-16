@@ -1,5 +1,5 @@
 // ENTREPRISE — photos des agents (annonces, profils) : enregistrement, rattachement à une annonce ou un profil,
-// nettoyage du stockage. Réception (fichier ou lien), contrôle et réencodage : socle (socle/images.ts).
+// nettoyage du stockage. Réception d'un fichier envoyé, contrôle et réencodage : socle (socle/images.ts).
 import type { Request, Response } from 'express';
 import type { Prisma } from '../generated/prisma/client.js';
 import { prisma } from '../socle/db.js';

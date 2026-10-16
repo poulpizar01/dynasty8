@@ -7,7 +7,7 @@ const dateHeureStats = d => (d ? new Date(d).toLocaleString('fr-FR', { timeZone:
 // séparateur de milliers comme formaterPrix (layout.js), sans « HT » : les primes ne sont pas des prix du catalogue
 function formaterArgentStats(valeur) {
   const n = Math.round(Number(valeur) || 0);
-  return `${n < 0 ? '-' : ''}${Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} $`;
+  return `${n < 0 ? '-' : ''}${Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} $`;
 }
 const pluriel = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
 const carteStat = (libelle, valeur, precision, accent) => `<div class="compta-chiffre${accent ? ' accent' : ''}">

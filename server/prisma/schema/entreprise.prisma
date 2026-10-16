@@ -52,7 +52,7 @@ model Profil {
   @@map("profils")
 }
 
-// Photo envoyée par un agent (fichier ou lien téléchargé par le serveur), stockée par le socle (disque en dev, CDN en
+// Photo envoyée par un agent (fichier envoyé au site), stockée par le socle (disque en dev, CDN en
 // prod). Suivie ici pour être retirée du stockage quand plus rien ne l'utilise : une photo envoyée puis abandonnée
 // (annonce jamais enregistrée) ou retirée d'une annonce passe « a_supprimer », et la tâche de nettoyage
 // (entreprise/photos.ts) l'efface du stockage avant d'effacer la ligne.

@@ -25,8 +25,8 @@ const gerer = permission('compta');
 const MAX_COLONNES = 20, MAX_LIGNES = 500, MAX_CELLULE = 300;
 
 // La ligne récap « TOTAL » collée depuis la tablette saute la case « Rang » (un grade ne se totalise pas), ce qui décale
-// le reste de la ligne : on y remet un « - », seulement pour cette ligne et si elle est trop courte. Appliqué à la
-// lecture : corrige aussi les relevés importés avant ce correctif.
+// le reste de la ligne : on y remet un « - », seulement pour cette ligne et si elle est trop courte. Appliqué à
+// l'enregistrement et à la lecture, pour tout relevé enregistré.
 function corrigerLigneTotale(colonnes: string[], lignes: string[][]) {
   const iRang = indexColonne(minuscules(colonnes), ['rang', 'grade']);
   if (iRang <= 0 || iRang >= colonnes.length - 1) return lignes;
@@ -63,8 +63,8 @@ compta.get('/api/compta/tablettes', ...gerer, async (_req, res) => {
   const r = await dernierReleve();
   res.json({
     import: r && { colonnes: r.colonnes, lignes: r.lignes, importe_le: r.importeLe, importe_par: r.importePar },
-    // CA brut repris par la DOT, calculé ici (même fonction que le résumé) : la ligne TOTAL de la tablette n'est plus
-    // juste dès qu'un membre est retiré du relevé
+    // CA brut repris par la DOT, calculé ici (même fonction que le résumé) : la ligne TOTAL de la tablette est fausse
+    // dès qu'un membre est retiré du relevé
     ca_brut: r ? caBrutReleve(r.colonnes, r.lignes) : null,
     // grades payés à l'heure (stagiaires) : heures de service × taux, ligne par ligne
     paie_horaire: r ? await paieHoraire(r.colonnes, r.lignes) : null,

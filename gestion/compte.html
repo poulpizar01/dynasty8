@@ -99,7 +99,7 @@
       profilEditeur(document.getElementById('profil'), { adresse: '/api/profil', nom: () => moi.nom || '', champNom: moi.nom || '', surChangement: apercu }).charger();
 
       socle.api('/api/profil/primes').then(p => {
-        const argent = v => `${Math.round(Number(v) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} $`;
+        const argent = v => `${Math.round(Number(v) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} $`;
         const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
         document.getElementById('primes-ventes').textContent = pluriel(p.ventes, 'vente');
         document.getElementById('primes-locations').textContent = pluriel(p.locations, 'location');
@@ -112,7 +112,7 @@
     });
     document.getElementById('supprimer').addEventListener('click', async () => {
       if (!await gestion.confirmer('Votre compte est effacé du site. Pour revenir, il faudra vous reconnecter et être validé à nouveau.', 'Supprimer votre compte ?', 'Supprimer mon compte')) return;
-      try { await socle.api('/api/moi', { method: 'DELETE' }); memoCoque.effacer(); location.href = '/'; } catch (e) { gestion.message('zone-message', e.message); }
+      try { await socle.api('/api/moi', { method: 'DELETE' }); memoCoque.effacer(); location.href = '/'; } catch (e) { gestion.message('zone-message', `La suppression n’a pas abouti (${e.message}). Réessayez dans un instant.`); }
     });
   </script>
 </body>
