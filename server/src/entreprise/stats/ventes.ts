@@ -103,25 +103,34 @@ export async function enregistrerVente(b: Record<string, unknown>, compteId: num
   }
 }
 
-// mêmes unités que le récapitulatif : une ligne avec intérieur ET garage compte 2 ventes ; une location compte sa quantité
-const ventesDe = (l: LigneVente) => (l.type === 'Vente' ? (l.interieur !== '' ? 1 : 0) + (l.garage !== '' ? 1 : 0) : 0);
-const locationsDe = (l: LigneVente) => (l.type === 'Location' ? (l.interieur !== '' ? l.quantiteLoc : 0) + (l.garage !== '' ? l.quantiteLoc : 0) : 0);
 const ordreSemaine = (code: string) => { const a = analyserCodeSemaine(code); return a ? a.anneeIso * 100 + a.numero : -1; };
 const bornes = (lundi: Date) => { const dimanche = new Date(lundi); dimanche.setUTCDate(lundi.getUTCDate() + 6); return { debut: lundi.toISOString().slice(0, 10), fin: dimanche.toISOString().slice(0, 10) }; };
 
 // Totaux agence et liste des semaines SANS TROU, de la plus ancienne ayant des données à la semaine en cours (une
 // semaine sans vente apparaît à zéro : on peut préparer sa DOT à zéro, et elle ne « disparaît » pas du sélecteur).
+// Totaux par semaine comptés par la base, aux mêmes unités que le récapitulatif (stats/calcul.ts : une ligne avec
+// intérieur ET garage compte 2 ventes, une location compte sa quantité ; doublons marqués exclus). La table
+// des ventes n'est jamais purgée (historique de la paie), la relire en entière à chaque ouverture de Statistiques ou de
+// la DOT coûterait un peu plus chaque semaine.
+async function totauxParSemaine() {
+  const lignes = await prisma.$queryRaw<{ semaine: string; lignes: bigint; ventes: bigint; locations: bigint }[]>`
+    SELECT v.semaine, COUNT(*) AS lignes,
+      COALESCE(SUM(CASE WHEN v.type = 'Vente' THEN (v.interieur <> '')::int + (v.garage <> '')::int ELSE 0 END), 0) AS ventes,
+      COALESCE(SUM(CASE WHEN v.type = 'Location' THEN ((v.interieur <> '')::int + (v.garage <> '')::int) * COALESCE(v.loc, 0) ELSE 0 END), 0) AS locations
+    FROM ventes v
+    WHERE NOT EXISTS (SELECT 1 FROM ventes_doublons d WHERE d.ligne_doublon_id = v.id)
+    GROUP BY v.semaine`;
+  return lignes.map(l => ({ semaine: l.semaine, lignes: Number(l.lignes), ventes: Number(l.ventes), locations: Number(l.locations) }));
+}
+
 export async function semaines() {
-  const { lignes } = await lireLignes(true);
   const parSemaine = new Map<string, { lignes: number; ventes: number; locations: number }>();
   let totalVentes = 0, totalLocations = 0;
-  for (const l of lignes) {
-    totalVentes += ventesDe(l);
-    totalLocations += locationsDe(l);
-    if (!l.semaine) continue;   // semaine absente : exclue de tous les récapitulatifs
-    const c = parSemaine.get(l.semaine) ?? { lignes: 0, ventes: 0, locations: 0 };
-    c.lignes++; c.ventes += ventesDe(l); c.locations += locationsDe(l);
-    parSemaine.set(l.semaine, c);
+  for (const t of await totauxParSemaine()) {
+    totalVentes += t.ventes;
+    totalLocations += t.locations;
+    if (!t.semaine) continue;   // semaine absente : exclue de tous les récapitulatifs
+    parSemaine.set(t.semaine, { lignes: t.lignes, ventes: t.ventes, locations: t.locations });
   }
   const liste = [...parSemaine.entries()].map(([code, c]) => {
     const a = analyserCodeSemaine(code);

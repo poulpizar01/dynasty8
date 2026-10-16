@@ -111,14 +111,22 @@ async function relayer(req: Request, res: Response): Promise<void> {
   await pipeline(distante, res);
 }
 
-// lit une réponse jusqu'au bout, refusée au-delà de max octets
+// Lit une réponse jusqu'au bout, refusée au-delà de max octets. Budget commun à tous les relais en cours : chaque texte
+// est copié plusieurs fois en mémoire pour être réécrit (environ 4 fois sa taille), et 20 relais de 5 Mo dépasseraient
+// la mémoire de Node — tout le site redémarrerait, pas seulement la carte. Au-delà, ce relais échoue (502), la carte
+// réessaie, le site reste debout.
+const BUDGET_TEXTES = 30 * 1024 * 1024;
+let textesEnMemoire = 0;
 async function lireBorne(flux: IncomingMessage, max: number): Promise<Buffer> {
   const morceaux: Buffer[] = [];
   let total = 0;
-  for await (const m of flux as AsyncIterable<Buffer>) {
-    total += m.length;
-    if (total > max) { flux.destroy(); throw new Error(`réponse de la carte trop lourde (plus de ${max} octets)`); }
-    morceaux.push(m);
-  }
-  return Buffer.concat(morceaux);
+  try {
+    for await (const m of flux as AsyncIterable<Buffer>) {
+      total += m.length; textesEnMemoire += m.length;
+      if (total > max) { flux.destroy(); throw new Error(`réponse de la carte trop lourde (plus de ${max} octets)`); }
+      if (textesEnMemoire > BUDGET_TEXTES) { flux.destroy(); throw new Error('trop de pages de la carte relayées en même temps'); }
+      morceaux.push(m);
+    }
+    return Buffer.concat(morceaux);
+  } finally { textesEnMemoire -= total; }
 }

@@ -41,9 +41,18 @@ export function analyserCSV(texte: string): string[][] {
 const DELAI_MS = 20_000, TAILLE_MAX = 2 * 1024 * 1024;
 async function lireCSV(sheet: { id: string; gid: string }): Promise<string[][]> {
   const r = await fetch(`https://docs.google.com/spreadsheets/d/${sheet.id}/export?format=csv&gid=${sheet.gid}`, { signal: AbortSignal.timeout(DELAI_MS) });
-  if (Number(r.headers.get('content-length') ?? 0) > TAILLE_MAX) throw new Error('Onglet du Google Sheets trop volumineux : le lien doit viser l’onglet du récapitulatif.');
-  const texte = await r.text();
-  if (texte.length > TAILLE_MAX) throw new Error('Onglet du Google Sheets trop volumineux : le lien doit viser l’onglet du récapitulatif.');
+  const tropGros = () => new Error('Onglet du Google Sheets trop volumineux : le lien doit viser l’onglet du récapitulatif.');
+  if (Number(r.headers.get('content-length') ?? 0) > TAILLE_MAX) throw tropGros();
+  // lu par morceaux et abandonné au-delà de la limite (Google n'annonce pas toujours la taille) : jamais tout un
+  // classeur en mémoire pour découvrir ensuite qu'il est trop gros
+  const morceaux: Uint8Array[] = [];
+  let taille = 0;
+  for await (const m of (r.body ?? []) as AsyncIterable<Uint8Array>) {
+    taille += m.length;
+    if (taille > TAILLE_MAX) throw tropGros();
+    morceaux.push(m);
+  }
+  const texte = Buffer.concat(morceaux).toString('utf8');
   // un classeur non partagé renvoie la page de connexion Google (HTML, statut 200 après redirection)
   if (!r.ok || /^\s*<(!doctype|html)/i.test(texte)) throw new Error('Impossible de lire le Google Sheets. Vérifiez que son partage est réglé sur « Tous les utilisateurs disposant du lien — Lecteur ».');
   return analyserCSV(texte);

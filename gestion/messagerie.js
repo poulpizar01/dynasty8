@@ -310,10 +310,14 @@ function demarrerMessagerie(moi) {
   chargerContacts();
   // onglet caché : aucun sondage (chaque requête compte dans la limite de l'API du compte, tous onglets confondus) ;
   // rafraîchi dès son retour
-  const sonder = () => {
-    if (document.hidden) return;
-    chargerContacts();
-    for (const etat of MESSAGERIE.fenetres) chargerMessages(etat, false);
+  // un tour à la fois : serveur lent (plus de 4 s), les tours ne s'empilent pas et un même message ne s'affiche pas deux
+  // fois (le suivant partirait avant que le précédent ait avancé le dernier message lu)
+  let tourEnCours = false;
+  const sonder = async () => {
+    if (document.hidden || tourEnCours) return;
+    tourEnCours = true;
+    try { await Promise.allSettled([chargerContacts(), ...MESSAGERIE.fenetres.map(etat => chargerMessages(etat, false))]); }
+    finally { tourEnCours = false; }
   };
   setInterval(sonder, MESSAGERIE_INTERVALLE_MS);
   document.addEventListener('visibilitychange', sonder);
