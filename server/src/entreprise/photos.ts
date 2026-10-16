@@ -23,14 +23,14 @@ async function enregistrerPhoto(usage: 'bien' | 'profil', compteId: number, fich
 }
 
 // Photos d'une annonce, dans la transaction qui l'enregistre. Accepte : une photo envoyée par ce site encore libre
-// (temporaire) ou déjà sur cette annonce. Toute autre adresse est refusée : une annonce n'affiche jamais une image
+// (temporaire) par celui qui enregistre, ou déjà sur cette annonce (jamais la photo qu'un collègue vient d'envoyer). Toute autre adresse est refusée : une annonce n'affiche jamais une image
 // hébergée ailleurs. Les photos retirées de l'annonce partent au nettoyage.
-export async function rattacherPhotosBien(tx: Prisma.TransactionClient, bienId: number, urls: string[]): Promise<void> {
+export async function rattacherPhotosBien(tx: Prisma.TransactionClient, bienId: number, urls: string[], auteurId: number): Promise<void> {
   const connues = await tx.photo.findMany({ where: { url: { in: urls }, usage: 'bien' } });
   const parUrl = new Map(connues.map(p => [p.url, p]));
   for (const url of urls) {
     const p = parUrl.get(url);
-    const libre = p && (p.statut === 'temporaire' || (p.statut === 'attachee' && p.bienId === bienId));
+    const libre = p && ((p.statut === 'temporaire' && p.compteId === auteurId) || (p.statut === 'attachee' && p.bienId === bienId));
     if (libre) continue;
     throw new ImageRefusee(p?.statut === 'attachee' ? 'Une photo est déjà utilisée par une autre annonce : ajoute-la à nouveau (« Parcourir »).'
       : p ? 'Une photo a expiré avant l’enregistrement de l’annonce : ajoute-la à nouveau.'

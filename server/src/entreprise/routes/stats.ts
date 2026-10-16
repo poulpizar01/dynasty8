@@ -3,11 +3,10 @@
 import crypto from 'node:crypto';
 import { Router, type Request } from 'express';
 import { prisma } from '../../socle/db.js';
-import { auDessusDe, gradeDe, peut, tousLesGrades } from '../../socle/droits.js';
+import { auDessusDe, gradeDe, tousLesGrades } from '../../socle/droits.js';
 import { body, entier, intParam, permission, valide } from '../../socle/http.js';
-import { carte } from '../carte.js';
 import { configEntreprise } from '../config.js';
-import { lienRegle, sheetRegle, webmapOrigine } from '../parametres.js';
+import { lienRegle, sheetRegle } from '../parametres.js';
 import { Refus, traiter } from '../refus.js';
 import { infoPalier, primesSelonGrade } from '../stats/calcul.js';
 import { remunerations } from '../stats/recap.js';
@@ -54,7 +53,8 @@ stats.get('/api/stats/tableur', ...voir, traiter(async (req, res) => {
 
 // état de la synchronisation et lignes lues (page Synchro du tableur)
 stats.get('/api/tableur/etat', ...voir, async (_req, res) => {
-  const [etat, lignes] = await Promise.all([prisma.tableurEtat.findUnique({ where: { id: 1 } }), prisma.ligneTableur.findMany({ orderBy: { ligneSheet: 'asc' } })]);
+  // état seul (jamais l'instantané gardé pour l'archive, ni rien que la page n'affiche)
+  const [etat, lignes] = await Promise.all([prisma.tableurEtat.findUnique({ where: { id: 1 }, select: { statut: true, derniereSync: true, erreur: true, avertissement: true, nbLignes: true, nbApparies: true } }), prisma.ligneTableur.findMany({ orderBy: { ligneSheet: 'asc' } })]);
   const comptes = new Map((await prisma.compte.findMany({ where: { id: { in: lignes.map(l => l.compteId).filter((x): x is number => x !== null) } }, select: { id: true, nom: true, pseudo: true } })).map(c => [c.id, c.nom ?? c.pseudo]));
   res.json({
     configure: !!sheetRegle(), etat,
@@ -188,7 +188,7 @@ stats.delete('/api/stats/baremes/:id', ...compta, traiter(async (req, res) => {
   res.json({ ok: true });
 }));
 
-// outils du menu : lien du registre (réglé dans Paramètres, servi aux seuls comptes validés), WebMap disponible
-stats.get('/api/outils', ...valide, (req, res) => {
-  res.json({ registre: lienRegle('registre_url') || null, webmap: !!(carte && webmapOrigine()), ventes: peut(req.compte, 'ventes') });
+// outils du menu : lien du registre (réglé dans Paramètres, servi aux seuls comptes validés)
+stats.get('/api/outils', ...valide, (_req, res) => {
+  res.json({ registre: lienRegle('registre_url') || null });
 });

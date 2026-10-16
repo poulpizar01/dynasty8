@@ -62,14 +62,14 @@ const GESTION_ICONES = {
 };
 const ico = nom => `<svg class="ico" aria-hidden="true"><use href="#ico-${nom}"></use></svg>`;
 
-// Une personne en service : même ligne dans le panneau du menu et sur l'Accueil (nom, depuis quand, durée, mode) ;
+// Une personne en service : même ligne dans le panneau du menu et sur l'Accueil (nom, depuis quand, durée) ;
 // la sienne en tête, repérée par « vous » (moi : renvoyé par /api/services/en-cours).
 const heureParis = d => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
 const dureeDepuis = d => { const m = Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`; };
 const ordreEnService = liste => [...liste.filter(p => p.moi), ...liste.filter(p => !p.moi)];
 const ligneEnService = p => `<li${p.moi ? ' class="admin-service-moi"' : ''}>
   <span class="admin-service-nom">${socle.esc(p.nom)}${p.moi ? ' <span class="admin-service-vous">vous</span>' : ''}</span>
-  <span class="admin-service-detail">depuis ${socle.esc(heureParis(p.depuis))} · ${dureeDepuis(p.depuis)}${p.mode ? ` · ${socle.esc(p.mode)}` : ''}</span></li>`;
+  <span class="admin-service-detail">depuis ${socle.esc(heureParis(p.depuis))} · ${dureeDepuis(p.depuis)}</span></li>`;
 
 // Ce que le menu affiche du compte (nom, avatar, grade, permissions) et les liens réglés, gardé pour l'onglet : la page
 // suivante dessine son menu sans attendre le serveur. Affichage seulement ; effacé à la déconnexion, et dès que le
@@ -83,7 +83,9 @@ const memoCoque = {
     return m;
   },
   effacer() {
-    try { sessionStorage.removeItem(this.cle); sessionStorage.removeItem('gestion.service'); localStorage.removeItem('d8.espace'); } catch { /* rien à effacer */ }
+    // tout ce que l'onglet garde du compte, conversations de la messagerie comprises : sur un ordinateur partagé, le
+    // compte suivant ne doit rien en revoir
+    try { sessionStorage.removeItem(this.cle); sessionStorage.removeItem('gestion.service'); sessionStorage.removeItem('d8-messagerie'); localStorage.removeItem('d8.espace'); } catch { /* rien à effacer */ }
   },
 };
 

@@ -112,7 +112,7 @@
     });
     document.getElementById('supprimer').addEventListener('click', async () => {
       if (!await gestion.confirmer('Votre compte est effacé du site. Pour revenir, il faudra vous reconnecter et être validé à nouveau.', 'Supprimer votre compte ?', 'Supprimer mon compte')) return;
-      try { await socle.api('/api/moi', { method: 'DELETE' }); location.href = '/'; } catch (e) { gestion.message('zone-message', e.message); }
+      try { await socle.api('/api/moi', { method: 'DELETE' }); memoCoque.effacer(); location.href = '/'; } catch (e) { gestion.message('zone-message', e.message); }
     });
   </script>
 </body>

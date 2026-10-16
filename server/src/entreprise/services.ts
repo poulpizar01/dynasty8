@@ -26,7 +26,8 @@ function trouverFiche(employes: Fiche[], ev: EvenementDuty): Fiche | null {
 // Le bot rejoue ses envois en échec dans le désordre (après une coupure du site) : chaque événement est remis à sa place
 // dans le temps, quel que soit l'ordre d'arrivée.
 async function enregistrer(ev: EvenementDuty, fiche: Fiche | null): Promise<void> {
-  const nom = fiche ? `${fiche.prenom} ${fiche.nom}`.trim() : ev.nom;
+  // 120 caractères au plus (colonne employe_nom) : prénom et nom de la fiche en font jusqu'à 121
+  const nom = (fiche ? `${fiche.prenom} ${fiche.nom}`.trim() : ev.nom).slice(0, 120);
   const personne = { discordId: ev.discordId };
   await prisma.$transaction(async tx => {
     if (ev.sens === 'debut') {
@@ -68,11 +69,13 @@ async function enregistrer(ev: EvenementDuty, fiche: Fiche | null): Promise<void
 // renvoyer ne la rendrait pas valide) ; une erreur de base remonte, le bot réessaiera
 export async function recevoirDuty(e: EvenementBot): Promise<void> {
   const ev = lireDuty(e.payload, e.sentAt);
-  if (!ev) return;
+  // forme inattendue : ignorée (la renvoyer ne la rendrait pas valide), mais consignée — si le bot change de format,
+  // c'est la seule trace qui le dira
+  if (!ev) { console.warn('[services] événement monitoring.duty ignoré : forme inattendue', JSON.stringify(e.payload).slice(0, 300)); return; }
   const employes = await prisma.employe.findMany({ select: { id: true, prenom: true, nom: true, discordId: true } });
   await enregistrer(ev, trouverFiche(employes, ev));
   // dernier événement reçu : affiché dans Paramètres (preuve que l'abonnement fonctionne)
-  await prisma.serviceEtat.upsert({ where: { id: 1 }, create: { id: 1, derniereLecture: new Date(), statut: 'ok', nbReconnus: 1 }, update: { derniereLecture: new Date(), statut: 'ok', erreur: '', nbReconnus: { increment: 1 } } });
+  await prisma.serviceEtat.upsert({ where: { id: 1 }, create: { id: 1, derniereLecture: new Date(), nbReconnus: 1 }, update: { derniereLecture: new Date(), nbReconnus: { increment: 1 } } });
 }
 
 // services ouverts depuis plus de `heures` : fermés à début + heures

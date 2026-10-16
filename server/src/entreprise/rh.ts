@@ -268,9 +268,10 @@ const dateEvenement = (v: unknown): Date | null => { const d = new Date(texte(v,
 // arriver après un plus récent du même ticket. Seul compte le plus récent (date d'envoi `sentAt`).
 export async function recevoirCandidature(e: EvenementBot): Promise<void> {
   const p = e.payload as Record<string, unknown>;
-  if (!p || typeof p !== 'object') return;
+  // forme inattendue : ignorée, mais consignée (seule trace si le bot change de format)
+  if (!p || typeof p !== 'object') { console.warn('[rh] candidature ignorée : contenu absent'); return; }
   const ticketId = texte(p.ticketId, 100);
-  if (!ticketId) return;
+  if (!ticketId) { console.warn('[rh] candidature ignorée : pas de ticketId'); return; }
   const quand = dateEvenement(e.sentAt);
   const deja = await prisma.arriveeBot.findUnique({ where: { ticketId } });
   if (deja?.evenementLe && quand && quand <= deja.evenementLe) return;   // plus ancien que ce qui est déjà appliqué
@@ -283,7 +284,10 @@ export async function recevoirCandidature(e: EvenementBot): Promise<void> {
     else if (deja.resultat === 'creee') await prisma.arriveeBot.update({ where: { id: deja.id }, data: { motif: 'Refusée dans Discord après la création de la fiche : à vérifier.', evenementLe: quand } });
     return;
   }
-  if (p.status !== 'ACCEPTED') return;
+  if (p.status !== 'ACCEPTED') {
+    if (!['PENDING', 'INTERVIEW'].includes(String(p.status))) console.warn('[rh] candidature ignorée : statut inattendu', String(p.status).slice(0, 40));
+    return;
+  }
   // écartée à la main dans RH : la décision du site tient, même si le bot renvoie le ticket comme accepté (il le fait à
   // chaque changement : recruteur, pièce jointe…) ; RH est prévenue au lieu d'une fiche créée en silence
   if (deja?.resultat === 'ecartee_rh') {

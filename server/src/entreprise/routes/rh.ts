@@ -20,6 +20,14 @@ const exiger = (droit: DroitRh, message: string) => (req: Request, res: Response
   if (droitsRh(req.compte).has(droit)) next();
   else res.status(403).json({ error: message });
 };
+// Sa propre fiche se crée et se relie par un supérieur : sinon un agent qui a rh-creer ou rh-modifier choisirait le
+// grade de la fiche qui fixe sa paie (verifierHierarchie ne reconnaît « sa » fiche que par son ID Discord).
+function pasSaPropreFiche(req: Request, discordId: string | null | undefined) {
+  if (!req.compte.proprietaire && discordId && discordId === req.compte.discordId) {
+    throw new Refus('Votre propre fiche est créée ou reliée à votre compte Discord par un supérieur.', 403);
+  }
+}
+
 rh.get('/api/rh/employes', ...voir, async (req, res) => {
   const droits = droitsRh(req.compte);
   const employes = trierEmployes((await prisma.employe.findMany()).map(e => fichePublique(e, droits)));
@@ -68,6 +76,7 @@ rh.post('/api/rh/employes', ...voir, exiger('creer', 'Vous n’avez pas le droit
   if (!droitsRh(req.compte).has('sensible')) { delete b.telephone; delete b.rib; }
   const champs = lireChamps(b, null);
   verifierHierarchie(req.compte, null, champs.gradeCle);
+  pasSaPropreFiche(req, champs.discordId);
   await verifierUnicite(champs);
   const e = await prisma.employe.create({ data: { statut: 'actif', ...champs } as Parameters<typeof prisma.employe.create>[0]['data'] }).catch(refusUnicite);
   await rattacherVentes(e);
@@ -87,6 +96,7 @@ rh.patch('/api/rh/employes/:id', ...voir, exiger('modifier', 'Vous n’avez pas 
   }
   const champs = lireChamps(b, existante);
   verifierHierarchie(req.compte, existante, champs.gradeCle);
+  pasSaPropreFiche(req, champs.discordId);
   if (champs.idEmploye && champs.idEmploye !== existante.idEmploye) champs.idProvisoire = false;
   if (!Object.keys(champs).length) throw new Refus('Rien à modifier.');
   await verifierUnicite(champs, id);

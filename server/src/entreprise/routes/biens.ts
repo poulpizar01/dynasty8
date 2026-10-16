@@ -63,7 +63,7 @@ biens.post('/api/biens', ...gerer, async (req, res) => {
   const auteur = req.compte.nom ?? req.compte.pseudo;
   const cree = await prisma.$transaction(async tx => {
     const bien = await tx.bien.create({ data: { ...d, venduLe: d.vendu ? new Date() : null, auteur, compteId: req.compte.id } });
-    await rattacherPhotosBien(tx, bien.id, d.images);
+    await rattacherPhotosBien(tx, bien.id, d.images, req.compte.id);
     return bien;
   });
   res.status(201).json({ id: cree.id });
@@ -81,7 +81,7 @@ biens.put('/api/biens/:id', ...gerer, async (req, res) => {
       where: { id },
       data: { ...d, venduLe: d.vendu && !existant.vendu ? new Date() : d.vendu ? undefined : null },
     });
-    await rattacherPhotosBien(tx, id, d.images);
+    await rattacherPhotosBien(tx, id, d.images, req.compte.id);
     return true;
   });
   if (!trouve) { res.status(404).json({ error: 'Bien introuvable.' }); return; }
