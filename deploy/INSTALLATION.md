@@ -10,8 +10,8 @@ Guide générique du modèle sur lequel repose le site (mises à jour, journaux,
 |---|---|
 | Exécution | **Docker Compose** : `dynasty8-app` (site Node), `dynasty8-db` (PostgreSQL 17), `dynasty8-backup` (sauvegarde quotidienne), `dynasty8-db-roles` (ne tourne qu'un instant à chaque démarrage) |
 | Port local | `127.0.0.1:3010` (`HOST_PORT`), jamais exposé directement : nginx le sert en HTTPS |
-| Domaines | `dynasty8.fbfa.fr` (site) et `carte.dynasty8.fbfa.fr` (WebMap du serveur, relayée par le site) |
-| nginx | deux fichiers prêts dans [`deploy/nginx/`](nginx/) |
+| Domaines | `dynasty8.fbfa.fr` (site) et un sous-domaine au choix de l'opérateur du VPS pour la WebMap (relayée par le site, réglé par `WEBMAP_HOTE`) |
+| nginx | un fichier prêt pour le site, un exemple à adapter pour la WebMap, dans [`deploy/nginx/`](nginx/) |
 | Base | créée vide au premier démarrage (les migrations sont appliquées par le site) |
 | Images envoyées | stockage `storage.fbfa.fr`, jamais sur le disque du VPS |
 | Dépôt | https://github.com/poulpizar01/dynasty8, branche `main` |
@@ -40,7 +40,7 @@ Guide générique du modèle sur lequel repose le site (mises à jour, journaux,
 1. **Docker** : `docker compose version` doit répondre. Sinon : `curl -fsSL https://get.docker.com | sudo sh`, puis `sudo usermod -aG docker $USER` et se reconnecter. Le groupe `docker` vaut des droits root : à réserver au compte d'administration.
 2. **nginx, certbot, git** : `sudo apt update && sudo apt install -y nginx certbot git`.
 3. **Pare-feu** : seuls SSH, 80 et 443 ouverts (`sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable`, ou dans le pare-feu de l'hébergeur). Le port 3010 ne doit **pas** être ouvert.
-4. **DNS** : `dynasty8.fbfa.fr` **et** `carte.dynasty8.fbfa.fr` pointent sur l'IP du VPS. Vérifier : `dig +short dynasty8.fbfa.fr` et `dig +short carte.dynasty8.fbfa.fr` affichent l'IP du VPS. Sinon certbot échouera.
+4. **DNS** : `dynasty8.fbfa.fr` **et** le sous-domaine choisi pour la WebMap (ex. `webmap.dynasty8.fbfa.fr`) pointent sur l'IP du VPS. Vérifier avec `dig +short` sur chacun. Sinon certbot échouera.
 5. **Port libre** : `ss -ltnp | grep 3010` n'affiche rien. Sinon, prendre un autre port et le changer dans le `.env` et les deux fichiers nginx.
 6. **`/etc/nginx/snippets/deny-hidden.conf`** existe (les fichiers nginx l'incluent). Sinon, le créer avec :
    ```nginx
@@ -83,7 +83,7 @@ Modèle commenté : [`.env.example`](../.env.example), à copier en `.env` (éta
 | `STORAGE_URL`, `STORAGE_TOKEN`, `STORAGE_PREFIX` | `https://storage.fbfa.fr`, jeton du stockage, `dynasty8/` | oui pour envoyer des photos |
 | `BOT_WEBHOOK_SECRETS` | secret de l'abonnement « Candidatures » du bot Discord (§ 8) | plus tard |
 | `STATS_BOT_SECRET` | secret généré, à transmettre **en privé** à qui programme le bot de ventes | plus tard |
-| `WEBMAP_HOTE` | `carte.dynasty8.fbfa.fr` | oui pour la WebMap |
+| `WEBMAP_HOTE` | sous-domaine au choix (ex. `webmap.dynasty8.fbfa.fr`), le même que dans le fichier nginx de la WebMap (§ 5) | oui pour la WebMap |
 | `FOLKOS_HOTE` | hôte de l'ordinateur en jeu, ex. `https://computer.game.fbfa.fr` | oui pour l'affichage en jeu |
 | `FOLKOS_CADRES` | `https://*.fbfa.fr https://fbfa.fr` (autres pages FlashbackFA autorisées à afficher le site) | avec `FOLKOS_HOTE` |
 | `FOLKOS_ID_BASE`, `FOLKOS_CLIENT_ID`, `FOLKOS_CLIENT_SECRET` | validateur `id` **vu depuis le conteneur** (§ 1.7), identifiants du site chez l'opérateur FolkOS | pour « Se connecter IG » |
@@ -117,10 +117,17 @@ Si `app` redémarre en boucle : `docker logs dynasty8-app` nomme le réglage ref
 
 ## 5. nginx et certificats
 
-Pour **chacun des deux** fichiers de [`deploy/nginx/`](nginx/) : d'abord `dynasty8.fbfa.fr.conf`, puis `carte.dynasty8.fbfa.fr.conf`. nginx refuse un bloc HTTPS dont le certificat n'existe pas encore : on l'ajoute après avoir obtenu le certificat.
+D'abord `dynasty8.fbfa.fr.conf`, déjà prêt. Pour la WebMap, choisir un sous-domaine (ex. `webmap.dynasty8.fbfa.fr`), le reporter dans `WEBMAP_HOTE` du `.env`, puis préparer son fichier à partir de l'exemple :
 
 ```bash
-D=dynasty8.fbfa.fr              # puis recommencer avec D=carte.dynasty8.fbfa.fr
+D=webmap.dynasty8.fbfa.fr                               # le sous-domaine choisi
+sed "s/<sous-domaine-webmap>/$D/g" deploy/nginx/exemple-webmap.conf > deploy/nginx/$D.conf
+```
+
+Puis, **pour chacun des deux domaines** (`dynasty8.fbfa.fr` et le sous-domaine choisi pour la WebMap) — nginx refuse un bloc HTTPS dont le certificat n'existe pas encore : on l'ajoute après avoir obtenu le certificat.
+
+```bash
+D=dynasty8.fbfa.fr              # puis recommencer avec D=<sous-domaine-webmap choisi>
 sudo cp deploy/nginx/$D.conf /etc/nginx/sites-available/
 sudo nano /etc/nginx/sites-available/$D.conf     # couper tout ce qui suit « # --- bloc HTTPS » (le garder de côté)
 sudo ln -s /etc/nginx/sites-available/$D.conf /etc/nginx/sites-enabled/
@@ -152,7 +159,7 @@ Tout se règle depuis l'espace agents, sans toucher au serveur. **Paramètres** 
 - **Liens** : registre (intranet), Discord de l'agence, boutique VIP, Discord du partenaire décoration, **présentations Google Slides des quatre cohérences** (Habitation, Garage, Cayo Perico, Roxwood : coller le lien de partage de chaque présentation, partagée à « Tous les utilisateurs disposant du lien »). Un lien vide masque son bouton.
 - **Google Sheets et carte** :
   - **Google Sheets de la Direction** : ouvrir l'onglet du récapitulatif, coller l'adresse de la barre du navigateur (elle finit par `gid=…`). Le classeur doit être partagé à « Tous les utilisateurs disposant du lien », en lecture. L'état de la lecture s'affiche en tête de l'onglet (lu toutes les 5 minutes, et aussitôt après un changement de lien).
-  - **WebMap** : adresse publique en `https://` de la carte (ex. `https://webmap.dynasty8.fbfa.fr`). Le site refuse une adresse du serveur lui-même ou d'un réseau privé. Cette adresse n'est jamais montrée aux visiteurs.
+  - **WebMap** : adresse publique en `https://` de la carte réelle (où elle tourne, pas le sous-domaine `WEBMAP_HOTE` du § 5 qui ne fait que la relayer). Le site refuse une adresse du serveur lui-même ou d'un réseau privé. Cette adresse n'est jamais montrée aux visiteurs.
 - **Discord** (bot relié) :
   - **Membres en service** : seulement la clôture automatique d'un service jamais terminé (12 h par défaut). Les prises et fins de service arrivent du bot Discord par webhook (section 8) ; l'état de la réception s'affiche en tête de l'onglet.
   - **Agenda partagé** : seules les catégories où Ticket Tool crée les tickets ; les droits de consultation, création et modification se règlent pour chaque grade dans **Grades**.
@@ -180,8 +187,8 @@ Puis :
 | Connexion Discord, puis une page de l'espace agents | connecté, menu complet | redirection Discord (§ 2.1), `DISCORD_*` |
 | Gestion → Grades → un grade → Rôle Discord | liste des rôles par leur nom | bot pas invité ou jeton faux (§ 2) |
 | Envoi d'une photo sur une annonce | photo affichée | « L'envoi d'images n'est pas encore configuré » : `STORAGE_URL` / `STORAGE_TOKEN` |
-| Bouton « WebMap » de la vitrine | la carte s'affiche **dans la page** du site | `502` : adresse de la WebMap injoignable depuis le conteneur ; `503` : pas encore réglée (§ 7) ; certificat de `carte.dynasty8.fbfa.fr` |
-| https://carte.dynasty8.fbfa.fr ouvert directement | renvoie vers la page WebMap du site (voulu : la carte ne se consulte que sur le site) | — |
+| Bouton « WebMap » de la vitrine | la carte s'affiche **dans la page** du site | `502` : adresse de la WebMap injoignable depuis le conteneur ; `503` : pas encore réglée (§ 7) ; certificat du sous-domaine `WEBMAP_HOTE` |
+| Sous-domaine `WEBMAP_HOTE` ouvert directement | renvoie vers la page WebMap du site (voulu : la carte ne se consulte que sur le site) | — |
 | Une page de cohérence | la présentation Google Slides s'affiche | lien manquant dans Paramètres → Liens, ou présentation non partagée |
 | Paramètres → Discord, Paramètres → Google Sheets et carte | états « lu » sans erreur | message affiché dans l'état, droits du bot (§ 2.3) ou partage du classeur |
 | Ordinateur en jeu | le site s'affiche ; « Se connecter IG » ouvre une session | page blanche : `FOLKOS_HOTE` / `FOLKOS_CADRES`, console F8 (« ancestor violates frame-ancestors ») ; erreur de connexion : message sur la page de connexion, `FOLKOS_ID_BASE` joignable depuis le conteneur |
@@ -197,10 +204,11 @@ Dans `/opt/dynasty8` :
 
 ## 11. Liste de contrôle finale
 
+- [ ] sous-domaine de la WebMap choisi, reporté dans `WEBMAP_HOTE` et dans son fichier nginx (§ 5)
 - [ ] DNS des deux domaines vers le VPS ; ports 80 et 443 ouverts, 3010 fermé
 - [ ] `.env` complet (§ 3), en `600`, sans `DEV_LOGIN` ni `simulation`
 - [ ] `docker compose ps` : tout « Up », app et base « healthy »
-- [ ] deux certificats (site et carte), renouvellement testé
+- [ ] deux certificats (site et WebMap), renouvellement testé
 - [ ] redirection Discord ajoutée ; bot invité avec ses droits
 - [ ] propriétaire connecté en premier ; grades créés et liés à leurs rôles
 - [ ] Paramètres : quatre onglets renseignés (dont les quatre présentations, le Google Sheets partagé, la WebMap, la clôture automatique des services et les catégories de tickets)
