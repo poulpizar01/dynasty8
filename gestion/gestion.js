@@ -235,7 +235,7 @@ window.gestion = {
         ? `<p class="admin-nav-groupe">${socle.esc(l.groupe)}</p>`
         : `<a class="lien-onglet${l.cle === rubrique ? ' actif' : ''}" href="${socle.esc(l.regle ? outils[l.regle] : l.href)}"${l.cle === rubrique ? ' aria-current="page"' : ''}${l.externe ? ' target="_blank" rel="noopener"' : ''}>${ico(l.icone)}<span>${socle.esc(l.label)}</span></a>`).join('');
       const nom = moi.nom || moi.pseudo;
-      const grade = moi.grade?.libelle || (moi.proprietaire ? 'Propriétaire' : 'Sans grade');
+      const grade = moi.grade?.libelle || (moi.proprietaire ? 'Super-admin' : 'Sans grade');
       const avatar = moi.avatar ? `<img class="admin-avatar" src="${socle.esc(moi.avatar)}" alt="">` : `<span class="admin-avatar" aria-hidden="true">${socle.esc(initiales(nom))}</span>`;
       barre.querySelector('[data-compte]').innerHTML = `${avatar}
         <div class="admin-compte-texte"><strong>${socle.esc(nom)}</strong><span class="admin-compte-grade">${socle.esc(grade)}</span></div>

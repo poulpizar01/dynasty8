@@ -74,7 +74,7 @@
   <script>
     gestion.coque('compte').then(moi => {
       document.getElementById('pseudo').textContent = `@${moi.pseudo}`;
-      const grade = moi.grade?.libelle || (moi.proprietaire ? 'Propriétaire' : 'Sans grade');
+      const grade = moi.grade?.libelle || (moi.proprietaire ? 'Super-admin' : 'Sans grade');
       document.getElementById('grade').textContent = grade;
 
       // aperçu de la carte de la page équipe : mêmes classes que la vitrine (equipe.html), mêmes règles que le serveur
