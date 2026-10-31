@@ -25,10 +25,11 @@ Guide générique du modèle sur lequel repose le site (mises à jour, journaux,
 | **Opérateur de l'ordinateur en jeu** (FolkOS) | hôte FolkOS, identifiants SSO, déclaration du site dans son broker |
 | **Qui programme le bot de ventes** | appelle le site avec une clé que vous lui donnez |
 
-À rassembler avant l'étape 3 (tout ce qui manque peut être ajouté plus tard, sauf les quatre premiers) :
+À rassembler avant l'étape 3 (tout ce qui manque peut être ajouté plus tard, sauf les cinq premiers) :
 
 - [ ] `DISCORD_CLIENT_ID` et `DISCORD_CLIENT_SECRET` de l'application Discord RoxwoodLegal (`1546523997980852294`) — Direction
 - [ ] `DISCORD_GUILD_ID` : identifiant du serveur Discord de Dynasty 8 — Direction
+- [ ] votre ID Discord (ou celui de l'équipe technique), pour `SUPER_ADMIN_DISCORD_IDS` (§ 3, première connexion § 6) — vous
 - [ ] le jeton du stockage `storage.fbfa.fr` (`STORAGE_TOKEN`) — vous
 - [ ] deux secrets générés : `openssl rand -hex 32` (une fois pour `SESSION_SECRET`, une fois pour `POSTGRES_PASSWORD`) — vous
 - [ ] le jeton du bot de l'application RoxwoodLegal (`DISCORD_BOT_TOKEN`, § 2) — vous
@@ -78,8 +79,9 @@ Modèle commenté : [`.env.example`](../.env.example), à copier en `.env` (éta
 | `SESSION_SECRET` | secret généré (32 caractères au moins) | oui |
 | `POSTGRES_PASSWORD` | secret généré ; **ne se change plus** une fois la base créée | oui |
 | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | application RoxwoodLegal (§ 2) | oui |
-| `DISCORD_GUILD_ID` | serveur Discord de Dynasty 8 : seuls ses membres se connectent, son propriétaire a tous les droits sur le site | oui |
+| `DISCORD_GUILD_ID` | serveur Discord de Dynasty 8 : seuls ses membres se connectent (sauf les super-admins, ci-dessous) | oui |
 | `DISCORD_BOT_TOKEN` | jeton du bot (§ 2) | conseillé |
+| `SUPER_ADMIN_DISCORD_IDS` | votre ID Discord (ou celui de l'équipe technique), pour la première connexion (§ 6) ; séparer plusieurs IDs par des virgules | oui |
 | `STORAGE_URL`, `STORAGE_TOKEN`, `STORAGE_PREFIX` | `https://storage.fbfa.fr`, jeton du stockage, `dynasty8/` | oui pour envoyer des photos |
 | `BOT_WEBHOOK_SECRETS` | secret de l'abonnement « Candidatures » du bot Discord (§ 8) | plus tard |
 | `STATS_BOT_SECRET` | secret généré, à transmettre **en privé** à qui programme le bot de ventes | plus tard |
@@ -147,10 +149,10 @@ On doit obtenir : `curl -sI https://dynasty8.fbfa.fr` répond `200`. Le certific
 
 Dans cet ordre :
 
-1. Le **propriétaire du serveur Discord** de Dynasty 8 se connecte le premier : https://dynasty8.fbfa.fr/gestion/ → « Se connecter avec Discord ». Il a tous les droits.
-2. **Gestion → Grades** : créer les grades de l'agence, **du plus haut au plus bas** (glisser pour réordonner), et lier chacun à son **rôle Discord**, choisi par son nom dans la liste (bot relié). Cocher pour chaque grade ce qu'il peut faire.
-3. Les agents se connectent par Discord : qui porte un rôle lié à un grade entre directement ; les autres attendent d'être validés dans **Gestion → Comptes & accès** (signalé dans « À traiter » sur l'accueil).
-4. La connexion « IG » dans l'ordinateur en jeu marche pour tout agent qui s'est connecté par Discord depuis moins de 30 jours (règle voulue : un agent parti du serveur Discord perd aussi l'accès en jeu).
+1. Un **super-admin** (son ID Discord dans `SUPER_ADMIN_DISCORD_IDS`, § 3 — vous ou l'équipe technique) se connecte le premier : https://dynasty8.fbfa.fr/gestion/ → « Se connecter avec Discord ». Il a tous les droits, sans devoir être membre du serveur Discord de Dynasty 8.
+2. **Gestion → Grades** : créer les grades de l'agence, **du plus haut au plus bas** (glisser pour réordonner), et lier chacun à son **rôle Discord**, choisi par son nom dans la liste (bot relié). Cocher pour chaque grade ce qu'il peut faire. Créer en premier le grade de la **Direction** (ex. « Patron ») : toutes les permissions cochées, lié au rôle Discord de la Direction — c'est ce grade, pas `SUPER_ADMIN_DISCORD_IDS` (réservé à vous/l'équipe technique), qui donne tous les droits sur le site aux patrons RP.
+3. Les agents se connectent par Discord : qui porte un rôle lié à un grade entre directement (la Direction, avec son rôle lié au grade « Patron », entre donc directement aussi) ; les autres attendent d'être validés dans **Gestion → Comptes & accès** (signalé dans « À traiter » sur l'accueil).
+4. La connexion « IG » dans l'ordinateur en jeu marche pour tout agent qui s'est connecté par Discord depuis moins de 30 jours (règle voulue : un agent parti du serveur Discord perd aussi l'accès en jeu). Un super-admin qui ne serait pas membre du serveur Discord n'a pas cet accès en jeu.
 
 ## 7. Réglages de l'agence (espace agents, avec la Direction)
 
@@ -210,7 +212,7 @@ Dans `/opt/dynasty8` :
 - [ ] `docker compose ps` : tout « Up », app et base « healthy »
 - [ ] deux certificats (site et WebMap), renouvellement testé
 - [ ] redirection Discord ajoutée ; bot invité avec ses droits
-- [ ] propriétaire connecté en premier ; grades créés et liés à leurs rôles
+- [ ] `SUPER_ADMIN_DISCORD_IDS` renseigné ; ce compte connecté en premier ; grade « Patron » créé (toutes les permissions, lié au rôle Discord de la Direction) ; autres grades créés et liés à leurs rôles
 - [ ] Paramètres : quatre onglets renseignés (dont les quatre présentations, le Google Sheets partagé, la WebMap, la clôture automatique des services et les catégories de tickets)
 - [ ] Droits de l'agenda réglés pour chaque grade dans **Grades** : événements d'équipe, puis événements adressés à un grade
 - [ ] Comptabilité → Rémunération et paliers de primes ; Ressources humaines → recrutement réglé
